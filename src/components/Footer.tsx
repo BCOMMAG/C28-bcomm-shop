@@ -7,7 +7,7 @@ import { STORE_INFO } from '@/data/products';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-[#1A1918]/90 backdrop-blur-md text-[#FAF8F5] border-t border-[#C5A059]/30 pt-16 pb-12 relative z-10">
+    <footer className="bg-[#1A1918]/90 backdrop-blur-md text-[#FAF8F5] border-t border-[#C5A059]/30 pt-16 pb-24 sm:pb-16 relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-white/10">
