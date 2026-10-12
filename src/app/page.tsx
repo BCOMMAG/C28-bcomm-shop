@@ -106,13 +106,10 @@ export default function HomePage() {
         />
 
         {/* 1. SEÇÃO: LANÇAMENTOS */}
-        <section id="lancamentos" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+        <section id="lancamentos" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
-                Novidades da Temporada
-              </span>
-              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
                 Lançamentos Exclusivos
               </h2>
             </div>
@@ -139,34 +136,35 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção Lançamentos */}
-          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
             <Link
               href="/catalogo?status=Lançamento"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
+              title="Ver Lançamentos no Catálogo"
             >
-              <span>Ver Todos os Lançamentos no Catálogo</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ver Todos os Lançamentos no Catálogo</span>
+              <span className="sm:hidden">Ver no Catálogo</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             </Link>
 
             <button
               type="button"
               onClick={() => scrollToSection('mais-vendidos')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
+              title="Ir para Mais Vendidos"
             >
-              <span>Ir para Mais Vendidos</span>
-              <ArrowDown className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform" />
+              <span className="hidden sm:inline">Ir para Mais Vendidos</span>
+              <span className="sm:hidden">Mais Vendidos</span>
+              <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
             </button>
           </div>
         </section>
 
         {/* 2. SEÇÃO: MAIS VENDIDOS */}
-        <section id="mais-vendidos" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+        <section id="mais-vendidos" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
-                Os Favoritos da Boutique
-              </span>
-              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
                 Mais Vendidos
               </h2>
             </div>
@@ -192,34 +190,35 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção Mais Vendidos */}
-          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
             <Link
               href="/catalogo?categoria=Mais%20Vendidos"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
+              title="Ver Mais Vendidos no Catálogo"
             >
-              <span>Ver Mais Produtos Mais Vendidos</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ver Mais Produtos Mais Vendidos</span>
+              <span className="sm:hidden">Ver no Catálogo</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             </Link>
 
             <button
               type="button"
               onClick={() => scrollToSection('outlet')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
+              title="Ir para OUTLET"
             >
-              <span>Próxima Seção: OUTLET</span>
-              <ArrowDown className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform" />
+              <span className="hidden sm:inline">Próxima Seção: OUTLET</span>
+              <span className="sm:hidden">Ir para OUTLET</span>
+              <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
             </button>
           </div>
         </section>
 
         {/* 3. SEÇÃO: OUTLET */}
-        <section id="outlet" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+        <section id="outlet" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
-                Oportunidades Especiais
-              </span>
-              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
                 OUTLET & Peças Selecionadas
               </h2>
             </div>
@@ -246,34 +245,35 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção OUTLET */}
-          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
             <Link
               href="/catalogo?categoria=OUTLET"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
+              title="Ver Peças do OUTLET no Catálogo"
             >
-              <span>Ver Mais Peças do OUTLET</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ver Mais Peças do OUTLET</span>
+              <span className="sm:hidden">Ver no Catálogo</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             </Link>
 
             <button
               type="button"
               onClick={() => scrollToSection('ultimas-pecas')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
+              title="Ir para Últimas Peças"
             >
-              <span>Próxima Seção: Últimas Peças</span>
-              <ArrowDown className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform" />
+              <span className="hidden sm:inline">Próxima Seção: Últimas Peças</span>
+              <span className="sm:hidden">Últimas Peças</span>
+              <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
             </button>
           </div>
         </section>
 
         {/* 4. SEÇÃO: ÚLTIMAS PEÇAS */}
-        <section id="ultimas-pecas" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+        <section id="ultimas-pecas" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
-                Estoque Limitado &bull; Restam Poucas Unidades
-              </span>
-              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
                 Últimas Peças
               </h2>
             </div>
@@ -300,22 +300,26 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção Últimas Peças */}
-          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
             <Link
               href="/catalogo?status=Últimas%20Peças"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
+              title="Explorar Peças Restantes no Catálogo"
             >
-              <span>Explorar Todas as Peças Restantes no Catálogo</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Explorar Todas as Peças Restantes no Catálogo</span>
+              <span className="sm:hidden">Ver no Catálogo</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             </Link>
 
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
+              title="Voltar ao Topo da Página"
             >
-              <span>Voltar ao Topo da Página</span>
-              <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform" />
+              <span className="hidden sm:inline">Voltar ao Topo da Página</span>
+              <span className="sm:hidden">Voltar ao Topo</span>
+              <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform shrink-0" />
             </button>
           </div>
         </section>

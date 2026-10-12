@@ -262,41 +262,6 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
       >
         <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-[#C5A059] hover:text-inherit" />
       </button>
-
-      {/* Controles de Navegação no Mobile: Botão Voltar & Próxima Peça */}
-      <div className="flex sm:hidden items-center justify-between px-1 pt-3.5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsPaused(true);
-            handlePrev();
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] active:scale-95 shadow-xs cursor-pointer"
-          aria-label="Voltar peça anterior"
-        >
-          <ChevronLeft className="w-3.5 h-3.5 text-[#C5A059]" />
-          <span>Voltar</span>
-        </button>
-
-        <span className="text-[10px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] font-medium">
-          Toque para navegar
-        </span>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsPaused(true);
-            handleNext();
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] active:scale-95 shadow-xs cursor-pointer"
-          aria-label="Avançar próxima peça"
-        >
-          <span>Próxima</span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#C5A059]" />
-        </button>
-      </div>
     </div>
   );
 };
