@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   X,
   Play,
@@ -66,11 +66,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const pathname = usePathname();
   const isAlreadyInCatalog = Boolean(pathname?.startsWith('/catalogo'));
+  const router = useRouter();
   const {
     recentlyViewedProducts,
     savedCep,
     savedAddress,
-    setSavedAddressInfo
+    setSavedAddressInfo,
+    closeProductSilently
   } = useStore();
 
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
@@ -224,6 +226,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     });
     setAddedAnimation(true);
     setTimeout(() => setAddedAnimation(false), 1500);
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    onAddToCart({
+      product,
+      size: selectedSize || product.sizes[0] || 'Tamanho Único',
+      color: selectedColor || product.colors[0]?.name || 'Padrão',
+      quantity
+    });
+    closeProductSilently();
+    router.push('/checkout/');
   };
 
   // Consulta Real de Endereço via ViaCEP
@@ -672,35 +686,45 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Botão Adicionar à Sacola */}
+                  {/* Botão Principal: COMPRAR AGORA (Leva direto ao checkout) */}
                   <button
-                    onClick={handleAdd}
-                    className={`flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer ${
-                      addedAnimation
-                        ? 'bg-[#25D366] text-white'
-                        : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] active:scale-95'
-                    }`}
+                    onClick={handleBuyNow}
+                    className="flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all duration-300 shadow-md active:scale-95 cursor-pointer"
+                    title="Comprar esta peça agora e ir para o Checkout"
                   >
-                    {addedAnimation ? (
-                      <>
-                        <Check className="w-4 h-4 stroke-[3]" />
-                        <span>ADICIONADO À SACOLA!</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>ADICIONAR À SACOLA</span>
-                      </>
-                    )}
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>COMPRAR AGORA</span>
                   </button>
                 </div>
+
+                {/* Botão Secundário: Adicionar à Sacola */}
+                <button
+                  onClick={handleAdd}
+                  className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border border-[#C5A059]/60 shadow-xs cursor-pointer ${
+                    addedAnimation
+                      ? 'bg-[#25D366] text-white border-[#25D366]'
+                      : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5]'
+                  }`}
+                >
+                  {addedAnimation ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>ADICIONADO À SACOLA!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
+                      <span>ADICIONAR À SACOLA</span>
+                    </>
+                  )}
+                </button>
 
                 {/* Botão Direto de WhatsApp */}
                 <a
                   href={generateWhatsAppDirectLink()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 px-5 rounded-none text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2.5 border border-[#C5A059] bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#2E2A27] transition-all duration-300 shadow-xs cursor-pointer"
+                  className="w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2.5 border border-[#C5A059]/30 bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#2E2A27] transition-all duration-300 shadow-xs cursor-pointer"
                 >
                   <MessageCircle className="w-4 h-4 text-[#25D366]" />
                   <span>PEDIR ESTA PEÇA NO WHATSAPP DA LEIDY</span>

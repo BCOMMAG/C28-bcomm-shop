@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Heart, Eye, ShoppingBag, Plus, Check } from 'lucide-react';
 import { Product } from '@/types';
 import { useStore } from '@/context/StoreContext';
@@ -40,19 +41,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isSpacious = columnsCount === 2 || columnsCount === 3;
 
   const [isJustAdded, setIsJustAdded] = useState(false);
+  const router = useRouter();
   const { cartCount, addToCart } = useStore();
 
   const handleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (cartCount === 0) {
-      // 1. Carrinho Vazio: Comprar Agora -> Adiciona e abre a sacola diretamente
+      // 1. Carrinho Vazio: Comprar Agora -> Adiciona e direciona direto para o Checkout seguro
       addToCart({
         product,
         size: product.sizes[0] || 'Tamanho Único',
         color: product.colors[0]?.name || 'Padrão',
         quantity: 1,
-        openDrawer: true
+        openDrawer: false
       });
+      router.push('/checkout/');
     } else {
       // 2. Já existem itens no carrinho: Adiciona silenciosamente e a barra inferior guia o fechamento
       addToCart({

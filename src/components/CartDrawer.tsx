@@ -27,7 +27,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onQuickAddItem
 }) => {
   const router = useRouter();
-  const { setSearchQuery, savedCep, savedAddress, setSavedAddressInfo } = useStore();
+  const { setSearchQuery, savedCep, savedAddress, setSavedAddressInfo, closeCartSilently } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
@@ -452,12 +452,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </span>
               </div>
 
-              {/* Botão Principal: FINALIZAR COMPRA (Leva com segurança para /checkout) */}
+              {/* Botão Principal: FINALIZAR COMPRA (Leva com segurança para /checkout/) */}
               <button
                 type="button"
                 onClick={() => {
-                  onClose();
-                  router.push('/checkout');
+                  closeCartSilently();
+                  router.push('/checkout/');
                 }}
                 className="w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all duration-300 shadow-md active:scale-95 group cursor-pointer"
               >

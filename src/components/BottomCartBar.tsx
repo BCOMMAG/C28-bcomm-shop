@@ -86,7 +86,7 @@ export const BottomCartBar: React.FC = () => {
           {/* Botão Rápido Finalizar */}
           <button
             type="button"
-            onClick={() => router.push('/checkout')}
+            onClick={() => router.push('/checkout/')}
             className="ml-1 px-3 py-1.5 bg-[#1A1918] dark:bg-[#C5A059] text-white text-[11px] uppercase tracking-wider font-bold hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all flex items-center gap-1 cursor-pointer shadow-sm"
             title="Ir para o checkout"
           >
@@ -177,7 +177,7 @@ export const BottomCartBar: React.FC = () => {
 
               {/* Botão Finalizar Compras */}
               <button
-                onClick={() => router.push('/checkout')}
+                onClick={() => router.push('/checkout/')}
                 className="flex-1 max-w-[195px] py-2.5 px-3 rounded-none bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer whitespace-nowrap"
               >
                 <span>Finalizar Compras</span>
@@ -267,7 +267,7 @@ export const BottomCartBar: React.FC = () => {
 
               {/* Botão de Finalizar Compras */}
               <button
-                onClick={() => router.push('/checkout')}
+                onClick={() => router.push('/checkout/')}
                 className="px-7 py-3 rounded-none bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all font-semibold text-sm uppercase tracking-wider flex items-center gap-2 shadow-md active:scale-95 cursor-pointer whitespace-nowrap"
               >
                 <span>Finalizar Compras</span>

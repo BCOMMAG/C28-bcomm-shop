@@ -42,8 +42,10 @@ interface StoreContextType {
   closeSideDrawer: () => void;
   openProduct: (product: Product) => void;
   closeProduct: () => void;
+  closeProductSilently: () => void;
   openCart: () => void;
   closeCart: () => void;
+  closeCartSilently: () => void;
   openSizeGuide: () => void;
   closeSizeGuide: () => void;
 }
@@ -290,6 +292,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const closeProductSilently = () => {
+    setIsProductModalOpen(false);
+    productModalHistoryPushedRef.current = false;
+  };
+
   const openCart = () => {
     setIsCartOpen(true);
     if (typeof window !== 'undefined' && !cartDrawerHistoryPushedRef.current) {
@@ -312,6 +319,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cartDrawerHistoryPushedRef.current = false;
       window.history.back();
     }
+  };
+
+  const closeCartSilently = () => {
+    setIsCartOpen(false);
+    cartDrawerHistoryPushedRef.current = false;
   };
 
   // Interceptador do evento popstate (botão voltar do celular ou navegador)
@@ -372,8 +384,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeSideDrawer,
         openProduct,
         closeProduct,
+        closeProductSilently,
         openCart,
         closeCart,
+        closeCartSilently,
         openSizeGuide,
         closeSizeGuide
       }}
