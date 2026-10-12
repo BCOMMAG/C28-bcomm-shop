@@ -46,7 +46,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
         <div className="absolute inset-x-0 top-0 h-32 sm:h-36 bg-gradient-to-b from-black/60 via-black/25 to-transparent pointer-events-none z-10" />
 
         {/* Gradiente Inferior para Transição Harmoniosa */}
-        <div className="absolute inset-x-0 bottom-0 h-32 sm:h-28 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-36 md:h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
 
         {/* Botão de Controle de Áudio Discreto */}
         <button
@@ -62,8 +62,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
           )}
         </button>
 
-        {/* Chamada Sutil para Rolar até os Produtos (Visual semi-translúcido / discreto) */}
-        <div className="absolute bottom-8 md:bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
+        {/* Chamada Sutil para Rolar até os Produtos (Posicionamento elevado conforme solicitado para Mobile e Desktop) */}
+        <div className="absolute bottom-32 sm:bottom-32 md:bottom-20 lg:bottom-24 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
           <button
             onClick={onExploreClick}
             className="px-5 py-2 rounded-none bg-white/45 hover:bg-white/90 text-[#1A1918] text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-semibold transition-all duration-300 shadow-sm backdrop-blur-md flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 border border-white/60 hover:border-[#C5A059]/70"
