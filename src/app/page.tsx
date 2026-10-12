@@ -106,10 +106,10 @@ export default function HomePage() {
         />
 
         {/* 1. SEÇÃO: LANÇAMENTOS */}
-        <section id="lancamentos" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-3">
+        <section id="lancamentos" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs">
+              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
                 Novidades da Temporada
               </span>
               <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
@@ -139,7 +139,7 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção Lançamentos */}
-          <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
               href="/catalogo?status=Lançamento"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
@@ -160,10 +160,10 @@ export default function HomePage() {
         </section>
 
         {/* 2. SEÇÃO: MAIS VENDIDOS */}
-        <section id="mais-vendidos" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-3">
+        <section id="mais-vendidos" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
             <div>
-              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs">
+              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
                 Os Favoritos da Boutique
               </span>
               <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
@@ -192,7 +192,7 @@ export default function HomePage() {
           />
 
           {/* Botões de Ação da Seção Mais Vendidos */}
-          <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
               href="/catalogo?categoria=Mais%20Vendidos"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
@@ -213,114 +213,110 @@ export default function HomePage() {
         </section>
 
         {/* 3. SEÇÃO: OUTLET */}
-        <section id="outlet" className="py-16 sm:py-24 bg-transparent border-t border-[#C5A059]/25">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-3">
-              <div>
-                <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-bold block mb-1.5 drop-shadow-xs">
-                  Oportunidades Especiais
-                </span>
-                <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
-                  OUTLET & Peças Selecionadas
-                </h2>
-              </div>
-              <p className="text-xs text-white/85 max-w-sm hidden sm:block">
-                Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.
-              </p>
+        <section id="outlet" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+            <div>
+              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
+                Oportunidades Especiais
+              </span>
+              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+                OUTLET & Peças Selecionadas
+              </h2>
             </div>
+            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+              Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.
+            </p>
+          </div>
 
-            {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
-            <ProductLoopCarousel
-              products={outletProducts}
-              isOutletSection={true}
-              onOpenDetails={openProduct}
-              onQuickAdd={(p) => {
-                addToCart({
-                  product: p,
-                  size: p.sizes[0],
-                  color: p.colors[0].name,
-                  quantity: 1
-                });
-              }}
-              isWishlisted={(id) => wishlistIds.includes(id)}
-              onToggleWishlist={toggleWishlist}
-            />
+          {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
+          <ProductLoopCarousel
+            products={outletProducts}
+            isOutletSection={true}
+            onOpenDetails={openProduct}
+            onQuickAdd={(p) => {
+              addToCart({
+                product: p,
+                size: p.sizes[0],
+                color: p.colors[0].name,
+                quantity: 1
+              });
+            }}
+            isWishlisted={(id) => wishlistIds.includes(id)}
+            onToggleWishlist={toggleWishlist}
+          />
 
-            {/* Botões de Ação da Seção OUTLET */}
-            <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link
-                href="/catalogo?categoria=OUTLET"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#C5A059] hover:text-white text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
-              >
-                <span>Ver Mais Peças do OUTLET</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+          {/* Botões de Ação da Seção OUTLET */}
+          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <Link
+              href="/catalogo?categoria=OUTLET"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+            >
+              <span>Ver Mais Peças do OUTLET</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
 
-              <button
-                type="button"
-                onClick={() => scrollToSection('ultimas-pecas')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
-              >
-                <span>Próxima Seção: Últimas Peças</span>
-                <ArrowDown className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => scrollToSection('ultimas-pecas')}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+            >
+              <span>Próxima Seção: Últimas Peças</span>
+              <ArrowDown className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform" />
+            </button>
           </div>
         </section>
 
         {/* 4. SEÇÃO: ÚLTIMAS PEÇAS */}
-        <section id="ultimas-pecas" className="py-16 sm:py-24 bg-transparent border-t border-[#C5A059]/25">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-3">
-              <div>
-                <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-bold block mb-1.5 drop-shadow-xs">
-                  Estoque Limitado &bull; Restam Poucas Unidades
-                </span>
-                <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
-                  Últimas Peças
-                </h2>
-              </div>
-              <p className="text-xs text-white/85 max-w-sm hidden sm:block">
-                Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.
-              </p>
+        <section id="ultimas-pecas" className="py-16 sm:py-20 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 lg:mb-6 gap-3">
+            <div>
+              <span className="text-xs uppercase tracking-[0.25em] text-[#DFBE76] font-semibold block mb-1.5 drop-shadow-xs lg:hidden">
+                Estoque Limitado &bull; Restam Poucas Unidades
+              </span>
+              <h2 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
+                Últimas Peças
+              </h2>
             </div>
+            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+              Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.
+            </p>
+          </div>
 
-            {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
-            <ProductLoopCarousel
-              products={lastPiecesProducts}
-              isLastPiecesSection={true}
-              onOpenDetails={openProduct}
-              onQuickAdd={(p) => {
-                addToCart({
-                  product: p,
-                  size: p.sizes[0],
-                  color: p.colors[0].name,
-                  quantity: 1
-                });
-              }}
-              isWishlisted={(id) => wishlistIds.includes(id)}
-              onToggleWishlist={toggleWishlist}
-            />
+          {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
+          <ProductLoopCarousel
+            products={lastPiecesProducts}
+            isLastPiecesSection={true}
+            onOpenDetails={openProduct}
+            onQuickAdd={(p) => {
+              addToCart({
+                product: p,
+                size: p.sizes[0],
+                color: p.colors[0].name,
+                quantity: 1
+              });
+            }}
+            isWishlisted={(id) => wishlistIds.includes(id)}
+            onToggleWishlist={toggleWishlist}
+          />
 
-            {/* Botões de Ação da Seção Últimas Peças */}
-            <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link
-                href="/catalogo?status=Últimas%20Peças"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
-              >
-                <span>Explorar Todas as Peças Restantes no Catálogo</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+          {/* Botões de Ação da Seção Últimas Peças */}
+          <div className="mt-8 sm:mt-10 lg:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <Link
+              href="/catalogo?status=Últimas%20Peças"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer"
+            >
+              <span>Explorar Todas as Peças Restantes no Catálogo</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
 
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
-              >
-                <span>Voltar ao Topo da Página</span>
-                <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group"
+            >
+              <span>Voltar ao Topo da Página</span>
+              <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform" />
+            </button>
           </div>
         </section>
 
