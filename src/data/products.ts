@@ -744,7 +744,8 @@ export const CATEGORIES = [
 export const STORE_INFO = {
   name: 'Leidy Boutique',
   tagline: 'Curadoria Exclusiva em Moda Feminina',
-  whatsapp: '5549999999999',
+  whatsapp: '554197347601',
+  phoneFormatted: '(41) 9734-7601',
   instagram: '@leidyboutique',
   freeShippingThreshold: 350.00
 };
