@@ -24,7 +24,10 @@ import {
   User,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  X,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
@@ -101,6 +104,7 @@ export default function CheckoutPage() {
     pagamento: false,
     observacoes: false
   });
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const toggleMobileSection = (section: keyof typeof mobileSections) => {
     setMobileSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -341,35 +345,31 @@ export default function CheckoutPage() {
   const handleFinalizeOrder = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!validateForm()) {
-      // Abre automaticamente a seção onde estiver a pendência no mobile
-      if (!isDadosDone) {
-        setMobileSections((prev) => ({ ...prev, dados: true }));
-      } else if (!isEnderecoDone) {
-        setMobileSections((prev) => ({ ...prev, endereco: true }));
-      }
-
-      // Rola suavemente até o alerta de pendência
-      const alertEl = document.getElementById('checkout-progress-panel');
-      if (alertEl) {
-        alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        window.scrollTo({ top: 80, behavior: 'smooth' });
-      }
+    // Se houver pendências (nome/WhatsApp ou endereço com número), abre o pop-up informativo e persuasivo
+    if (!isDadosDone || !isEnderecoDone) {
+      setShowPendingModal(true);
       return;
     }
 
-    // Registra o lead como finalizado
-    captureLead(customerPhone, customerName, 'finalizado');
+    // Se já estiver tudo preenchido, vai direto para o WhatsApp
+    proceedToWhatsApp(false);
+  };
+
+  // Envio efetivo do pedido para o WhatsApp (seja preenchido ou direto)
+  const proceedToWhatsApp = (isDirectWithoutFilling = false) => {
+    if (customerPhone) {
+      captureLead(customerPhone, customerName || 'Cliente WhatsApp', 'finalizado');
+    }
 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const newOrderId = `LB-2026-${randomCode}`;
     setOrderId(newOrderId);
     setOrderSubmitted(true);
+    setShowPendingModal(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Dispara a abertura do WhatsApp com a mensagem pronta e inalterável
-    const text = buildOrderSummaryText(newOrderId);
+    // Dispara a abertura do WhatsApp com a mensagem pronta
+    const text = buildOrderSummaryText(newOrderId, isDirectWithoutFilling);
     const url = `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
     if (typeof window !== 'undefined') {
       try {
@@ -380,13 +380,36 @@ export default function CheckoutPage() {
     }
   };
 
+  // Opção recomendada do pop-up: preencher agora no site (Mais Rápido)
+  const handleCompleteOnSite = () => {
+    setShowPendingModal(false);
+
+    if (!isDadosDone) {
+      setMobileSections((prev) => ({ ...prev, dados: true }));
+      setTimeout(() => {
+        const target = document.getElementById('section-dados-mobile') || document.getElementById('section-dados-desktop');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    } else if (!isEnderecoDone) {
+      setMobileSections((prev) => ({ ...prev, endereco: true }));
+      setTimeout(() => {
+        const target = document.getElementById('section-endereco-mobile') || document.getElementById('section-endereco-desktop');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    }
+  };
+
   // Monta a mensagem completa formatada e inviolável do pedido
-  const buildOrderSummaryText = (customOrderId?: string) => {
+  const buildOrderSummaryText = (customOrderId?: string, isDirectWithoutFilling?: boolean) => {
     const finalId = customOrderId || orderId || 'LB-2026';
     let msg = `✨ *PEDIDO CONFIRMADO NO SITE LEIDY BOUTIQUE* ✨\n`;
     msg += `🔖 *Pedido:* #${finalId}\n\n`;
     msg += `👤 *Cliente:* ${customerName || 'Cliente Leidy Boutique'}\n`;
-    msg += `📱 *WhatsApp:* ${customerPhone || 'A confirmar'}\n`;
+    msg += `📱 *WhatsApp:* ${customerPhone || 'A confirmar diretamente no chat'}\n`;
     if (customerEmail) msg += `✉️ *E-mail:* ${customerEmail}\n`;
     if (customerCpf) msg += `📄 *CPF:* ${customerCpf}\n`;
 
@@ -395,6 +418,10 @@ export default function CheckoutPage() {
       msg += `${street}, nº ${number || 'S/N'}${complement ? ` (${complement})` : ''}\n`;
       msg += `${neighborhood} - ${city}/${uf}\n`;
       msg += `CEP: ${cepInput}\n`;
+    } else if (cepInput) {
+      msg += `\n📍 *Endereço de Entrega:* CEP ${cepInput} (Rua/Número a combinar no WhatsApp)\n`;
+    } else {
+      msg += `\n📍 *Endereço de Entrega:* A combinar diretamente aqui no WhatsApp\n`;
     }
 
     msg += `\n🛍️ *Peças Escolhidas:*\n`;
@@ -426,7 +453,12 @@ export default function CheckoutPage() {
     if (orderNotes) {
       msg += `\n📝 *Observações:* ${orderNotes}\n`;
     }
-    msg += `\nOlá Leidy! Acabei de registrar meu pedido no site da boutique e gostaria de confirmar a reserva e os dados de envio!`;
+
+    if (isDirectWithoutFilling && pendingSteps.length > 0) {
+      msg += `\nOlá Leidy! Preferi adiantar meu pedido pelo site e combinar meus dados de *${pendingSteps.join(' e ')}* aqui com você no WhatsApp! Poderia me atender? ✨`;
+    } else {
+      msg += `\nOlá Leidy! Acabei de registrar meu pedido com meus dados preenchidos no site e gostaria de confirmar a reserva e os dados de envio! ✨`;
+    }
 
     return msg;
   };
@@ -912,7 +944,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* 2. ACORDEÃO TOUCH: SEUS DADOS PESSOAIS */}
-              <div className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-xs overflow-hidden">
+              <div id="section-dados-mobile" className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-xs overflow-hidden scroll-mt-24">
                 <button
                   type="button"
                   onClick={() => toggleMobileSection('dados')}
@@ -1027,7 +1059,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* 3. ACORDEÃO TOUCH: ENDEREÇO DE ENTREGA */}
-              <div className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-xs overflow-hidden">
+              <div id="section-endereco-mobile" className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-xs overflow-hidden scroll-mt-24">
                 <button
                   type="button"
                   onClick={() => toggleMobileSection('endereco')}
@@ -1480,7 +1512,7 @@ export default function CheckoutPage() {
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* ETAPA 1: SEUS DADOS PESSOAIS */}
-                <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/30 shadow-xs">
+                <div id="section-dados-desktop" className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/30 shadow-xs scroll-mt-24">
                   <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C5A059]/20">
                     <div className="flex items-center gap-2.5">
                       <span className="w-6 h-6 rounded-none bg-[#C5A059] text-white text-xs font-bold flex items-center justify-center">
@@ -1589,7 +1621,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* ETAPA 2: ENDEREÇO DE ENTREGA COM VIACEP */}
-                <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/30 shadow-xs">
+                <div id="section-endereco-desktop" className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/30 shadow-xs scroll-mt-24">
                   <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C5A059]/20">
                     <div className="flex items-center gap-2.5">
                       <span className="w-6 h-6 rounded-none bg-[#C5A059] text-white text-xs font-bold flex items-center justify-center">
@@ -2260,6 +2292,113 @@ export default function CheckoutPage() {
         )}
 
       </main>
+
+      {/* 5. MODAL POP-UP DE INFORMAÇÕES PENDENTES & PERSUASÃO VIP */}
+      {showPendingModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fadeIn"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowPendingModal(false);
+          }}
+        >
+          <div className="relative w-full max-w-lg bg-[#FAF8F5] dark:bg-[#1A1918] border border-[#C5A059]/50 shadow-2xl overflow-hidden p-5 sm:p-7 text-[#1A1918] dark:text-[#FAF8F5]">
+            {/* Linha Dourada de Topo */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059]" />
+
+            {/* Botão Fechar */}
+            <button
+              type="button"
+              onClick={() => setShowPendingModal(false)}
+              className="absolute top-4 right-4 p-1.5 text-[#78716C] hover:text-[#1A1918] dark:hover:text-[#FAF8F5] transition-colors cursor-pointer"
+              title="Fechar aviso"
+              aria-label="Fechar aviso"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Cabeçalho do Pop-up */}
+            <div className="flex items-start gap-3.5 mb-4 pr-6">
+              <div className="w-11 h-11 rounded-none bg-[#C5A059]/15 border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059] shrink-0 mt-0.5">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#C5A059] block mb-0.5">
+                  Atendimento VIP Leidy Boutique
+                </span>
+                <h3 className="font-serif-luxury text-lg sm:text-xl font-bold leading-tight text-[#1A1918] dark:text-[#FAF8F5]">
+                  Falta pouco para garantir suas peças!
+                </h3>
+              </div>
+            </div>
+
+            {/* Card com Itens Pendentes (exatamente o que está no controle de finalização) */}
+            <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 rounded-none mb-4">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Falta apenas preencher no site:</span>
+              </div>
+              <ul className="text-xs space-y-1.5 text-[#57534E] dark:text-[#D6D3D1]">
+                {!isDadosDone && (
+                  <li className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                    <span><strong>Seus Dados:</strong> Nome e WhatsApp para contato</span>
+                  </li>
+                )}
+                {!isEnderecoDone && (
+                  <li className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                    <span><strong>Endereço de Entrega:</strong> Rua, número ou CEP para envio</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {/* Mensagem Persuasiva de Rapidez */}
+            <div className="space-y-2.5 text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed mb-6">
+              <p>
+                As compras são finalizadas com <strong>muito mais agilidade</strong> e <strong>reserva imediata</strong> quando os dados já vão preenchidos pelo site:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                <div className="p-2.5 bg-white dark:bg-[#201D1B] border border-[#C5A059]/20 flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-[#C5A059] shrink-0 mt-0.5" />
+                  <span><strong>3x Mais Rápido:</strong> A Leidy já recebe sua ficha completa sem você precisar digitar endereço no chat.</span>
+                </div>
+                <div className="p-2.5 bg-white dark:bg-[#201D1B] border border-[#C5A059]/20 flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
+                  <span><strong>Cálculo Exato:</strong> Frete e descontos (PIX/Cupom) chegam 100% calculados e garantidos.</span>
+                </div>
+              </div>
+              <p className="text-[11px] italic text-[#78716C] dark:text-[#A8A29E] pt-1">
+                Deseja preencher rapidinho agora ou prefere ir para o WhatsApp sem finalizar aqui no site e passar essas informações manualmente na conversa com a Leidy?
+              </p>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="space-y-2.5 pt-1 border-t border-[#C5A059]/20">
+              {/* Botão 1: Preencher no site (Recomendado & Persuasivo) */}
+              <button
+                type="button"
+                onClick={handleCompleteOnSite}
+                className="w-full py-3.5 px-5 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-98 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-[#DFBE76] dark:text-white" />
+                <span>PREENCHER AGORA NO SITE (MUITO MAIS RÁPIDO)</span>
+              </button>
+
+              {/* Botão 2: Continuar no WhatsApp mesmo assim (Não impede o cliente!) */}
+              <button
+                type="button"
+                onClick={() => proceedToWhatsApp(true)}
+                className="w-full py-2.5 px-4 text-xs font-semibold text-[#78716C] dark:text-[#A8A29E] hover:text-[#1A1918] dark:hover:text-[#FAF8F5] transition-colors flex items-center justify-center gap-1.5 cursor-pointer underline underline-offset-4"
+              >
+                <span>Continuar para o WhatsApp mesmo assim e passar os dados lá</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
