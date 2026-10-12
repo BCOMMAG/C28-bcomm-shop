@@ -36,6 +36,10 @@ interface StoreContextType {
   removeFromCart: (id: string) => void;
   toggleWishlist: (productId: string) => void;
   isWishlisted: (productId: string) => boolean;
+  clearCart: () => void;
+  isSideDrawerOpen: boolean;
+  openSideDrawer: () => void;
+  closeSideDrawer: () => void;
   openProduct: (product: Product) => void;
   closeProduct: () => void;
   openCart: () => void;
@@ -58,6 +62,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>([]);
   const [savedCep, setSavedCep] = useState<string>('');
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
+  const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+
+  const openSideDrawer = () => setIsSideDrawerOpen(true);
+  const closeSideDrawer = () => setIsSideDrawerOpen(false);
+
+  const clearCart = () => {
+    setCartItems([]);
+    try {
+      localStorage.removeItem('leidy_cart');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Carregar dados e tema do localStorage na montagem
   useEffect(() => {
@@ -349,6 +366,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         removeFromCart,
         toggleWishlist,
         isWishlisted,
+        clearCart,
+        isSideDrawerOpen,
+        openSideDrawer,
+        closeSideDrawer,
         openProduct,
         closeProduct,
         openCart,

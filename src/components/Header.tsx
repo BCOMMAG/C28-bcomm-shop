@@ -137,10 +137,17 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, toggleTheme, searchQuery, setSearchQuery } = useStore();
+  const {
+    theme,
+    toggleTheme,
+    searchQuery,
+    setSearchQuery,
+    isSideDrawerOpen,
+    openSideDrawer: openSideDrawerContext,
+    closeSideDrawer: closeSideDrawerContext
+  } = useStore();
 
   const [headerSearchInput, setHeaderSearchInput] = useState(searchQuery || '');
-  const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -151,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
   // Função para abrir a gaveta lateral sempre com opções recolhidas
   const openSideDrawer = () => {
     setExpandedDrawerItem(null);
-    setSideDrawerOpen(true);
+    openSideDrawerContext();
   };
 
   // Estado de dropdown flutuante no menu desktop superior com tolerância de transição (grace period)
@@ -205,14 +212,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Trava scroll do body quando a gaveta lateral estiver aberta
   useEffect(() => {
-    if (sideDrawerOpen) {
+    if (isSideDrawerOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [sideDrawerOpen]);
+  }, [isSideDrawerOpen]);
 
   // Regra 1: O menu superior tem que ser transparente na home até o usuário rolar a página
   const isHome = pathname === '/';
@@ -225,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
     setSearchQuery(term);
     setDesktopSearchOpen(false);
     setMobileSearchOpen(false);
-    setSideDrawerOpen(false);
+    closeSideDrawerContext();
     router.push(`/catalogo?q=${encodeURIComponent(term)}`);
   };
 
@@ -236,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({
     extraCategory?: string;
     extraFabric?: string;
   }) => {
-    setSideDrawerOpen(false);
+    closeSideDrawerContext();
     setMobileSearchOpen(false);
     setDesktopSearchOpen(false);
     if (dropdownTimeoutRef.current) {
@@ -641,12 +648,12 @@ export const Header: React.FC<HeaderProps> = ({
       </header>
 
       {/* 7. GAVETA LATERAL ESQUERDA (DESKTOP E MOBILE) */}
-      {sideDrawerOpen && (
+      {isSideDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
           {/* Backdrop escuro com desfoque */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer"
-            onClick={() => setSideDrawerOpen(false)}
+            onClick={closeSideDrawerContext}
             aria-hidden="true"
           />
 
@@ -659,7 +666,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Navegue por Peças
                 </span>
                 <button
-                  onClick={() => setSideDrawerOpen(false)}
+                  onClick={closeSideDrawerContext}
                   className="p-1.5 text-[#78716C] hover:text-[#1A1918] dark:hover:text-white transition-colors cursor-pointer"
                   title="Fechar menu"
                 >
@@ -733,7 +740,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="p-4 sm:p-5 border-t border-[#C5A059]/20 bg-white dark:bg-[#1E1C1A] space-y-2.5 shrink-0">
                 <Link
                   href="/favoritos"
-                  onClick={() => setSideDrawerOpen(false)}
+                  onClick={closeSideDrawerContext}
                   className="flex items-center justify-between text-xs sm:text-sm font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] py-1"
                 >
                   <div className="flex items-center gap-2">
