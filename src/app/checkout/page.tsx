@@ -71,6 +71,12 @@ export default function CheckoutPage() {
   // Etapa ativa na trilha de finalização
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('sacola');
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [confirmedSteps, setConfirmedSteps] = useState<Record<CheckoutStep, boolean>>({
+    sacola: false,
+    endereco: false,
+    dados: false,
+    pagamento: false
+  });
 
   // 1. Dados do Cliente
   const [customerName, setCustomerName] = useState('');
@@ -336,14 +342,8 @@ export default function CheckoutPage() {
   const stepOrder: CheckoutStep[] = ['sacola', 'endereco', 'dados', 'pagamento'];
   const currentStepIndex = stepOrder.indexOf(currentStep);
 
-  const goToStep = (step: CheckoutStep) => {
-    setCurrentStep(step);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 80, behavior: 'smooth' });
-    }
-  };
-
-  const isStepCompleted = (step: CheckoutStep) => {
+  // Verifica se a etapa possui os dados necessários preenchidos (seja salvo ou digitado)
+  const hasStepData = (step: CheckoutStep): boolean => {
     if (step === 'sacola') return cartCount > 0;
     if (step === 'endereco') return isEnderecoDone;
     if (step === 'dados') return isDadosDone;
@@ -351,10 +351,37 @@ export default function CheckoutPage() {
     return false;
   };
 
+  // Determina o estado visual de cada etapa na trilha:
+  // 'active': Em Edição (Preto/Dourado)
+  // 'confirmed': Concluído e confirmado pelo cliente nesta sessão (Verde)
+  // 'prefilled': Informações previamente determinadas / Falta confirmação (Azul)
+  // 'pending': Aguardando preenchimento (Neutro/Cinza)
+  const getStepStatus = (step: CheckoutStep): 'active' | 'confirmed' | 'prefilled' | 'pending' => {
+    if (step === currentStep) return 'active';
+    const hasData = hasStepData(step);
+    const isConfirmed = Boolean(confirmedSteps[step]);
+    if (isConfirmed && hasData) return 'confirmed';
+    if (hasData) return 'prefilled';
+    return 'pending';
+  };
+
+  const goToStep = (step: CheckoutStep) => {
+    const targetIdx = stepOrder.indexOf(step);
+    // Se o cliente está avançando para uma etapa posterior e a etapa atual está preenchida, marca a atual como confirmada
+    if (targetIdx > currentStepIndex && hasStepData(currentStep)) {
+      setConfirmedSteps((prev) => ({ ...prev, [currentStep]: true }));
+    }
+    setCurrentStep(step);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 80, behavior: 'smooth' });
+    }
+  };
+
   const handleNextFromSacola = () => {
     if (cepInput && (!street || !city)) {
       handleSearchCep();
     }
+    setConfirmedSteps((prev) => ({ ...prev, sacola: true }));
     goToStep('endereco');
   };
 
@@ -362,6 +389,7 @@ export default function CheckoutPage() {
     if (!number.trim()) {
       setFormErrors((prev) => ({ ...prev, number: 'Por favor, informe o número da residência.' }));
     }
+    setConfirmedSteps((prev) => ({ ...prev, endereco: true }));
     goToStep('dados');
   };
 
@@ -374,6 +402,7 @@ export default function CheckoutPage() {
       setFormErrors((prev) => ({ ...prev, phone: 'Informe seu WhatsApp com DDD.' }));
     }
     captureLead(customerPhone, customerName, 'iniciado');
+    setConfirmedSteps((prev) => ({ ...prev, dados: true }));
     goToStep('pagamento');
   };
 
@@ -393,6 +422,7 @@ export default function CheckoutPage() {
 
   // Envio efetivo do pedido para o WhatsApp (seja preenchido ou direto)
   const proceedToWhatsApp = (isDirectWithoutFilling = false) => {
+    setConfirmedSteps((prev) => ({ ...prev, pagamento: true }));
     if (customerPhone) {
       captureLead(customerPhone, customerName || 'Cliente WhatsApp', 'finalizado');
     }
@@ -710,9 +740,11 @@ export default function CheckoutPage() {
                 />
 
                 {CHECKOUT_STEPS.map((step, idx) => {
-                  const isActive = step.id === currentStep;
-                  const isDone = idx < currentStepIndex || isStepCompleted(step.id);
-                  const canClick = idx <= currentStepIndex || isStepCompleted(step.id);
+                  const status = getStepStatus(step.id);
+                  const isActive = status === 'active';
+                  const isConfirmed = status === 'confirmed';
+                  const isPreFilled = status === 'prefilled';
+                  const canClick = idx <= currentStepIndex || isConfirmed || isPreFilled;
                   const Icon = step.icon;
 
                   return (
@@ -730,12 +762,14 @@ export default function CheckoutPage() {
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 border-2 ${
                           isActive
                             ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] shadow-md scale-110'
-                            : isDone
-                            ? 'bg-[#22C55E] text-white border-[#22C55E]'
+                            : isConfirmed
+                            ? 'bg-[#22C55E] text-white border-[#22C55E] shadow-xs'
+                            : isPreFilled
+                            ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
                             : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
                         }`}
                       >
-                        {isDone && !isActive ? (
+                        {isConfirmed ? (
                           <Check className="w-4 h-4 stroke-[3]" />
                         ) : (
                           <Icon className="w-4 h-4" />
@@ -748,15 +782,25 @@ export default function CheckoutPage() {
                           className={`text-xs uppercase tracking-wider font-bold transition-colors ${
                             isActive
                               ? 'text-[#C5A059] dark:text-[#DFBE76]'
-                              : isDone
+                              : isConfirmed
                               ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                              : isPreFilled
+                              ? 'text-[#1A1918] dark:text-[#FAF8F5] group-hover:text-[#2563EB]'
                               : 'text-[#78716C] dark:text-[#A8A29E]'
                           }`}
                         >
                           {step.number}. {step.label}
                         </span>
-                        <span className="text-[10px] text-[#A8A29E] dark:text-[#78716C]">
-                          {isActive ? 'Em Edição' : isDone ? 'Concluído' : 'Aguardando'}
+                        <span className="text-[10px]">
+                          {isActive ? (
+                            <span className="text-[#A8A29E] dark:text-[#78716C]">Em Edição</span>
+                          ) : isConfirmed ? (
+                            <span className="text-[#22C55E] font-medium">Concluído</span>
+                          ) : isPreFilled ? (
+                            <span className="text-[#2563EB] dark:text-blue-400 font-medium">Falta confirmação</span>
+                          ) : (
+                            <span className="text-[#A8A29E] dark:text-[#78716C]">Aguardando</span>
+                          )}
                         </span>
                       </div>
                     </button>
@@ -798,19 +842,22 @@ export default function CheckoutPage() {
                 {/* Pílulas de Navegação Rápida no Mobile */}
                 <div className="flex items-center justify-between gap-1 pt-1">
                   {CHECKOUT_STEPS.map((s, idx) => {
-                    const isCur = s.id === currentStep;
-                    const isFin = idx < currentStepIndex || isStepCompleted(s.id);
+                    const status = getStepStatus(s.id);
+                    const isCur = status === 'active';
+                    const canClick = idx <= currentStepIndex || status === 'confirmed' || status === 'prefilled';
                     return (
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => (idx <= currentStepIndex || isFin) && goToStep(s.id)}
-                        disabled={idx > currentStepIndex && !isFin}
+                        onClick={() => canClick && goToStep(s.id)}
+                        disabled={!canClick}
                         className={`flex-1 py-1 px-1 text-[10px] uppercase font-bold tracking-wider text-center border transition-all ${
                           isCur
                             ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-transparent'
-                            : isFin
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : status === 'confirmed'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                            : status === 'prefilled'
+                            ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'
                             : 'bg-transparent text-[#78716C] dark:text-[#A8A29E] border-transparent opacity-50'
                         }`}
                       >
