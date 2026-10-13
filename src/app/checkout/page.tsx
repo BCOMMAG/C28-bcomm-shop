@@ -601,7 +601,7 @@ export default function CheckoutPage() {
       </header>
 
       {/* 2. CONTEÚDO PRINCIPAL */}
-      <main className="max-w-[1440px] mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1 w-full">
+      <main className="max-w-[1440px] mx-auto px-3.5 sm:px-6 lg:px-8 py-3.5 sm:py-8 flex-1 w-full">
         
         {/* CASO A SACOLA ESTEJA VAZIA */}
         {cartCount === 0 && !orderSubmitted ? (
@@ -719,7 +719,7 @@ export default function CheckoutPage() {
         ) : (
 
           /* 4. TELA PRINCIPAL: CHECKOUT EM ETAPAS (FASEADA E INTUITIVA) */
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             
             {/* ========================================================================= */}
             {/* TRILHA DE FINALIZAÇÃO (PROGRESS TRACK / STEPPER LUXUOSO)                  */}
@@ -808,60 +808,84 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              {/* VISÃO MOBILE DA TRILHA (Compacta com Barra e Indicador de Passo) */}
-              <div className="sm:hidden space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1A1918] dark:bg-[#C5A059] text-white text-[11px] font-bold flex items-center justify-center">
-                      {currentStepIndex + 1}
-                    </span>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-[#C5A059] block">
-                        Passo {currentStepIndex + 1} de 4
-                      </span>
-                      <h3 className="font-serif-luxury text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] leading-tight">
-                        {CHECKOUT_STEPS[currentStepIndex].label}
-                      </h3>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-[#C5A059]">
-                    {Math.round(((currentStepIndex + 1) / CHECKOUT_STEPS.length) * 100)}%
-                  </span>
-                </div>
+              {/* VISÃO MOBILE DA TRILHA (Horizontal com Círculos Conectados, Super Compacta e Intuitiva) */}
+              <div className="sm:hidden relative py-1 px-1">
+                {/* Linha Conectora de Fundo */}
+                <div className="absolute top-4 left-6 right-6 -translate-y-1/2 h-0.5 bg-[#E7E5E4] dark:bg-[#292524] z-0" />
+                
+                {/* Linha Conectora de Progresso Concluído */}
+                <div
+                  className="absolute top-4 left-6 -translate-y-1/2 h-0.5 bg-gradient-to-r from-[#C5A059] to-[#DFBE76] z-0 transition-all duration-300"
+                  style={{
+                    width: `${(currentStepIndex / (CHECKOUT_STEPS.length - 1)) * 80}%`
+                  }}
+                />
 
-                {/* Barra de Progresso Fina */}
-                <div className="w-full bg-[#E7E5E4] dark:bg-[#292524] h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059] transition-all duration-300"
-                    style={{
-                      width: `${((currentStepIndex + 1) / CHECKOUT_STEPS.length) * 100}%`
-                    }}
-                  />
-                </div>
+                <div className="flex items-start justify-between relative z-10">
+                  {CHECKOUT_STEPS.map((step, idx) => {
+                    const status = getStepStatus(step.id);
+                    const isActive = status === 'active';
+                    const isConfirmed = status === 'confirmed';
+                    const isPreFilled = status === 'prefilled';
+                    const canClick = idx <= currentStepIndex || isConfirmed || isPreFilled;
+                    const Icon = step.icon;
 
-                {/* Pílulas de Navegação Rápida no Mobile */}
-                <div className="flex items-center justify-between gap-1 pt-1">
-                  {CHECKOUT_STEPS.map((s, idx) => {
-                    const status = getStepStatus(s.id);
-                    const isCur = status === 'active';
-                    const canClick = idx <= currentStepIndex || status === 'confirmed' || status === 'prefilled';
                     return (
                       <button
-                        key={s.id}
+                        key={step.id}
                         type="button"
-                        onClick={() => canClick && goToStep(s.id)}
+                        onClick={() => canClick && goToStep(step.id)}
                         disabled={!canClick}
-                        className={`flex-1 py-1 px-1 text-[10px] uppercase font-bold tracking-wider text-center border transition-all ${
-                          isCur
-                            ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-transparent'
-                            : status === 'confirmed'
-                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
-                            : status === 'prefilled'
-                            ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'
-                            : 'bg-transparent text-[#78716C] dark:text-[#A8A29E] border-transparent opacity-50'
+                        className={`flex flex-col items-center gap-1 transition-all flex-1 text-center ${
+                          canClick ? 'cursor-pointer' : 'cursor-default opacity-50'
                         }`}
                       >
-                        {s.shortLabel}
+                        {/* Círculo Compacto */}
+                        <div
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] transition-all border-2 ${
+                            isActive
+                              ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] scale-110 shadow-xs'
+                              : isConfirmed
+                              ? 'bg-[#22C55E] text-white border-[#22C55E]'
+                              : isPreFilled
+                              ? 'bg-[#2563EB] text-white border-[#2563EB]'
+                              : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
+                          }`}
+                        >
+                          {isConfirmed ? (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          ) : (
+                            <Icon className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+
+                        {/* Rótulo e Status Compacto */}
+                        <div className="flex flex-col items-center leading-tight">
+                          <span
+                            className={`text-[10px] font-bold tracking-tight ${
+                              isActive
+                                ? 'text-[#C5A059] dark:text-[#DFBE76]'
+                                : isConfirmed
+                                ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                                : isPreFilled
+                                ? 'text-[#2563EB] dark:text-blue-400'
+                                : 'text-[#78716C] dark:text-[#A8A29E]'
+                            }`}
+                          >
+                            {step.id === 'dados' ? 'Dados' : step.shortLabel}
+                          </span>
+                          <span className="text-[8px]">
+                            {isActive ? (
+                              <span className="text-[#C5A059] font-medium">Atual</span>
+                            ) : isConfirmed ? (
+                              <span className="text-[#22C55E] font-medium">✓ Ok</span>
+                            ) : isPreFilled ? (
+                              <span className="text-[#2563EB] dark:text-blue-400 font-medium">Confirmar</span>
+                            ) : (
+                              <span className="text-[#A8A29E] dark:text-[#78716C]">Aguardar</span>
+                            )}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
@@ -870,95 +894,30 @@ export default function CheckoutPage() {
 
             </div>
 
-            {/* MINI-RESUMO RETRÁTIL NO MOBILE (Permite espiar o total a qualquer momento) */}
-            <div className="lg:hidden bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-xs p-3">
-              <button
-                type="button"
-                onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
-                className="w-full flex items-center justify-between text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
-                  <span className="text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                    Resumo do Pedido ({cartCount} {cartCount === 1 ? 'peça' : 'peças'})
-                  </span>
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 text-[#C5A059] transition-transform duration-200 ${
-                      mobileSummaryOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[10px] text-[#78716C]">Total:</span>
-                  <span className="text-sm font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                    R$ {totalAmount.toFixed(2).replace('.', ',')}
-                  </span>
-                </div>
-              </button>
-
-              {mobileSummaryOpen && (
-                <div className="pt-3 mt-3 border-t border-[#C5A059]/20 space-y-2 text-xs animate-fadeIn">
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between gap-2 py-1 border-b border-black/5 dark:border-white/5 last:border-0">
-                        <span className="text-[11px] text-[#1A1918] dark:text-[#FAF8F5] truncate max-w-[180px]">
-                          {item.quantity}x {item.name} ({item.color} - {item.size})
-                        </span>
-                        <span className="text-[11px] font-bold text-[#C5A059]">
-                          R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="pt-2 border-t border-dashed border-[#C5A059]/20 space-y-1 text-[11px] text-[#78716C] dark:text-[#A8A29E]">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>R$ {rawSubtotal.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Envio:</span>
-                      <span>{isFreeShipping ? 'Grátis (VIP)' : `R$ ${shippingPrice.toFixed(2).replace('.', ',')}`}</span>
-                    </div>
-                    {couponDiscount > 0 && (
-                      <div className="flex justify-between text-emerald-600 font-medium">
-                        <span>Cupom ({appliedCoupon?.code}):</span>
-                        <span>-R$ {couponDiscount.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                    )}
-                    {pixDiscount > 0 && (
-                      <div className="flex justify-between text-emerald-600 font-medium">
-                        <span>Desconto PIX (5%):</span>
-                        <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* ========================================================================= */}
             {/* GRID PRINCIPAL: ETAPA ATIVA (ESQUERDA) + RESUMO FIXO (DIREITA)            */}
             {/* ========================================================================= */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
               
               {/* ============================================================ */}
               {/* COLUNA ESQUERDA: CONTEÚDO DA ETAPA ATUAL (7 Colunas no Desk) */}
               {/* ============================================================ */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="lg:col-span-7 space-y-4 sm:space-y-6">
 
                 {/* ------------------------------------------------------------ */}
-                {/* ETAPA 1: SACOLA & CÁLCULO DE FRETE                           */}
+                {/* ETAPA 1: SACOLA & CONFERÊNCIA DE PEÇAS                       */}
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'sacola' && (
-                  <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-6 animate-fadeIn">
+                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
                     
-                    <div className="flex items-center justify-between pb-4 border-b border-[#C5A059]/20">
+                    <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-[#C5A059] block mb-0.5">
+                        <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
                           Etapa 1 de 4
                         </span>
-                        <h2 className="font-serif-luxury text-lg sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
-                          Confira Suas Peças & Simule o Frete
+                        <h2 className="font-serif-luxury text-base sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                          <span className="sm:hidden">Confira Suas Peças</span>
+                          <span className="hidden sm:inline">Confira Suas Peças & Simule o Frete</span>
                         </h2>
                       </div>
                       <span className="text-xs font-bold text-[#C5A059] bg-[#C5A059]/10 px-2.5 py-1">
@@ -967,23 +926,23 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Barra de Progresso de Frete Cortesia VIP */}
-                    <div className="p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
+                    <div className="p-2.5 sm:p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 sm:space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         {remainingForFreeShipping > 0 ? (
                           <span className="text-[11px] text-[#57534E] dark:text-[#D6D3D1]">
-                            Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> na sacola para ganhar <strong>Frete Cortesia VIP</strong>!
+                            Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Cortesia VIP</strong>!
                           </span>
                         ) : (
                           <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-[#DFBE76]" />
-                            Parabéns! Sua sacola atingiu Frete Cortesia VIP Grátis!
+                            Parabéns! Sacola com Frete Cortesia VIP Grátis!
                           </span>
                         )}
                         <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
                           {Math.round(progressToFreeShipping)}%
                         </span>
                       </div>
-                      <div className="w-full bg-black/10 dark:bg-white/10 h-2 rounded-none overflow-hidden">
+                      <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 sm:h-2 rounded-none overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059] transition-all duration-500"
                           style={{ width: `${progressToFreeShipping}%` }}
@@ -992,13 +951,13 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Lista das Peças da Sacola */}
-                    <div className="space-y-4">
+                    <div className="space-y-2.5 sm:space-y-4">
                       {cartItems.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center gap-3.5 sm:gap-4 p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/20"
+                          className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/20"
                         >
-                          <div className="relative w-14 h-18 sm:w-16 sm:h-20 bg-white dark:bg-black/20 shrink-0 border border-[#C5A059]/20 overflow-hidden">
+                          <div className="relative w-12 h-16 sm:w-16 sm:h-20 bg-white dark:bg-black/20 shrink-0 border border-[#C5A059]/20 overflow-hidden">
                             {item.image ? (
                               <Image src={item.image} alt={item.name} fill className="object-cover object-top" />
                             ) : (
@@ -1012,7 +971,7 @@ export default function CheckoutPage() {
                             <h4 className="font-serif-luxury font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] truncate mb-0.5">
                               {item.name}
                             </h4>
-                            <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] mb-2">
+                            <p className="text-[10px] sm:text-[11px] text-[#78716C] dark:text-[#A8A29E] mb-1 sm:mb-2">
                               Cor: <strong>{item.color}</strong> | Tam: <strong>{item.size}</strong>
                             </p>
                             <span className="text-xs sm:text-sm font-bold text-[#C5A059] dark:text-[#DFBE76]">
@@ -1021,22 +980,22 @@ export default function CheckoutPage() {
                           </div>
 
                           {/* Ajuste de Quantidade e Excluir */}
-                          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2">
                             <div className="flex items-center border border-[#C5A059]/40 bg-white dark:bg-[#1A1918]">
                               <button
                                 type="button"
                                 onClick={() => updateCartQuantity(item.id, -1)}
-                                className="px-2 py-1 text-xs font-bold hover:bg-[#C5A059] hover:text-white transition-colors"
+                                className="px-1.5 py-0.5 sm:px-2 sm:py-1 text-xs font-bold hover:bg-[#C5A059] hover:text-white transition-colors"
                               >
                                 -
                               </button>
-                              <span className="px-2.5 py-1 text-xs font-bold min-w-[24px] text-center">
+                              <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-bold min-w-[20px] sm:min-w-[24px] text-center">
                                 {item.quantity}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => updateCartQuantity(item.id, 1)}
-                                className="px-2 py-1 text-xs font-bold hover:bg-[#C5A059] hover:text-white transition-colors"
+                                className="px-1.5 py-0.5 sm:px-2 sm:py-1 text-xs font-bold hover:bg-[#C5A059] hover:text-white transition-colors"
                               >
                                 +
                               </button>
@@ -1045,18 +1004,18 @@ export default function CheckoutPage() {
                             <button
                               type="button"
                               onClick={() => removeFromCart(item.id)}
-                              className="p-1.5 text-rose-500 hover:text-rose-700 transition-colors"
+                              className="p-1 sm:p-1.5 text-rose-500 hover:text-rose-700 transition-colors"
                               title="Remover peça"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Cálculo do Frete na Etapa 1 */}
-                    <div className="p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-3">
+                    {/* Cálculo do Frete na Etapa 1 (Apenas no Desktop; no Mobile o CEP fica na Etapa 2 de Endereço) */}
+                    <div className="hidden sm:block p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-3">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
                         <Truck className="w-4 h-4" />
                         <span>Calcular Frete com Seu CEP</span>
@@ -1091,13 +1050,13 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Cupom de Desconto */}
-                    <div className="p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
+                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
-                        <Tag className="w-4 h-4" />
+                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         <span>Possui Cupom de Desconto?</span>
                       </div>
                       {appliedCoupon ? (
-                        <div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                        <div className="flex items-center justify-between p-2 sm:p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-xs">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400">
                             ✓ {appliedCoupon.code} ({appliedCoupon.percent}% OFF aplicado)
                           </span>
@@ -1130,12 +1089,20 @@ export default function CheckoutPage() {
                       {couponSuccess && <p className="text-[11px] text-emerald-600">{couponSuccess}</p>}
                     </div>
 
+                    {/* Subtotal da Sacola no Mobile */}
+                    <div className="sm:hidden pt-1 flex items-center justify-between text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                      <span>Subtotal das Peças:</span>
+                      <span className="text-sm font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                        R$ {rawSubtotal.toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+
                     {/* Botão de Avanço para a Etapa 2 */}
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={handleNextFromSacola}
-                        className="w-full py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs sm:text-sm uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                        className="w-full py-3.5 sm:py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs sm:text-sm uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
                       >
                         <span>CONTINUAR PARA ENDEREÇO DE ENTREGA</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -1148,16 +1115,20 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {/* ETAPA 2: ENDEREÇO DE ENTREGA                                 */}
                 {/* ------------------------------------------------------------ */}
+                {/* ------------------------------------------------------------ */}
+                {/* ETAPA 2: ENDEREÇO DE ENTREGA                                 */}
+                {/* ------------------------------------------------------------ */}
                 {currentStep === 'endereco' && (
-                  <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-6 animate-fadeIn">
+                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
                     
-                    <div className="flex items-center justify-between pb-4 border-b border-[#C5A059]/20">
+                    <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-[#C5A059] block mb-0.5">
+                        <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
                           Etapa 2 de 4
                         </span>
-                        <h2 className="font-serif-luxury text-lg sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
-                          Onde Vamos Entregar Seu Pedido?
+                        <h2 className="font-serif-luxury text-base sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                          <span className="sm:hidden">Endereço de Entrega</span>
+                          <span className="hidden sm:inline">Onde Vamos Entregar Seu Pedido?</span>
                         </h2>
                       </div>
                       <span className="text-xs text-[#78716C] dark:text-[#A8A29E]">
@@ -1166,7 +1137,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Busca Rápida de CEP */}
-                    <div className="p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
+                    <div className="p-3 sm:p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1]">
                           CEP para Entrega *
@@ -1184,16 +1155,22 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={cepInput}
-                          onChange={(e) => setCepInput(formatCep(e.target.value))}
+                          onChange={(e) => {
+                            const formatted = formatCep(e.target.value);
+                            setCepInput(formatted);
+                            if (formatted.replace(/\D/g, '').length === 8) {
+                              handleSearchCep(formatted);
+                            }
+                          }}
                           placeholder="00000-000"
                           maxLength={9}
-                          className="flex-1 px-3.5 py-2.5 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                          className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={() => handleSearchCep()}
                           disabled={isCepLoading}
-                          className="px-4 py-2.5 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                          className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
                         >
                           {isCepLoading ? 'Buscando...' : 'Buscar CEP'}
                         </button>
@@ -1202,7 +1179,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Formulário de Endereço */}
-                    <div className="space-y-3.5 text-xs">
+                    <div className="space-y-2.5 sm:space-y-3.5 text-xs">
                       <div>
                         <div className="flex justify-between items-center mb-1">
                           <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1]">
@@ -1219,7 +1196,7 @@ export default function CheckoutPage() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
                         <div>
                           <div className="flex justify-between items-center mb-1">
                             <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1]">
@@ -1244,14 +1221,14 @@ export default function CheckoutPage() {
                             type="text"
                             value={complement}
                             onChange={(e) => setComplement(e.target.value)}
-                            placeholder="Apto 42, Bloco B, Casa"
-                            className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                            placeholder="Apto, Casa, Bloco"
+                            className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                        <div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
+                        <div className="col-span-2 sm:col-span-1">
                           <label className="font-semibold mb-1 block text-[#57534E] dark:text-[#D6D3D1]">
                             Bairro *
                           </label>
@@ -1303,7 +1280,7 @@ export default function CheckoutPage() {
                           {shippingOptions.map((opt) => (
                             <label
                               key={opt.id}
-                              className={`p-3 border flex items-center justify-between cursor-pointer transition-all ${
+                              className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
                                 selectedShippingId === opt.id
                                   ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
                                   : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
@@ -1336,18 +1313,18 @@ export default function CheckoutPage() {
                     )}
 
                     {/* Botões de Navegação */}
-                    <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-3">
+                    <div className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row items-center gap-2.5 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => goToStep('sacola')}
-                        className="w-full sm:w-auto py-3.5 px-6 border border-[#C5A059]/40 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer text-[#1A1918] dark:text-[#FAF8F5]"
+                        className="w-full sm:w-auto py-3 px-5 sm:py-3.5 sm:px-6 border border-[#C5A059]/40 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer text-[#1A1918] dark:text-[#FAF8F5]"
                       >
                         ← Voltar para Sacola
                       </button>
                       <button
                         type="button"
                         onClick={handleNextFromEndereco}
-                        className="w-full sm:flex-1 py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                        className="w-full sm:flex-1 py-3.5 sm:py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
                       >
                         <span>CONTINUAR PARA SEUS DADOS</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -1361,23 +1338,25 @@ export default function CheckoutPage() {
                 {/* ETAPA 3: SEUS DADOS PESSOAIS (IDENTIFICAÇÃO)                 */}
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'dados' && (
-                  <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-6 animate-fadeIn">
+                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
                     
-                    <div className="flex items-center justify-between pb-4 border-b border-[#C5A059]/20">
+                    <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-[#C5A059] block mb-0.5">
+                        <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
                           Etapa 3 de 4
                         </span>
-                        <h2 className="font-serif-luxury text-lg sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
-                          Identificação VIP Para Atendimento
+                        <h2 className="font-serif-luxury text-base sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                          <span className="sm:hidden">Seus Dados Pessoais</span>
+                          <span className="hidden sm:inline">Identificação VIP Para Atendimento</span>
                         </h2>
                       </div>
-                      <span className="text-xs text-[#22C55E] font-bold bg-[#22C55E]/10 px-2 py-0.5">
+                      <span className="hidden sm:inline text-xs text-[#22C55E] font-bold bg-[#22C55E]/10 px-2 py-0.5">
                         Atendimento VIP
                       </span>
                     </div>
 
-                    <div className="p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed flex items-start gap-2.5">
+                    {/* Banner de Privacidade Apenas no Desktop */}
+                    <div className="hidden sm:flex p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed items-start gap-2.5">
                       <ShieldCheck className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
                       <span>
                         Seus dados são usados com total privacidade para a Leidy confirmar a reserva imediata das peças e enviar o código de rastreio da encomenda.
@@ -1385,7 +1364,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Formulário de Identificação */}
-                    <div className="space-y-4 text-xs">
+                    <div className="space-y-2.5 sm:space-y-4 text-xs">
                       <div>
                         <div className="flex justify-between items-center mb-1">
                           <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1]">
@@ -1435,7 +1414,7 @@ export default function CheckoutPage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
                         <div>
                           <label className="font-semibold mb-1 block text-[#57534E] dark:text-[#D6D3D1]">
                             E-mail (Opcional)
@@ -1445,7 +1424,7 @@ export default function CheckoutPage() {
                             value={customerEmail}
                             onChange={(e) => setCustomerEmail(e.target.value)}
                             placeholder="seu@email.com"
-                            className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                            className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
                           />
                         </div>
 
@@ -1459,25 +1438,25 @@ export default function CheckoutPage() {
                             onChange={(e) => setCustomerCpf(formatCpf(e.target.value))}
                             placeholder="000.000.000-00"
                             maxLength={14}
-                            className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                            className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Botões de Navegação */}
-                    <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-3">
+                    <div className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row items-center gap-2.5 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => goToStep('endereco')}
-                        className="w-full sm:w-auto py-3.5 px-6 border border-[#C5A059]/40 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer text-[#1A1918] dark:text-[#FAF8F5]"
+                        className="w-full sm:w-auto py-3 px-5 sm:py-3.5 sm:px-6 border border-[#C5A059]/40 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer text-[#1A1918] dark:text-[#FAF8F5]"
                       >
                         ← Voltar para Endereço
                       </button>
                       <button
                         type="button"
                         onClick={handleNextFromDados}
-                        className="w-full sm:flex-1 py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                        className="w-full sm:flex-1 py-3.5 sm:py-4 px-6 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
                       >
                         <span>CONTINUAR PARA PAGAMENTO</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -1491,14 +1470,14 @@ export default function CheckoutPage() {
                 {/* ETAPA 4: PAGAMENTO & FINALIZAÇÃO                             */}
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'pagamento' && (
-                  <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-6 animate-fadeIn">
+                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
                     
-                    <div className="flex items-center justify-between pb-4 border-b border-[#C5A059]/20">
+                    <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-[#C5A059] block mb-0.5">
+                        <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
                           Etapa 4 de 4
                         </span>
-                        <h2 className="font-serif-luxury text-lg sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                        <h2 className="font-serif-luxury text-base sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                           Forma de Pagamento & Conclusão
                         </h2>
                       </div>
@@ -1508,14 +1487,14 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Seleção do Método de Pagamento */}
-                    <div className="space-y-3">
+                    <div className="space-y-2.5 sm:space-y-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#C5A059] block">
                         Escolha como deseja pagar:
                       </span>
 
                       {/* Opção PIX (Com 5% OFF) */}
                       <label
-                        className={`p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
+                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
                           paymentMethod === 'pix'
                             ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
@@ -1547,7 +1526,7 @@ export default function CheckoutPage() {
 
                       {/* Opção Cartão de Crédito */}
                       <label
-                        className={`p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
+                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
                           paymentMethod === 'credit_card'
                             ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
@@ -1599,7 +1578,7 @@ export default function CheckoutPage() {
 
                       {/* Opção WhatsApp Direto */}
                       <label
-                        className={`p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
+                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
                           paymentMethod === 'whatsapp'
                             ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
@@ -1626,7 +1605,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Observações do Pedido */}
-                    <div className="p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 text-xs">
+                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 text-xs">
                       <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1] block">
                         Observações Especiais (Opcional):
                       </label>
@@ -1640,10 +1619,15 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Revisão Consolidada Antes do Envio */}
-                    <div className="p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/40 space-y-2 text-xs">
-                      <span className="text-[11px] uppercase tracking-wider font-bold text-[#C5A059] block">
-                        Resumo da Finalização:
-                      </span>
+                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/40 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] uppercase tracking-wider font-bold text-[#C5A059]">
+                          Resumo da Finalização:
+                        </span>
+                        <span className="sm:hidden text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                          Total: R$ {totalAmount.toFixed(2).replace('.', ',')}
+                        </span>
+                      </div>
                       <div className="space-y-1 text-[#57534E] dark:text-[#D6D3D1]">
                         <p>👤 <strong>Cliente:</strong> {customerName || 'A confirmar'} ({customerPhone || 'A confirmar'})</p>
                         <p>📍 <strong>Entrega:</strong> {street ? `${street}, nº ${number || 'S/N'} (${city}/${uf})` : 'A combinar no WhatsApp'}</p>
@@ -1652,11 +1636,11 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Botão Principal de Conversão */}
-                    <div className="pt-2 space-y-3">
+                    <div className="pt-2 space-y-2.5 sm:space-y-3">
                       <button
                         type="button"
                         onClick={() => handleFinalizeOrder()}
-                        className="w-full py-4 px-6 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm uppercase tracking-[0.18em] shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        className="w-full py-3.5 sm:py-4 px-6 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm uppercase tracking-[0.18em] shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                       >
                         <MessageCircle className="w-5 h-5 fill-white stroke-[#25D366]" />
                         <span>FINALIZAR COMPRA NO WHATSAPP</span>
@@ -1669,6 +1653,98 @@ export default function CheckoutPage() {
                       >
                         ← Voltar e Revisar Meus Dados
                       </button>
+                    </div>
+
+                    {/* Mini-Resumo Retrátil dos Itens da Sacola (Apenas no Mobile, no final do checkout) */}
+                    <div className="lg:hidden pt-2 border-t border-[#C5A059]/20">
+                      <button
+                        type="button"
+                        onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
+                        className="w-full py-2.5 px-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 flex items-center justify-between text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
+                          <span>Conferir peças da sacola ({cartCount})</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                            R$ {totalAmount.toFixed(2).replace('.', ',')}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-[#C5A059] transition-transform duration-200 ${mobileSummaryOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+
+                      {mobileSummaryOpen && (
+                        <div className="p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border-x border-b border-[#C5A059]/30 space-y-3 animate-fadeIn">
+                          {/* Peças */}
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                            {cartItems.map((item) => (
+                              <div key={item.id} className="flex items-center gap-2.5 py-1 border-b border-[#C5A059]/10 last:border-0">
+                                <div className="relative w-10 h-12 bg-white dark:bg-black/20 border border-[#C5A059]/20 shrink-0 overflow-hidden">
+                                  {item.image ? (
+                                    <Image src={item.image} alt={item.name} fill className="object-cover object-top" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[#C5A059]">
+                                      <ShoppingBag className="w-3.5 h-3.5" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0 text-[11px]">
+                                  <p className="font-medium text-[#1A1918] dark:text-[#FAF8F5] truncate">
+                                    {item.name}
+                                  </p>
+                                  <p className="text-[10px] text-[#78716C] dark:text-[#A8A29E]">
+                                    {item.quantity}x • {item.color} • {item.size}
+                                  </p>
+                                </div>
+                                <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                                  R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Valores */}
+                          <div className="pt-2 border-t border-[#C5A059]/15 space-y-1.5 text-xs">
+                            <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
+                              <span>Subtotal:</span>
+                              <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
+                                R$ {rawSubtotal.toFixed(2).replace('.', ',')}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
+                              <span>Frete:</span>
+                              <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
+                                {isFreeShipping ? (
+                                  <span className="text-[#25D366] font-bold">Grátis (VIP)</span>
+                                ) : shippingPrice > 0 ? (
+                                  `R$ ${shippingPrice.toFixed(2).replace('.', ',')}`
+                                ) : (
+                                  'A calcular'
+                                )}
+                              </span>
+                            </div>
+                            {appliedCoupon && (
+                              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                <span>Cupom ({appliedCoupon.code}):</span>
+                                <span>-R$ {couponDiscount.toFixed(2).replace('.', ',')}</span>
+                              </div>
+                            )}
+                            {pixDiscount > 0 && (
+                              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                <span>Desconto PIX (5%):</span>
+                                <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-[#C5A059]/30 font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                              <span>Total Previsto:</span>
+                              <span className="text-[#C5A059] dark:text-[#DFBE76]">
+                                R$ {totalAmount.toFixed(2).replace('.', ',')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                   </div>
