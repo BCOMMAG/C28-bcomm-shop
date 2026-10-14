@@ -3,9 +3,14 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { Product, CartItem } from '@/types';
 import { PRODUCTS } from '@/data/products';
+import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 
 interface StoreContextType {
+  products: Product[];
+  isLoadingProducts: boolean;
+  refreshProducts: () => Promise<void>;
+  getProductById: (id: string) => Product | undefined;
   cartItems: CartItem[];
   wishlistIds: string[];
   isCartOpen: boolean;
@@ -53,6 +58,8 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -65,6 +72,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedCep, setSavedCep] = useState<string>('');
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+
+  // Carrega produtos dinâmicos do Supabase na inicialização
+  const refreshProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const dynamicProds = await getStoreProducts();
+      if (dynamicProds && dynamicProds.length > 0) {
+        setProducts(dynamicProds);
+      }
+    } catch (err) {
+      console.error('Falha ao carregar produtos dinâmicos:', err);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshProducts();
+  }, []);
+
+  const getProductById = (id: string) => {
+    return products.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id);
+  };
 
   const openSideDrawer = () => setIsSideDrawerOpen(true);
   const closeSideDrawer = () => setIsSideDrawerOpen(false);
@@ -261,9 +291,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const recentlyViewedProducts = useMemo(() => {
     return recentlyViewedIds
-      .map((id) => PRODUCTS.find((p) => p.id === id))
+      .map((id) => products.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id))
       .filter(Boolean) as Product[];
-  }, [recentlyViewedIds]);
+  }, [recentlyViewedIds, products]);
 
   const openProduct = (product: Product) => {
     setSelectedProduct(product);
@@ -354,6 +384,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
+        products,
+        isLoadingProducts,
+        refreshProducts,
+        getProductById,
         cartItems,
         wishlistIds,
         isCartOpen,

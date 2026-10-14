@@ -60,7 +60,8 @@ function CatalogoContent() {
     closeSizeGuide,
     isCartOpen,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    products
   } = useStore();
 
   // Parâmetros de URL iniciais
@@ -304,7 +305,7 @@ function CatalogoContent() {
 
   // Cálculo da Filtragem Efetiva (baseado em appliedFilters)
   const filteredProducts = useMemo(() => {
-    let result = [...PRODUCTS];
+    let result = [...products];
 
     // 1. Busca textual
     if (searchQuery.trim()) {
@@ -467,11 +468,11 @@ function CatalogoContent() {
     }
 
     return result;
-  }, [appliedFilters, searchQuery, sortBy]);
+  }, [appliedFilters, searchQuery, sortBy, products]);
 
   // Contagem de Peças que batiam no Rascunho Atual (para o botão "APLICAR FILTROS")
   const draftMatchesCount = useMemo(() => {
-    let result = [...PRODUCTS];
+    let result = [...products];
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -556,7 +557,7 @@ function CatalogoContent() {
     }
 
     return result.length;
-  }, [draftFilters, searchQuery]);
+  }, [draftFilters, searchQuery, products]);
 
   // Contagem de filtros ativos aplicados
   const activeFiltersCount = useMemo(() => {
@@ -677,14 +678,14 @@ function CatalogoContent() {
               }`}
             >
               <span>Todas as Peças</span>
-              <span className="text-[10px] opacity-70">({PRODUCTS.length})</span>
+              <span className="text-[10px] opacity-70">({products.length})</span>
             </button>
             
             <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
               Roupas Femininas
             </p>
             {CATEGORIES_ROUPAS.map((cat) => {
-              const count = PRODUCTS.filter((p) => p.category === cat || p.subcategory === cat).length;
+              const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
               const isSelected = draftFilters.categories.includes(cat);
               return (
                 <button
@@ -712,7 +713,7 @@ function CatalogoContent() {
               Acessórios
             </p>
             {CATEGORIES_ACESSORIOS.map((cat) => {
-              const count = PRODUCTS.filter((p) => p.category === cat || p.subcategory === cat).length;
+              const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
               const isSelected = draftFilters.categories.includes(cat);
               return (
                 <button
@@ -1334,7 +1335,7 @@ function CatalogoContent() {
                   : appliedFilters.categories.join(', ')}
               </h1>
               <span className="text-xs text-white/80">
-                Mostrando <strong>{filteredProducts.length}</strong> de {PRODUCTS.length} modelos
+                Mostrando <strong>{filteredProducts.length}</strong> de {products.length} modelos
               </span>
             </div>
 
@@ -1708,7 +1709,7 @@ function CatalogoContent() {
                     onClick={resetAllFilters}
                     className="px-6 py-2.5 bg-[#1A1918] dark:bg-[#C5A059] text-white rounded-none text-xs uppercase tracking-widest font-semibold hover:bg-[#C5A059] transition-all cursor-pointer"
                   >
-                    Ver Todas as Peças ({PRODUCTS.length})
+                    Ver Todas as Peças ({products.length})
                   </button>
                 </div>
               )}

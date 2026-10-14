@@ -72,8 +72,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     savedCep,
     savedAddress,
     setSavedAddressInfo,
-    closeProductSilently
+    closeProductSilently,
+    products
   } = useStore();
+
+  const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
 
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -103,12 +106,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
     // 1. Sugestão emparelhada direta da peça
     if (product.pairedWithId) {
-      const directPair = PRODUCTS.find((p) => p.id === product.pairedWithId && p.id !== product.id);
+      const directPair = sourceProducts.find((p) => p.id === product.pairedWithId && p.id !== product.id);
       if (directPair) matches.push(directPair);
     }
 
     // 2. Se houver menos de 2 sugestões, complementar com produtos de categorias distintas
-    const others = PRODUCTS.filter(
+    const others = sourceProducts.filter(
       (p) => p.id !== product.id && !matches.some((m) => m.id === p.id)
     );
 
@@ -121,7 +124,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }
 
     return matches;
-  }, [product]);
+  }, [product, sourceProducts]);
 
   const handleAddPaired = (item: Product) => {
     onAddToCart({
@@ -173,7 +176,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   if (!isOpen || !product) return null;
 
   const currentMedia = product.media[activeMediaIndex];
-  const pairedProduct = PRODUCTS.find((p) => p.id === product.pairedWithId);
+  const pairedProduct = sourceProducts.find((p) => p.id === product.pairedWithId);
 
   // Cálculo de desconto e economia (conforme o print do usuário)
   const rawOriginalPrice = product.originalPrice ?? (product.formattedOriginalPrice ? parseFloat(product.formattedOriginalPrice.replace(/[^\d,]/g, '').replace(',', '.')) : null);

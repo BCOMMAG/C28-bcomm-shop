@@ -31,10 +31,11 @@ export default function FavoritosPage() {
     isSizeGuideOpen,
     openSizeGuide,
     closeSizeGuide,
-    isCartOpen
+    isCartOpen,
+    products
   } = useStore();
 
-  const favoriteProducts = PRODUCTS.filter((p) => wishlistIds.includes(p.id));
+  const favoriteProducts = products.filter((p) => wishlistIds.includes(p.id));
 
   const generateWhatsAppWishlistLink = () => {
     let msg = `Olá Leidy! Separei as minhas peças favoritas no site da *Leidy Boutique* e gostaria de consultar a disponibilidade:\n\n`;

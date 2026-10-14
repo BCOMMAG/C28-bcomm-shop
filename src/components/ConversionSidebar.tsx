@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Product } from '@/types';
 import { PRODUCTS, STORE_INFO } from '@/data/products';
+import { useStore } from '@/context/StoreContext';
 
 interface ConversionSidebarProps {
   onOpenProduct: (product: Product) => void;
@@ -23,11 +24,13 @@ interface ConversionSidebarProps {
 
 export const ConversionSidebar: React.FC<ConversionSidebarProps> = ({ onOpenProduct }) => {
   const [activeSlide, setActiveSlide] = useState(0);
+  const { products } = useStore();
+  const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
 
   // Produtos para os slides de alta conversão
-  const outletDeals = PRODUCTS.filter((p) => p.isOutlet);
-  const lastPieces = PRODUCTS.filter((p) => p.badge?.includes('Restam'));
-  const topSets = PRODUCTS.filter((p) => p.category.includes('Conjuntos') || p.category.includes('Alfaiataria'));
+  const outletDeals = sourceProducts.filter((p) => p.isOutlet);
+  const lastPieces = sourceProducts.filter((p) => p.badge?.includes('Restam') || p.isLastPieces);
+  const topSets = sourceProducts.filter((p) => p.category.includes('Conjuntos') || p.category.includes('Alfaiataria'));
 
   const slides = [
     {

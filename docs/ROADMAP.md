@@ -7,7 +7,7 @@
 
 ---
 
-### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 25% ]
+### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 45% ]
 
 - [x] **FASE 0: FRONTEND DE LUXO E CHECKOUT FASEADO (LEIDY BOUTIQUE)**
   - [x] Identidade visual e vitrine de alta conversão (Dourado/Preto).
@@ -47,12 +47,17 @@
 - [x] Validar compilação com `npm run build` com sucesso absoluto.
 
 #### 🔹 ETAPA 3: VITRINE DINÂMICA & MIGRAÇÃO DO CATÁLOGO DA LEIDY
-- [ ] Criar script de migração para importar os produtos estáticos de `src/data/products.ts` para as tabelas do Supabase vinculadas à Leidy Boutique.
-- [ ] Atualizar componentes da vitrine para consumir do Supabase com fallback seguro:
-  - [ ] Vitrine Home (Hero banners e seções).
-  - [ ] Catálogo com filtros de categorias e busca.
-  - [ ] Modal de detalhes do produto com variações de cor e tamanho.
-- [ ] Validar que a Leidy Boutique continua funcionando perfeitamente agora via banco de dados na nuvem.
+- [x] Criar script de migração para importar os produtos estáticos de `src/data/products.ts` para as tabelas do Supabase vinculadas à Leidy Boutique (`scripts/seed-products-supabase.ts`).
+- [x] Executar a migração de 16 produtos, 11 categorias, 54 variações, 29 fotos/vídeos de provador, hero banner e menus no Supabase.
+- [x] Criar camada de dados e mapeamento estruturado em `src/lib/products.ts` com fallback gracioso.
+- [x] Atualizar componentes da vitrine para consumir do Supabase com fallback seguro:
+  - [x] `StoreContext` com estado dinâmico de produtos e rotina de refresh.
+  - [x] Vitrine Home (`src/app/page.tsx`) com seções de lançamentos, mais vendidos, outlet e últimas peças dinâmicas.
+  - [x] Catálogo (`src/app/catalogo/page.tsx`) com filtros de categorias, tecidos, buscas e contadores dinâmicos.
+  - [x] Modal de detalhes do produto (`ProductModal.tsx`) e recomendações de "Compre o Look" dinâmicos.
+  - [x] Sacola lateral (`CartDrawer.tsx`) e `ConversionSidebar.tsx` conectados aos produtos dinâmicos.
+  - [x] Favoritos (`src/app/favoritos/page.tsx`) reativo ao catálogo.
+- [x] Validar compilação via `npm run build` com sucesso absoluto (zero erros).
 
 #### 🔹 ETAPA 4: CHECKOUT FASEADO CONECTADO AO BANCO & LEADS
 - [ ] Integrar a Etapa 4 do Checkout para gerar registro oficial na tabela `pedidos` com status `pendente` antes de direcionar para o WhatsApp.

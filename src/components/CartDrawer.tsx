@@ -27,7 +27,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onQuickAddItem
 }) => {
   const router = useRouter();
-  const { setSearchQuery, savedCep, savedAddress, setSavedAddressInfo, closeCartSilently } = useStore();
+  const { setSearchQuery, savedCep, savedAddress, setSavedAddressInfo, closeCartSilently, products } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
@@ -78,7 +78,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const remainingForFreeShipping = Math.max(0, freeShippingGoal - subtotal);
 
   // Sugestão de Upsell (peça que ainda não está no carrinho)
-  const upsellProduct = PRODUCTS.find((p) => !items.some((i) => i.productId === p.id));
+  const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
+  const upsellProduct = sourceProducts.find((p) => !items.some((i) => i.productId === p.id));
 
   // Sincroniza o input com o CEP salvo no contexto
   useEffect(() => {

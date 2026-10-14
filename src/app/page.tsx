@@ -36,34 +36,36 @@ export default function HomePage() {
     isSizeGuideOpen,
     openSizeGuide,
     closeSizeGuide,
-    isCartOpen
+    isCartOpen,
+    products
   } = useStore();
 
-  // Produtos organizados para cada vitrine temática da Home (estáveis com useMemo)
+  // Produtos organizados para cada vitrine temática da Home (reativos aos produtos dinâmicos do Supabase)
   const newReleasesProducts = useMemo(
     () =>
-      PRODUCTS.filter(
+      products.filter(
         (p) =>
           p.status?.includes('Lançamento') ||
           p.status?.includes('Novidade') ||
+          p.isNewArrival ||
           p.id === '04-conjunto-alfaiataria-bege' ||
           p.id === '03-conjunto-alfaiataria-terracota' ||
           p.id === '07-t-shirt-algodao-egipcio' ||
           p.id === '01-casaco-tricot'
       ),
-    []
+    [products]
   );
-  const bestSellerProducts = useMemo(() => PRODUCTS.filter((p) => p.isBestSeller), []);
-  const outletProducts = useMemo(() => PRODUCTS.filter((p) => p.isOutlet), []);
+  const bestSellerProducts = useMemo(() => products.filter((p) => p.isBestSeller), [products]);
+  const outletProducts = useMemo(() => products.filter((p) => p.isOutlet), [products]);
   const lastPiecesProducts = useMemo(
     () =>
-      PRODUCTS.filter(
+      products.filter(
         (p) =>
           p.isLastPieces ||
           (p.remainingPieces !== undefined && p.remainingPieces <= 5) ||
           p.badge?.includes('peça')
       ),
-    []
+    [products]
   );
 
   const handleCategorySelection = (category: string) => {

@@ -5,29 +5,26 @@
 
 ## 📍 1. ONDE ESTAMOS AGORA?
 - **Fase Ativa:** Transição para Plataforma Multi-Tenant SaaS
-- **Etapa Atual:** **ETAPA 3 — Vitrine Dinâmica & Migração do Catálogo da Leidy para o Supabase**
-- **Status do Projeto:** Middleware Multi-Tenant operacional, clientes Supabase configurados e build 100% validado.
+- **Etapa Atual:** **ETAPA 4 — Checkout Faseado Conectado ao Banco & Captura de Leads**
+- **Status do Projeto:** Catálogo 100% migrado para o Supabase, vitrine dinâmica operacional com fallback e build de produção validado.
 - **Última Atualização:** 14 de Outubro de 2026
 
 ---
 
 ## 🏁 2. ÚLTIMA AÇÃO CONCLUÍDA
-- [x] Instalação dos pacotes oficiais `@supabase/supabase-js` e `@supabase/ssr`.
-- [x] Criação de tipos TypeScript completos do banco em `src/types/database.ts`.
-- [x] Criação dos utilitários de cliente Supabase para browser (`src/lib/supabase/client.ts`) e server (`src/lib/supabase/server.ts`).
-- [x] Implementação do resolver de lojas com cache inteligente em `src/lib/tenant.ts`.
-- [x] Criação do `src/middleware.ts` interceptando requisições, resolvendo a loja por Host e injetando headers de tenant e cookies.
-- [x] Criação do arquivo de configuração `wrangler.json` para Cloudflare Pages.
+- [x] Migração de 16 produtos de luxo, 11 categorias, 54 variações (cores x tamanhos), 29 mídias (fotos e vídeos de provador), hero banner e menus para o Supabase PostgreSQL (`loja_id: e8b7f890-4e3a-4a89-9c56-8e1234567890`).
+- [x] Criação da camada de serviço e mapeamento de dados em `src/lib/products.ts` com fallback automático de zero downtime.
+- [x] Atualização do `StoreContext` para gerenciar estado dinâmico de produtos com `refreshProducts` e `getProductById`.
+- [x] Integração da vitrine Home (`src/app/page.tsx`), catálogo (`src/app/catalogo/page.tsx`), detalhes (`ProductModal.tsx`), sacola (`CartDrawer.tsx`), conversão (`ConversionSidebar.tsx`) e favoritos (`src/app/favoritos/page.tsx`).
 - [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros de TypeScript).
 
 ---
 
 ## 🎯 3. PRÓXIMA AÇÃO IMEDIATA (O PRÓXIMO PASSO EXATO)
-- [ ] **Executar a ETAPA 3 (Vitrine Dinâmica & Migração do Catálogo):**
-  1. Criar script automatizado (`scripts/seed-products-supabase.mjs`) para migrar os produtos, fotos, vídeos, cores e tamanhos de `src/data/products.ts` para o Supabase vinculados ao `loja_id` da Leidy Boutique.
-  2. Executar a importação para popular o catálogo real na nuvem.
-  3. Atualizar a vitrine para consumir do Supabase com fallback seguro para os dados locais caso haja oscilação de rede.
-  4. Testar a vitrine e o catálogo lendo do banco de dados na nuvem.
+- [ ] **Executar a ETAPA 4 (Checkout Conectado ao Banco & Captura de Leads):**
+  1. Conectar a finalização da Etapa 4 do Checkout para salvar o pedido na tabela `pedidos` e os itens em `itens_pedido` no Supabase antes do redirecionamento para o WhatsApp.
+  2. Implementar captura automática de leads e carrinhos abandonados (se o cliente digitar o WhatsApp e sair antes de pagar, salvar com status `lead_carrinho_abandonado`).
+  3. Gerar código oficial legível de pedido (ex: `#LB-1001`) para acompanhamento da cliente.
 
 ---
 
