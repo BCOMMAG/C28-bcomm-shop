@@ -7,7 +7,7 @@
 
 ---
 
-### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 60% ]
+### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 75% ]
 
 - [x] **FASE 0: FRONTEND DE LUXO E CHECKOUT FASEADO (LEIDY BOUTIQUE)**
   - [x] Identidade visual e vitrine de alta conversão (Dourado/Preto).
@@ -68,10 +68,14 @@
 - [x] Validação da compilação via `npm run build` com 100% de sucesso.
 
 #### 🔹 ETAPA 5: ESPAÇO VIP DA CLIENTE (`/minha-conta`)
-- [ ] Criar tela do comprador com login passwordless por celular/WhatsApp.
-- [ ] Visualização de histórico de pedidos.
-- [ ] Linha do tempo visual de entrega com código de rastreio dos Correios.
-- [ ] Botão de 1 clique para falar com a loja sobre o pedido.
+- [x] Criar rota e tela `/minha-conta` com login passwordless por celular/WhatsApp e reconhecimento automático do último telefone utilizado no checkout.
+- [x] Consulta de pedidos e clientes no Supabase (`getCustomerOrders` e `getOrderByNumber`).
+- [x] Visualização de histórico completo de compras com abas ("Todos", "Em Andamento", "Entregues").
+- [x] Linha do tempo visual do status do pedido (Pedido -> Pago -> Embalado -> Enviado -> Entregue).
+- [x] Integração de código de rastreamento dos Correios com link direto para o site dos Correios e botão de cópia de código.
+- [x] Botão de 1 clique para falar com a Leidy no WhatsApp sobre o pedido específico.
+- [x] Ícone de perfil no Header e no Menu Lateral Drawer mobile para acesso rápido ao Espaço VIP.
+- [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros).
 
 #### 🔹 ETAPA 6: PAINEL ADMINISTRATIVO DO LOJISTA (`/admin`)
 - [ ] Tela de login do lojista via Supabase Auth (e-mail/senha).

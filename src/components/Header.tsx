@@ -15,7 +15,8 @@ import {
   ArrowRight,
   ChevronRight,
   ChevronDown,
-  MessageCircle
+  MessageCircle,
+  User
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO } from '@/data/products';
@@ -544,6 +545,20 @@ export const Header: React.FC<HeaderProps> = ({
                 <Search className="w-5 h-5" />
               </button>
 
+              {/* Minha Conta & Rastreamento (Exibido em Mobile e Desktop) */}
+              <Link
+                href="/minha-conta"
+                className={`relative p-1.5 sm:p-2 transition-colors cursor-pointer ${
+                  isTransparent
+                    ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
+                    : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
+                }`}
+                aria-label="Minha Conta e Rastreamento de Pedidos"
+                title="Minha Conta & Rastreio"
+              >
+                <User className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+              </Link>
+
               {/* Favoritos (Exibido em Mobile e Desktop) */}
               <Link
                 href="/favoritos"
@@ -736,8 +751,22 @@ export const Header: React.FC<HeaderProps> = ({
                 })}
               </div>
 
-              {/* Rodapé da Gaveta: Meus Favoritos, WhatsApp VIP e Modo Escuro */}
+              {/* Rodapé da Gaveta: Meus Pedidos, Meus Favoritos, WhatsApp VIP e Modo Escuro */}
               <div className="p-4 sm:p-5 border-t border-[#C5A059]/20 bg-white dark:bg-[#1E1C1A] space-y-2.5 shrink-0">
+                <Link
+                  href="/minha-conta"
+                  onClick={closeSideDrawerContext}
+                  className="flex items-center justify-between text-xs sm:text-sm font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] py-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#C5A059]" />
+                    <span>Espaço VIP / Meus Pedidos</span>
+                  </div>
+                  <span className="text-[10px] text-[#C5A059] uppercase tracking-wider font-bold">
+                    Rastrear
+                  </span>
+                </Link>
+
                 <Link
                   href="/favoritos"
                   onClick={closeSideDrawerContext}

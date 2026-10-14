@@ -5,28 +5,31 @@
 
 ## 📍 1. ONDE ESTAMOS AGORA?
 - **Fase Ativa:** Transição para Plataforma Multi-Tenant SaaS
-- **Etapa Atual:** **ETAPA 5 — Espaço VIP da Cliente (`/minha-conta`)**
-- **Status do Projeto:** Checkout 100% conectado ao Supabase com gravação de pedidos e captura de leads ativos, build de produção validado.
+- **Etapa Atual:** **ETAPA 6 — Painel Administrativo do Lojista (`/admin`)**
+- **Status do Projeto:** Espaço VIP da Cliente (`/minha-conta`) 100% operacional com rastreamento e login passwordless, build de produção validado.
 - **Última Atualização:** 14 de Outubro de 2026
 
 ---
 
 ## 🏁 2. ÚLTIMA AÇÃO CONCLUÍDA
-- [x] Configuração de políticas de segurança (RLS) permissivas e seguras para cadastro de clientes, pedidos e itens no Supabase.
-- [x] Criação do serviço unificado de pedidos e leads em `src/lib/orders.ts` (`createOrderInDatabase` e `saveCustomerLead`).
-- [x] Conexão da Etapa 4 do Checkout (`src/app/checkout/page.tsx`): ao clicar em "Enviar Pedido para a Leidy no WhatsApp", o pedido e todos os seus itens são registrados no PostgreSQL.
-- [x] Implementação da captura automática de leads em nuvem (quando a cliente digita o WhatsApp, o lead é registrado e atualizado em tempo real na tabela `clientes_loja`).
-- [x] Selo visual na tela de sucesso confirmando que o pedido está gravado no sistema da loja.
+- [x] Criação da rota e interface completa `/minha-conta` com design luxuoso da boutique.
+- [x] Login passwordless por WhatsApp (com preenchimento automático inteligente do último celular usado).
+- [x] Integração de consultas `getCustomerOrders` e `getOrderByNumber` conectadas ao Supabase.
+- [x] Visualização de pedidos com filtro em abas ("Todos", "Em Andamento", "Entregues").
+- [x] Linha do tempo visual do pedido (Pedido -> Pago -> Embalado -> Enviado -> Entregue).
+- [x] Integração de rastreamento com link direto para o site dos Correios e botão de cópia de código.
+- [x] Botão de 1 clique para falar com a Leidy no WhatsApp sobre o pedido em andamento.
+- [x] Botões de acesso ao Espaço VIP no Header (topo) e no Menu Lateral Drawer mobile.
 - [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros de TypeScript).
 
 ---
 
 ## 🎯 3. PRÓXIMA AÇÃO IMEDIATA (O PRÓXIMO PASSO EXATO)
-- [ ] **Executar a ETAPA 5 (Espaço VIP da Cliente /minha-conta):**
-  1. Criar a rota e página `/minha-conta` com login passwordless por telefone/WhatsApp (sem exigir que a cliente decore senha).
-  2. Exibir lista dos pedidos realizados pela cliente consultando a tabela `pedidos` filtrada por `telefone`.
-  3. Linha do tempo visual do status do pedido (Aguardando WhatsApp -> Pago -> Em Separação -> Enviado -> Entregue).
-  4. Exibir código de rastreio dos Correios com link direto e botão de 1 clique para falar com a loja no WhatsApp.
+- [ ] **Executar a ETAPA 6 (Painel Administrativo do Lojista /admin):**
+  1. Criar a tela de login do lojista (`/admin/login`) via Supabase Auth (e-mail e senha).
+  2. Criar o layout e dashboard principal (`/admin`) com métricas da loja (Total de Pedidos, Faturamento, Leads capturados, Produtos ativos).
+  3. Criar a Central de Pedidos do lojista (`/admin/pedidos`): alteração de status (`pago`, `em_separacao`, `enviado`, `entregue`) e inserção do código de rastreio dos Correios que reflete na hora na `/minha-conta` da cliente.
+  4. Criar a Gestão de Catálogo (`/admin/produtos`): listagem, criação, edição de preços/estoque e pausa de produtos.
 
 ---
 

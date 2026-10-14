@@ -189,3 +189,137 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
     return { success: false, numeroPedido, error: err?.message };
   }
 }
+
+export interface CustomerOrder {
+  id: string;
+  numero_pedido: string;
+  status: 'pendente' | 'aguardando_whatsapp' | 'pago' | 'em_separacao' | 'enviado' | 'entregue' | 'cancelado';
+  subtotal: number;
+  valor_frete: number;
+  valor_desconto: number;
+  total: number;
+  metodo_pagamento: string;
+  endereco_entrega: {
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+  };
+  codigo_rastreio?: string | null;
+  observacoes?: string | null;
+  created_at: string;
+  itens_pedido: Array<{
+    id: string;
+    nome_produto: string;
+    cor: string;
+    tamanho: string;
+    preco_unitario: number;
+    quantidade: number;
+    imagem_url?: string | null;
+  }>;
+}
+
+/**
+ * Consulta os pedidos de uma cliente através do telefone no Supabase (Passwordless).
+ */
+export async function getCustomerOrders(
+  phone: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{
+  success: boolean;
+  cliente: { id: string; nome: string; telefone: string; email?: string } | null;
+  pedidos: CustomerOrder[];
+  error?: string;
+}> {
+  try {
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return { success: false, cliente: null, pedidos: [], error: 'Telefone inválido' };
+    }
+
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Busca o cliente cadastrado
+    const { data: cliente, error: clientErr } = await supabase
+      .from('clientes_loja')
+      .select('id, nome, telefone, email')
+      .eq('loja_id', lojaId)
+      .eq('telefone', cleanPhone)
+      .maybeSingle();
+
+    if (clientErr) {
+      console.warn('⚠️ [Supabase] Erro ao buscar cliente por telefone:', clientErr.message);
+    }
+
+    // Se o cliente foi encontrado, busca por cliente_id
+    if (cliente?.id) {
+      const { data: pedidos, error: pedidosErr } = await supabase
+        .from('pedidos')
+        .select(`
+          *,
+          itens_pedido (*)
+        `)
+        .eq('loja_id', lojaId)
+        .eq('cliente_id', cliente.id)
+        .order('created_at', { ascending: false });
+
+      if (pedidosErr) {
+        console.warn('⚠️ [Supabase] Erro ao buscar pedidos da cliente:', pedidosErr.message);
+        return { success: false, cliente, pedidos: [], error: pedidosErr.message };
+      }
+
+      return {
+        success: true,
+        cliente,
+        pedidos: (pedidos as any) || []
+      };
+    }
+
+    return { success: true, cliente: null, pedidos: [] };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Falha ao carregar pedidos da cliente:', err);
+    return { success: false, cliente: null, pedidos: [], error: err?.message };
+  }
+}
+
+/**
+ * Consulta um pedido específico pelo código de identificação (ex: LB-2026-1042).
+ */
+export async function getOrderByNumber(
+  orderNumber: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{
+  success: boolean;
+  pedido: CustomerOrder | null;
+  error?: string;
+}> {
+  try {
+    const cleanNumber = orderNumber.trim().replace('#', '');
+    if (!cleanNumber) {
+      return { success: false, pedido: null, error: 'Código de pedido não fornecido' };
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select(`
+        *,
+        itens_pedido (*)
+      `)
+      .eq('loja_id', lojaId)
+      .ilike('numero_pedido', `%${cleanNumber}%`)
+      .maybeSingle();
+
+    if (error || !data) {
+      return { success: false, pedido: null, error: error?.message || 'Pedido não encontrado' };
+    }
+
+    return { success: true, pedido: data as any };
+  } catch (err: any) {
+    return { success: false, pedido: null, error: err?.message };
+  }
+}
+
