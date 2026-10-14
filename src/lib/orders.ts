@@ -211,6 +211,14 @@ export interface CustomerOrder {
   codigo_rastreio?: string | null;
   observacoes?: string | null;
   created_at: string;
+  cliente_id?: string | null;
+  cliente_nome?: string;
+  cliente_telefone?: string;
+  clientes_loja?: {
+    nome?: string;
+    telefone?: string;
+    email?: string;
+  } | null;
   itens_pedido: Array<{
     id: string;
     nome_produto: string;

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Heart, MessageCircle, ShieldCheck, Play } from 'lucide-react';
+import Link from 'next/link';
+import { Heart, MessageCircle, ShieldCheck, Play, Lock } from 'lucide-react';
 import { STORE_INFO } from '@/data/products';
 
 export const Footer: React.FC = () => {
@@ -120,9 +121,19 @@ export const Footer: React.FC = () => {
 
         </div>
 
-        {/* Rodapé Inferior com Copyright e Crédito BCOMM */}
+        {/* Rodapé Inferior com Copyright, Área do Lojista e Crédito BCOMM */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[#78716C] gap-4">
-          <p>© {new Date().getFullYear()} Leidy Boutique. Todos os direitos reservados.</p>
+          <div className="flex items-center gap-4">
+            <p>© {new Date().getFullYear()} Leidy Boutique. Todos os direitos reservados.</p>
+            <span className="hidden sm:inline text-white/10">•</span>
+            <Link
+              href="/admin"
+              className="hover:text-[#DFBE76] transition-colors flex items-center gap-1 text-[11px]"
+            >
+              <Lock className="w-3 h-3 text-[#DFBE76]" />
+              <span>Painel do Lojista</span>
+            </Link>
+          </div>
           <div className="flex items-center gap-2">
             <span>Desenvolvido com excelência por</span>
             <span className="text-[#DFBE76] font-semibold tracking-wider">

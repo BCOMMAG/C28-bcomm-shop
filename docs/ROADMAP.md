@@ -78,13 +78,14 @@
 - [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros).
 
 #### 🔹 ETAPA 6: PAINEL ADMINISTRATIVO DO LOJISTA (`/admin`)
-- [ ] Tela de login do lojista via Supabase Auth (e-mail/senha).
-- [ ] Dashboard com métricas de pedidos e faturamento da loja.
-- [ ] CRUD Completo de Produtos (criar, editar, duplicar, pausar, gerenciar estoque por cor/tamanho).
-- [ ] CMS da Home: upload de banners para mobile (9:16) e desktop (16:9).
-- [ ] Header Builder: gerenciamento de links e submenus.
-- [ ] Central de Pedidos: alteração de status e inserção de código de rastreio.
-- [ ] Vitrine de Módulos adicionais para contratação.
+- [x] Tela de login do lojista via Supabase Auth (e-mail/senha) e fallback de contingência (`admin@leidyboutique.com.br` / `Leidy@2026!`).
+- [x] Layout administrativo premium com sidebar escura/dourada, badge Multi-Tenant e drawer mobile (`/admin/layout.tsx`).
+- [x] Dashboard com métricas em tempo real (Faturamento Bruto, Pedidos, Leads, Ticket Médio) e funil operacional (`/admin`).
+- [x] Central de Pedidos com abas de status, busca por nome/telefone, modal de status e código de rastreio Correios com link para WhatsApp (`/admin/pedidos`).
+- [x] Gestão de Catálogo com visualização de fotos, filtro de coleções, ativação/pausa e modal de edição rápida de preços e estoque (`/admin/produtos`).
+- [x] Loja de Módulos White-Label com switches interativos conectados à coluna `modulos_ativos` no Supabase (`/admin/modulos`).
+- [x] Link de acesso rápido "Painel do Lojista" integrado no rodapé público da loja.
+- [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros).
 
 #### 🔹 ETAPA 7: PAINEL DO SUPER ADMIN (`/super-admin`) — O SEU PAINEL
 - [ ] Login do dono da plataforma.
