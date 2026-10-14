@@ -5,28 +5,27 @@
 
 ## 📍 1. ONDE ESTAMOS AGORA?
 - **Fase Ativa:** Transição para Plataforma Multi-Tenant SaaS
-- **Etapa Atual:** **ETAPA 1 — Modelagem SQL no Supabase & Inserção do Tenant #1 (Leidy Boutique)**
-- **Status do Projeto:** Frontend da Leidy Boutique 100% operacional; estrutura de governança `/docs` implantada.
+- **Etapa Atual:** **ETAPA 2 — Middleware Multi-Tenant & Configuração Cloudflare Pages**
+- **Status do Projeto:** Banco Supabase 100% configurado com 11 tabelas, índices, RLS e Tenant #1 (Leidy Boutique) cadastrado.
 - **Última Atualização:** 14 de Outubro de 2026
 
 ---
 
 ## 🏁 2. ÚLTIMA AÇÃO CONCLUÍDA
-- [x] Otimização completa do Checkout faseado no mobile (layout compacto sem scroll desnecessário, cálculo de frete centralizado na Etapa 2 e envio direto para o WhatsApp oficial).
-- [x] Criação da pasta de governança `/docs` com os arquivos `ARCHITECTURE.md`, `ROADMAP.md`, `STATE.md` e `DATABASE_SCHEMA.sql`.
-- [x] Definição estratégica da arquitetura em 2 fases:
-  - **Fase 1 (Desenvolvimento / R$ 0,00):** Cloudflare Pages + Supabase (PostgreSQL) + Cloudflare R2 + Cloudflare for SaaS.
-  - **Fase 2 (Produção / Primeira Venda):** VPS Contabo com Coolify (Docker) + Evolution API (WhatsApp bot).
+- [x] Execução automatizada com sucesso do script `docs/DATABASE_SCHEMA.sql` no banco de dados PostgreSQL do Supabase.
+- [x] Criação das 11 tabelas públicas no Supabase (`lojas`, `categorias`, `produtos`, `variacoes_produto`, `midias_produto`, `hero_banners`, `menus_navegacao`, `clientes_loja`, `pedidos`, `itens_pedido`, `cupons`).
+- [x] Inserção oficial do Tenant #1: **Leidy Boutique** (`id: e8b7f890-4e3a-4a89-9c56-8e1234567890`).
+- [x] Configuração das variáveis de ambiente em `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`).
 
 ---
 
 ## 🎯 3. PRÓXIMA AÇÃO IMEDIATA (O PRÓXIMO PASSO EXATO)
-- [ ] **Executar a ETAPA 1 no Supabase:**
-  1. Abrir o painel do Supabase (projeto na nuvem).
-  2. Acessar o menu lateral **SQL Editor**.
-  3. Copiar e executar o script mestre versionado no arquivo [`docs/DATABASE_SCHEMA.sql`](./DATABASE_SCHEMA.sql).
-  4. Confirmar a criação das 10 tabelas e a inserção do registro da **Leidy Boutique** como o primeiro lojista oficial (`lojas`).
-  5. Obter a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` para o arquivo `.env.local`.
+- [ ] **Executar a ETAPA 2 (Middleware Multi-Tenant & Cloudflare Pages):**
+  1. Instalar `@supabase/supabase-js` e `@supabase/ssr` no projeto.
+  2. Criar os clientes Supabase (`src/lib/supabase/client.ts` e `src/lib/supabase/server.ts`).
+  3. Criar `src/middleware.ts` para resolver dinamicamente o `Host` da requisição (resolvendo pelo `dominio_proprio` ou `slug` para injetar o `loja_id`).
+  4. Configurar adaptador de build para o Cloudflare Pages (`@opennextjs/cloudflare`).
+  5. Subir ao GitHub e orientar conexão no Cloudflare Pages para gerar o link `.pages.dev`.
 
 ---
 
@@ -35,7 +34,7 @@
 | Serviço | Status | Variável / Configuração | Observações |
 | :--- | :--- | :--- | :--- |
 | **GitHub** | Conectado | `origin/main` | Repositório oficial do código único |
-| **Supabase** | Aguardando Script | `NEXT_PUBLIC_SUPABASE_URL`<br>`NEXT_PUBLIC_SUPABASE_ANON_KEY` | Banco PostgreSQL em Nuvem (Plano Free) |
+| **Supabase** | Conectado & Operacional | `NEXT_PUBLIC_SUPABASE_URL`<br>`NEXT_PUBLIC_SUPABASE_ANON_KEY` | Banco PostgreSQL em Nuvem configurado com 11 tabelas |
 | **Cloudflare Pages** | Próxima Etapa | Deploy automático via GitHub | Gera link gratuito `.pages.dev` |
 | **Cloudflare R2** | Planejado | `R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY` | Storage de fotos e vídeos com taxa zero de tráfego |
 | **VPS Coolify** | Fase 2 | Contabo Core Cloud VPS 4 | Ativado apenas após fechar a primeira venda |

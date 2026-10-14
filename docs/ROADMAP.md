@@ -7,7 +7,7 @@
 
 ---
 
-### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 10% ]
+### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 25% ]
 
 - [x] **FASE 0: FRONTEND DE LUXO E CHECKOUT FASEADO (LEIDY BOUTIQUE)**
   - [x] Identidade visual e vitrine de alta conversão (Dourado/Preto).
@@ -22,20 +22,20 @@
 ### 🚀 ETAPAS DE TRANSIÇÃO PARA A PLATAFORMA MULTI-TENANT
 
 #### 🔹 ETAPA 1: MODELAGEM SQL NO SUPABASE & SEED DA LEIDY BOUTIQUE
-- [ ] Criar tabelas com isolamento `loja_id`:
-  - [ ] `lojas` (Tenants: nome, slug, dominio_proprio, configuracoes_visuais, modulos_ativos).
-  - [ ] `categorias` (com `loja_id`).
-  - [ ] `produtos` (preço, preço promocional, tecido, modelagem, linha, status, estoque).
-  - [ ] `variacoes_produto` (cor_nome, cor_hex, tamanho, estoque_individual, sku).
-  - [ ] `midias_produto` (fotos WebP e vídeos de provador com ordem).
-  - [ ] `hero_banners` (mídias separadas para desktop 16:9 e mobile 9:16).
-  - [ ] `menus_navegacao` (links e submenus dropdown em árvore).
-  - [ ] `pedidos` e `itens_pedido` (status, totais, endereço, rastreio, notas).
-  - [ ] `clientes_loja` (telefone, nome, e-mail, cpf, preferências).
-  - [ ] `cupons` (regras e validades).
-- [ ] Ativar Row Level Security (RLS) em todas as tabelas.
-- [ ] Criar índices de performance nos campos `loja_id` e `slug`.
-- [ ] Executar script de inserção do **Tenant #1 (Leidy Boutique)** no banco.
+- [x] Criar tabelas com isolamento `loja_id`:
+  - [x] `lojas` (Tenants: nome, slug, dominio_proprio, configuracoes_visuais, modulos_ativos).
+  - [x] `categorias` (com `loja_id`).
+  - [x] `produtos` (preço, preço promocional, tecido, modelagem, linha, status, estoque).
+  - [x] `variacoes_produto` (cor_nome, cor_hex, tamanho, estoque_individual, sku).
+  - [x] `midias_produto` (fotos WebP e vídeos de provador com ordem).
+  - [x] `hero_banners` (mídias separadas para desktop 16:9 e mobile 9:16).
+  - [x] `menus_navegacao` (links e submenus dropdown em árvore).
+  - [x] `pedidos` e `itens_pedido` (status, totais, endereço, rastreio, notas).
+  - [x] `clientes_loja` (telefone, nome, e-mail, cpf, preferências).
+  - [x] `cupons` (regras e validades).
+- [x] Ativar Row Level Security (RLS) em todas as tabelas.
+- [x] Criar índices de performance nos campos `loja_id` e `slug`.
+- [x] Executar script de inserção do **Tenant #1 (Leidy Boutique)** no banco.
 
 #### 🔹 ETAPA 2: MIDDLEWARE MULTI-TENANT & BUILD CLOUDFLARE PAGES
 - [ ] Instalar o pacote de integração Supabase (`@supabase/supabase-js`, `@supabase/ssr`).
