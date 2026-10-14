@@ -38,11 +38,13 @@
 - [x] Executar script de inserção do **Tenant #1 (Leidy Boutique)** no banco.
 
 #### 🔹 ETAPA 2: MIDDLEWARE MULTI-TENANT & BUILD CLOUDFLARE PAGES
-- [ ] Instalar o pacote de integração Supabase (`@supabase/supabase-js`, `@supabase/ssr`).
-- [ ] Criar o cliente Supabase unificado (`src/lib/supabase/client.ts` e `server.ts`).
-- [ ] Implementar `src/middleware.ts` para resolver dinamicamente o `Host` e carregar o `loja_id`.
-- [ ] Configurar adaptador Cloudflare (`@opennextjs/cloudflare` ou compatível) no `next.config.ts`.
-- [ ] Subir ao GitHub e conectar ao Cloudflare Pages para gerar a URL `.pages.dev`.
+- [x] Instalar o pacote de integração Supabase (`@supabase/supabase-js`, `@supabase/ssr`).
+- [x] Criar o cliente Supabase unificado (`src/lib/supabase/client.ts` e `server.ts`).
+- [x] Criar tipos TypeScript estruturados do banco (`src/types/database.ts`).
+- [x] Implementar `src/lib/tenant.ts` com cache e fallback seguro da Leidy Boutique.
+- [x] Implementar `src/middleware.ts` para resolver dinamicamente o `Host` e injetar cabeçalhos e cookies de tenant.
+- [x] Criar configuração do Cloudflare Pages (`wrangler.json`).
+- [x] Validar compilação com `npm run build` com sucesso absoluto.
 
 #### 🔹 ETAPA 3: VITRINE DINÂMICA & MIGRAÇÃO DO CATÁLOGO DA LEIDY
 - [ ] Criar script de migração para importar os produtos estáticos de `src/data/products.ts` para as tabelas do Supabase vinculadas à Leidy Boutique.
