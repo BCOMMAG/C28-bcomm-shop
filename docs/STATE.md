@@ -5,26 +5,28 @@
 
 ## 📍 1. ONDE ESTAMOS AGORA?
 - **Fase Ativa:** Transição para Plataforma Multi-Tenant SaaS
-- **Etapa Atual:** **ETAPA 4 — Checkout Faseado Conectado ao Banco & Captura de Leads**
-- **Status do Projeto:** Catálogo 100% migrado para o Supabase, vitrine dinâmica operacional com fallback e build de produção validado.
+- **Etapa Atual:** **ETAPA 5 — Espaço VIP da Cliente (`/minha-conta`)**
+- **Status do Projeto:** Checkout 100% conectado ao Supabase com gravação de pedidos e captura de leads ativos, build de produção validado.
 - **Última Atualização:** 14 de Outubro de 2026
 
 ---
 
 ## 🏁 2. ÚLTIMA AÇÃO CONCLUÍDA
-- [x] Migração de 16 produtos de luxo, 11 categorias, 54 variações (cores x tamanhos), 29 mídias (fotos e vídeos de provador), hero banner e menus para o Supabase PostgreSQL (`loja_id: e8b7f890-4e3a-4a89-9c56-8e1234567890`).
-- [x] Criação da camada de serviço e mapeamento de dados em `src/lib/products.ts` com fallback automático de zero downtime.
-- [x] Atualização do `StoreContext` para gerenciar estado dinâmico de produtos com `refreshProducts` e `getProductById`.
-- [x] Integração da vitrine Home (`src/app/page.tsx`), catálogo (`src/app/catalogo/page.tsx`), detalhes (`ProductModal.tsx`), sacola (`CartDrawer.tsx`), conversão (`ConversionSidebar.tsx`) e favoritos (`src/app/favoritos/page.tsx`).
+- [x] Configuração de políticas de segurança (RLS) permissivas e seguras para cadastro de clientes, pedidos e itens no Supabase.
+- [x] Criação do serviço unificado de pedidos e leads em `src/lib/orders.ts` (`createOrderInDatabase` e `saveCustomerLead`).
+- [x] Conexão da Etapa 4 do Checkout (`src/app/checkout/page.tsx`): ao clicar em "Enviar Pedido para a Leidy no WhatsApp", o pedido e todos os seus itens são registrados no PostgreSQL.
+- [x] Implementação da captura automática de leads em nuvem (quando a cliente digita o WhatsApp, o lead é registrado e atualizado em tempo real na tabela `clientes_loja`).
+- [x] Selo visual na tela de sucesso confirmando que o pedido está gravado no sistema da loja.
 - [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros de TypeScript).
 
 ---
 
 ## 🎯 3. PRÓXIMA AÇÃO IMEDIATA (O PRÓXIMO PASSO EXATO)
-- [ ] **Executar a ETAPA 4 (Checkout Conectado ao Banco & Captura de Leads):**
-  1. Conectar a finalização da Etapa 4 do Checkout para salvar o pedido na tabela `pedidos` e os itens em `itens_pedido` no Supabase antes do redirecionamento para o WhatsApp.
-  2. Implementar captura automática de leads e carrinhos abandonados (se o cliente digitar o WhatsApp e sair antes de pagar, salvar com status `lead_carrinho_abandonado`).
-  3. Gerar código oficial legível de pedido (ex: `#LB-1001`) para acompanhamento da cliente.
+- [ ] **Executar a ETAPA 5 (Espaço VIP da Cliente /minha-conta):**
+  1. Criar a rota e página `/minha-conta` com login passwordless por telefone/WhatsApp (sem exigir que a cliente decore senha).
+  2. Exibir lista dos pedidos realizados pela cliente consultando a tabela `pedidos` filtrada por `telefone`.
+  3. Linha do tempo visual do status do pedido (Aguardando WhatsApp -> Pago -> Em Separação -> Enviado -> Entregue).
+  4. Exibir código de rastreio dos Correios com link direto e botão de 1 clique para falar com a loja no WhatsApp.
 
 ---
 

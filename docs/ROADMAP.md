@@ -7,7 +7,7 @@
 
 ---
 
-### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 45% ]
+### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 60% ]
 
 - [x] **FASE 0: FRONTEND DE LUXO E CHECKOUT FASEADO (LEIDY BOUTIQUE)**
   - [x] Identidade visual e vitrine de alta conversão (Dourado/Preto).
@@ -60,9 +60,12 @@
 - [x] Validar compilação via `npm run build` com sucesso absoluto (zero erros).
 
 #### 🔹 ETAPA 4: CHECKOUT FASEADO CONECTADO AO BANCO & LEADS
-- [ ] Integrar a Etapa 4 do Checkout para gerar registro oficial na tabela `pedidos` com status `pendente` antes de direcionar para o WhatsApp.
-- [ ] Criar rotina de captura de leads e carrinhos abandonados (se o cliente digitar o celular e sair, o pedido fica salvo).
-- [ ] Geração do ID oficial do pedido (`#LB-1001`).
+- [x] Configurar políticas RLS no Supabase permitindo criação e atualização de clientes/leads e pedidos.
+- [x] Criar serviço `src/lib/orders.ts` para gravação de pedidos e captura de leads.
+- [x] Conectar Etapa 4 do Checkout para salvar o pedido na tabela `pedidos` e os itens em `itens_pedido` no Supabase antes de direcionar para o WhatsApp.
+- [x] Implementar rotina de captura de leads e carrinhos abandonados (ao preencher o WhatsApp e sair antes de pagar, o lead é gravado na nuvem).
+- [x] Geração e exibição do ID oficial e legível do pedido (`#LB-2026-XXXX`) com badge de confirmação de registro no sistema.
+- [x] Validação da compilação via `npm run build` com 100% de sucesso.
 
 #### 🔹 ETAPA 5: ESPAÇO VIP DA CLIENTE (`/minha-conta`)
 - [ ] Criar tela do comprador com login passwordless por celular/WhatsApp.

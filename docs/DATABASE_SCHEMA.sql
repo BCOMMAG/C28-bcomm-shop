@@ -249,8 +249,14 @@ CREATE POLICY "Leitura pública de cupons ativos" ON public.cupons FOR SELECT US
 
 -- Políticas para Criação de Pedidos e Clientes no Checkout
 CREATE POLICY "Clientes anônimos podem criar cadastro no checkout" ON public.clientes_loja FOR INSERT WITH CHECK (true);
+CREATE POLICY "Clientes anônimos podem atualizar seu cadastro" ON public.clientes_loja FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Leitura de clientes para checkout" ON public.clientes_loja FOR SELECT USING (true);
+
 CREATE POLICY "Clientes anônimos podem registrar pedidos no checkout" ON public.pedidos FOR INSERT WITH CHECK (true);
+CREATE POLICY "Leitura de pedidos para checkout" ON public.pedidos FOR SELECT USING (true);
+
 CREATE POLICY "Clientes anônimos podem registrar itens do pedido" ON public.itens_pedido FOR INSERT WITH CHECK (true);
+CREATE POLICY "Leitura de itens do pedido para checkout" ON public.itens_pedido FOR SELECT USING (true);
 
 -- ==============================================================================
 -- 15. SEED INICIAL: CADASTRO DA LEIDY BOUTIQUE (TENANT #1 OFICIAL)

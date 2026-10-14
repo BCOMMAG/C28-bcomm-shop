@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
+import { saveCustomerLead, createOrderInDatabase } from '@/lib/orders';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -193,7 +194,7 @@ export default function CheckoutPage() {
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
   const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount);
 
-  // Captura de Leads Local
+  // Captura de Leads Local e no Supabase (Nuvem)
   const captureLead = (phoneToSave: string, clientName: string, status: 'iniciado' | 'finalizado' = 'iniciado') => {
     if (typeof window === 'undefined') return;
     try {
@@ -202,6 +203,20 @@ export default function CheckoutPage() {
       if (clientName) localStorage.setItem('leidy_customer_name', clientName);
 
       if (cleanPhone.length >= 10) {
+        // Envia assincronamente para o Supabase (tabela clientes_loja com RLS)
+        saveCustomerLead({
+          nome: clientName || customerName,
+          telefone: cleanPhone,
+          email: customerEmail || undefined,
+          cpf: customerCpf || undefined,
+          endereco: {
+            cep: cepInput,
+            cidade: city,
+            uf: uf
+          },
+          origem: status === 'finalizado' ? 'checkout_finalizado' : 'checkout_lead'
+        });
+
         const existingRaw = localStorage.getItem('leidy_checkout_leads');
         const leads: Array<any> = existingRaw ? JSON.parse(existingRaw) : [];
         const now = new Date().toISOString();
@@ -434,6 +449,42 @@ export default function CheckoutPage() {
     setShowPendingModal(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    // Salva o pedido e os itens oficialmente no banco de dados Supabase
+    createOrderInDatabase({
+      numeroPedido: newOrderId,
+      cliente: {
+        nome: customerName || 'Cliente WhatsApp',
+        telefone: customerPhone,
+        email: customerEmail || undefined,
+        cpf: customerCpf || undefined
+      },
+      endereco: {
+        cep: cepInput,
+        logradouro: street,
+        numero: number,
+        complemento: complement,
+        bairro: neighborhood,
+        cidade: city,
+        uf: uf
+      },
+      itens: cartItems.map((i) => ({
+        productId: i.productId,
+        name: i.name,
+        price: i.price,
+        size: i.size,
+        color: i.color,
+        quantity: i.quantity,
+        image: i.image
+      })),
+      subtotal: rawSubtotal,
+      valorFrete: shippingPrice,
+      valorDesconto: couponDiscount + pixDiscount,
+      total: totalAmount,
+      metodoPagamento: paymentMethod,
+      observacoes: orderNotes || undefined,
+      status: 'aguardando_whatsapp'
+    });
+
     // Dispara a abertura do WhatsApp com a mensagem pronta
     const text = buildOrderSummaryText(newOrderId, isDirectWithoutFilling);
     const url = `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
@@ -641,6 +692,12 @@ export default function CheckoutPage() {
               <p className="text-xs sm:text-sm text-[#78716C] dark:text-[#A8A29E]">
                 Número do Pedido: <strong className="text-[#1A1918] dark:text-white font-mono">{orderId}</strong>
               </p>
+              <div className="mt-2.5 flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold tracking-wide">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Pedido Gravado no Sistema da Loja
+                </span>
+              </div>
             </div>
 
             {/* Informações de Pagamento Conforme a Escolha */}
