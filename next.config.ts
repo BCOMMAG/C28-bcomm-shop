@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
+const isDocker = process.env.DOCKER_BUILD === 'true';
+
 const nextConfig: NextConfig = {
-  output: "export",
+  ...(isDocker ? { output: "standalone" } : { output: "export" }),
   trailingSlash: true,
   images: {
     unoptimized: true,
