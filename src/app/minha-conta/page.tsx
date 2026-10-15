@@ -50,7 +50,8 @@ export default function MinhaContaPage() {
     closeProduct,
     isSizeGuideOpen,
     openSizeGuide,
-    closeSizeGuide
+    closeSizeGuide,
+    currentTenant
   } = useStore();
 
   const [phoneInput, setPhoneInput] = useState('');
@@ -74,11 +75,12 @@ export default function MinhaContaPage() {
     return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7, 11)}`;
   };
 
-  // Carrega telefone salvo automaticamente do checkout na inicialização
+  // Carrega telefone salvo automaticamente do checkout na inicialização para o tenant atual
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedPhone = localStorage.getItem('leidy_customer_phone');
-      const savedName = localStorage.getItem('leidy_customer_name');
+      const tenantKey = currentTenant.slug || 'default';
+      const savedPhone = localStorage.getItem(`bcomm_customer_${tenantKey}_phone`);
+      const savedName = localStorage.getItem(`bcomm_customer_${tenantKey}_name`);
       if (savedPhone && savedPhone.length >= 10) {
         setPhoneInput(formatPhone(savedPhone));
         setCustomerPhone(savedPhone);
@@ -86,9 +88,9 @@ export default function MinhaContaPage() {
         handleFetchOrders(savedPhone);
       }
     }
-  }, []);
+  }, [currentTenant.id, currentTenant.slug]);
 
-  // Busca os pedidos da cliente no Supabase
+  // Busca os pedidos da cliente no Supabase escopado para esta loja
   const handleFetchOrders = async (phoneToQuery: string) => {
     const clean = phoneToQuery.replace(/\D/g, '');
     if (clean.length < 10) {
@@ -100,7 +102,7 @@ export default function MinhaContaPage() {
     setErrorMessage('');
 
     try {
-      const res = await getCustomerOrders(clean);
+      const res = await getCustomerOrders(clean, currentTenant.id);
       if (res.success) {
         setIsLoggedIn(true);
         setCustomerPhone(clean);
@@ -109,9 +111,10 @@ export default function MinhaContaPage() {
         }
         setCustomerOrders(res.pedidos);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('leidy_customer_phone', clean);
+          const tenantKey = currentTenant.slug || 'default';
+          localStorage.setItem(`bcomm_customer_${tenantKey}_phone`, clean);
           if (res.cliente?.nome) {
-            localStorage.setItem('leidy_customer_name', res.cliente.nome);
+            localStorage.setItem(`bcomm_customer_${tenantKey}_name`, res.cliente.nome);
           }
         }
       } else {
@@ -155,8 +158,9 @@ export default function MinhaContaPage() {
     setPhoneInput('');
     setSearchedSingleOrder(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('leidy_customer_phone');
-      localStorage.removeItem('leidy_customer_name');
+      const tenantKey = currentTenant.slug || 'default';
+      localStorage.removeItem(`bcomm_customer_${tenantKey}_phone`);
+      localStorage.removeItem(`bcomm_customer_${tenantKey}_name`);
     }
   };
 

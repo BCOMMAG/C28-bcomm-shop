@@ -123,7 +123,7 @@ export default function SuperAdminLojasPage() {
           </button>
 
           <Link
-            href="/super-admin/nova-loja"
+            href="/super-admin/nova-loja/"
             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0284C7] to-[#38BDF8] text-black text-xs font-bold uppercase tracking-wider rounded-lg hover:brightness-110 transition-all cursor-pointer shadow-md shadow-sky-500/20"
           >
             <PlusCircle className="w-3.5 h-3.5" />
@@ -280,14 +280,14 @@ export default function SuperAdminLojasPage() {
                       </button>
 
                       <Link
-                        href={`/admin`}
+                        href="/admin/"
                         className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
                       >
                         Acessar Painel
                       </Link>
 
                       <Link
-                        href="/"
+                        href={`/?loja=${store.slug}`}
                         target="_blank"
                         className="p-2 text-slate-400 hover:text-[#38BDF8] transition-colors"
                         title="Ver vitrine pública"

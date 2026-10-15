@@ -154,7 +154,7 @@ export default function SuperAdminNovaLojaPage() {
             </button>
 
             <Link
-              href="/super-admin/lojas"
+              href="/super-admin/lojas/"
               className="px-5 py-2.5 bg-gradient-to-r from-[#0284C7] to-[#38BDF8] text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <span>Ver Lista de Lojas</span>
@@ -275,7 +275,7 @@ export default function SuperAdminNovaLojaPage() {
             {/* Botão de Envio */}
             <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-4">
               <Link
-                href="/super-admin"
+                href="/super-admin/"
                 className="px-4 py-2.5 text-xs text-slate-400 hover:text-white"
               >
                 Cancelar

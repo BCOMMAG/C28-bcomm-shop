@@ -6,7 +6,7 @@ import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja } from '@/types/database';
-import { getTenantBySlug, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
+import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 
 interface StoreContextType {
   currentTenant: Loja;
@@ -87,8 +87,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const slugParam = urlParams.get('loja');
         if (slugParam) {
           tenant = await getTenantBySlug(slugParam);
-          setCurrentTenant(tenant);
+        } else {
+          tenant = await getTenantByHost(window.location.hostname);
         }
+        setCurrentTenant(tenant);
       }
       const dynamicProds = await getStoreProducts(tenant.id);
       if (dynamicProds && dynamicProds.length > 0) {
@@ -115,36 +117,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearCart = () => {
     setCartItems([]);
     try {
-      localStorage.removeItem('leidy_cart');
+      const tenantKey = currentTenant.slug || 'default';
+      localStorage.removeItem(`bcomm_cart_${tenantKey}`);
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Carregar dados e tema do localStorage na montagem
+  // Carregar dados exclusivos do tenant atual sempre que o tenant for inicializado ou alterado
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
-      const savedWishlist = localStorage.getItem('leidy_wishlist');
-      if (savedWishlist) {
-        setWishlistIds(JSON.parse(savedWishlist));
-      }
-      const savedCart = localStorage.getItem('leidy_cart');
-      if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
-      }
-      const savedRecent = localStorage.getItem('leidy_recently_viewed');
-      if (savedRecent) {
-        setRecentlyViewedIds(JSON.parse(savedRecent));
-      }
-      const savedCepStorage = localStorage.getItem('leidy_saved_cep');
-      if (savedCepStorage) {
-        setSavedCep(savedCepStorage);
-      }
-      const savedAddressStorage = localStorage.getItem('leidy_saved_address');
-      if (savedAddressStorage) {
-        setSavedAddress(JSON.parse(savedAddressStorage));
-      }
-      const savedTheme = localStorage.getItem('leidy_theme') as 'light' | 'dark' | null;
+      const tenantKey = currentTenant.slug || 'default';
+      const savedWishlist = localStorage.getItem(`bcomm_wishlist_${tenantKey}`);
+      setWishlistIds(savedWishlist ? JSON.parse(savedWishlist) : []);
+
+      const savedCart = localStorage.getItem(`bcomm_cart_${tenantKey}`);
+      setCartItems(savedCart ? JSON.parse(savedCart) : []);
+
+      const savedRecent = localStorage.getItem(`bcomm_recent_${tenantKey}`);
+      setRecentlyViewedIds(savedRecent ? JSON.parse(savedRecent) : []);
+
+      const savedCepStorage = localStorage.getItem(`bcomm_saved_cep_${tenantKey}`);
+      setSavedCep(savedCepStorage || '');
+
+      const savedAddressStorage = localStorage.getItem(`bcomm_saved_address_${tenantKey}`);
+      setSavedAddress(savedAddressStorage ? JSON.parse(savedAddressStorage) : null);
+
+      const savedTheme = localStorage.getItem('bcomm_theme') as 'light' | 'dark' | null;
       if (savedTheme) {
         setTheme(savedTheme);
         if (savedTheme === 'dark') {
@@ -159,7 +159,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [currentTenant.id, currentTenant.slug]);
 
   const toggleTheme = () => {
     setTheme((prev) => {
@@ -170,7 +170,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         document.documentElement.classList.remove('dark');
       }
       try {
-        localStorage.setItem('leidy_theme', nextTheme);
+        localStorage.setItem('bcomm_theme', nextTheme);
       } catch (e) {
         console.error(e);
       }
@@ -178,23 +178,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
-  // Salvar favoritos no localStorage
+  // Salvar favoritos no localStorage para a loja atual
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('leidy_wishlist', JSON.stringify(wishlistIds));
+      const tenantKey = currentTenant.slug || 'default';
+      localStorage.setItem(`bcomm_wishlist_${tenantKey}`, JSON.stringify(wishlistIds));
     } catch (e) {
       console.error(e);
     }
-  }, [wishlistIds]);
+  }, [wishlistIds, currentTenant.slug]);
 
-  // Salvar carrinho no localStorage
+  // Salvar carrinho no localStorage para a loja atual
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('leidy_cart', JSON.stringify(cartItems));
+      const tenantKey = currentTenant.slug || 'default';
+      localStorage.setItem(`bcomm_cart_${tenantKey}`, JSON.stringify(cartItems));
     } catch (e) {
       console.error(e);
     }
-  }, [cartItems]);
+  }, [cartItems, currentTenant.slug]);
 
   const addToCart = ({
     product,

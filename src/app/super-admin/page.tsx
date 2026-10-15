@@ -101,7 +101,7 @@ export default function SuperAdminDashboardPage() {
           </button>
 
           <Link
-            href="/super-admin/nova-loja"
+            href="/super-admin/nova-loja/"
             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0284C7] to-[#38BDF8] text-black text-xs font-bold uppercase tracking-wider rounded-lg hover:brightness-110 transition-all cursor-pointer shadow-md shadow-sky-500/20"
           >
             <PlusCircle className="w-3.5 h-3.5" />
@@ -110,10 +110,13 @@ export default function SuperAdminDashboardPage() {
         </div>
       </div>
 
-      {/* MÉTRICAS GLOBAIS DA REDE */}
+      {/* MÉTRICAS GLOBAIS DA REDE (Cards Clicáveis) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Global */}
-        <div className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-colors">
+        <Link
+          href="/super-admin/lojas/"
+          className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>GMV Global (Faturamento da Rede)</span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
@@ -127,12 +130,15 @@ export default function SuperAdminDashboardPage() {
           </div>
           <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1">
             <Zap className="w-3 h-3" />
-            <span>Soma de pedidos de todas as lojas</span>
+            <span>Ver detalhes das lojas</span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 2: Total de Lojas */}
-        <div className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-colors">
+        <Link
+          href="/super-admin/lojas/"
+          className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Tenants Cadastrados</span>
             <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-[#38BDF8] flex items-center justify-center">
@@ -148,10 +154,13 @@ export default function SuperAdminDashboardPage() {
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>{stats?.lojasAtivas || 0} operando online</span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 3: Pedidos Globais */}
-        <div className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-colors">
+        <Link
+          href="/super-admin/lojas/"
+          className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Volume Global de Pedidos</span>
             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
@@ -165,28 +174,31 @@ export default function SuperAdminDashboardPage() {
           </div>
           <div className="mt-2 text-[11px] text-indigo-300 flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            <span>Transações processadas</span>
+            <span>Ver transações das lojas</span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 4: Base de Leads da Plataforma */}
-        <div className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-colors">
+        <Link
+          href="/super-admin/nova-loja/"
+          className="bg-[#11141E] border border-slate-800 p-5 rounded-xl relative overflow-hidden group hover:border-sky-500/50 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Leads & Compradores Totais</span>
+            <span>+ Novo Lojista / Lead</span>
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold font-mono text-white">
-              {loading ? '...' : stats?.totalClientesGlobal || 0}
+            <span className="text-sm font-bold text-[#38BDF8]">
+              Criar Loja (60s)
             </span>
           </div>
           <div className="mt-2 text-[11px] text-purple-300 flex items-center gap-1">
             <Layers className="w-3 h-3" />
-            <span>Base de WhatsApp consolidada</span>
+            <span>Onboarding expresso para vendas</span>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* STATUS DA INFRAESTRUTURA SAAS */}
@@ -230,7 +242,7 @@ export default function SuperAdminDashboardPage() {
             </p>
           </div>
           <Link
-            href="/super-admin/lojas"
+            href="/super-admin/lojas/"
             className="text-xs text-[#38BDF8] hover:underline flex items-center gap-1 font-semibold"
           >
             <span>Gerenciar Todas as Lojas</span>
@@ -272,6 +284,11 @@ export default function SuperAdminDashboardPage() {
                             TENANT #1
                           </span>
                         )}
+                        {store.slug === 'aura-privee' && (
+                          <span className="text-[9px] bg-[#E0A99A]/20 text-[#E0A99A] border border-[#E0A99A]/40 px-1.5 py-0.5 rounded font-bold">
+                            TENANT #2
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-400">
@@ -305,13 +322,13 @@ export default function SuperAdminDashboardPage() {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/admin`}
+                          href="/admin/"
                           className="text-[11px] text-slate-400 hover:text-white px-2 py-1 bg-slate-800/50 rounded"
                         >
                           Painel
                         </Link>
                         <Link
-                          href="/"
+                          href={`/?loja=${store.slug}`}
                           target="_blank"
                           className="text-[11px] text-[#38BDF8] hover:underline flex items-center gap-1"
                         >

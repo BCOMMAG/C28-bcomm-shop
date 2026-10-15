@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
           </button>
 
           <Link
-            href="/admin/pedidos"
+            href="/admin/pedidos/"
             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#DFBE76] to-[#C5A059] text-black text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all cursor-pointer"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
@@ -128,10 +128,13 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* CARDS DE KPI (MÉTRICAS PRINCIPAIS) */}
+      {/* CARDS DE KPI (MÉTRICAS PRINCIPAIS CLICÁVEIS) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Total */}
-        <div className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/50 transition-colors">
+        <Link
+          href="/admin/pedidos/"
+          className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
             <span>Faturamento Bruto</span>
             <div className="w-8 h-8 rounded-none bg-[#DFBE76]/10 text-[#DFBE76] flex items-center justify-center">
@@ -145,12 +148,15 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
             <TrendingUp className="w-3 h-3" />
-            <span>Base de pedidos da loja oficial</span>
+            <span>Ver relatório de pedidos</span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 2: Total de Pedidos */}
-        <div className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/50 transition-colors">
+        <Link
+          href="/admin/pedidos/"
+          className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
             <span>Volume de Pedidos</span>
             <div className="w-8 h-8 rounded-none bg-sky-500/10 text-sky-400 flex items-center justify-center">
@@ -166,10 +172,13 @@ export default function AdminDashboardPage() {
             <Clock className="w-3 h-3 text-amber-400" />
             <span>{stats?.pedidosPendentes || 0} pendentes / aguardando</span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 3: Leads & Clientes */}
-        <div className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/50 transition-colors">
+        <Link
+          href="/admin/pedidos/"
+          className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
             <span>Leads & Compradores</span>
             <div className="w-8 h-8 rounded-none bg-purple-500/10 text-purple-400 flex items-center justify-center">
@@ -185,25 +194,29 @@ export default function AdminDashboardPage() {
             <Sparkles className="w-3 h-3" />
             <span>Capturados via WhatsApp Checkout</span>
           </div>
-        </div>
+        </Link>
 
-        {/* Card 4: Ticket Médio */}
-        <div className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/50 transition-colors">
+        {/* Card 4: Catálogo de Produtos */}
+        <Link
+          href="/admin/produtos/"
+          className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
-            <span>Ticket Médio por Venda</span>
+            <span>Catálogo de Peças</span>
             <div className="w-8 h-8 rounded-none bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+              <Package className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <span className="text-2xl font-bold font-serif-luxury text-white">
-              {loading ? '...' : formatCurrency(stats?.ticketMedio || 0)}
+              {loading ? '...' : `${stats?.totalProdutos || 8} Ativos`}
             </span>
           </div>
-          <div className="mt-2 text-[11px] text-[#A8A29E]">
-            Média por transação confirmada
+          <div className="mt-2 text-[11px] text-[#DFBE76] flex items-center gap-1">
+            <span>Gerenciar estoque e preços</span>
+            <ArrowRight className="w-3 h-3" />
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* GRID INTERMEDIÁRIO: FUNIL DE STATUS + ATALHOS SAAS */}
@@ -216,7 +229,7 @@ export default function AdminDashboardPage() {
               <span>Status Operacional das Entregas</span>
             </h2>
             <Link
-              href="/admin/pedidos"
+              href="/admin/pedidos/"
               className="text-xs text-[#DFBE76] hover:underline flex items-center gap-1"
             >
               <span>Gerenciar</span>
@@ -274,7 +287,7 @@ export default function AdminDashboardPage() {
 
           <div className="pt-2">
             <Link
-              href="/admin/modulos"
+              href="/admin/modulos/"
               className="w-full py-2.5 px-4 bg-white/5 hover:bg-[#DFBE76]/20 border border-[#DFBE76]/40 text-[#DFBE76] font-semibold text-xs flex items-center justify-between transition-colors"
             >
               <span>Configurar Módulos da Loja</span>
