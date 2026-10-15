@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
       if (!error && data?.session) {
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
-        router.push('/admin');
+        router.push('/admin/');
         return;
       }
 
@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
       ) {
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
-        router.push('/admin');
+        router.push('/admin/');
         return;
       }
 
@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
       ) {
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
-        router.push('/admin');
+        router.push('/admin/');
         return;
       }
       setErrorMsg(err?.message || 'Falha ao autenticar. Tente novamente.');

@@ -32,7 +32,8 @@ export default function AdminLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lojaNome, setLojaNome] = useState('Leidy Boutique');
 
-  const isLoginPage = pathname === '/admin/login';
+  const cleanPath = (pathname || '').replace(/\/$/, '');
+  const isLoginPage = cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login');
 
   useEffect(() => {
     if (isLoginPage) {
@@ -42,17 +43,29 @@ export default function AdminLayout({
 
     // Checagem de autenticação local + Supabase
     const localAuth = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_auth') : null;
-    const supabase = getSupabaseBrowserClient();
+    if (localAuth === 'true') {
+      setIsAuthenticated(true);
+      return;
+    }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session || localAuth === 'true') {
-        setIsAuthenticated(true);
-      } else {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          router.push('/admin/login/');
+        }
+      }).catch(() => {
         setIsAuthenticated(false);
-        router.push('/admin/login');
-      }
-    });
-  }, [pathname, isLoginPage, router]);
+        router.push('/admin/login/');
+      });
+    } catch {
+      setIsAuthenticated(false);
+      router.push('/admin/login/');
+    }
+  }, [cleanPath, isLoginPage, router]);
 
   // Se for a página de login, renderiza apenas o conteúdo sem shell
   if (isLoginPage) {
@@ -85,30 +98,30 @@ export default function AdminLayout({
     } catch {}
     localStorage.removeItem('leidy_admin_auth');
     localStorage.removeItem('leidy_admin_user');
-    router.push('/admin/login');
+    router.push('/admin/login/');
   };
 
   const navItems = [
     {
       title: 'Visão Geral',
-      href: '/admin',
+      href: '/admin/',
       icon: LayoutDashboard,
       exact: true
     },
     {
       title: 'Central de Pedidos',
-      href: '/admin/pedidos',
+      href: '/admin/pedidos/',
       icon: ShoppingBag,
       badge: 'Ao Vivo'
     },
     {
       title: 'Catálogo de Peças',
-      href: '/admin/produtos',
+      href: '/admin/produtos/',
       icon: Package
     },
     {
       title: 'Loja de Módulos',
-      href: '/admin/modulos',
+      href: '/admin/modulos/',
       icon: Layers,
       badge: 'SaaS'
     }

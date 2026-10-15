@@ -30,7 +30,7 @@ export default function SuperAdminLoginPage() {
       if (!error && data?.session) {
         localStorage.setItem('bcomm_super_admin_auth', 'true');
         localStorage.setItem('bcomm_super_admin_user', email);
-        router.push('/super-admin');
+        router.push('/super-admin/');
         return;
       }
 
@@ -41,7 +41,7 @@ export default function SuperAdminLoginPage() {
       ) {
         localStorage.setItem('bcomm_super_admin_auth', 'true');
         localStorage.setItem('bcomm_super_admin_user', email);
-        router.push('/super-admin');
+        router.push('/super-admin/');
         return;
       }
 
@@ -53,7 +53,7 @@ export default function SuperAdminLoginPage() {
       ) {
         localStorage.setItem('bcomm_super_admin_auth', 'true');
         localStorage.setItem('bcomm_super_admin_user', email);
-        router.push('/super-admin');
+        router.push('/super-admin/');
         return;
       }
       setErrorMsg(err?.message || 'Falha ao autenticar.');

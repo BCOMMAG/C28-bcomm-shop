@@ -14,10 +14,14 @@ export const BottomCartBar: React.FC = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
 
-  // Regra: A barra inferior não pode aparecer no checkout, quando a sacola estiver vazia,
+  // Regra: A barra inferior não pode aparecer no checkout, admin, super-admin,
+  // na página inicial da plataforma BCOMM, quando a sacola estiver vazia,
   // quando o drawer da sacola estiver aberto, ou quando o menu lateral esquerdo estiver aberto
   const isCheckoutPage = pathname?.startsWith('/checkout');
-  if (cartCount === 0 || isCartOpen || isCheckoutPage || isSideDrawerOpen) {
+  const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/super-admin');
+  const isPlatformHome = pathname === '/' && typeof window !== 'undefined' && !new URLSearchParams(window.location.search).get('loja');
+
+  if (cartCount === 0 || isCartOpen || isCheckoutPage || isAdminPage || isPlatformHome || isSideDrawerOpen) {
     return null;
   }
 

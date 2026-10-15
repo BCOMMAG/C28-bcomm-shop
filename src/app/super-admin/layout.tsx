@@ -30,7 +30,8 @@ export default function SuperAdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const isLoginPage = pathname === '/super-admin/login';
+  const cleanPath = (pathname || '').replace(/\/$/, '');
+  const isLoginPage = cleanPath === '/super-admin/login' || cleanPath.startsWith('/super-admin/login');
 
   useEffect(() => {
     if (isLoginPage) {
@@ -39,17 +40,29 @@ export default function SuperAdminLayout({
     }
 
     const localAuth = typeof window !== 'undefined' ? localStorage.getItem('bcomm_super_admin_auth') : null;
-    const supabase = getSupabaseBrowserClient();
+    if (localAuth === 'true') {
+      setIsAuthenticated(true);
+      return;
+    }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session || localAuth === 'true') {
-        setIsAuthenticated(true);
-      } else {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          router.push('/super-admin/login/');
+        }
+      }).catch(() => {
         setIsAuthenticated(false);
-        router.push('/super-admin/login');
-      }
-    });
-  }, [pathname, isLoginPage, router]);
+        router.push('/super-admin/login/');
+      });
+    } catch {
+      setIsAuthenticated(false);
+      router.push('/super-admin/login/');
+    }
+  }, [cleanPath, isLoginPage, router]);
 
   if (isLoginPage) {
     return <>{children}</>;
@@ -78,31 +91,31 @@ export default function SuperAdminLayout({
       await supabase.auth.signOut();
     } catch {}
     localStorage.removeItem('bcomm_super_admin_auth');
-    router.push('/super-admin/login');
+    router.push('/super-admin/login/');
   };
 
   const navItems = [
     {
       title: 'Visão Global da Rede',
-      href: '/super-admin',
+      href: '/super-admin/',
       icon: Globe,
       exact: true
     },
     {
       title: 'Lojas & Tenants',
-      href: '/super-admin/lojas',
+      href: '/super-admin/lojas/',
       icon: Store,
       badge: 'Multi-Tenant'
     },
     {
       title: 'Criar Nova Loja (60s)',
-      href: '/super-admin/nova-loja',
+      href: '/super-admin/nova-loja/',
       icon: PlusCircle,
       badge: 'Express'
     },
     {
       title: 'Domínios Customizados',
-      href: '/super-admin/dominios',
+      href: '/super-admin/dominios/',
       icon: Link2
     }
   ];
