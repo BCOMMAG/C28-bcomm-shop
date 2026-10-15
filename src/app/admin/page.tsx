@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Total */}
         <Link
-          href="/admin/pedidos/"
+          href="/admin/financas/"
           className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
         >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
             <TrendingUp className="w-3 h-3" />
-            <span>Ver relatório de pedidos</span>
+            <span>Ver DRE & Lucro Líquido</span>
           </div>
         </Link>
 
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
 
         {/* Card 3: Leads & Clientes */}
         <Link
-          href="/admin/pedidos/"
+          href="/admin/clientes/"
           className="bg-[#1A1918] border border-[#C5A059]/25 p-5 relative overflow-hidden group hover:border-[#DFBE76]/60 transition-all cursor-pointer block"
         >
           <div className="flex items-center justify-between text-[#A8A29E] text-xs">
@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-2 text-[11px] text-purple-300 flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
-            <span>Capturados via WhatsApp Checkout</span>
+            <span>Ver lista CRM & WhatsApp</span>
           </div>
         </Link>
 

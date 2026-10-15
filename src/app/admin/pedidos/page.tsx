@@ -23,11 +23,13 @@ import {
   Copy,
   Edit3,
   X,
-  Send
+  Send,
+  Sparkles
 } from 'lucide-react';
 import {
   getAdminOrders,
   updateAdminOrderStatus,
+  updateAdminOrderStatusWithStock,
   updateAdminOrderTracking
 } from '@/lib/admin';
 import { CustomerOrder } from '@/lib/orders';
@@ -159,14 +161,14 @@ export default function AdminPedidosPage() {
     return true;
   });
 
-  // Salvar Status
+  // Salvar Status com Baixa/Devolução Inteligente de Estoque
   const handleSaveStatus = async () => {
     if (!statusModalOrder || !selectedNewStatus) return;
     setIsUpdatingStatus(true);
 
-    const res = await updateAdminOrderStatus(statusModalOrder.id, selectedNewStatus);
+    const res = await updateAdminOrderStatusWithStock(statusModalOrder.id, selectedNewStatus, DEFAULT_TENANT_ID);
     if (res.success) {
-      showToast(`Status do pedido ${statusModalOrder.numero_pedido} atualizado para "${selectedNewStatus}"!`);
+      showToast(`Status do pedido ${statusModalOrder.numero_pedido} atualizado para "${selectedNewStatus}" com controle de estoque!`);
       // Atualiza estado local
       setOrders((prev) =>
         prev.map((ord) =>
@@ -561,9 +563,59 @@ export default function AdminPedidosPage() {
                                 {formatCurrency(Number(order.total || 0))}
                               </span>
                             </div>
-                            <div className="text-[11px] text-[#78716C] pt-1">
-                              Método de Pagamento: <strong>{order.metodo_pagamento || 'PIX'}</strong>
-                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ações de Comunicação Rápida via WhatsApp */}
+                        <div className="pt-2">
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#DFBE76] mb-2 flex items-center gap-2">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>Disparos de WhatsApp em 1 Clique</span>
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {cleanPhone ? (
+                              <>
+                                <a
+                                  href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                    `Olá ${order.cliente_nome}! Aqui é da Leidy Boutique. Confirmamos o pagamento do seu pedido ${order.numero_pedido}! Suas peças já estão sendo carinhosamente preparadas para envio!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold text-center flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Confirmar Pagamento</span>
+                                </a>
+
+                                <a
+                                  href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                    order.codigo_rastreio
+                                      ? `Olá ${order.cliente_nome}! Seu pedido ${order.numero_pedido} já foi postado! Segue seu código de rastreio: ${order.codigo_rastreio}. Acompanhe aqui: https://melhorrastreio.com.br/rastreio/${order.codigo_rastreio}`
+                                      : `Olá ${order.cliente_nome}! Seu pedido ${order.numero_pedido} já foi postado nos Correios e em breve te enviamos o código de rastreamento!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-300 text-[11px] font-semibold text-center flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Truck className="w-3.5 h-3.5" />
+                                  <span>Enviar Rastreio</span>
+                                </a>
+
+                                <a
+                                  href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                    `Olá ${order.cliente_nome}! Tudo bem? Vimos que seu pedido ${order.numero_pedido} foi entregue! Suas peças serviram certinho? O que achou do caimento no corpo? Estamos à sua total disposição!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2.5 bg-[#DFBE76]/10 hover:bg-[#DFBE76]/20 border border-[#DFBE76]/30 text-[#DFBE76] text-[11px] font-semibold text-center flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>Pós-Venda Carinhoso</span>
+                                </a>
+                              </>
+                            ) : (
+                              <p className="text-[11px] text-[#78716C] col-span-3">Telefone não informado neste pedido.</p>
+                            )}
                           </div>
                         </div>
                       </div>

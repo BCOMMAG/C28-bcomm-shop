@@ -17,7 +17,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Bell,
-  Sparkles
+  Sparkles,
+  DollarSign,
+  Users
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -31,6 +33,7 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lojaNome, setLojaNome] = useState('Leidy Boutique');
+  const [lojaSlug, setLojaSlug] = useState('leidy-boutique');
 
   const cleanPath = (pathname || '').replace(/\/$/, '');
   const isLoginPage = cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login');
@@ -118,6 +121,22 @@ export default function AdminLayout({
       title: 'Catálogo de Peças',
       href: '/admin/produtos/',
       icon: Package
+    },
+    {
+      title: 'Financeiro & Lucro',
+      href: '/admin/financas/',
+      icon: DollarSign,
+      badge: 'DRE'
+    },
+    {
+      title: 'Vitrine & Banners',
+      href: '/admin/banners/',
+      icon: Sparkles
+    },
+    {
+      title: 'Clientes & CRM',
+      href: '/admin/clientes/',
+      icon: Users
     },
     {
       title: 'Loja de Módulos',
@@ -212,7 +231,7 @@ export default function AdminLayout({
         {/* Rodapé da Sidebar */}
         <div className="p-4 border-t border-white/5 space-y-2 bg-black/30">
           <Link
-            href="/"
+            href={`/?loja=${lojaSlug}`}
             target="_blank"
             className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-[#A8A29E] hover:text-white hover:bg-white/5 transition-colors"
           >
@@ -225,7 +244,7 @@ export default function AdminLayout({
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-950/20 transition-colors text-left"
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-950/20 transition-colors text-left cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Sair do Painel</span>
@@ -255,20 +274,22 @@ export default function AdminLayout({
           </div>
 
           {/* Ações do Header */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href={`/?loja=${lojaSlug}`}
               target="_blank"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white/5 hover:bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/40 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white/5 hover:bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/40 transition-colors"
+              title="Abrir a vitrine da loja em nova aba"
             >
               <Store className="w-3.5 h-3.5" />
               <span>Abrir Vitrine</span>
+              <ExternalLink className="w-3 h-3 opacity-60" />
             </Link>
 
             <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
 
             {/* Perfil */}
-            <div className="flex items-center gap-2.5 pl-2">
+            <div className="flex items-center gap-2.5 pl-1">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#A9833E] to-[#DFBE76] flex items-center justify-center font-bold text-xs text-black shadow-md">
                 LB
               </div>
@@ -281,6 +302,16 @@ export default function AdminLayout({
                 </span>
               </div>
             </div>
+
+            {/* Botão Sair Destacado */}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-950/40 hover:bg-rose-950/80 text-rose-300 border border-rose-500/40 transition-colors cursor-pointer"
+              title="Encerrar sessão com segurança"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </header>
 
@@ -319,16 +350,21 @@ export default function AdminLayout({
 
             <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
               <Link
-                href="/"
+                href={`/?loja=${lojaSlug}`}
                 target="_blank"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center gap-2 text-xs text-[#DFBE76] py-2"
               >
                 <Store className="w-4 h-4" />
                 <span>Ver Minha Loja Ao Vivo</span>
+                <ExternalLink className="w-3.5 h-3.5 ml-auto text-[#78716C]" />
               </Link>
               <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-xs text-rose-300 py-2 text-left"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="flex items-center gap-2 text-xs text-rose-300 py-2 text-left cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Sair do Painel</span>

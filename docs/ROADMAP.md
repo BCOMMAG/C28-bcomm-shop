@@ -7,7 +7,7 @@
 
 ---
 
-### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 75% ]
+### 📊 PROGRESSO GERAL DA PLATAFORMA: [ 85% ]
 
 - [x] **FASE 0: FRONTEND DE LUXO E CHECKOUT FASEADO (LEIDY BOUTIQUE)**
   - [x] Identidade visual e vitrine de alta conversão (Dourado/Preto).
@@ -22,17 +22,7 @@
 ### 🚀 ETAPAS DE TRANSIÇÃO PARA A PLATAFORMA MULTI-TENANT
 
 #### 🔹 ETAPA 1: MODELAGEM SQL NO SUPABASE & SEED DA LEIDY BOUTIQUE
-- [x] Criar tabelas com isolamento `loja_id`:
-  - [x] `lojas` (Tenants: nome, slug, dominio_proprio, configuracoes_visuais, modulos_ativos).
-  - [x] `categorias` (com `loja_id`).
-  - [x] `produtos` (preço, preço promocional, tecido, modelagem, linha, status, estoque).
-  - [x] `variacoes_produto` (cor_nome, cor_hex, tamanho, estoque_individual, sku).
-  - [x] `midias_produto` (fotos WebP e vídeos de provador com ordem).
-  - [x] `hero_banners` (mídias separadas para desktop 16:9 e mobile 9:16).
-  - [x] `menus_navegacao` (links e submenus dropdown em árvore).
-  - [x] `pedidos` e `itens_pedido` (status, totais, endereço, rastreio, notas).
-  - [x] `clientes_loja` (telefone, nome, e-mail, cpf, preferências).
-  - [x] `cupons` (regras e validades).
+- [x] Criar tabelas com isolamento `loja_id`: `lojas`, `categorias`, `produtos`, `variacoes_produto`, `midias_produto`, `hero_banners`, `menus_navegacao`, `pedidos`, `itens_pedido`, `clientes_loja`, `cupons`.
 - [x] Ativar Row Level Security (RLS) em todas as tabelas.
 - [x] Criar índices de performance nos campos `loja_id` e `slug`.
 - [x] Executar script de inserção do **Tenant #1 (Leidy Boutique)** no banco.
@@ -43,67 +33,108 @@
 - [x] Criar tipos TypeScript estruturados do banco (`src/types/database.ts`).
 - [x] Implementar `src/lib/tenant.ts` com cache e fallback seguro da Leidy Boutique.
 - [x] Implementar `src/middleware.ts` para resolver dinamicamente o `Host` e injetar cabeçalhos e cookies de tenant.
-- [x] Criar configuração do Cloudflare Pages (`wrangler.json`).
 - [x] Validar compilação com `npm run build` com sucesso absoluto.
 
 #### 🔹 ETAPA 3: VITRINE DINÂMICA & MIGRAÇÃO DO CATÁLOGO DA LEIDY
-- [x] Criar script de migração para importar os produtos estáticos de `src/data/products.ts` para as tabelas do Supabase vinculadas à Leidy Boutique (`scripts/seed-products-supabase.ts`).
-- [x] Executar a migração de 16 produtos, 11 categorias, 54 variações, 29 fotos/vídeos de provador, hero banner e menus no Supabase.
-- [x] Criar camada de dados e mapeamento estruturado em `src/lib/products.ts` com fallback gracioso.
-- [x] Atualizar componentes da vitrine para consumir do Supabase com fallback seguro:
-  - [x] `StoreContext` com estado dinâmico de produtos e rotina de refresh.
-  - [x] Vitrine Home (`src/app/page.tsx`) com seções de lançamentos, mais vendidos, outlet e últimas peças dinâmicas.
-  - [x] Catálogo (`src/app/catalogo/page.tsx`) com filtros de categorias, tecidos, buscas e contadores dinâmicos.
-  - [x] Modal de detalhes do produto (`ProductModal.tsx`) e recomendações de "Compre o Look" dinâmicos.
-  - [x] Sacola lateral (`CartDrawer.tsx`) e `ConversionSidebar.tsx` conectados aos produtos dinâmicos.
-  - [x] Favoritos (`src/app/favoritos/page.tsx`) reativo ao catálogo.
-- [x] Validar compilação via `npm run build` com sucesso absoluto (zero erros).
+- [x] Migração de 16 produtos, 11 categorias, 54 variações, 29 fotos/vídeos de provador, hero banner e menus no Supabase.
+- [x] Camada de dados reativa com fallback gracioso (`src/lib/products.ts`).
+- [x] Vitrine Home, Catálogo, Modal de Detalhes, Sacola Lateral e Favoritos consumindo do banco.
 
 #### 🔹 ETAPA 4: CHECKOUT FASEADO CONECTADO AO BANCO & LEADS
-- [x] Configurar políticas RLS no Supabase permitindo criação e atualização de clientes/leads e pedidos.
-- [x] Criar serviço `src/lib/orders.ts` para gravação de pedidos e captura de leads.
-- [x] Conectar Etapa 4 do Checkout para salvar o pedido na tabela `pedidos` e os itens em `itens_pedido` no Supabase antes de direcionar para o WhatsApp.
-- [x] Implementar rotina de captura de leads e carrinhos abandonados (ao preencher o WhatsApp e sair antes de pagar, o lead é gravado na nuvem).
-- [x] Geração e exibição do ID oficial e legível do pedido (`#LB-2026-XXXX`) com badge de confirmação de registro no sistema.
-- [x] Validação da compilação via `npm run build` com 100% de sucesso.
+- [x] Políticas RLS configuradas no Supabase para criação e consulta de pedidos e leads.
+- [x] Checkout em 4 etapas gravando na tabela `pedidos` e `itens_pedido` antes do WhatsApp.
+- [x] Captura de leads de carrinhos abandonados com WhatsApp e histórico.
+- [x] Geração e exibição do ID oficial e legível do pedido (`#LB-2026-XXXX`).
 
 #### 🔹 ETAPA 5: ESPAÇO VIP DA CLIENTE (`/minha-conta`)
-- [x] Criar rota e tela `/minha-conta` com login passwordless por celular/WhatsApp e reconhecimento automático do último telefone utilizado no checkout.
-- [x] Consulta de pedidos e clientes no Supabase (`getCustomerOrders` e `getOrderByNumber`).
-- [x] Visualização de histórico completo de compras com abas ("Todos", "Em Andamento", "Entregues").
+- [x] Tela `/minha-conta` com login passwordless por celular/WhatsApp.
+- [x] Histórico de compras com abas ("Todos", "Em Andamento", "Entregues").
 - [x] Linha do tempo visual do status do pedido (Pedido -> Pago -> Embalado -> Enviado -> Entregue).
-- [x] Integração de código de rastreamento dos Correios com link direto para o site dos Correios e botão de cópia de código.
-- [x] Botão de 1 clique para falar com a Leidy no WhatsApp sobre o pedido específico.
-- [x] Ícone de perfil no Header e no Menu Lateral Drawer mobile para acesso rápido ao Espaço VIP.
-- [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros).
+- [x] Integração de código de rastreamento dos Correios com link direto.
 
-#### 🔹 ETAPA 6: PAINEL ADMINISTRATIVO DO LOJISTA (`/admin`)
-- [x] Tela de login do lojista via Supabase Auth (e-mail/senha) e fallback de contingência (`admin@leidyboutique.com.br` / `Leidy@2026!`).
-- [x] Layout administrativo premium com sidebar escura/dourada, badge Multi-Tenant e drawer mobile (`/admin/layout.tsx`).
-- [x] Dashboard com métricas em tempo real (Faturamento Bruto, Pedidos, Leads, Ticket Médio) e funil operacional (`/admin`).
-- [x] Central de Pedidos com abas de status, busca por nome/telefone, modal de status e código de rastreio Correios com link para WhatsApp (`/admin/pedidos`).
-- [x] Gestão de Catálogo com visualização de fotos, filtro de coleções, ativação/pausa e modal de edição rápida de preços e estoque (`/admin/produtos`).
-- [x] Loja de Módulos White-Label com switches interativos conectados à coluna `modulos_ativos` no Supabase (`/admin/modulos`).
-- [x] Link de acesso rápido "Painel do Lojista" integrado no rodapé público da loja.
-- [x] Validação da compilação via `npm run build` com sucesso absoluto (zero erros).
+#### 🔹 ETAPA 6: PAINEL ADMINISTRATIVO DO LOJISTA (`/admin`) — BASE INICIAL
+- [x] Tela de login do lojista (`/admin/login`).
+- [x] Layout administrativo premium com sidebar e drawer mobile.
+- [x] Dashboard com métricas em tempo real (`/admin`).
+- [x] Central de Pedidos inicial (`/admin/pedidos`).
+- [x] Gestão de Catálogo com edição rápida de preço e estoque (`/admin/produtos`).
+- [x] Loja de Módulos White-Label (`/admin/modulos`).
 
-#### 🔹 ETAPA 7: PAINEL DO SUPER ADMIN (`/super-admin`) — O SEU PAINEL
-- [x] Login do dono da plataforma com credenciais master (`superadmin@bcomm.com.br` / `SuperAdmin@2026!`).
-- [x] Layout executivo BCOMM SaaS com monitoramento de infraestrutura (`/super-admin/layout.tsx`).
-- [x] Dashboard de métricas globais da rede: GMV Global, total de tenants, pedidos e leads (`/super-admin`).
-- [x] Gestão de Lojas & Tenants com controle de ativação online/pausada e módulos ativos (`/super-admin/lojas`).
-- [x] Assistente de Onboarding Express: criação de nova loja em menos de 60 segundos com clonagem automática de catálogo base (`/super-admin/nova-loja`).
-- [x] Gestão de Domínios Customizados com instruções de apontamento CNAME para Cloudflare Pages (`/super-admin/dominios`).
-- [x] Validação de RLS e compilação via `npm run build` com sucesso absoluto.
+#### 🔹 ETAPA 7: CONSOLE DO SUPER ADMIN (`/super-admin`) — O SEU PAINEL
+- [x] Login do dono da plataforma master (`superadmin@bcomm.com.br`).
+- [x] Dashboard com GMV Global e métricas consolidadas de todas as lojas.
+- [x] Gestão de Lojas & Tenants com controle de ativação online/pausada (`/super-admin/lojas`).
+- [x] Assistente de Onboarding Express em 60 Segundos com clonagem de catálogo (`/super-admin/nova-loja`).
+- [x] Gestão de Domínios Customizados (`/super-admin/dominios`).
 
-#### 🔹 ETAPA 8: DOCKERFILE, CLOUDFLARE R2 & VPS COM COOLIFY (FASE 2)
-- [x] Configuração condicional em `next.config.ts` para suporte híbrido (Static Export para Cloudflare Pages + Standalone para Docker).
-- [x] Criação do `Dockerfile` multi-stage de produção otimizado com Node.js 20 Alpine e usuário sem privilégios.
-- [x] Criação do `docker-compose.yml` para Coolify e contêineres VPS.
-- [x] Configuração do `.dockerignore` otimizado para build leve.
-- [x] Guia completo de deploy na VPS Contabo com Coolify (`docs/DEPLOY_COOLIFY_VPS.md`).
-- [x] Guia de automação de WhatsApp via Evolution API v2 (`docs/EVOLUTION_API_WHATSAPP.md`).
-- [x] Guia de armazenamento de mídia com taxa zero via Cloudflare R2 (`docs/CLOUDFLARE_R2_SETUP.md`).
+#### 🔹 ETAPA 8: STORAGE DE MÍDIA CLOUDFLARE R2 & ISOLAMENTO ESTRITO
+- [x] Configuração e conexão do bucket Cloudflare R2 `bcomm-saas-media` com suporte a `forcePathStyle: true`.
+- [x] Script de migração em lote (`scripts/sync-media-to-r2.ts`) sincronizando 100% das fotos, logos e vídeos pesados de provador (10 MB).
+- [x] Validação da CDN pública global com taxa zero de saída (`https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev`).
+- [x] Isolamento de chaves de sacola, favoritos e clientes por tenant (`bcomm_cart_${tenantKey}`).
+- [x] Provisionamento e validação do Tenant #2 (Aura Privée).
 
 ---
-*Roadmap de migração Multi-Tenant SaaS White-Label concluído com 100% de sucesso!*
+
+### 🌟 ETAPA 9: EXPANSÃO PROFISSIONAL DO PAINEL DO LOJISTA (EM EXECUÇÃO)
+
+#### 🔹 9.1: Navegação, Sessão & Segurança
+- [-] **Header do Lojista & Super Admin:**
+  - [-] Botão visível "Sair" (Logout) com ícone `LogOut` vermelho no topo do Header ao lado do avatar.
+  - [-] Botão "Sair" no drawer retrátil mobile.
+  - [-] Limpeza de sessão local no clique e redirecionamento imediato para a tela de login.
+- [-] **Links de Vitrine e Pedidos:**
+  - [-] Botão "Abrir Vitrine" apontando com precisão para `/?loja=${tenant.slug}` em nova aba.
+  - [-] Botão "Ver Pedidos" no topo fixo e responsivo em qualquer resolução.
+
+#### 🔹 9.2: Catálogo de Produtos Completo & Upload no Cloudflare R2
+- [ ] Modal/Página de Cadastro Completo de Produto (`/admin/produtos`):
+  - [ ] Informações básicas: Nome, slug automático, categoria, descrição, tecido, modelagem, linha.
+  - [ ] Precificação: Preço de Venda, Preço Promocional e **Preço de Custo (CMV)**.
+  - [ ] Seletor: *Produto com Grade (P/M/G)* vs *Produto Simples (Tamanho Único)*.
+  - [ ] Grade de cores (com seletor HEX visual) e tamanhos com estoque individual.
+- [ ] Uploader de Mídias direto para o Cloudflare R2:
+  - [ ] Upload de fotos de alta resolução com seletor de foto de capa (estrela dourada) e exclusão individual.
+  - [ ] Upload de vídeo de provador vertical 9:16 com preview antes de salvar.
+- [ ] Ações de Gestão de Catálogo:
+  - [ ] Ativação/Pausa rápida da vitrine.
+  - [ ] Edição completa de grade e dados.
+  - [ ] Exclusão segura com proteção contábil (Soft Delete / Arquivamento).
+
+#### 🔹 9.3: Central de Pedidos, Baixa Inteligente de Estoque & Automação WhatsApp
+- [ ] Regra de ouro da baixa de estoque:
+  - [ ] Pedido criado no checkout ➔ status `Aguardando WhatsApp` (estoque preservado).
+  - [ ] Mudança para `Pago / Confirmado` ➔ baixa automática das unidades na grade do banco.
+  - [ ] Mudança para `Cancelado` ➔ devolução automática das peças ao estoque.
+- [ ] Automação de WhatsApp em 1 clique:
+  - [ ] Disparo de mensagem de confirmação de pagamento.
+  - [ ] Disparo de mensagem de envio com código de rastreio Correios e link direto do Melhor Rastreio.
+  - [ ] Mensagem de pós-venda carinhoso após entrega.
+- [ ] Abas de navegação rápida por status (Todos, Aguardando WhatsApp, Pagos, Enviados, Entregues, Cancelados).
+
+#### 🔹 9.4: DRE Financeiro & Lucro Real da Loja (`/admin/financas`)
+- [ ] Página dedicada de DRE Financeiro:
+  - [ ] Faturamento Bruto total.
+  - [ ] Custo das Mercadorias Vendidas (CMV).
+  - [ ] Configuração de despesas operacionais (Taxa média de cartão % e custo de embalagem/envio R$).
+  - [ ] Lucro Líquido Real em Reais (R$) e Margem Líquida (%).
+  - [ ] Ticket Médio por pedido e Peças por Atendimento (PA).
+  - [ ] Curva ABC de produtos mais lucrativos.
+  - [ ] Filtro temporal (Hoje, 7 dias, Este Mês, Todo o Período).
+
+#### 🔹 9.5: CMS Visual da Vitrine & Banners Responsivos (`/admin/banners`)
+- [ ] Gestão do Hero Banner Principal:
+  - [ ] Mídia Desktop (16:9 horizontal) com upload direto no R2.
+  - [ ] Mídia Mobile (9:16 vertical) com upload direto no R2.
+  - [ ] Título, subtítulo e link de CTA.
+  - [ ] Preview ao vivo na tela.
+- [ ] Barra de aviso do topo (ex: "Frete Grátis acima de R$ 350").
+
+#### 🔹 9.6: CRM de Clientes & Leads (`/admin/clientes`)
+- [ ] Base centralizada de compradores e leads de carrinho.
+- [ ] Histórico de compras por cliente, ticket médio e LTV.
+- [ ] Tags automáticas: Cliente VIP, Compradora Recorrente, Primeira Compra, Lead.
+- [ ] Botão de 1 clique para conversar no WhatsApp.
+
+---
+*Roadmap mantido com governança viva e sincronização contínua.*

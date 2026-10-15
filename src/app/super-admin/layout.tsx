@@ -197,7 +197,7 @@ export default function SuperAdminLayout({
         {/* Rodapé da Sidebar */}
         <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950/40">
           <Link
-            href="/"
+            href="/?loja=leidy-boutique"
             target="_blank"
             className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-md transition-colors"
           >
@@ -239,7 +239,7 @@ export default function SuperAdminLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/super-admin/nova-loja"
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#38BDF8] hover:bg-sky-400 text-black rounded-md transition-colors shadow-sm"
@@ -250,7 +250,7 @@ export default function SuperAdminLayout({
 
             <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
 
-            <div className="flex items-center gap-2.5 pl-2">
+            <div className="flex items-center gap-2.5 pl-1">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow-md">
                 SA
               </div>
@@ -263,6 +263,16 @@ export default function SuperAdminLayout({
                 </span>
               </div>
             </div>
+
+            {/* Botão Sair Destacado */}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-950/40 hover:bg-rose-950/80 text-rose-300 border border-rose-500/40 rounded-md transition-colors cursor-pointer"
+              title="Encerrar sessão de Super Admin"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </header>
 
