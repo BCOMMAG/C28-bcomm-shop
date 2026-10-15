@@ -112,15 +112,20 @@ export interface FinanceMetrics {
 }
 
 export interface AdminClientItem {
-  id: string;
+  id?: string;
   nome: string;
   telefone: string;
   email?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
   totalPedidos: number;
   totalGasto: number;
   ticketMedio: number;
   ultimaCompra?: string | null;
-  tag: 'vip' | 'recorrente' | 'compradora' | 'lead';
+  primeiroPedido?: string | null;
+  ultimoPedido?: string | null;
+  isVIP?: boolean;
+  tag?: 'vip' | 'recorrente' | 'compradora' | 'lead';
 }
 
 export interface AdminHeroBanner {

@@ -1,8 +1,17 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 
 export const BackgroundVideo: React.FC = () => {
+  const pathname = usePathname();
+
+  // Em rotas administrativas (/admin e /super-admin), não exibe o plano de fundo da loja
+  const isAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/super-admin');
+  if (isAdminRoute) {
+    return null;
+  }
+
   return (
     <div
       aria-hidden="true"

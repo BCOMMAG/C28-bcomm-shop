@@ -15,7 +15,8 @@ import {
   Monitor,
   Eye,
   Save,
-  Tag
+  Tag,
+  ArrowRight
 } from 'lucide-react';
 import {
   getAdminHeroBanners,
@@ -34,16 +35,16 @@ export default function AdminBannersPage() {
 
   // Campos do formulário
   const [activeBannerId, setActiveBannerId] = useState<string | undefined>();
-  const [titulo, setTitulo] = useState('Curadoria Exclusiva');
-  const [subtitulo, setSubtitulo] = useState('Peças em alfaiataria fina e seda pura para mulheres exigentes.');
-  const [ctaTexto, setCtaTexto] = useState('Explorar Coleção');
+  const [titulo, setTitulo] = useState('Curadoria Exclusiva & Sofisticada');
+  const [subtitulo, setSubtitulo] = useState('Peças em alfaiataria nobre e tricots selecionados para mulheres que valorizam a elegância.');
+  const [ctaTexto, setCtaTexto] = useState('Explorar Coleção Completa');
   const [ctaLink, setCtaLink] = useState('/catalogo');
   const [tipoMidia, setTipoMidia] = useState<'video' | 'image'>('video');
   const [desktopMediaUrl, setDesktopMediaUrl] = useState('/images/hero-desktop.mp4');
   const [mobileMediaUrl, setMobileMediaUrl] = useState('/images/hero-mobile.mp4');
 
-  // Barra de aviso
-  const [barraAviso, setBarraAviso] = useState('Frete Grátis para todo o Brasil em compras acima de R$ 350');
+  // Barra de aviso superior
+  const [barraAviso, setBarraAviso] = useState('Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp');
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -61,9 +62,9 @@ export default function AdminBannersPage() {
       if (data.length > 0) {
         const b = data[0];
         setActiveBannerId(b.id);
-        setTitulo(b.titulo || 'Curadoria Exclusiva');
+        setTitulo(b.titulo || 'Curadoria Exclusiva & Sofisticada');
         setSubtitulo(b.subtitulo || '');
-        setCtaTexto(b.cta_texto || 'Explorar Coleção');
+        setCtaTexto(b.cta_texto || 'Explorar Coleção Completa');
         setCtaLink(b.cta_link || '/catalogo');
         setTipoMidia(b.tipo_midia);
         setDesktopMediaUrl(b.desktop_media_url);
@@ -157,51 +158,60 @@ export default function AdminBannersPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* TOAST */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 border text-xs flex items-center gap-2 shadow-2xl animate-fade-in ${
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xl animate-fade-in ${
             toast.type === 'success'
-              ? 'bg-emerald-950 border-emerald-500 text-emerald-200'
-              : 'bg-rose-950 border-rose-500 text-rose-200'
+              ? 'bg-emerald-900 text-emerald-100 border border-emerald-500'
+              : 'bg-rose-900 text-rose-100 border border-rose-500'
           }`}
         >
           {toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-rose-300" />
           )}
           <span>{toast.message}</span>
         </div>
       )}
 
       {/* CABEÇALHO */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-serif-luxury text-2xl sm:text-3xl font-bold text-white tracking-wide">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
               Vitrine & Hero Banners
             </h1>
-            <span className="text-[10px] bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/40 px-2 py-0.5 font-bold uppercase tracking-wider">
-              Cloudflare R2
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              Cloudflare R2 Ativo
             </span>
           </div>
-          <p className="text-xs text-[#A8A29E] mt-1">
-            Personalize a experiência de abertura da sua loja: vídeos ou fotos cinematográficas separadas para Desktop (16:9) e Celular (9:16).
+          <p className="text-xs text-slate-500 mt-1">
+            Personalize a experiência de entrada da sua loja: vídeos ou fotos cinematográficas separadas para Computador (16:9) e Celular (9:16).
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Link
             href="/?loja=leidy-boutique"
             target="_blank"
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 text-[#DFBE76] text-xs border border-[#DFBE76]/30 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3.5 h-3.5 text-amber-600" />
             <span>Ver Vitrine Ao Vivo</span>
-            <ExternalLink className="w-3 h-3 opacity-60" />
+            <ExternalLink className="w-3 h-3 text-slate-400" />
           </Link>
+
+          <button
+            onClick={handleSaveBanner}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{isSaving ? 'Publicando...' : 'Salvar e Publicar'}</span>
+          </button>
         </div>
       </div>
 
@@ -209,17 +219,19 @@ export default function AdminBannersPage() {
         {/* SEÇÃO 1: MÍDIAS RESPONSIVAS (DESKTOP VS MOBILE) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Mídia Desktop (16:9) */}
-          <div className="bg-[#1A1918] border border-white/10 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                <Monitor className="w-4 h-4 text-[#DFBE76]" />
-                <span>1. Mídia Desktop (16:9 Horizontal)</span>
+          <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-amber-600" />
+                <span>1. Mídia Desktop (16:9 Panorâmica)</span>
               </span>
-              <span className="text-[10px] text-[#A8A29E]">Recomendado: 1920x1080</span>
+              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                1920x1080
+              </span>
             </div>
 
             {/* Preview Desktop */}
-            <div className="relative aspect-video bg-black/60 border border-white/10 overflow-hidden flex items-center justify-center">
+            <div className="relative aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center border border-slate-200 shadow-inner">
               {tipoMidia === 'video' ? (
                 <video
                   src={desktopMediaUrl}
@@ -236,10 +248,10 @@ export default function AdminBannersPage() {
             </div>
 
             {/* Upload Button */}
-            <label className="border border-dashed border-white/15 hover:border-[#DFBE76] bg-black/40 p-3 flex items-center justify-center gap-2 cursor-pointer transition-colors block text-center">
-              <Upload className={`w-4 h-4 ${uploadingDesktop ? 'animate-bounce text-[#DFBE76]' : 'text-[#78716C]'}`} />
-              <span className="text-white font-medium">
-                {uploadingDesktop ? 'Enviando mídia desktop para o R2...' : 'Subir Vídeo ou Foto Desktop'}
+            <label className="border-2 border-dashed border-slate-300 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/50 p-3.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors block text-center">
+              <Upload className={`w-4 h-4 ${uploadingDesktop ? 'animate-bounce text-amber-600' : 'text-slate-500'}`} />
+              <span className="text-slate-700 font-bold">
+                {uploadingDesktop ? 'Enviando mídia desktop para o R2...' : 'Subir Vídeo ou Foto Desktop (16:9)'}
               </span>
               <input
                 type="file"
@@ -249,27 +261,26 @@ export default function AdminBannersPage() {
                 className="hidden"
               />
             </label>
-            <input
-              type="text"
-              value={desktopMediaUrl}
-              onChange={(e) => setDesktopMediaUrl(e.target.value)}
-              placeholder="URL da mídia desktop..."
-              className="w-full bg-[#121110] border border-white/10 px-2.5 py-1.5 text-white font-mono text-[11px]"
-            />
+
+            <span className="text-[11px] text-slate-400 block text-center">
+              CDN Cloudflare R2: <strong className="font-mono text-slate-600 truncate">{desktopMediaUrl}</strong>
+            </span>
           </div>
 
           {/* Mídia Mobile (9:16) */}
-          <div className="bg-[#1A1918] border border-white/10 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-[#DFBE76]" />
-                <span>2. Mídia Mobile (9:16 Vertical)</span>
+          <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-amber-600" />
+                <span>2. Mídia Mobile (9:16 Celular Vertical)</span>
               </span>
-              <span className="text-[10px] text-[#A8A29E]">Recomendado: 1080x1920</span>
+              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                1080x1920
+              </span>
             </div>
 
             {/* Preview Mobile */}
-            <div className="relative h-60 w-36 mx-auto bg-black/60 border border-white/10 overflow-hidden flex items-center justify-center shadow-md">
+            <div className="relative h-64 mx-auto aspect-9/16 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-300 shadow-md">
               {tipoMidia === 'video' ? (
                 <video
                   src={mobileMediaUrl}
@@ -286,10 +297,10 @@ export default function AdminBannersPage() {
             </div>
 
             {/* Upload Button */}
-            <label className="border border-dashed border-white/15 hover:border-[#DFBE76] bg-black/40 p-3 flex items-center justify-center gap-2 cursor-pointer transition-colors block text-center">
-              <Upload className={`w-4 h-4 ${uploadingMobile ? 'animate-bounce text-[#DFBE76]' : 'text-[#78716C]'}`} />
-              <span className="text-white font-medium">
-                {uploadingMobile ? 'Enviando mídia mobile para o R2...' : 'Subir Vídeo ou Foto Mobile (9:16)'}
+            <label className="border-2 border-dashed border-slate-300 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/50 p-3.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors block text-center">
+              <Upload className={`w-4 h-4 ${uploadingMobile ? 'animate-bounce text-amber-600' : 'text-slate-500'}`} />
+              <span className="text-slate-700 font-bold">
+                {uploadingMobile ? 'Enviando mídia mobile para o R2...' : 'Subir Vídeo ou Foto Celular (9:16)'}
               </span>
               <input
                 type="file"
@@ -299,109 +310,93 @@ export default function AdminBannersPage() {
                 className="hidden"
               />
             </label>
-            <input
-              type="text"
-              value={mobileMediaUrl}
-              onChange={(e) => setMobileMediaUrl(e.target.value)}
-              placeholder="URL da mídia mobile..."
-              className="w-full bg-[#121110] border border-white/10 px-2.5 py-1.5 text-white font-mono text-[11px]"
-            />
+
+            <span className="text-[11px] text-slate-400 block text-center">
+              Ideal para Reels / Shorts e provador vertical no smartphone.
+            </span>
           </div>
         </div>
 
-        {/* SEÇÃO 2: TEXTOS & BOTÃO DE AÇÃO */}
-        <div className="bg-[#1A1918] border border-white/10 p-6 space-y-4">
-          <h3 className="font-semibold text-[#DFBE76] uppercase tracking-wider flex items-center gap-2">
-            <Tag className="w-4 h-4" />
-            <span>3. Textos do Banner & Ação</span>
-          </h3>
+        {/* SEÇÃO 2: TEXTOS, CHAMADAS E BOTÃO CTA */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <Tag className="w-4 h-4 text-amber-600" />
+            <h3 className="font-bold text-slate-900 uppercase tracking-wider">
+              3. Textos da Chamada & Botão Principal da Vitrine
+            </h3>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[#A8A29E] mb-1 font-medium">Título Principal</label>
+              <label className="block text-slate-700 mb-1 font-bold">Título do Banner</label>
               <input
                 type="text"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Ex: Curadoria Exclusiva 2026"
-                className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white font-serif-luxury text-sm"
+                placeholder="Ex: Curadoria Exclusiva"
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-[#A8A29E] mb-1 font-medium">Texto do Botão (CTA)</label>
+              <label className="block text-slate-700 mb-1 font-bold">Texto do Botão (CTA)</label>
               <input
                 type="text"
                 value={ctaTexto}
                 onChange={(e) => setCtaTexto(e.target.value)}
-                placeholder="Ex: Explorar Coleção"
-                className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white font-bold"
+                placeholder="Ex: Ver Coleção"
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-[#A8A29E] mb-1 font-medium">Subtítulo / Descrição</label>
-              <textarea
-                rows={2}
-                value={subtitulo}
-                onChange={(e) => setSubtitulo(e.target.value)}
-                placeholder="Ex: Peças em alfaiataria fina e seda pura para mulheres exigentes."
-                className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#A8A29E] mb-1 font-medium">Link de Destino do Botão</label>
+              <label className="block text-slate-700 mb-1 font-bold">Subtítulo / Descrição</label>
               <input
                 type="text"
-                value={ctaLink}
-                onChange={(e) => setCtaLink(e.target.value)}
-                placeholder="Ex: /catalogo"
-                className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white font-mono"
+                value={subtitulo}
+                onChange={(e) => setSubtitulo(e.target.value)}
+                placeholder="Ex: Peças nobres em alfaiataria fina e seda pura."
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
-            </div>
-
-            <div>
-              <label className="block text-[#A8A29E] mb-1 font-medium">Tipo de Mídia Principal</label>
-              <select
-                value={tipoMidia}
-                onChange={(e) => setTipoMidia(e.target.value as 'video' | 'image')}
-                className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white"
-              >
-                <option value="video">Vídeo Cinematográfico (Autoplay)</option>
-                <option value="image">Imagem Estática</option>
-              </select>
             </div>
           </div>
         </div>
 
-        {/* SEÇÃO 3: BARRA DE AVISO SUPERIOR */}
-        <div className="bg-[#1A1918] border border-white/10 p-6 space-y-4">
-          <h3 className="font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            <span>4. Barra de Notificação Superior da Loja</span>
-          </h3>
+        {/* SEÇÃO 3: BARRA DE AVISOS NO TOPO DA VITRINE */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <h3 className="font-bold text-slate-900 uppercase tracking-wider">
+              4. Barra de Avisos Fixa no Topo da Loja
+            </h3>
+          </div>
+
           <div>
-            <label className="block text-[#A8A29E] mb-1 font-medium">Mensagem de Destaque no Topo da Vitrine</label>
+            <label className="block text-slate-700 mb-1 font-bold">Texto de Destaque Superior</label>
             <input
               type="text"
               value={barraAviso}
               onChange={(e) => setBarraAviso(e.target.value)}
-              placeholder="Ex: Frete Grátis para todo o Brasil em compras acima de R$ 350"
-              className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white font-medium"
+              placeholder="Ex: Frete Grátis para todo o Brasil acima de R$ 350"
+              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
+          </div>
+
+          {/* Preview da barra */}
+          <div className="bg-slate-900 text-amber-300 text-center py-2 px-4 rounded-lg text-xs font-semibold shadow-inner">
+            {barraAviso || 'Prévia da barra de avisos da loja'}
           </div>
         </div>
 
         {/* BOTÃO SALVAR */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+        <div className="flex justify-end pt-2">
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#DFBE76] to-[#C5A059] text-black font-bold uppercase tracking-wider text-xs hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-[#DFBE76]/20"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Salvando no Supabase...' : 'Salvar e Publicar Vitrine'}</span>
+            <span>{isSaving ? 'Salvando Alterações...' : 'Salvar e Publicar na Vitrine'}</span>
           </button>
         </div>
       </form>

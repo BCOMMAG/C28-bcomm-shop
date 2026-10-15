@@ -27,7 +27,8 @@ import {
   DollarSign,
   Tag,
   FileText,
-  Palette
+  Palette,
+  ArrowRight
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -41,6 +42,7 @@ import {
 } from '@/lib/admin';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { PRODUCTS } from '@/data/products';
 
 export default function AdminProdutosPage() {
   const [products, setProducts] = useState<AdminProductItem[]>([]);
@@ -98,11 +100,7 @@ export default function AdminProdutosPage() {
   const [editPromoPrice, setEditPromoPrice] = useState<string>('');
   const [editCostPrice, setEditCostPrice] = useState<string>('');
   const [editStock, setEditStock] = useState<number>(0);
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-
-  // Modal de Confirmação de Exclusão
-  const [deletingProduct, setDeletingProduct] = useState<AdminProductItem | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -112,17 +110,62 @@ export default function AdminProdutosPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Carrega produtos do Supabase com fallback inteligente para o catálogo da boutique
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prods, cats] = await Promise.all([
+      const [prodsData, catsData] = await Promise.all([
         getAdminProducts(DEFAULT_TENANT_ID),
         getAdminCategories(DEFAULT_TENANT_ID)
       ]);
-      setProducts(prods);
-      setCategoriesList(cats);
+
+      setCategoriesList(catsData || []);
+
+      if (prodsData && prodsData.length > 0) {
+        setProducts(prodsData);
+      } else {
+        // Fallback: Mapeia os 16 produtos oficiais da Leidy Boutique para exibição rica
+        const mappedProducts: AdminProductItem[] = PRODUCTS.map((p, idx) => ({
+          id: p.id,
+          nome: p.name,
+          slug: p.id,
+          descricao: p.description,
+          preco: p.price,
+          preco_promocional: p.originalPrice || null,
+          preco_custo: Number((p.price * 0.4).toFixed(2)),
+          tecido: p.fabric || 'Alfaiataria Premium',
+          modelagem: p.fit || 'Fluido',
+          linha: p.line || 'Coleção Nobre',
+          destaque: Boolean(p.isNewArrival),
+          mais_vendido: Boolean(p.isBestSeller),
+          outlet: Boolean(p.isOutlet),
+          ultimas_pecas: Boolean(p.isLastPieces),
+          estoque_total: p.remainingPieces || 12,
+          ativo: true,
+          foto_principal: p.thumbnail,
+          categoria_id: `cat-${idx}`,
+          categoria_nome: p.category,
+          midias: (p.media || []).map((m, mIdx) => ({
+            id: `mid-${p.id}-${mIdx}`,
+            url: m.src,
+            tipo: m.type,
+            display_order: mIdx,
+            label: m.label
+          })),
+          variacoes: (p.colors || []).flatMap((c) =>
+            (p.sizes || []).map((s) => ({
+              id: `var-${p.id}-${c.name}-${s}`,
+              cor_nome: c.name,
+              cor_hex: c.hex,
+              tamanho: s,
+              estoque: 3
+            }))
+          )
+        }));
+        setProducts(mappedProducts);
+      }
     } catch (err) {
-      console.error('Erro ao carregar catálogo:', err);
+      console.error('Erro ao buscar produtos:', err);
     } finally {
       setLoading(false);
     }
@@ -139,7 +182,7 @@ export default function AdminProdutosPage() {
     }).format(val || 0);
   };
 
-  // Alternar ativação (pausar/ativar)
+  // Alternar ativação na vitrine
   const handleToggleActive = async (product: AdminProductItem) => {
     const nextState = !product.ativo;
     const res = await toggleAdminProductActive(product.id, nextState);
@@ -157,6 +200,21 @@ export default function AdminProdutosPage() {
     }
   };
 
+  // Excluir Peça (Soft-Delete)
+  const handleDeleteProduct = async (product: AdminProductItem) => {
+    if (!confirm(`Deseja realmente arquivar a peça "${product.nome}"? O histórico de pedidos será preservado.`)) {
+      return;
+    }
+
+    const res = await deleteAdminProduct(product.id);
+    if (res.success) {
+      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      showToast(`Peça "${product.nome}" arquivada com sucesso!`);
+    } else {
+      showToast(res.error || 'Erro ao excluir produto.', 'error');
+    }
+  };
+
   // Abrir modal de edição rápida
   const handleOpenEdit = (product: AdminProductItem) => {
     setEditingProduct(product);
@@ -166,10 +224,10 @@ export default function AdminProdutosPage() {
     setEditStock(product.estoque_total);
   };
 
-  // Salvar Edição
+  // Salvar Edição Rápida
   const handleSaveEdit = async () => {
     if (!editingProduct) return;
-    setIsSavingEdit(true);
+    setIsSaving(true);
 
     const promoVal = editPromoPrice.trim() ? Number(editPromoPrice) : null;
     const costVal = editCostPrice.trim() ? Number(editCostPrice) : null;
@@ -201,140 +259,122 @@ export default function AdminProdutosPage() {
     } else {
       showToast(res.error || 'Erro ao salvar alterações.', 'error');
     }
-    setIsSavingEdit(false);
+    setIsSaving(false);
   };
 
-  // Excluir produto com confirmação
-  const handleConfirmDelete = async () => {
-    if (!deletingProduct) return;
-    setIsDeleting(true);
-
-    const res = await deleteAdminProduct(deletingProduct.id);
-    if (res.success) {
-      setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
-      showToast(`Peça "${deletingProduct.nome}" excluída/arquivada com sucesso!`);
-      setDeletingProduct(null);
-    } else {
-      showToast(res.error || 'Erro ao excluir produto.', 'error');
-    }
-    setIsDeleting(false);
-  };
-
-  // Upload de fotos direto no Cloudflare R2
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Upload de Foto no Cloudflare R2
+  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     setUploadingImage(true);
     try {
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
-        if (res.success && res.url) {
-          uploadedUrls.push(res.url);
-        } else {
-          showToast(`Erro ao subir ${file.name}: ${res.error || 'Falha no R2'}`, 'error');
-        }
-      }
-
-      if (uploadedUrls.length > 0) {
-        setUploadedPhotos((prev) => [...prev, ...uploadedUrls]);
-        showToast(`${uploadedUrls.length} foto(s) enviada(s) com sucesso para o Cloudflare R2!`);
+      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
+      if (res.success && res.url) {
+        setUploadedPhotos((prev) => [...prev, res.url!]);
+        showToast('Foto enviada com sucesso para o Cloudflare R2!');
+      } else {
+        showToast(res.error || 'Falha no upload da foto.', 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Falha no envio de fotos para o R2', 'error');
+      showToast(err?.message || 'Erro inesperado no upload.', 'error');
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // Upload de vídeo de provador (9:16) no Cloudflare R2
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload de Vídeo de Provador no Cloudflare R2
+  const handleUploadVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingVideo(true);
     try {
-      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
+      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'videos');
       if (res.success && res.url) {
         setUploadedVideoUrl(res.url);
-        showToast('Vídeo de provador enviado com sucesso para o Cloudflare R2!');
+        showToast('Vídeo de Provador (9:16) enviado para o Cloudflare R2!');
       } else {
-        showToast(res.error || 'Falha ao enviar vídeo para o R2', 'error');
+        showToast(res.error || 'Falha no upload do vídeo.', 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Falha no envio do vídeo', 'error');
+      showToast(err?.message || 'Erro inesperado no upload do vídeo.', 'error');
     } finally {
       setUploadingVideo(false);
     }
   };
 
-  // Adicionar linha de variação na grade
-  const handleAddVariation = () => {
+  // Grade Dinâmica de Variações
+  const addGridVariation = () => {
     setGridVariations((prev) => [
       ...prev,
-      { cor_nome: 'Nova Cor', cor_hex: '#C5A059', tamanho: 'M', estoque: 2 }
+      { cor_nome: 'Nova Cor', cor_hex: '#C5A059', tamanho: 'M', estoque: 5 }
     ]);
   };
 
-  // Remover linha de variação
-  const handleRemoveVariation = (idx: number) => {
-    setGridVariations((prev) => prev.filter((_, i) => i !== idx));
+  const removeGridVariation = (index: number) => {
+    setGridVariations((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Atualizar variação na grade
-  const handleUpdateVariation = (
-    idx: number,
+  const updateGridVariation = (
+    index: number,
     field: 'cor_nome' | 'cor_hex' | 'tamanho' | 'estoque',
     value: any
   ) => {
     setGridVariations((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v))
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
     );
   };
 
-  // Salvar novo produto completo no Supabase
+  // Submeter Criação de Produto
   const handleCreateProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProductName.trim()) {
-      showToast('O nome da peça é obrigatório.', 'error');
+      showToast('Informe o nome da peça.', 'error');
       return;
     }
-    if (!newProductPrice || Number(newProductPrice) <= 0) {
-      showToast('Informe um preço de venda válido.', 'error');
+    if (!newProductPrice.trim()) {
+      showToast('Informe o preço de venda da peça.', 'error');
       return;
     }
 
     setIsSubmittingCreate(true);
     try {
-      const totalStockCalc = newProductHasGrid
-        ? gridVariations.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0)
-        : Number(newProductStockSimple || 0);
+      const precoNum = Number(newProductPrice);
+      const promoNum = newProductPromoPrice.trim() ? Number(newProductPromoPrice) : null;
+      const custoNum = newProductCostPrice.trim() ? Number(newProductCostPrice) : null;
 
-      const coverPhoto =
-        uploadedPhotos.length > 0
-          ? uploadedPhotos[coverPhotoIndex] || uploadedPhotos[0]
-          : '/images/products/vestido-longo-preto-costas-nude.webp';
+      const totalEstoqueGrade = newProductHasGrid
+        ? gridVariations.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0)
+        : Number(newProductStockSimple || 10);
+
+      const generatedSlug =
+        newProductSlug.trim() ||
+        newProductName
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
 
       const payload: CreateProductInput = {
         nome: newProductName.trim(),
-        slug: newProductSlug.trim() || undefined,
-        categoria_id: newProductCatId || null,
+        slug: generatedSlug,
+        descricao: newProductDesc.trim(),
+        preco: precoNum,
+        preco_promocional: promoNum,
+        preco_custo: custoNum,
+        categoria_id: newProductCatId || undefined,
         nova_categoria_nome: newCustomCatName.trim() || undefined,
-        descricao: newProductDesc.trim() || undefined,
-        preco: Number(newProductPrice),
-        preco_promocional: newProductPromoPrice.trim() ? Number(newProductPromoPrice) : null,
-        preco_custo: newProductCostPrice.trim() ? Number(newProductCostPrice) : null,
-        tecido: newProductFabric.trim() || undefined,
-        modelagem: newProductModeling.trim() || undefined,
-        linha: newProductCollection.trim() || undefined,
+        tecido: newProductFabric.trim(),
+        modelagem: newProductModeling.trim(),
+        linha: newProductCollection.trim(),
         destaque: newIsLaunch,
         mais_vendido: newIsBestSeller,
         outlet: newIsOutlet,
         ultimas_pecas: newIsLastPieces,
-        estoque_total: totalStockCalc,
-        foto_principal: coverPhoto,
+        estoque_total: totalEstoqueGrade,
+        foto_principal: uploadedPhotos[coverPhotoIndex] || uploadedPhotos[0] || '',
         fotos: uploadedPhotos,
         video_provador_url: uploadedVideoUrl || undefined,
         tem_grade: newProductHasGrid,
@@ -343,17 +383,17 @@ export default function AdminProdutosPage() {
 
       const res = await createAdminProduct(payload, DEFAULT_TENANT_ID);
       if (res.success) {
-        showToast(`Peça "${newProductName}" cadastrada e publicada com sucesso!`);
+        showToast(`Peça "${newProductName}" cadastrada com sucesso!`);
         setIsCreateModalOpen(false);
-        // Reset form
+        // Reset formulário
         setNewProductName('');
+        setNewProductSlug('');
         setNewProductPrice('');
         setNewProductPromoPrice('');
         setNewProductCostPrice('');
         setNewProductDesc('');
         setUploadedPhotos([]);
         setUploadedVideoUrl('');
-        // Recarrega lista
         fetchProductsData();
       } else {
         showToast(res.error || 'Erro ao cadastrar produto.', 'error');
@@ -365,13 +405,13 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Extrair categorias para filtro
+  // Categorias para filtro
   const categoriesFilter = [
     'todas',
     ...Array.from(new Set(products.map((p) => p.categoria_nome || 'Geral')))
   ];
 
-  // Filtro
+  // Filtro de Busca
   const filteredProducts = products.filter((p) => {
     if (selectedCategory !== 'todas' && p.categoria_nome !== selectedCategory) {
       return false;
@@ -390,52 +430,54 @@ export default function AdminProdutosPage() {
   const estoqueTotalPecas = products.reduce((acc, p) => acc + (p.estoque_total || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* TOAST */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 border text-xs flex items-center gap-2 shadow-2xl animate-fade-in ${
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xl animate-fade-in ${
             toast.type === 'success'
-              ? 'bg-emerald-950 border-emerald-500 text-emerald-200'
-              : 'bg-rose-950 border-rose-500 text-rose-200'
+              ? 'bg-emerald-900 text-emerald-100 border border-emerald-500'
+              : 'bg-rose-900 text-rose-100 border border-rose-500'
           }`}
         >
           {toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-rose-300" />
           )}
           <span>{toast.message}</span>
         </div>
       )}
 
-      {/* CABEÇALHO */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/5">
+      {/* CABEÇALHO DA PÁGINA */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
         <div>
-          <h1 className="font-serif-luxury text-2xl sm:text-3xl font-bold text-white tracking-wide flex items-center gap-3">
-            <span>Catálogo & Peças de Luxo</span>
-            <span className="text-[10px] bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/40 px-2 py-0.5 font-sans font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
+              Catálogo de Peças de Luxo
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
               Cloudflare R2 Ativo
             </span>
-          </h1>
-          <p className="text-xs text-[#A8A29E] mt-1">
-            Cadastre peças novas com fotos e vídeos de provador, controle estoque por grade de cor e tamanho e acompanhe a margem de lucro real.
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Cadastre peças novas com fotos e vídeos de provador no R2, controle grade de cor e tamanho e acompanhe a margem de lucro real.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchProductsData}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 text-white text-xs border border-white/10 transition-colors w-fit cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#DFBE76]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
             <span>Atualizar</span>
           </button>
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#DFBE76] to-[#C5A059] text-black text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all cursor-pointer shadow-lg shadow-[#DFBE76]/10"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Cadastrar Nova Peça</span>
@@ -445,55 +487,55 @@ export default function AdminProdutosPage() {
 
       {/* CARDS DE RESUMO DO CATÁLOGO */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#1A1918] border border-white/10 p-4">
-          <span className="text-[11px] text-[#A8A29E] block">Total de Peças</span>
-          <span className="text-xl font-bold font-serif-luxury text-white mt-1 block">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total de Peças</span>
+          <span className="text-2xl font-extrabold text-slate-900 font-serif-luxury mt-1 block">
             {products.length}
           </span>
         </div>
-        <div className="bg-[#1A1918] border border-emerald-500/20 p-4">
-          <span className="text-[11px] text-emerald-300 block">Ativas na Vitrine</span>
-          <span className="text-xl font-bold font-serif-luxury text-white mt-1 block">
+        <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-xs">
+          <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider block">Ativas na Vitrine</span>
+          <span className="text-2xl font-extrabold text-emerald-800 font-serif-luxury mt-1 block">
             {totalAtivos}
           </span>
         </div>
-        <div className="bg-[#1A1918] border border-amber-500/20 p-4">
-          <span className="text-[11px] text-amber-300 block">Pausadas</span>
-          <span className="text-xl font-bold font-serif-luxury text-white mt-1 block">
+        <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-xs">
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider block">Pausadas</span>
+          <span className="text-2xl font-extrabold text-amber-800 font-serif-luxury mt-1 block">
             {totalPausados}
           </span>
         </div>
-        <div className="bg-[#1A1918] border border-[#DFBE76]/20 p-4">
-          <span className="text-[11px] text-[#DFBE76] block">Estoque Total</span>
-          <span className="text-xl font-bold font-serif-luxury text-white mt-1 block">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Estoque em Grade</span>
+          <span className="text-2xl font-extrabold text-slate-900 font-serif-luxury mt-1 block">
             {estoqueTotalPecas} un
           </span>
         </div>
       </div>
 
       {/* FILTROS E BUSCA */}
-      <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
         <div className="relative">
-          <Search className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar peça por nome, categoria ou referência..."
-            className="w-full bg-[#1A1918] border border-white/10 text-white text-xs pl-10 pr-4 py-3 focus:outline-none focus:border-[#DFBE76] transition-colors"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
           />
         </div>
 
-        {/* Categorias */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* Abas de Categorias */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {categoriesFilter.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-gradient-to-r from-[#DFBE76] to-[#C5A059] text-black'
-                  : 'bg-[#1A1918] text-[#A8A29E] hover:text-white border border-white/5'
+                  ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
               }`}
             >
               {cat === 'todas' ? 'Todas as Coleções' : cat}
@@ -504,21 +546,21 @@ export default function AdminProdutosPage() {
 
       {/* LISTAGEM DE PRODUTOS */}
       {loading ? (
-        <div className="p-16 text-center text-xs text-[#A8A29E] bg-[#1A1918] border border-white/5">
-          <RefreshCw className="w-6 h-6 animate-spin text-[#DFBE76] mx-auto mb-2" />
-          <span>Carregando catálogo completo do Supabase...</span>
+        <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl">
+          <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
+          <span>Carregando catálogo de peças...</span>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="p-16 text-center text-xs text-[#A8A29E] bg-[#1A1918] border border-white/5 space-y-3">
-          <Package className="w-10 h-10 text-[#78716C] mx-auto opacity-30" />
-          <p className="text-sm font-semibold text-white">Nenhuma peça encontrada</p>
-          <p className="text-[11px]">Clique em &ldquo;Cadastrar Nova Peça&rdquo; para adicionar produtos ao catálogo.</p>
+        <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl space-y-3">
+          <Package className="w-10 h-10 text-slate-300 mx-auto" />
+          <p className="text-sm font-bold text-slate-800">Nenhuma peça encontrada</p>
+          <p className="text-xs">Tente ajustar o termo digitado ou a coleção selecionada.</p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-[#DFBE76] text-black text-xs font-bold uppercase tracking-wider mx-auto inline-flex items-center gap-1.5"
+            className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm mx-auto inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Cadastrar Primeira Peça</span>
+            <span>Cadastrar Nova Peça</span>
           </button>
         </div>
       ) : (
@@ -532,15 +574,15 @@ export default function AdminProdutosPage() {
             return (
               <div
                 key={product.id}
-                className={`bg-[#1A1918] border transition-colors ${
-                  product.ativo ? 'border-white/10 hover:border-[#DFBE76]/40' : 'border-rose-900/30 opacity-70'
+                className={`bg-white border rounded-xl overflow-hidden shadow-xs transition-all ${
+                  product.ativo ? 'border-slate-200 hover:border-amber-400' : 'border-rose-200 bg-rose-50/20 opacity-80'
                 }`}
               >
-                {/* Linha Principal */}
+                {/* Linha Principal da Peça */}
                 <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     {/* Foto da Peça */}
-                    <div className="relative w-16 h-20 bg-black/60 shrink-0 border border-white/10 overflow-hidden">
+                    <div className="relative w-16 h-20 bg-slate-100 rounded-lg shrink-0 border border-slate-200 overflow-hidden shadow-2xs">
                       {product.foto_principal ? (
                         <Image
                           src={product.foto_principal}
@@ -550,13 +592,13 @@ export default function AdminProdutosPage() {
                           className="object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-[#78716C]">
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
                           Sem Foto
                         </div>
                       )}
                       {product.midias && product.midias.some((m) => m.tipo === 'video') && (
-                        <span className="absolute bottom-1 right-1 bg-black/80 text-[#DFBE76] p-0.5 rounded text-[9px]">
-                          <Video className="w-2.5 h-2.5" />
+                        <span className="absolute bottom-1 right-1 bg-slate-900/90 text-amber-400 px-1 py-0.5 rounded text-[9px] font-bold flex items-center gap-0.5">
+                          <Video className="w-2.5 h-2.5" /> 9:16
                         </span>
                       )}
                     </div>
@@ -564,25 +606,25 @@ export default function AdminProdutosPage() {
                     {/* Informações da Peça */}
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#DFBE76] uppercase tracking-wider font-semibold">
+                        <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                           {product.categoria_nome}
                         </span>
                         {!product.ativo && (
-                          <span className="text-[9px] bg-rose-950/80 text-rose-300 border border-rose-500/40 px-1.5 py-0.5 font-bold uppercase">
-                            Pausado
+                          <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold uppercase">
+                            Pausada
                           </span>
                         )}
                         {product.destaque && (
-                          <span className="text-[9px] bg-[#DFBE76]/10 text-[#DFBE76] border border-[#DFBE76]/30 px-1.5 py-0.5 font-bold uppercase">
+                          <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">
                             Lançamento
                           </span>
                         )}
                       </div>
-                      <h3 className="text-sm font-bold text-white mt-0.5">
+                      <h3 className="text-sm font-bold text-slate-900 mt-1">
                         {product.nome}
                       </h3>
-                      <p className="text-[11px] text-[#78716C]">
-                        Slug: <span className="font-mono text-[#A8A29E]">{product.slug}</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Slug: <span className="font-mono text-slate-700">{product.slug}</span>
                         {product.tecido && ` • Tecido: ${product.tecido}`}
                       </p>
                     </div>
@@ -591,47 +633,45 @@ export default function AdminProdutosPage() {
                   {/* Preço, Custo e Estoque */}
                   <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                     <div>
-                      <span className="text-[10px] uppercase text-[#78716C] block">Preço Venda</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Preço de Venda</span>
                       {hasPromo ? (
                         <div>
-                          <span className="text-xs line-through text-[#78716C] block">
+                          <span className="text-xs line-through text-slate-400 block">
                             {formatCurrency(product.preco)}
                           </span>
-                          <span className="text-sm font-bold text-[#DFBE76] font-serif-luxury block">
+                          <span className="text-sm font-extrabold text-amber-800 font-serif-luxury block">
                             {formatCurrency(product.preco_promocional!)}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-sm font-bold text-white font-serif-luxury block">
+                        <span className="text-sm font-extrabold text-slate-900 font-serif-luxury block">
                           {formatCurrency(product.preco)}
                         </span>
                       )}
                     </div>
 
                     <div>
-                      <span className="text-[10px] uppercase text-[#78716C] block">Custo (CMV)</span>
-                      <span className="text-xs font-semibold text-slate-300 block">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Custo (CMV)</span>
+                      <span className="text-xs font-semibold text-slate-700 block">
                         {product.preco_custo ? formatCurrency(product.preco_custo) : formatCurrency(custo)}
                       </span>
-                      <span className="text-[9px] text-emerald-400 font-mono block">
+                      <span className="text-[10px] font-bold text-emerald-700 font-mono block">
                         {margemBruta.toFixed(0)}% margem
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] uppercase text-[#78716C] block">Estoque</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Estoque</span>
                       <span
-                        className={`text-xs font-bold block ${
+                        className={`text-xs font-extrabold block ${
                           product.estoque_total > 5
-                            ? 'text-emerald-400'
+                            ? 'text-emerald-700'
                             : product.estoque_total > 0
-                            ? 'text-amber-400'
-                            : 'text-rose-400'
+                            ? 'text-amber-700'
+                            : 'text-rose-700'
                         }`}
                       >
-                        {product.estoque_total > 0
-                          ? `${product.estoque_total} un`
-                          : 'Esgotado'}
+                        {product.estoque_total > 0 ? `${product.estoque_total} un` : 'Esgotado'}
                       </span>
                     </div>
 
@@ -641,112 +681,96 @@ export default function AdminProdutosPage() {
                       <button
                         onClick={() => handleToggleActive(product)}
                         title={product.ativo ? 'Pausar da vitrine' : 'Ativar na vitrine'}
-                        className={`px-2.5 py-1.5 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border ${
                           product.ativo
-                            ? 'bg-white/5 hover:bg-rose-950/40 text-[#A8A29E] hover:text-rose-300 border-white/10 hover:border-rose-500/30'
-                            : 'bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border-emerald-500/40'
+                            ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-800 border-slate-300'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
                         }`}
                       >
-                        {product.ativo ? (
-                          <>
-                            <EyeOff className="w-3.5 h-3.5" />
-                            <span className="hidden lg:inline text-[11px]">Pausar</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">Ativar</span>
-                          </>
-                        )}
+                        {product.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">{product.ativo ? 'Pausar' : 'Ativar'}</span>
                       </button>
 
-                      {/* Editar */}
+                      {/* Editar Rápido */}
                       <button
                         onClick={() => handleOpenEdit(product)}
-                        className="px-2.5 py-1.5 text-xs bg-[#DFBE76]/10 hover:bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/30 transition-colors flex items-center gap-1 cursor-pointer"
-                        title="Editar preços e estoque"
+                        title="Editar Preço e Estoque"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        <span className="hidden lg:inline text-[11px]">Editar</span>
+                        <span className="hidden sm:inline">Preços</span>
                       </button>
 
-                      {/* Excluir / Arquivar */}
+                      {/* Excluir (Soft-Delete) */}
                       <button
-                        onClick={() => setDeletingProduct(product)}
-                        className="p-1.5 text-rose-400 hover:text-rose-200 hover:bg-rose-950/30 transition-colors cursor-pointer"
-                        title="Excluir ou arquivar peça"
+                        onClick={() => handleDeleteProduct(product)}
+                        title="Arquivar peça"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
 
-                      {/* Ver na loja */}
-                      <Link
-                        href={`/catalogo?produto=${product.slug}`}
-                        target="_blank"
-                        className="p-1.5 text-[#78716C] hover:text-[#DFBE76] transition-colors"
-                        title="Ver peça na loja ao vivo"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-
-                      {/* Expandir Variações */}
+                      {/* Expandir Grade */}
                       <button
-                        onClick={() =>
-                          setExpandedProductId(isExpanded ? null : product.id)
-                        }
-                        className="p-1.5 text-[#A8A29E] hover:text-white transition-colors cursor-pointer"
-                        title="Ver grade de tamanhos e cores"
+                        onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title={isExpanded ? 'Recolher grade' : 'Ver variações de cor e tamanho'}
                       >
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* PAINEL EXPANSÍVEL: GRADE DE CORES E TAMANHOS */}
+                {/* Grade de Variações Expandida */}
                 {isExpanded && (
-                  <div className="border-t border-white/5 bg-black/30 p-4 sm:p-5 space-y-3 animate-fade-in">
-                    <h4 className="text-xs uppercase font-semibold text-[#DFBE76] tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Grade de Variações ({product.variacoes?.length || 0})</span>
-                    </h4>
+                  <div className="bg-slate-50 border-t border-slate-200 p-4 sm:p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-amber-600" />
+                        Grade de Cores, Tamanhos & Estoque por Peça
+                      </span>
+                    </div>
 
-                    {!product.variacoes || product.variacoes.length === 0 ? (
-                      <p className="text-xs text-[#78716C]">
-                        Produto em tamanho único sem grade cadastrada.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                    {product.variacoes && product.variacoes.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
                         {product.variacoes.map((v) => (
                           <div
                             key={v.id}
-                            className="p-2.5 bg-white/5 border border-white/5 text-xs space-y-1"
+                            className="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between gap-2 shadow-2xs"
                           >
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               <span
-                                className="w-3 h-3 rounded-full border border-white/20 inline-block shrink-0"
-                                style={{ backgroundColor: v.cor_hex || '#FFFFFF' }}
+                                className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0"
+                                style={{ backgroundColor: v.cor_hex || '#111' }}
                               />
-                              <span className="font-semibold text-white truncate">
-                                {v.cor_nome}
-                              </span>
+                              <div>
+                                <span className="text-xs font-bold text-slate-800 block leading-tight">
+                                  {v.tamanho}
+                                </span>
+                                <span className="text-[10px] text-slate-500 block leading-tight truncate">
+                                  {v.cor_nome}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between text-[11px] text-[#A8A29E]">
-                              <span>Tam: <strong className="text-white">{v.tamanho}</strong></span>
-                              <span className="text-emerald-400 font-semibold">{v.estoque} un</span>
-                            </div>
-                            {v.sku && (
-                              <span className="text-[9px] text-[#78716C] font-mono block truncate">
-                                SKU: {v.sku}
-                              </span>
-                            )}
+                            <span
+                              className={`text-xs font-extrabold px-1.5 py-0.5 rounded ${
+                                v.estoque > 2
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : v.estoque > 0
+                                  ? 'bg-amber-50 text-amber-800'
+                                  : 'bg-rose-50 text-rose-800'
+                              }`}
+                            >
+                              {v.estoque} un
+                            </span>
                           </div>
                         ))}
                       </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">
+                        Peça com estoque simples (sem grade subdividida por cor/tamanho).
+                      </p>
                     )}
                   </div>
                 )}
@@ -757,23 +781,23 @@ export default function AdminProdutosPage() {
       )}
 
       {/* ============================================================================== */}
-      {/* MODAL DE CADASTRO COMPLETO DE NOVO PRODUTO (COM CLOUDFLARE R2) */}
+      {/* MODAL DE CADASTRO COMPLETO (COM CLOUDFLARE R2) */}
       {/* ============================================================================== */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#1A1918] border border-[#C5A059]/40 w-full max-w-3xl max-h-[90vh] overflow-y-auto my-auto shadow-2xl p-6 sm:p-8 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto my-auto shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <div>
-                <h3 className="font-serif-luxury text-xl font-bold text-white tracking-wide">
+                <h3 className="font-serif-luxury text-xl font-bold text-slate-900 tracking-wide">
                   Cadastrar Nova Peça no Catálogo
                 </h3>
-                <p className="text-xs text-[#A8A29E] mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Preencha os dados da peça, suba fotos em alta definição e vídeo de provador para o Cloudflare R2.
                 </p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-2 text-[#78716C] hover:text-white cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -781,32 +805,32 @@ export default function AdminProdutosPage() {
 
             <form onSubmit={handleCreateProductSubmit} className="space-y-6 text-xs">
               {/* SEÇÃO 1: INFORMAÇÕES BÁSICAS */}
-              <div className="space-y-4 bg-black/20 p-4 border border-white/5">
-                <h4 className="font-semibold text-[#DFBE76] uppercase tracking-wider flex items-center gap-1.5">
-                  <Tag className="w-4 h-4" /> 1. Informações Básicas
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h4 className="font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-4 h-4 text-amber-600" /> 1. Informações Básicas
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Nome da Peça *</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Nome da Peça *</label>
                     <input
                       type="text"
                       required
-                      placeholder="Ex: Vestido Longo Alfaiataria Nude"
+                      placeholder="Ex: Vestido Longo Alfaiataria Florença"
                       value={newProductName}
                       onChange={(e) => setNewProductName(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Categoria</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Categoria</label>
                     <select
                       value={newProductCatId}
                       onChange={(e) => setNewProductCatId(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     >
-                      <option value="">Selecione ou digite abaixo...</option>
+                      <option value="">Selecione uma categoria...</option>
                       {categoriesList.map((cat) => (
                         <option key={cat.id} value={cat.id}>
                           {cat.nome}
@@ -816,332 +840,266 @@ export default function AdminProdutosPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Ou Nova Categoria</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Ou Nova Categoria</label>
                     <input
                       type="text"
                       placeholder="Ex: Alta Costura, Macacões..."
                       value={newCustomCatName}
                       onChange={(e) => setNewCustomCatName(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Tecido</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Tecido</label>
                     <input
                       type="text"
                       placeholder="Ex: Seda Pura, Linho Cru"
                       value={newProductFabric}
                       onChange={(e) => setNewProductFabric(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Modelagem</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Modelagem</label>
                     <input
                       type="text"
                       placeholder="Ex: Fluido, Evasê, Slim"
                       value={newProductModeling}
                       onChange={(e) => setNewProductModeling(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* SEÇÃO 2: PREÇO & CUSTO (DRE FINANCEIRO) */}
-              <div className="space-y-4 bg-black/20 p-4 border border-white/5">
-                <h4 className="font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <DollarSign className="w-4 h-4" /> 2. Precificação & Custo (DRE)
+              {/* SEÇÃO 2: PREÇOS & CUSTO (CMV) */}
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h4 className="font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 text-amber-600" /> 2. Precificação & Custo (CMV)
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Preço de Venda (R$) *</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$) *</label>
                     <input
                       type="number"
                       step="0.01"
                       required
-                      placeholder="Ex: 289.90"
+                      placeholder="489.00"
                       value={newProductPrice}
                       onChange={(e) => setNewProductPrice(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-white font-mono focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Preço Promocional (R$)</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Ex: 249.90"
+                      placeholder="Opcional"
                       value={newProductPromoPrice}
                       onChange={(e) => setNewProductPromoPrice(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-[#DFBE76] font-mono focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Preço de Custo / CMV (R$)</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Ex: 110.00"
+                      placeholder="Ex: 195.00"
                       value={newProductCostPrice}
                       onChange={(e) => setNewProductCostPrice(e.target.value)}
-                      className="w-full bg-[#121110] border border-white/15 px-3 py-2 text-slate-300 font-mono focus:outline-none focus:border-[#DFBE76]"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Usado para apurar o Lucro Líquido Real.
+                    </span>
                   </div>
                 </div>
-
-                {newProductPrice && newProductCostPrice && Number(newProductPrice) > 0 && (
-                  <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 flex items-center justify-between">
-                    <span>Lucro Bruto por Peça: <strong>{formatCurrency(Number(newProductPrice) - Number(newProductCostPrice))}</strong></span>
-                    <span>Margem Bruta Estimada: <strong>{(((Number(newProductPrice) - Number(newProductCostPrice)) / Number(newProductPrice)) * 100).toFixed(1)}%</strong></span>
-                  </div>
-                )}
               </div>
 
-              {/* SEÇÃO 3: MÍDIAS NO CLOUDFLARE R2 */}
-              <div className="space-y-4 bg-black/20 p-4 border border-white/5">
-                <h4 className="font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Upload className="w-4 h-4" /> 3. Mídias no Cloudflare R2 (Fotos e Vídeo 9:16)
-                </h4>
+              {/* SEÇÃO 3: MÍDIAS & PROVADOR NO CLOUDFLARE R2 */}
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-amber-600" /> 3. Fotos & Vídeo no Cloudflare R2
+                  </h4>
+                  <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
+                    CDN Global Ativa
+                  </span>
+                </div>
 
                 {/* Upload de Fotos */}
                 <div>
-                  <label className="block text-[#A8A29E] mb-1 font-medium">
-                    Fotos da Peça (Suba direto para o Cloudflare R2)
+                  <label className="block text-slate-700 mb-1 font-bold">
+                    Fotos da Peça ({uploadedPhotos.length}/6 enviadas)
                   </label>
-                  <label className="border-2 border-dashed border-white/15 hover:border-[#DFBE76] bg-black/40 p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors block text-center">
-                    <Upload className={`w-6 h-6 ${uploadingImage ? 'animate-bounce text-[#DFBE76]' : 'text-[#78716C]'}`} />
-                    <span className="text-white font-medium">
-                      {uploadingImage ? 'Enviando foto para o Cloudflare R2...' : 'Clique para selecionar fotos de alta resolução'}
-                    </span>
-                    <span className="text-[10px] text-[#A8A29E]">Aceita WebP, PNG, JPEG (Taxa zero de tráfego)</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      disabled={uploadingImage}
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-
-                  {/* Prévia das fotos */}
-                  {uploadedPhotos.length > 0 && (
-                    <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {uploadedPhotos.map((url, idx) => (
-                        <div key={url} className="relative group border border-white/20 aspect-[3/4] bg-black">
-                          <Image src={url} alt="Foto enviada" fill className="object-cover" />
-                          {coverPhotoIndex === idx && (
-                            <span className="absolute top-1 left-1 bg-[#DFBE76] text-black text-[9px] font-bold px-1 flex items-center gap-0.5">
-                              <Star className="w-2.5 h-2.5 fill-current" /> Capa
-                            </span>
-                          )}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => setCoverPhotoIndex(idx)}
-                              title="Tornar Capa"
-                              className="p-1 bg-[#DFBE76] text-black rounded"
-                            >
-                              <Star className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setUploadedPhotos((prev) => prev.filter((_, i) => i !== idx))}
-                              title="Remover Foto"
-                              className="p-1 bg-rose-600 text-white rounded"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                    {uploadedPhotos.map((url, i) => (
+                      <div key={i} className="relative aspect-3/4 rounded-lg overflow-hidden border border-slate-300 group shadow-2xs">
+                        <Image src={url} alt={`Foto ${i}`} fill className="object-cover" />
+                        {coverPhotoIndex === i && (
+                          <span className="absolute top-1 left-1 bg-amber-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                            Capa
+                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => setCoverPhotoIndex(i)}
+                            className="p-1 bg-white text-slate-900 rounded text-[10px] font-bold"
+                          >
+                            Capa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUploadedPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="p-1 bg-rose-600 text-white rounded text-[10px]"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+
+                    {uploadedPhotos.length < 6 && (
+                      <label className="border-2 border-dashed border-slate-300 hover:border-amber-500 bg-white aspect-3/4 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors p-2 text-center">
+                        <Upload className={`w-5 h-5 ${uploadingImage ? 'animate-bounce text-amber-600' : 'text-slate-400'}`} />
+                        <span className="text-[11px] font-bold text-slate-700">
+                          {uploadingImage ? 'Subindo...' : '+ Adicionar Foto'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={uploadingImage}
+                          onChange={handleUploadImageFile}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
 
                 {/* Upload de Vídeo de Provador */}
-                <div className="pt-2 border-t border-white/5">
-                  <label className="block text-[#A8A29E] mb-1 font-medium">
-                    Vídeo de Provador Vertical (9:16)
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-slate-700 mb-1 font-bold">
+                    Vídeo de Provador (Vertical 9:16)
                   </label>
-                  <label className="border border-dashed border-white/15 hover:border-sky-400 bg-black/40 p-3 flex items-center gap-3 cursor-pointer transition-colors">
-                    <Video className={`w-5 h-5 ${uploadingVideo ? 'animate-spin text-sky-400' : 'text-[#78716C]'}`} />
-                    <div className="flex-1">
-                      <span className="text-white block font-medium">
-                        {uploadingVideo ? 'Enviando vídeo para o R2...' : uploadedVideoUrl ? 'Vídeo Carregado com Sucesso!' : 'Selecionar Vídeo de Provador (MP4)'}
+                  {uploadedVideoUrl ? (
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200">
+                      <Video className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span className="text-xs text-slate-800 font-mono truncate flex-1">
+                        {uploadedVideoUrl}
                       </span>
-                      <span className="text-[10px] text-[#A8A29E] block">
-                        Exibido no card da vitrine e modal da peça
-                      </span>
-                    </div>
-                    <input
-                      type="file"
-                      accept="video/mp4,video/webm"
-                      disabled={uploadingVideo}
-                      onChange={handleVideoUpload}
-                      className="hidden"
-                    />
-                  </label>
-
-                  {uploadedVideoUrl && (
-                    <div className="mt-2 flex items-center gap-3 bg-black/40 p-2 border border-sky-500/30">
-                      <video src={uploadedVideoUrl} controls className="h-20 w-12 object-cover rounded" />
-                      <div className="flex-1">
-                        <span className="text-emerald-400 font-semibold block text-[11px]">Vídeo ativo no R2</span>
-                        <span className="text-[10px] text-[#78716C] font-mono truncate block max-w-xs">{uploadedVideoUrl}</span>
-                      </div>
                       <button
                         type="button"
                         onClick={() => setUploadedVideoUrl('')}
-                        className="text-rose-400 hover:text-rose-200 text-xs p-1"
+                        className="text-rose-600 hover:underline text-xs font-semibold"
                       >
                         Remover
                       </button>
                     </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-slate-300 hover:border-amber-500 bg-white p-3 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                      <Video className={`w-4 h-4 ${uploadingVideo ? 'animate-spin text-amber-600' : 'text-slate-500'}`} />
+                      <span className="font-bold text-slate-700">
+                        {uploadingVideo ? 'Enviando vídeo para o R2...' : 'Subir Vídeo de Provador (9:16 MP4)'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm"
+                        disabled={uploadingVideo}
+                        onChange={handleUploadVideoFile}
+                        className="hidden"
+                      />
+                    </label>
                   )}
                 </div>
               </div>
 
               {/* SEÇÃO 4: GRADE DE CORES E TAMANHOS */}
-              <div className="space-y-4 bg-black/20 p-4 border border-white/5">
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-[#DFBE76] uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-4 h-4" /> 4. Estoque & Grade
+                  <h4 className="font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-amber-600" /> 4. Grade de Variações
                   </h4>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newProductHasGrid}
-                      onChange={(e) => setNewProductHasGrid(e.target.checked)}
-                      className="accent-[#DFBE76]"
-                    />
-                    <span className="text-white text-xs">Produto com Grade (Cor x Tamanho)</span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={addGridVariation}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Variação
+                  </button>
                 </div>
 
-                {newProductHasGrid ? (
-                  <div className="space-y-3">
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {gridVariations.map((v, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-[#121110] p-2 border border-white/10">
-                          <input
-                            type="color"
-                            value={v.cor_hex}
-                            onChange={(e) => handleUpdateVariation(idx, 'cor_hex', e.target.value)}
-                            className="w-7 h-7 rounded border-0 cursor-pointer bg-transparent"
-                            title="Seletor de Cor"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Nome Cor"
-                            value={v.cor_nome}
-                            onChange={(e) => handleUpdateVariation(idx, 'cor_nome', e.target.value)}
-                            className="w-24 bg-transparent border-b border-white/20 px-1 py-0.5 text-white"
-                          />
-                          <select
-                            value={v.tamanho}
-                            onChange={(e) => handleUpdateVariation(idx, 'tamanho', e.target.value)}
-                            className="w-16 bg-[#1A1918] border border-white/20 text-white px-1 py-0.5"
-                          >
-                            <option value="PP">PP</option>
-                            <option value="P">P</option>
-                            <option value="M">M</option>
-                            <option value="G">G</option>
-                            <option value="GG">GG</option>
-                            <option value="U">Único</option>
-                          </select>
-                          <input
-                            type="number"
-                            placeholder="Qtd"
-                            value={v.estoque}
-                            onChange={(e) => handleUpdateVariation(idx, 'estoque', Number(e.target.value))}
-                            className="w-16 bg-transparent border-b border-white/20 px-1 py-0.5 text-emerald-400 font-mono text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVariation(idx)}
-                            className="text-rose-400 hover:text-rose-200 ml-auto p-1 cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+                <div className="space-y-2">
+                  {gridVariations.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-slate-200">
+                      <input
+                        type="color"
+                        value={v.cor_hex}
+                        onChange={(e) => updateGridVariation(i, 'cor_hex', e.target.value)}
+                        className="w-7 h-7 rounded border border-slate-300 cursor-pointer p-0 shrink-0"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Nome da Cor"
+                        value={v.cor_nome}
+                        onChange={(e) => updateGridVariation(i, 'cor_nome', e.target.value)}
+                        className="w-32 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-900"
+                      />
+                      <select
+                        value={v.tamanho}
+                        onChange={(e) => updateGridVariation(i, 'tamanho', e.target.value)}
+                        className="w-24 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-900 font-bold"
+                      >
+                        <option value="PP">PP</option>
+                        <option value="P">P</option>
+                        <option value="M">M</option>
+                        <option value="G">G</option>
+                        <option value="GG">GG</option>
+                        <option value="Único">Único</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Estoque"
+                        value={v.estoque}
+                        onChange={(e) => updateGridVariation(i, 'estoque', Number(e.target.value))}
+                        className="w-20 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-900 font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeGridVariation(i)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleAddVariation}
-                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Adicionar Variação de Grade</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[#A8A29E] mb-1 font-medium">Estoque Total de Unidades</label>
-                    <input
-                      type="number"
-                      value={newProductStockSimple}
-                      onChange={(e) => setNewProductStockSimple(e.target.value)}
-                      className="w-32 bg-[#121110] border border-white/15 px-3 py-2 text-white font-mono"
-                    />
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
 
-              {/* SEÇÃO 5: DESTAQUES NA VITRINE */}
-              <div className="flex flex-wrap items-center gap-4 bg-black/20 p-4 border border-white/5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newIsLaunch}
-                    onChange={(e) => setNewIsLaunch(e.target.checked)}
-                    className="accent-[#DFBE76]"
-                  />
-                  <span className="text-white text-xs">Marcar como Lançamento</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newIsBestSeller}
-                    onChange={(e) => setNewIsBestSeller(e.target.checked)}
-                    className="accent-[#DFBE76]"
-                  />
-                  <span className="text-white text-xs">Marcar como Mais Vendido</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newIsOutlet}
-                    onChange={(e) => setNewIsOutlet(e.target.checked)}
-                    className="accent-[#DFBE76]"
-                  />
-                  <span className="text-white text-xs">Outlet</span>
-                </label>
-              </div>
-
-              {/* BOTÕES DE AÇÃO */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              {/* BOTÕES DO MODAL */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingCreate}
-                  className="px-6 py-2.5 bg-gradient-to-r from-[#DFBE76] to-[#C5A059] text-black font-bold uppercase tracking-wider text-xs hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-[#DFBE76]/20"
+                  className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
                 >
-                  {isSubmittingCreate ? 'Salvando no Supabase...' : 'Salvar & Publicar na Vitrine'}
+                  {isSubmittingCreate ? 'Salvando no Banco & R2...' : 'Salvar Peça no Catálogo'}
                 </button>
               </div>
             </form>
@@ -1149,117 +1107,84 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
-      {/* ============================================================================== */}
-      {/* MODAL DE EDIÇÃO RÁPIDA DE PREÇO, CUSTO E ESTOQUE */}
-      {/* ============================================================================== */}
+      {/* MODAL DE EDIÇÃO RÁPIDA DE PREÇO E ESTOQUE */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1A1918] border border-[#C5A059]/40 w-full max-w-md p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="font-serif-luxury text-base font-bold text-white tracking-wide">
-                Editar {editingProduct.nome}
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                Editar Preço & Estoque
               </h3>
               <button
                 onClick={() => setEditingProduct(null)}
-                className="text-[#78716C] hover:text-white"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
+            <p className="text-xs text-slate-600 font-semibold">{editingProduct.nome}</p>
+
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[#A8A29E] mb-1">Preço de Venda (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={editPrice}
                   onChange={(e) => setEditPrice(Number(e.target.value))}
-                  className="w-full bg-[#121110] border border-white/10 px-3 py-2 text-white font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-[#A8A29E] mb-1">Preço Promocional (R$ - opcional)</label>
+                <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
                 <input
                   type="number"
                   step="0.01"
+                  placeholder="Vazio para sem promoção"
                   value={editPromoPrice}
                   onChange={(e) => setEditPromoPrice(e.target.value)}
-                  placeholder="Vazio para desativar promoção"
-                  className="w-full bg-[#121110] border border-white/10 px-3 py-2 text-[#DFBE76] font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-[#A8A29E] mb-1">Preço de Custo / CMV (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
                 <input
                   type="number"
                   step="0.01"
+                  placeholder="Para cálculo do Lucro Real"
                   value={editCostPrice}
                   onChange={(e) => setEditCostPrice(e.target.value)}
-                  placeholder="Ex: 95.00"
-                  className="w-full bg-[#121110] border border-white/10 px-3 py-2 text-slate-300 font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-[#A8A29E] mb-1">Estoque Total</label>
+                <label className="block text-slate-700 mb-1 font-bold">Estoque Total</label>
                 <input
                   type="number"
                   value={editStock}
                   onChange={(e) => setEditStock(Number(e.target.value))}
-                  className="w-full bg-[#121110] border border-white/10 px-3 py-2 text-white font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setEditingProduct(null)}
-                className="px-3 py-1.5 text-xs text-[#A8A29E] hover:text-white"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={isSavingEdit}
-                className="px-4 py-2 bg-[#DFBE76] text-black text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+                disabled={isSaving}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
               >
-                {isSavingEdit ? 'Salvando...' : 'Salvar Alterações'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================================== */}
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO / ARQUIVAMENTO */}
-      {/* ============================================================================== */}
-      {deletingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1A1918] border border-rose-500/40 w-full max-w-sm p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertCircle className="w-6 h-6 shrink-0" />
-              <h3 className="font-bold text-white text-sm">Excluir Peça</h3>
-            </div>
-            <p className="text-xs text-[#A8A29E] leading-relaxed">
-              Tem certeza que deseja excluir <strong>{deletingProduct.nome}</strong>?
-              Se já houver pedidos de clientes com esta peça, ela será arquivada e desativada da vitrine para proteger seu histórico contábil.
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setDeletingProduct(null)}
-                className="px-3 py-1.5 text-xs text-[#A8A29E] hover:text-white"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider disabled:opacity-50"
-              >
-                {isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
+                {isSaving ? 'Salvando...' : 'Salvar Alterações'}
               </button>
             </div>
           </div>

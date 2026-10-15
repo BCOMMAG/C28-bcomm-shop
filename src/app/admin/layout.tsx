@@ -15,11 +15,11 @@ import {
   X,
   Store,
   ChevronRight,
-  ShieldCheck,
-  Bell,
+  ArrowLeft,
   Sparkles,
   DollarSign,
-  Users
+  Users,
+  CheckCircle2
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -78,10 +78,10 @@ export default function AdminLayout({
   // Enquanto valida a autenticação
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[#DFBE76] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs uppercase tracking-widest text-[#DFBE76] font-medium">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 bg-white p-8 rounded-2xl shadow-xl">
+          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs uppercase tracking-widest text-slate-700 font-bold">
             Carregando Painel Administrativo...
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function AdminLayout({
       icon: Package
     },
     {
-      title: 'Financeiro & Lucro',
+      title: 'Finanças & Lucro Real',
       href: '/admin/financas/',
       icon: DollarSign,
       badge: 'DRE'
@@ -146,238 +146,220 @@ export default function AdminLayout({
     }
   ];
 
+  // Identifica a página atual para breadcrumb
+  const currentNav = navItems.find((item) =>
+    item.exact ? pathname === item.href : pathname?.startsWith(item.href)
+  );
+
+  const isRootAdmin = pathname === '/admin/' || pathname === '/admin';
+
   return (
-    <div className="min-h-screen bg-[#121110] text-[#FAF8F5] flex flex-col md:flex-row antialiased">
-      {/* SIDEBAR DESKTOP */}
-      <aside className="hidden md:flex w-72 flex-col bg-[#1A1918] border-r border-[#C5A059]/20 shrink-0">
-        {/* Topo da Marca */}
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative h-10 w-14 shrink-0 overflow-hidden flex items-center justify-start">
-              <Image
-                src="/images/Logo sem fundo.png"
-                alt="Leidy Boutique"
-                width={2752}
-                height={1536}
-                style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
-              />
-            </div>
-            <div>
-              <span className="font-serif-luxury text-base font-bold tracking-wide text-white block">
-                {lojaNome}
-              </span>
-              <span className="text-[10px] tracking-widest text-[#DFBE76] uppercase block font-semibold">
-                Painel do Lojista
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Multi-Tenant da Loja */}
-        <div className="px-6 py-4 border-b border-white/5 bg-black/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-medium text-emerald-300">Loja Ativa & Online</span>
-            </div>
-            <span className="text-[10px] bg-[#DFBE76]/15 text-[#DFBE76] border border-[#DFBE76]/30 px-2 py-0.5 rounded-none font-bold">
-              TENANT #1
-            </span>
-          </div>
-        </div>
-
-        {/* Menu de Navegação */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center justify-between px-3.5 py-3 rounded-none text-xs font-medium transition-all ${
-                  isActive
-                    ? 'bg-gradient-to-r from-[#DFBE76]/20 to-[#DFBE76]/5 text-white border-l-2 border-[#DFBE76] shadow-sm'
-                    : 'text-[#A8A29E] hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 ${
-                      isActive ? 'text-[#DFBE76]' : 'text-[#78716C]'
-                    }`}
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
+      {/* HEADER PRINCIPAL FIXO */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        {/* LINHA 1: MARCA, TENANT, VITRINE E LOGOUT */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 gap-4">
+            {/* LADO ESQUERDO: LOGO E TENANT */}
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Link href="/admin/" className="flex items-center gap-3 group">
+                <div className="relative h-9 w-12 shrink-0 overflow-hidden flex items-center justify-center bg-slate-900 rounded-lg p-1 shadow-sm">
+                  <Image
+                    src="/images/Logo sem fundo.png"
+                    alt="Leidy Boutique"
+                    width={2752}
+                    height={1536}
+                    style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
                   />
-                  <span>{item.title}</span>
                 </div>
-                {item.badge && (
-                  <span
-                    className={`text-[9px] uppercase px-1.5 py-0.5 font-bold tracking-wider ${
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif-luxury text-base sm:text-lg font-bold tracking-tight text-slate-900 group-hover:text-amber-700 transition-colors">
+                      {lojaNome}
+                    </span>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Loja Online
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-600 font-semibold uppercase tracking-wider block">
+                    Gestão &bull; Tenant #1
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+            {/* LADO DIREITO: AÇÕES GLOBAIS */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Botão Abrir Vitrine */}
+              <Link
+                href={`/?loja=${lojaSlug}`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-all shadow-sm"
+                title="Abre a vitrine pública da Leidy Boutique em nova aba"
+              >
+                <Store className="w-4 h-4 text-amber-600" />
+                <span className="hidden md:inline">Abrir Vitrine da Loja</span>
+                <span className="md:hidden">Vitrine</span>
+                <ExternalLink className="w-3 h-3 text-amber-600/70" />
+              </Link>
+
+              <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
+
+              {/* Perfil Admin */}
+              <div className="hidden lg:flex items-center gap-2.5 pl-1">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-300 font-bold text-xs flex items-center justify-center shadow-sm">
+                  LB
+                </div>
+                <div className="text-left text-xs leading-tight">
+                  <span className="font-semibold text-slate-800 block">Leidy Admin</span>
+                  <span className="text-[10px] text-slate-600 block">admin@leidyboutique.com.br</span>
+                </div>
+              </div>
+
+              {/* Botão Sair */}
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-sm"
+                title="Encerrar sessão no painel"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sair</span>
+              </button>
+
+              {/* Botão Menu Mobile */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                aria-label="Menu"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* LINHA 2: BARRA DE NAVEGAÇÃO PRINCIPAL (ABAS HORIZONTAIS DESKTOP) */}
+        <div className="hidden md:block bg-slate-50 border-t border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-none">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.exact
+                  ? pathname === item.href
+                  : pathname?.startsWith(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-[#DFBE76] text-black'
-                        : 'bg-white/10 text-[#A8A29E]'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold text-amber-800'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                     }`}
                   >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Rodapé da Sidebar */}
-        <div className="p-4 border-t border-white/5 space-y-2 bg-black/30">
-          <Link
-            href={`/?loja=${lojaSlug}`}
-            target="_blank"
-            className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-[#A8A29E] hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <Store className="w-4 h-4 text-[#DFBE76]" />
-              <span>Ver Minha Loja Ao Vivo</span>
-            </div>
-            <ExternalLink className="w-3.5 h-3.5 text-[#78716C]" />
-          </Link>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-950/20 transition-colors text-left cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sair do Painel</span>
-          </button>
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isActive ? 'text-amber-600' : 'text-slate-400'
+                      }`}
+                    />
+                    <span>{item.title}</span>
+                    {item.badge && (
+                      <span
+                        className={`text-[9px] uppercase px-1.5 py-0.2 rounded-full font-bold tracking-wider ${
+                          isActive
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
         </div>
-      </aside>
-
-      {/* ÁREA PRINCIPAL */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER SUPERIOR */}
-        <header className="h-16 bg-[#1A1918]/80 backdrop-blur-md border-b border-[#C5A059]/20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            {/* Botão Mobile */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-[#FAF8F5] hover:text-[#DFBE76]"
-              aria-label="Abrir menu"
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-
-            <div className="hidden sm:flex items-center gap-2 text-xs text-[#78716C]">
-              <span>Plataforma SaaS</span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-[#FAF8F5] font-medium">{lojaNome}</span>
-            </div>
-          </div>
-
-          {/* Ações do Header */}
-          <div className="flex items-center gap-3">
-            <Link
-              href={`/?loja=${lojaSlug}`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white/5 hover:bg-[#DFBE76]/20 text-[#DFBE76] border border-[#DFBE76]/40 transition-colors"
-              title="Abrir a vitrine da loja em nova aba"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Abrir Vitrine</span>
-              <ExternalLink className="w-3 h-3 opacity-60" />
-            </Link>
-
-            <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
-
-            {/* Perfil */}
-            <div className="flex items-center gap-2.5 pl-1">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#A9833E] to-[#DFBE76] flex items-center justify-center font-bold text-xs text-black shadow-md">
-                LB
-              </div>
-              <div className="hidden md:block text-left">
-                <span className="block text-xs font-semibold text-white leading-tight">
-                  Leidy Admin
-                </span>
-                <span className="block text-[10px] text-[#A8A29E] leading-tight">
-                  admin@leidyboutique.com.br
-                </span>
-              </div>
-            </div>
-
-            {/* Botão Sair Destacado */}
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-950/40 hover:bg-rose-950/80 text-rose-300 border border-rose-500/40 transition-colors cursor-pointer"
-              title="Encerrar sessão com segurança"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
-        </header>
 
         {/* MENU MOBILE EXPANSÍVEL */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#1A1918] border-b border-[#C5A059]/20 px-4 py-4 space-y-2">
+          <div className="md:hidden bg-white border-t border-slate-200 px-4 py-3 space-y-1 shadow-lg">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.exact
                 ? pathname === item.href
-                : pathname.startsWith(item.href);
+                : pathname?.startsWith(item.href);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 text-xs font-medium ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold ${
                     isActive
-                      ? 'bg-[#DFBE76]/20 text-[#DFBE76] border-l-2 border-[#DFBE76]'
-                      : 'text-[#A8A29E] hover:text-white'
+                      ? 'bg-amber-50 text-amber-800 font-bold border border-amber-200'
+                      : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4" />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-amber-600' : 'text-slate-400'}`} />
                     <span>{item.title}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[9px] uppercase px-1.5 py-0.5 bg-white/10 font-bold">
+                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                       {item.badge}
                     </span>
                   )}
                 </Link>
               );
             })}
-
-            <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
-              <Link
-                href={`/?loja=${lojaSlug}`}
-                target="_blank"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2 text-xs text-[#DFBE76] py-2"
-              >
-                <Store className="w-4 h-4" />
-                <span>Ver Minha Loja Ao Vivo</span>
-                <ExternalLink className="w-3.5 h-3.5 ml-auto text-[#78716C]" />
-              </Link>
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="flex items-center gap-2 text-xs text-rose-300 py-2 text-left cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sair do Painel</span>
-              </button>
-            </div>
           </div>
         )}
+      </header>
 
-        {/* CONTEÚDO DA PÁGINA */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
-          {children}
-        </main>
-      </div>
+      {/* LINHA 3: BREADCRUMB E BOTÃO DE VOLTAR */}
+      {!isRootAdmin && (
+        <div className="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <Link
+              href="/admin/"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shadow-2xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar ao Painel Geral</span>
+            </Link>
+
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Link href="/admin/" className="hover:text-slate-800">
+                Dashboard
+              </Link>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <span className="font-semibold text-slate-800">
+                {currentNav?.title || 'Seção'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTEÚDO PRINCIPAL COM FUNDO CLARO */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        {children}
+      </main>
+
+      {/* RODAPÉ DO PAINEL */}
+      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-600">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>
+            Plataforma BCOMM SaaS &bull; Gestão Exclusiva para <strong className="text-slate-800">{lojaNome}</strong>
+          </span>
+          <span className="text-[11px] text-slate-600">
+            Armazenamento em Nuvem Cloudflare R2 &bull; Multi-Tenant Isolado
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }

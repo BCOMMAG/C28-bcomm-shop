@@ -100,7 +100,7 @@ export async function uploadToR2({
 export async function uploadBrowserFileToR2(
   file: File,
   tenantSlug: string = 'leidy-boutique',
-  folder: 'produtos' | 'banners' | 'logos' = 'produtos'
+  folder: 'produtos' | 'banners' | 'logos' | 'videos' = 'produtos'
 ): Promise<{ success: boolean; url: string; error?: string }> {
   try {
     const arrayBuffer = await file.arrayBuffer();
