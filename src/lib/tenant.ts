@@ -88,3 +88,47 @@ export async function getTenantByHost(host: string): Promise<Loja> {
   // Fallback seguro: Leidy Boutique
   return DEFAULT_LEIDY_TENANT;
 }
+
+/**
+ * Resolve a loja pelo slug único (ex: 'aura-privee' via ?loja=aura-privee)
+ */
+export async function getTenantBySlug(slug: string): Promise<Loja> {
+  const cleanSlug = slug.trim().toLowerCase();
+  if (!cleanSlug || cleanSlug === 'leidy-boutique') {
+    return DEFAULT_LEIDY_TENANT;
+  }
+
+  const cached = tenantCache.get(`slug:${cleanSlug}`);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.loja;
+  }
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return DEFAULT_LEIDY_TENANT;
+    }
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/lojas?slug=eq.${encodeURIComponent(cleanSlug)}&ativo=eq.true&select=*`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+    });
+
+    if (res.ok) {
+      const data: Loja[] = await res.json();
+      if (data && data.length > 0) {
+        tenantCache.set(`slug:${cleanSlug}`, { loja: data[0], expiresAt: Date.now() + CACHE_TTL_MS });
+        return data[0];
+      }
+    }
+  } catch (error) {
+    console.warn(`Erro ao resolver tenant para o slug ${cleanSlug}:`, error);
+  }
+
+  return DEFAULT_LEIDY_TENANT;
+}
+

@@ -5,8 +5,11 @@ import { Product, CartItem } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
+import { Loja } from '@/types/database';
+import { getTenantBySlug, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 
 interface StoreContextType {
+  currentTenant: Loja;
   products: Product[];
   isLoadingProducts: boolean;
   refreshProducts: () => Promise<void>;
@@ -58,6 +61,7 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentTenant, setCurrentTenant] = useState<Loja>(DEFAULT_LEIDY_TENANT);
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -73,11 +77,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
 
-  // Carrega produtos dinâmicos do Supabase na inicialização
+  // Carrega produtos dinâmicos do Supabase na inicialização com suporte a ?loja=slug
   const refreshProducts = async () => {
     setIsLoadingProducts(true);
     try {
-      const dynamicProds = await getStoreProducts();
+      let tenant = DEFAULT_LEIDY_TENANT;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const slugParam = urlParams.get('loja');
+        if (slugParam) {
+          tenant = await getTenantBySlug(slugParam);
+          setCurrentTenant(tenant);
+        }
+      }
+      const dynamicProds = await getStoreProducts(tenant.id);
       if (dynamicProds && dynamicProds.length > 0) {
         setProducts(dynamicProds);
       }
@@ -384,6 +397,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
+        currentTenant,
         products,
         isLoadingProducts,
         refreshProducts,
