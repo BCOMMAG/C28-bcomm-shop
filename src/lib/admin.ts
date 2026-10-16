@@ -12,6 +12,7 @@ export interface DashboardStats {
   totalLeads: number;
   totalProdutos: number;
   pedidosRecentes: CustomerOrder[];
+  receitaPorDia: Array<{ label: string; primaryValue: number }>;
 }
 
 export interface AdminProductItem {
@@ -170,9 +171,8 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
       total: Number(p.total || 0)
     }));
 
-    const faturamentoTotal = ordersList
-      .filter((o) => o.status !== 'cancelado')
-      .reduce((acc, o) => acc + Number(o.total || 0), 0);
+    const pedidosValidos = ordersList.filter((o) => o.status !== 'cancelado');
+    const faturamentoTotal = pedidosValidos.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
     const totalPedidos = ordersList.length;
     const pedidosPendentes = ordersList.filter(
@@ -180,7 +180,8 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
     ).length;
     const pedidosEnviados = ordersList.filter((o) => o.status === 'enviado').length;
     const pedidosEntregues = ordersList.filter((o) => o.status === 'entregue').length;
-    const ticketMedio = totalPedidos > 0 ? faturamentoTotal / totalPedidos : 0;
+    const ticketMedio = pedidosValidos.length > 0 ? faturamentoTotal / pedidosValidos.length : 0;
+
 
     // 2. Consulta de Leads / Clientes
     const { count: leadsCount } = await supabase
@@ -194,6 +195,29 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
       .select('*', { count: 'exact', head: true })
       .eq('loja_id', lojaId);
 
+    // Agrupamento diário da receita a partir dos mesmos pedidosValidos do faturamento
+    const dayMap: Record<string, { label: string; total: number }> = {};
+    pedidosValidos.forEach((o) => {
+      const d = o.created_at ? new Date(o.created_at) : new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const isoKey = `${year}-${month}-${day}`;
+      const label = `${day}/${month}`;
+
+      if (!dayMap[isoKey]) {
+        dayMap[isoKey] = { label, total: 0 };
+      }
+      dayMap[isoKey].total += Number(o.total || 0);
+    });
+
+    const receitaPorDia = Object.keys(dayMap)
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => ({
+        label: dayMap[key].label,
+        primaryValue: dayMap[key].total
+      }));
+
     return {
       faturamentoTotal,
       totalPedidos,
@@ -203,7 +227,8 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
       ticketMedio,
       totalLeads: leadsCount || 0,
       totalProdutos: produtosCount || 0,
-      pedidosRecentes: ordersList.slice(0, 6)
+      pedidosRecentes: ordersList.slice(0, 6),
+      receitaPorDia
     };
   } catch (err) {
     console.error('❌ [Supabase] Erro ao carregar métricas do dashboard:', err);
@@ -216,7 +241,8 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
       ticketMedio: 0,
       totalLeads: 0,
       totalProdutos: 0,
-      pedidosRecentes: []
+      pedidosRecentes: [],
+      receitaPorDia: []
     };
   }
 }

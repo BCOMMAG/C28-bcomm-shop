@@ -22,6 +22,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminLayout({
   children
@@ -30,10 +31,11 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { currentTenant } = useStore();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [lojaNome, setLojaNome] = useState('Leidy Boutique');
-  const [lojaSlug, setLojaSlug] = useState('leidy-boutique');
+  const lojaNome = currentTenant?.nome || 'Painel da Loja';
+  const lojaSlug = currentTenant?.slug || '';
 
   const cleanPath = (pathname || '').replace(/\/$/, '');
   const isLoginPage = cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login');
@@ -104,7 +106,13 @@ export default function AdminLayout({
     router.push('/admin/login/');
   };
 
-  const navItems = [
+  const navItems: Array<{
+    title: string;
+    href: string;
+    icon: any;
+    exact?: boolean;
+    badge?: string;
+  }> = [
     {
       title: 'Visão Geral',
       href: '/admin/',
@@ -114,19 +122,17 @@ export default function AdminLayout({
     {
       title: 'Central de Pedidos',
       href: '/admin/pedidos/',
-      icon: ShoppingBag,
-      badge: 'Ao Vivo'
+      icon: ShoppingBag
     },
     {
-      title: 'Catálogo de Peças',
+      title: 'Catálogo de Produtos',
       href: '/admin/produtos/',
       icon: Package
     },
     {
       title: 'Finanças & Lucro Real',
       href: '/admin/financas/',
-      icon: DollarSign,
-      badge: 'DRE'
+      icon: DollarSign
     },
     {
       title: 'Vitrine & Banners',
@@ -141,8 +147,7 @@ export default function AdminLayout({
     {
       title: 'Loja de Módulos',
       href: '/admin/modulos/',
-      icon: Layers,
-      badge: 'SaaS'
+      icon: Layers
     }
   ];
 
@@ -161,44 +166,38 @@ export default function AdminLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
             {/* LADO ESQUERDO: LOGO E TENANT */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <Link href="/admin/" className="flex items-center gap-3 group">
+            <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+              <Link href="/admin/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
                 <div className="relative h-9 w-12 shrink-0 overflow-hidden flex items-center justify-center bg-slate-900 rounded-lg p-1 shadow-sm">
                   <Image
                     src="/images/Logo sem fundo.png"
-                    alt="Leidy Boutique"
+                    alt={lojaNome}
                     width={2752}
                     height={1536}
                     style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
                   />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-serif-luxury text-base sm:text-lg font-bold tracking-tight text-slate-900 group-hover:text-amber-700 transition-colors">
-                      {lojaNome}
-                    </span>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Loja Online
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-600 font-semibold uppercase tracking-wider block">
-                    Gestão &bull; Tenant #1
+                <div className="min-w-0">
+                  <span className="font-serif-luxury text-base sm:text-lg font-bold tracking-tight text-slate-900 group-hover:text-amber-700 transition-colors truncate whitespace-nowrap block">
+                    {lojaNome}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider hidden sm:block">
+                    Painel Administrativo
                   </span>
                 </div>
               </Link>
             </div>
 
             {/* LADO DIREITO: AÇÕES GLOBAIS */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* Botão Abrir Vitrine */}
               <Link
                 href={`/?loja=${lojaSlug}`}
                 target="_blank"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-all shadow-sm"
-                title="Abre a vitrine pública da Leidy Boutique em nova aba"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-all shadow-sm shrink-0"
+                title="Abre a vitrine pública da loja em nova aba"
               >
-                <Store className="w-4 h-4 text-amber-600" />
+                <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
                 <span className="hidden md:inline">Abrir Vitrine da Loja</span>
                 <span className="md:hidden">Vitrine</span>
                 <ExternalLink className="w-3 h-3 text-amber-600/70" />
@@ -209,11 +208,11 @@ export default function AdminLayout({
               {/* Perfil Admin */}
               <div className="hidden lg:flex items-center gap-2.5 pl-1">
                 <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-300 font-bold text-xs flex items-center justify-center shadow-sm">
-                  LB
+                  {lojaNome.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-left text-xs leading-tight">
-                  <span className="font-semibold text-slate-800 block">Leidy Admin</span>
-                  <span className="text-[10px] text-slate-600 block">admin@leidyboutique.com.br</span>
+                  <span className="font-semibold text-slate-800 block">Administrador</span>
+                  <span className="text-[10px] text-slate-500 block truncate max-w-[140px]">{lojaNome}</span>
                 </div>
               </div>
 
@@ -345,18 +344,15 @@ export default function AdminLayout({
       )}
 
       {/* CONTEÚDO PRINCIPAL COM FUNDO CLARO */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         {children}
       </main>
 
       {/* RODAPÉ DO PAINEL */}
-      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-600">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="bg-white border-t border-slate-200 py-3.5 text-center text-xs text-slate-500 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center">
           <span>
-            Plataforma BCOMM SaaS &bull; Gestão Exclusiva para <strong className="text-slate-800">{lojaNome}</strong>
-          </span>
-          <span className="text-[11px] text-slate-600">
-            Armazenamento em Nuvem Cloudflare R2 &bull; Multi-Tenant Isolado
+            Plataforma BCOMM &bull; Gestão da loja <strong className="text-slate-700">{lojaNome}</strong>
           </span>
         </div>
       </footer>
