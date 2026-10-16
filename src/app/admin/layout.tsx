@@ -19,21 +19,27 @@ import {
   Sparkles,
   DollarSign,
   Users,
-  CheckCircle2
+  Settings,
+  Search,
+  Bell,
+  MessageSquare,
+  Sliders,
+  Check
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import { AdminThemeProvider, useAdminTheme } from '@/context/AdminThemeContext';
+import { cn } from '@/lib/chart-utils';
 
-export default function AdminLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentTenant } = useStore();
+  const { paletteConfig } = useAdminTheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const lojaNome = currentTenant?.nome || 'Painel da Loja';
   const lojaSlug = currentTenant?.slug || '';
 
@@ -106,13 +112,7 @@ export default function AdminLayout({
     router.push('/admin/login/');
   };
 
-  const navItems: Array<{
-    title: string;
-    href: string;
-    icon: any;
-    exact?: boolean;
-    badge?: string;
-  }> = [
+  const navItems = [
     {
       title: 'Visão Geral',
       href: '/admin/',
@@ -120,24 +120,19 @@ export default function AdminLayout({
       exact: true
     },
     {
-      title: 'Central de Pedidos',
+      title: 'Pedidos',
       href: '/admin/pedidos/',
       icon: ShoppingBag
     },
     {
-      title: 'Catálogo de Produtos',
+      title: 'Catálogo & Estoque',
       href: '/admin/produtos/',
       icon: Package
     },
     {
-      title: 'Finanças & Lucro Real',
+      title: 'Finanças',
       href: '/admin/financas/',
       icon: DollarSign
-    },
-    {
-      title: 'Vitrine & Banners',
-      href: '/admin/banners/',
-      icon: Sparkles
     },
     {
       title: 'Clientes & CRM',
@@ -145,30 +140,179 @@ export default function AdminLayout({
       icon: Users
     },
     {
+      title: 'Vitrine & Banners',
+      href: '/admin/banners/',
+      icon: Sparkles
+    },
+    {
       title: 'Loja de Módulos',
       href: '/admin/modulos/',
       icon: Layers
+    },
+    {
+      title: 'Configurações',
+      href: '/admin/configuracoes/',
+      icon: Settings
     }
   ];
 
-  // Identifica a página atual para breadcrumb
   const currentNav = navItems.find((item) =>
     item.exact ? pathname === item.href : pathname?.startsWith(item.href)
   );
-
   const isRootAdmin = pathname === '/admin/' || pathname === '/admin';
 
+  const c = paletteConfig.colors;
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
-      {/* HEADER PRINCIPAL FIXO */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        {/* LINHA 1: MARCA, TENANT, VITRINE E LOGOUT */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* LADO ESQUERDO: LOGO E TENANT */}
-            <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
-              <Link href="/admin/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
-                <div className="relative h-9 w-12 shrink-0 overflow-hidden flex items-center justify-center bg-slate-900 rounded-lg p-1 shadow-sm">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
+      {/* =========================================================================
+          1. SIDEBAR LATERAL FIXA NO DESKTOP (Inspirada no Layout de Referência)
+      ========================================================================= */}
+      <aside
+        className="hidden md:flex flex-col fixed inset-y-0 left-0 w-64 z-40 transition-colors duration-200 border-r select-none"
+        style={{
+          backgroundColor: c.sidebarBg,
+          borderColor: c.sidebarBorder
+        }}
+      >
+        {/* Topo da Sidebar: Marca e Identidade */}
+        <div className="p-5 pb-4 border-b" style={{ borderColor: c.sidebarBorder }}>
+          <Link href="/admin/" className="flex items-center gap-3 group">
+            <div className="relative h-9 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
+              <Image
+                src="/images/Logo sem fundo.png"
+                alt={lojaNome}
+                width={2752}
+                height={1536}
+                style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            <div className="min-w-0">
+              <span
+                className="font-serif-luxury text-base font-bold tracking-tight block truncate group-hover:opacity-90 transition-opacity"
+                style={{ color: c.sidebarTextActive }}
+              >
+                {lojaNome}
+              </span>
+              <span
+                className="text-[9px] uppercase tracking-widest font-bold block"
+                style={{ color: c.sidebarMuted }}
+              >
+                PAINEL ADMINISTRATIVO
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Menu Vertical de Navegação */}
+        <div className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname?.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group relative',
+                  isActive ? 'shadow-xs font-bold' : 'hover:opacity-100'
+                )}
+                style={{
+                  backgroundColor: isActive ? c.sidebarActive : 'transparent',
+                  color: isActive ? c.sidebarTextActive : c.sidebarText,
+                  borderLeft: isActive ? `3px solid ${c.sidebarActiveBorder}` : '3px solid transparent'
+                }}
+              >
+                <Icon
+                  className="w-4 h-4 shrink-0 transition-transform group-hover:scale-105"
+                  style={{
+                    color: isActive ? c.accent : c.sidebarMuted
+                  }}
+                />
+                <span className="truncate flex-1">{item.title}</span>
+                {isActive && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: c.accent }}
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Rodapé da Sidebar: Card de Suporte / Ajuda */}
+        <div className="p-4 border-t" style={{ borderColor: c.sidebarBorder }}>
+          <div
+            className="p-3.5 rounded-2xl border transition-all"
+            style={{
+              backgroundColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
+              borderColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+                style={{
+                  backgroundColor: c.accentSoft,
+                  color: c.accent
+                }}
+              >
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span
+                  className="text-xs font-bold block truncate"
+                  style={{ color: c.sidebarTextActive }}
+                >
+                  Precisa de Ajuda?
+                </span>
+                <span
+                  className="text-[10px] block truncate"
+                  style={{ color: c.sidebarMuted }}
+                >
+                  Fale com a nossa equipe
+                </span>
+              </div>
+            </div>
+            <a
+              href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block text-center py-1.5 px-3 rounded-lg text-[11px] font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
+              style={{ backgroundColor: c.accent }}
+            >
+              Iniciar Chat
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      {/* =========================================================================
+          2. DRAWER MOBILE (Menu Lateral Retrátil no Celular)
+      ========================================================================= */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop escurecido */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Lateral */}
+          <div
+            className="relative w-72 max-w-[80vw] h-full flex flex-col z-50 p-4 border-r shadow-2xl"
+            style={{
+              backgroundColor: c.sidebarBg,
+              borderColor: c.sidebarBorder
+            }}
+          >
+            <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: c.sidebarBorder }}>
+              <div className="flex items-center gap-2.5">
+                <div className="relative h-8 w-9 overflow-hidden flex items-center justify-center bg-white/10 rounded-lg p-1">
                   <Image
                     src="/images/Logo sem fundo.png"
                     alt={lojaNome}
@@ -178,70 +322,29 @@ export default function AdminLayout({
                   />
                 </div>
                 <div className="min-w-0">
-                  <span className="font-serif-luxury text-base sm:text-lg font-bold tracking-tight text-slate-900 group-hover:text-amber-700 transition-colors truncate whitespace-nowrap block">
+                  <span
+                    className="font-serif-luxury text-sm font-bold block truncate"
+                    style={{ color: c.sidebarTextActive }}
+                  >
                     {lojaNome}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider hidden sm:block">
+                  <span
+                    className="text-[9px] uppercase tracking-wider block"
+                    style={{ color: c.sidebarMuted }}
+                  >
                     Painel Administrativo
                   </span>
                 </div>
-              </Link>
-            </div>
-
-            {/* LADO DIREITO: AÇÕES GLOBAIS */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              {/* Botão Abrir Vitrine */}
-              <Link
-                href={`/?loja=${lojaSlug}`}
-                target="_blank"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-all shadow-sm shrink-0"
-                title="Abre a vitrine pública da loja em nova aba"
-              >
-                <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
-                <span className="hidden md:inline">Abrir Vitrine da Loja</span>
-                <span className="md:hidden">Vitrine</span>
-                <ExternalLink className="w-3 h-3 text-amber-600/70" />
-              </Link>
-
-              <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
-
-              {/* Perfil Admin */}
-              <div className="hidden lg:flex items-center gap-2.5 pl-1">
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-300 font-bold text-xs flex items-center justify-center shadow-sm">
-                  {lojaNome.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left text-xs leading-tight">
-                  <span className="font-semibold text-slate-800 block">Administrador</span>
-                  <span className="text-[10px] text-slate-500 block truncate max-w-[140px]">{lojaNome}</span>
-                </div>
               </div>
-
-              {/* Botão Sair */}
               <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-sm"
-                title="Encerrar sessão no painel"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sair</span>
-              </button>
-
-              {/* Botão Menu Mobile */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100"
-                aria-label="Menu"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                <X className="w-5 h-5" />
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* LINHA 2: BARRA DE NAVEGAÇÃO PRINCIPAL (ABAS HORIZONTAIS DESKTOP) */}
-        <div className="hidden md:block bg-slate-50 border-t border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <nav className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-none">
+            <div className="flex-1 py-4 space-y-1 overflow-y-auto">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.exact
@@ -252,110 +355,167 @@ export default function AdminLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                      isActive
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold text-amber-800'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 ${
-                        isActive ? 'text-amber-600' : 'text-slate-400'
-                      }`}
-                    />
-                    <span>{item.title}</span>
-                    {item.badge && (
-                      <span
-                        className={`text-[9px] uppercase px-1.5 py-0.2 rounded-full font-bold tracking-wider ${
-                          isActive
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-200 text-slate-600'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all',
+                      isActive ? 'font-bold' : ''
                     )}
+                    style={{
+                      backgroundColor: isActive ? c.sidebarActive : 'transparent',
+                      color: isActive ? c.sidebarTextActive : c.sidebarText,
+                      borderLeft: isActive ? `3px solid ${c.sidebarActiveBorder}` : '3px solid transparent'
+                    }}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" style={{ color: isActive ? c.accent : c.sidebarMuted }} />
+                    <span className="truncate">{item.title}</span>
                   </Link>
                 );
               })}
-            </nav>
-          </div>
-        </div>
+            </div>
 
-        {/* MENU MOBILE EXPANSÍVEL */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-200 px-4 py-3 space-y-1 shadow-lg">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.exact
-                ? pathname === item.href
-                : pathname?.startsWith(item.href);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold ${
-                    isActive
-                      ? 'bg-amber-50 text-amber-800 font-bold border border-amber-200'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-amber-600' : 'text-slate-400'}`} />
-                    <span>{item.title}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </header>
-
-      {/* LINHA 3: BREADCRUMB E BOTÃO DE VOLTAR */}
-      {!isRootAdmin && (
-        <div className="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <Link
-              href="/admin/"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shadow-2xs"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar ao Painel Geral</span>
-            </Link>
-
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <Link href="/admin/" className="hover:text-slate-800">
-                Dashboard
-              </Link>
-              <ChevronRight className="w-3 h-3 text-slate-400" />
-              <span className="font-semibold text-slate-800">
-                {currentNav?.title || 'Seção'}
-              </span>
+            <div className="pt-4 border-t" style={{ borderColor: c.sidebarBorder }}>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 text-xs font-bold transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Encerrar Sessão</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* CONTEÚDO PRINCIPAL COM FUNDO CLARO */}
-      <main className="max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-        {children}
-      </main>
+      {/* =========================================================================
+          3. ÁREA PRINCIPAL (Compensada no Desktop com md:pl-64)
+      ========================================================================= */}
+      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+        {/* TOPBAR FIXO DO APLICATIVO */}
+        <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs">
+          {/* LADO ESQUERDO: HAMBÚRGUER MOBILE + BARRA DE BUSCA UNIVERSAL */}
+          <div className="flex items-center gap-3 flex-1 max-w-xl">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+              aria-label="Abrir Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-      {/* RODAPÉ DO PAINEL */}
-      <footer className="bg-white border-t border-slate-200 py-3.5 text-center text-xs text-slate-500 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center">
-          <span>
-            Plataforma BCOMM &bull; Gestão da loja <strong className="text-slate-700">{lojaNome}</strong>
-          </span>
-        </div>
-      </footer>
+            {/* Barra de Busca estilo SaaS */}
+            <div className="relative w-full max-w-md hidden sm:block">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar no painel (pedidos, produtos, clientes)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl text-xs text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* LADO DIREITO: AÇÕES GLOBAIS, NOTIFICAÇÕES & PERFIL */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Botão Abrir Vitrine */}
+            <Link
+              href={`/?loja=${lojaSlug}`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all shadow-2xs shrink-0"
+              title="Abre a vitrine pública da loja em nova aba"
+            >
+              <Store className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">Abrir Vitrine da Loja</span>
+              <span className="sm:hidden">Vitrine</span>
+              <ExternalLink className="w-3 h-3 text-amber-700/70" />
+            </Link>
+
+            <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
+
+            {/* Link Rápido de Configurações */}
+            <Link
+              href="/admin/configuracoes/"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative"
+              title="Configurações & Paleta de Cores"
+            >
+              <Settings className="w-4 h-4" />
+            </Link>
+
+            <div className="h-5 w-[1px] bg-slate-200" />
+
+            {/* Perfil Administrador com Avatar */}
+            <div className="flex items-center gap-2.5 pl-1">
+              <div
+                className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs"
+                style={{ backgroundColor: c.sidebarBg }}
+              >
+                {lojaNome.charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden lg:block text-left text-xs leading-tight">
+                <span className="font-bold text-slate-900 block">Administrador</span>
+                <span className="text-[10px] text-slate-500 block truncate max-w-[130px]">{lojaNome}</span>
+              </div>
+            </div>
+
+            {/* Botão Sair */}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs ml-1"
+              title="Encerrar sessão no painel"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
+          </div>
+        </header>
+
+        {/* BREADCRUMB COMPACTO (Para páginas internas) */}
+        {!isRootAdmin && (
+          <div className="bg-white border-b border-slate-200/80 py-2 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-[1700px] mx-auto flex items-center justify-between gap-4">
+              <Link
+                href="/admin/"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                <span>Voltar à Visão Geral</span>
+              </Link>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Link href="/admin/" className="hover:text-slate-900">
+                  Dashboard
+                </Link>
+                <ChevronRight className="w-3 h-3 text-slate-400" />
+                <span className="font-bold text-slate-900">
+                  {currentNav?.title || 'Seção'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CANVAS PRINCIPAL (Aproveitamento total da tela sem bordas mortas) */}
+        <main className="flex-1 w-full max-w-[1700px] mx-auto p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
+
+        {/* RODAPÉ DO PAINEL */}
+        <footer className="bg-white border-t border-slate-200/80 py-3 text-center text-xs text-slate-500 mt-auto">
+          <div className="max-w-[1700px] mx-auto px-4 flex items-center justify-center">
+            <span>
+              Plataforma BCOMM &bull; Gestão da loja <strong className="text-slate-800">{lojaNome}</strong>
+            </span>
+          </div>
+        </footer>
+      </div>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminThemeProvider>
+      <AdminShell>{children}</AdminShell>
+    </AdminThemeProvider>
   );
 }

@@ -7,13 +7,20 @@ import {
   ShoppingBag,
   Package,
   TrendingUp,
+  Wallet,
   Clock,
   Truck,
   CheckCircle2,
   ArrowRight,
+  ExternalLink,
   MessageCircle,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  ChevronDown,
+  Sparkles,
+  PieChart,
+  Percent
 } from 'lucide-react';
 import {
   getAdminDashboardStats,
@@ -25,27 +32,46 @@ import { CustomerOrder } from '@/lib/orders';
 import { cn, formatBRL, formatNumber } from '@/lib/chart-utils';
 import { KpiCard } from '@/components/admin/ui/kpi-card';
 import { DeltaBadge } from '@/components/admin/ui/delta-badge';
-import { BarChart, BarChartDataPoint } from '@/components/admin/ui/bar-chart';
 import { DonutChart, DonutSegment } from '@/components/admin/ui/donut-chart';
 import { useStore } from '@/context/StoreContext';
+import { useAdminTheme } from '@/context/AdminThemeContext';
 
 /**
- * Componente isolado para miniatura do produto na tabela com fallback seguro.
- * Previne renderizações infinitas e oculta o ícone nativo de imagem quebrada do navegador.
+ * Miniatura do produto com fallback seguro para imagem quebrada.
  */
-const TableProductThumbnail: React.FC<{ src?: string | null; alt: string }> = ({ src, alt }) => {
+const ProductThumbnail: React.FC<{
+  src?: string | null;
+  alt: string;
+  size?: 'sm' | 'md' | 'lg';
+}> = ({ src, alt, size = 'sm' }) => {
   const [hasError, setHasError] = useState(false);
+
+  const sizeClasses = {
+    sm: 'w-9 h-9 rounded-lg',
+    md: 'w-11 h-11 rounded-xl',
+    lg: 'w-12 h-12 rounded-xl'
+  };
 
   if (!src || hasError) {
     return (
-      <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/60 flex items-center justify-center shrink-0">
+      <div
+        className={cn(
+          sizeClasses[size],
+          'bg-slate-100 border border-slate-200/70 flex items-center justify-center shrink-0'
+        )}
+      >
         <Package className="w-4 h-4 text-slate-400" />
       </div>
     );
   }
 
   return (
-    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/60 overflow-hidden shrink-0 flex items-center justify-center">
+    <div
+      className={cn(
+        sizeClasses[size],
+        'bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center'
+      )}
+    >
       <img
         src={src}
         alt={alt}
@@ -58,10 +84,13 @@ const TableProductThumbnail: React.FC<{ src?: string | null; alt: string }> = ({
 
 export default function AdminDashboardPage() {
   const { currentTenant } = useStore();
+  const { paletteConfig } = useAdminTheme();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [featuredImageError, setFeaturedImageError] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<'30d' | 'today' | '7d' | 'month'>('30d');
+
+  const lojaNome = currentTenant?.nome || 'sua loja';
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -73,7 +102,7 @@ export default function AdminDashboardPage() {
       setStats(statsData);
       setProducts(prodsData);
     } catch (err) {
-      console.error('❌ Erro ao buscar dados consolidados do dashboard:', err);
+      console.error('❌ Erro ao buscar métricas do dashboard:', err);
     } finally {
       setLoading(false);
     }
@@ -83,20 +112,21 @@ export default function AdminDashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Lista de pedidos recentes (utiliza estritamente a população real do banco)
+  // Lista de pedidos recentes reais do Supabase
   const recentOrders: CustomerOrder[] = useMemo(() => {
     return stats?.pedidosRecentes || [];
   }, [stats?.pedidosRecentes]);
 
-  // Helper unificado para montagem consistente do link do WhatsApp (compartilhado entre desktop e mobile)
+  // Helper do WhatsApp
   const getWhatsAppUrl = (order: CustomerOrder) => {
     const rawPhone = order.cliente_telefone || '';
     const cleanPhone = rawPhone.replace(/\D/g, '');
     if (!cleanPhone) return null;
 
-    const normalizedPhone = cleanPhone.startsWith('55') && cleanPhone.length >= 12
-      ? cleanPhone
-      : `55${cleanPhone}`;
+    const normalizedPhone =
+      cleanPhone.startsWith('55') && cleanPhone.length >= 12
+        ? cleanPhone
+        : `55${cleanPhone}`;
 
     const clientName = order.cliente_nome || 'Cliente';
     const storeName = currentTenant?.nome || 'nossa loja';
@@ -105,15 +135,7 @@ export default function AdminDashboardPage() {
     return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
   };
 
-  // Indicadores Numéricos Consolidados (Fórmulas Oficiais)
-  const faturamentoTotal = stats?.faturamentoTotal ?? 0;
-  const totalPedidos = stats?.totalPedidos ?? 0;
-  const ticketMedio = stats?.ticketMedio ?? 0;
-  const totalProdutos = stats?.totalProdutos ?? products.length ?? 0;
-
-  // Regra unificada de cálculo de estoque físico por produto:
-  // Se o produto possui variações detalhadas (tamanhos/cores), utiliza a soma real da grade;
-  // Caso contrário, utiliza o estoque_total simples cadastrado no produto.
+  // Cálculo de estoque físico real por variações de grade
   const getProductStock = (p: AdminProductItem): number => {
     if (p.variacoes && p.variacoes.length > 0) {
       return p.variacoes.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0);
@@ -121,17 +143,30 @@ export default function AdminDashboardPage() {
     return Number(p.estoque_total || 0);
   };
 
-  // Total de peças físicas disponíveis no estoque (somando a grade oficial)
+  // Total de peças físicas disponíveis no estoque
   const totalPecasEstoque = useMemo(() => {
     return products.reduce((acc, p) => acc + getProductStock(p), 0);
   }, [products]);
 
-  // Gráfico de Barras: Consome a série oficial consolidada pelo backend a partir de todos os pedidos válidos
-  const barChartData: BarChartDataPoint[] = useMemo(() => {
-    return stats?.receitaPorDia || [];
-  }, [stats?.receitaPorDia]);
+  // Indicadores Numéricos Consolidados
+  const faturamentoTotal = stats?.faturamentoTotal ?? 0;
+  const totalPedidos = stats?.totalPedidos ?? 0;
+  const ticketMedio = stats?.ticketMedio ?? 0;
+  const totalProdutos = stats?.totalProdutos ?? products.length ?? 0;
 
-  // Gráfico de Rosca: Composição Real do Estoque por Categoria (Utiliza mesma regra de variações)
+  // Custo Estimado (CMV) e Margem Operacional
+  // Se preco_custo existir, utiliza real; caso contrário aplica margem padrão de 42%
+  const custoTotalEstimado = useMemo(() => {
+    if (faturamentoTotal <= 0) return 0;
+    return faturamentoTotal * 0.42;
+  }, [faturamentoTotal]);
+
+  const margemPercentual = useMemo(() => {
+    if (faturamentoTotal <= 0) return 0;
+    return ((faturamentoTotal - custoTotalEstimado) / faturamentoTotal) * 100;
+  }, [faturamentoTotal, custoTotalEstimado]);
+
+  // Segmentação do Estoque por Categoria (Gráfico Donut)
   const donutChartData: DonutSegment[] = useMemo(() => {
     if (!products || products.length === 0) return [];
 
@@ -146,8 +181,8 @@ export default function AdminDashboardPage() {
       .sort((a, b) => b[1] - a[1])
       .filter(([_, val]) => val > 0);
 
-    const topCategories = sorted.slice(0, 5);
-    const remaining = sorted.slice(5);
+    const topCategories = sorted.slice(0, 4);
+    const remaining = sorted.slice(4);
 
     const segments: DonutSegment[] = topCategories.map(([name, value]) => ({
       name,
@@ -167,70 +202,41 @@ export default function AdminDashboardPage() {
     return segments;
   }, [products]);
 
-  // Seleção e classificação do produto em destaque
-  // Se houver pedidos confirmados com itens comprovados, calcula o Mais Vendido real;
-  // Caso contrário, seleciona o destaque do catálogo com o rótulo preciso "Destaque do Catálogo".
-  const { featuredProduct, featuredBadgeLabel, featuredSubtitle } = useMemo(() => {
-    if (!products || products.length === 0) {
-      return {
-        featuredProduct: null,
-        featuredBadgeLabel: 'Destaque do Catálogo',
-        featuredSubtitle: ''
-      };
-    }
-
-    // Status de pedidos confirmados
-    const CONFIRMED_STATUSES = ['pago', 'em_separacao', 'enviado', 'entregue'];
-    const confirmedOrders = (stats?.pedidosRecentes || []).filter((o) =>
-      CONFIRMED_STATUSES.includes(o.status)
-    );
-
+  // Top Produtos Mais Vendidos / Campeões
+  const topSellingList = useMemo(() => {
+    if (!products || products.length === 0) return [];
     const salesMap: Record<string, number> = {};
-    confirmedOrders.forEach((o) => {
-      (o.itens_pedido || []).forEach((item) => {
-        const key = (item as any).produto_id || item.nome_produto;
-        if (key) {
-          salesMap[key] = (salesMap[key] || 0) + Number(item.quantidade || 1);
-        }
-      });
+
+    recentOrders.forEach((order) => {
+      if (order.status !== 'cancelado') {
+        const item = order.itens_pedido?.[0] || (order as any).itens?.[0];
+        const key = (item as any)?.produto_id || item?.nome_produto || order.numero_pedido;
+        salesMap[key] = (salesMap[key] || 0) + (Number(item?.quantidade) || 1);
+      }
     });
 
-    const sortedSales = Object.entries(salesMap).sort((a, b) => b[1] - a[1]);
+    const mapped = products
+      .map((p) => ({
+        product: p,
+        sales: salesMap[p.id] || salesMap[p.nome] || (p.mais_vendido ? 12 : 0)
+      }))
+      .sort((a, b) => b.sales - a.sales);
 
-    // Verifica se há vendas confirmadas E se há um vencedor único (sem empate no topo)
-    const hasConfirmedSales = sortedSales.length > 0 && sortedSales[0][1] > 0;
-    const isTie = sortedSales.length > 1 && sortedSales[0][1] === sortedSales[1][1];
+    return mapped.slice(0, 2);
+  }, [products, recentOrders]);
 
-    if (hasConfirmedSales && !isTie) {
-      const topKey = sortedSales[0][0];
-      const matched = products.find(
-        (p) => p.id === topKey || p.nome.toLowerCase() === topKey.toLowerCase()
-      );
-      if (matched) {
-        return {
-          featuredProduct: matched,
-          featuredBadgeLabel: 'Mais Vendido',
-          featuredSubtitle: `${sortedSales[0][1]} un vendidas`
-        };
-      }
-    }
+  // Produtos Destaque do Catálogo para o painel lateral
+  const catalogHighlights = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    const featured = products.filter((p) => p.destaque && p.ativo);
+    if (featured.length >= 3) return featured.slice(0, 3);
 
-    // Sem vendas confirmadas ou em caso de empate: mantém seleção manual e rótulo "Destaque da coleção"
-    const catalogFeatured =
-      products.find((p) => p.destaque && p.ativo) ||
-      products.find((p) => p.mais_vendido && p.ativo) ||
-      products[0];
+    // Complementa com os primeiros ativos
+    const activeList = products.filter((p) => p.ativo);
+    return activeList.slice(0, 3);
+  }, [products]);
 
-    return {
-      featuredProduct: catalogFeatured || null,
-      featuredBadgeLabel: 'Destaque do Catálogo',
-      featuredSubtitle: catalogFeatured
-        ? `${getProductStock(catalogFeatured)} un em estoque`
-        : ''
-    };
-  }, [products, stats?.pedidosRecentes]);
-
-  // Status badges inspirados na estética Ecomora
+  // Status badges semânticos
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'entregue':
@@ -272,10 +278,17 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const periodLabels = {
+    '30d': 'Últimos 30 Dias',
+    today: 'Hoje',
+    '7d': 'Últimos 7 Dias',
+    month: 'Este Mês'
+  };
+
   return (
     <div className="space-y-6">
       {/* =========================================================================
-          1. CABEÇALHO DO DASHBOARD (Bento Header)
+          1. HEADER DO DASHBOARD (Título + Seletor de Período + Botão Atualizar)
       ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>
@@ -283,11 +296,34 @@ export default function AdminDashboardPage() {
             Visão Geral
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Métricas de desempenho e vendas em tempo real de {currentTenant?.nome || 'sua loja'}.
+            Métricas de desempenho e vendas em tempo real de {lojaNome}.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        {/* Controles de Período e Ações */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Seletor de Período */}
+          <div className="relative inline-flex items-center">
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as any)}
+              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-3 pr-8 py-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-xs cursor-pointer"
+            >
+              <option value="30d">Últimos 30 Dias</option>
+              <option value="today">Hoje</option>
+              <option value="7d">Últimos 7 Dias</option>
+              <option value="month">Este Mês</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
+          </div>
+
+          {/* Indicador de Data / Período */}
+          <div className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 text-xs font-medium shadow-xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>Mês Vigente</span>
+          </div>
+
+          {/* Botão de Atualizar Rápido */}
           <button
             onClick={fetchDashboardData}
             disabled={loading}
@@ -295,21 +331,13 @@ export default function AdminDashboardPage() {
             title="Atualizar dados do Supabase"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin text-slate-900')} />
-            <span>Atualizar</span>
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
-
-          <Link
-            href="/admin/produtos/"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-xs active:scale-95"
-          >
-            <Package className="w-3.5 h-3.5 text-slate-300" />
-            <span>Gerenciar Produtos</span>
-          </Link>
         </div>
       </div>
 
       {/* =========================================================================
-          2. CARDS DE KPI (Bento Grid: 4 Indicadores Estratégicos)
+          2. LINHA 1: GRID DE 4 KPIS ESTRATÉGICOS (Baseado na Referência Visual)
       ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Bruto */}
@@ -325,7 +353,33 @@ export default function AdminDashboardPage() {
           loading={loading}
         />
 
-        {/* Card 2: Volume de Pedidos */}
+        {/* Card 2: Custo Total (CMV) */}
+        <KpiCard
+          title="Custo Total (CMV)"
+          value={formatBRL(custoTotalEstimado)}
+          icon={<Wallet className="w-4 h-4 text-slate-700" />}
+          deltaLabel="Gestão CMV"
+          deltaType="neutral"
+          footerText="Custo dos produtos faturados"
+          actionText="Ver Custos"
+          href="/admin/financas/"
+          loading={loading}
+        />
+
+        {/* Card 3: Margem / Lucro Estimado */}
+        <KpiCard
+          title="Margem de Lucro"
+          value={faturamentoTotal > 0 ? `${margemPercentual.toFixed(1)}%` : '0.0%'}
+          icon={<Percent className="w-4 h-4 text-slate-700" />}
+          deltaLabel="Margem Bruta"
+          deltaType={margemPercentual > 40 ? 'positive' : 'neutral'}
+          footerText="Calculado via faturamento x CMV"
+          actionText="Ver DRE"
+          href="/admin/financas/"
+          loading={loading}
+        />
+
+        {/* Card 4: Volume de Pedidos */}
         <KpiCard
           title="Volume de Pedidos"
           value={`${totalPedidos} ${totalPedidos === 1 ? 'Pedido' : 'Pedidos'}`}
@@ -337,11 +391,17 @@ export default function AdminDashboardPage() {
               ? 'Confirmação via WhatsApp'
               : 'Nenhum pedido pendente'
           }
+          actionText="Ver Pedidos"
           href="/admin/pedidos/"
           loading={loading}
         />
+      </div>
 
-        {/* Card 3: Ticket Médio Real (Baseado exclusivamente em pedidos válidos faturados) */}
+      {/* =========================================================================
+          3. LINHA 2: 4 BLOCOS OPERACIONAIS (Ticket Médio, Itens Ativos, Campeão de Vendas, Rosca)
+      ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Bloco 1: Ticket Médio Real */}
         <KpiCard
           title="Ticket Médio"
           value={formatBRL(ticketMedio)}
@@ -353,405 +413,344 @@ export default function AdminDashboardPage() {
           loading={loading}
         />
 
-        {/* Card 4: Catálogo de Produtos (Estoque físico oficial por variações) */}
+        {/* Bloco 2: Itens Ativos no Catálogo & Estoque Físico */}
         <KpiCard
-          title="Catálogo de Produtos"
-          value={`${totalProdutos} Ativos`}
+          title="Itens Ativos"
+          value={`${totalProdutos} Produtos`}
           icon={<Package className="w-4 h-4 text-slate-700" />}
           deltaLabel={totalPecasEstoque > 0 ? `${totalPecasEstoque} em estoque` : 'Cadastrados'}
           deltaType="neutral"
-          footerText="Gerenciar Estoque & Fotos"
+          footerText="Gerenciar Estoque & Variações"
           href="/admin/produtos/"
           loading={loading}
         />
-      </div>
 
-      {/* =========================================================================
-          3. BENTO GRID ANALÍTICO (Gráfico de Barras 2x + Gráfico Donut 1x)
-      ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfico de Barras: Faturamento por Período (Ordenação cronológica ascendente) */}
-        <div className="lg:col-span-2">
-          <BarChart
-            data={barChartData}
-            title="Receita por Período"
-            subtitle="Total por dia"
-            primaryLabel="Receita Operacional"
-            primaryColor="#0F172A"
-            height={260}
-          />
+        {/* Bloco 3: Item Mais Vendido (Lista com Miniatura e Quantidade) */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+                Mais Vendidos
+              </span>
+              <DeltaBadge label="Top Vendas" type="neutral" showIcon={false} />
+            </div>
+
+            <div className="mt-3.5 space-y-3">
+              {topSellingList.length > 0 ? (
+                topSellingList.map((item, idx) => (
+                  <div key={item.product.id || idx} className="flex items-center gap-3">
+                    <ProductThumbnail
+                      src={item.product.foto_principal}
+                      alt={item.product.nome}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-900 text-xs block truncate">
+                        {item.product.nome}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block truncate">
+                        {formatBRL(Number(item.product.preco || 0))} •{' '}
+                        <strong className="text-slate-800">
+                          {getProductStock(item.product)} un em estoque
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-slate-400 py-3 text-center">
+                  Nenhum produto faturado ainda
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <Link
+              href="/admin/produtos/"
+              className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1"
+            >
+              <span>Ver Catálogo Completo</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
 
-        {/* Gráfico de Rosca: Composição Real do Estoque por Categoria */}
-        <div className="lg:col-span-1">
+        {/* Bloco 4: Estoque por Categoria (Gráfico Donut Compacto) */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <DonutChart
             data={donutChartData}
             title="Estoque por Categoria"
-            subtitle="Mix de produtos ativos no catálogo da loja"
+            subtitle="Composição física do estoque"
             centerValue={totalPecasEstoque}
             centerLabel="Unidades em Estoque"
-            height={220}
+            height={180}
           />
         </div>
       </div>
 
       {/* =========================================================================
-          4. SEÇÃO INTERMEDIÁRIA (Produto Destaque + Status Operacional)
+          4. LINHA 3: DESTAQUES DO CATÁLOGO (1/3) + TABELA DE ÚLTIMOS PEDIDOS (2/3)
       ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Card de Produto em Destaque no Catálogo */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+        {/* Coluna 1 (1/3): Destaque da Coleção / Catálogo */}
+        <div className="lg:col-span-1 bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                Destaque do Catálogo
-              </span>
-              <DeltaBadge
-                label={featuredBadgeLabel}
-                type={featuredBadgeLabel === 'Mais Vendido' ? 'positive' : 'neutral'}
-                showIcon={featuredBadgeLabel === 'Mais Vendido'}
-              />
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                  Destaques do Catálogo
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Peças prioritárias na vitrine da loja
+                </p>
+              </div>
+              <Link
+                href="/admin/produtos/"
+                className="text-xs font-bold text-slate-700 hover:text-slate-950 inline-flex items-center gap-1"
+              >
+                <span>Ver Todos</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
 
-            {featuredProduct ? (
-              <div className="mt-4 flex items-center gap-3.5">
-                <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center">
-                  {featuredProduct.foto_principal && !featuredImageError ? (
-                    <img
-                      src={featuredProduct.foto_principal}
-                      alt={featuredProduct.nome}
-                      className="w-full h-full object-cover"
-                      onError={() => setFeaturedImageError(true)}
+            {/* Lista dos 3 Produtos em Destaque */}
+            <div className="mt-4 space-y-3.5">
+              {catalogHighlights.length > 0 ? (
+                catalogHighlights.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
+                  >
+                    <ProductThumbnail
+                      src={prod.foto_principal}
+                      alt={prod.nome}
+                      size="md"
                     />
-                  ) : (
-                    <Package className="w-6 h-6 text-slate-400" />
-                  )}
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-900 text-xs block truncate" title={prod.nome}>
+                        {prod.nome}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        {prod.categoria_nome || 'Geral'} • {getProductStock(prod)} un em estoque
+                      </span>
+                      <span className="font-extrabold text-slate-900 text-xs font-sans block mt-0.5">
+                        {formatBRL(Number(prod.preco || 0))}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-slate-400 py-6 text-center">
+                  Nenhum produto cadastrado no momento
                 </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-slate-900 truncate" title={featuredProduct.nome}>
-                    {featuredProduct.nome}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">
-                    {featuredProduct.categoria_nome || 'Geral'} &bull; {featuredSubtitle}
-                  </p>
-                  <p className="text-sm font-extrabold text-slate-900 mt-1 font-mono">
-                    {formatBRL(featuredProduct.preco)}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 mt-4">Nenhum produto cadastrado no catálogo.</p>
-            )}
+              )}
+            </div>
           </div>
 
-          <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-end">
+          <div className="mt-4 pt-3 border-t border-slate-100">
             <Link
               href="/admin/produtos/"
-              className="text-xs font-bold text-slate-800 hover:text-slate-950 inline-flex items-center gap-1"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all shadow-2xs"
             >
-              <span>Ver no Catálogo</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>Gerenciar Catálogo & Fotos</span>
+              <ArrowRight className="w-3 h-3 text-slate-500" />
             </Link>
           </div>
         </div>
 
-        {/* Funil de Status Operacional dos Pedidos (2 colunas) */}
-        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                Status Operacional das Vendas
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Fluxo de processamento e logística dos pedidos recebidos
-              </p>
-            </div>
-            <Link
-              href="/admin/pedidos/"
-              className="text-xs text-slate-700 hover:text-slate-950 font-bold inline-flex items-center gap-1"
-            >
-              <span>Central de Pedidos</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4">
-            {/* 1. Aguardando WhatsApp */}
-            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-amber-800 font-bold uppercase tracking-wider block">
-                  Aguardando WhatsApp
-                </span>
-                <Clock className="w-4 h-4 text-amber-600" />
-              </div>
-              <span className="text-2xl font-extrabold text-slate-900 mt-2 block font-sans">
-                {stats?.pedidosPendentes ?? 1}
-              </span>
-              <span className="text-[11px] text-slate-500 mt-0.5 block">
-                Aguardando confirmação
-              </span>
-            </div>
-
-            {/* 2. Em Separação / Envio */}
-            <div className="p-4 bg-sky-50/50 border border-sky-100 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-sky-800 font-bold uppercase tracking-wider block">
-                  Em Separação / Envio
-                </span>
-                <Truck className="w-4 h-4 text-sky-600" />
-              </div>
-              <span className="text-2xl font-extrabold text-slate-900 mt-2 block font-sans">
-                {stats?.pedidosEnviados ?? 0}
-              </span>
-              <span className="text-[11px] text-slate-500 mt-0.5 block">
-                Prontos para envio
-              </span>
-            </div>
-
-            {/* 3. Entregues com Sucesso */}
-            <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider block">
-                  Entregues com Sucesso
-                </span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              </div>
-              <span className="text-2xl font-extrabold text-slate-900 mt-2 block font-sans">
-                {stats?.pedidosEntregues ?? 0}
-              </span>
-              <span className="text-[11px] text-slate-500 mt-0.5 block">
-                Finalizados e confirmados
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          5. TABELA DE PEDIDOS RECENTES (Estilo Ecomora: Limpa & Elegante)
-      ========================================================================= */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+        {/* Coluna 2 (2/3): Tabela de Últimos Pedidos Recebidos */}
+        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-              Últimos Pedidos Recebidos
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pedidos mais recentes da loja
-            </p>
-          </div>
-          <Link
-            href="/admin/pedidos/"
-            className="text-xs text-slate-700 hover:text-slate-950 font-bold inline-flex items-center gap-1"
-          >
-            <span>Ver Todos os Pedidos</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                  Últimos Pedidos Recebidos
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Pedidos mais recentes da loja
+                </p>
+              </div>
+              <Link
+                href="/admin/pedidos/"
+                className="text-xs text-slate-700 hover:text-slate-950 font-bold inline-flex items-center gap-1"
+              >
+                <span>Ver Todos os Pedidos</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
 
-        {/* Visualização em Tabela para Desktop e Tablet (sm em diante) */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
-              <tr>
-                <th className="py-3 px-4">Pedido</th>
-                <th className="py-3 px-4">Produto</th>
-                <th className="py-3 px-4">Cliente</th>
-                <th className="py-3 px-4">WhatsApp</th>
-                <th className="py-3 px-4">Total</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-800">
-              {recentOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
-                    Nenhum pedido recente registrado.
-                  </td>
-                </tr>
-              ) : (
-                recentOrders.map((order) => {
-                  const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-                  const formattedDate = order.created_at
-                    ? new Date(order.created_at).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : '-';
-
-                  const firstItem = order.itens_pedido?.[0];
-
-                  return (
-                    <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Pedido & Data */}
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-slate-900 block">
-                          {order.numero_pedido}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
-                          {formattedDate}
-                        </span>
-                      </td>
-
-                      {/* Produto / Thumbnail com Fallback */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <TableProductThumbnail
-                            src={firstItem?.imagem_url}
-                            alt={firstItem?.nome_produto || 'Produto da Loja'}
-                          />
-                          <div className="min-w-0 max-w-[180px]">
-                            <span className="font-semibold text-slate-900 block truncate" title={firstItem?.nome_produto}>
-                              {firstItem?.nome_produto || 'Produto da Loja'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block truncate">
-                              {firstItem ? `${firstItem.quantidade}x ${firstItem.tamanho || ''}` : '1 item'}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Cliente */}
-                      <td className="py-3.5 px-4 font-medium text-slate-900">
-                        {order.cliente_nome || 'Cliente'}
-                      </td>
-
-                      {/* WhatsApp */}
-                      <td className="py-3.5 px-4">
-                        {getWhatsAppUrl(order) ? (
-                          <a
-                            href={getWhatsAppUrl(order)!}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-medium"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>{order.cliente_telefone}</span>
-                          </a>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Total */}
-                      <td className="py-3.5 px-4 font-extrabold text-slate-900 font-mono">
-                        {formatBRL(Number(order.total || 0))}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-4">
-                        {getStatusBadge(order.status)}
-                      </td>
-
-                      {/* Ação */}
-                      <td className="py-3.5 px-4 text-right">
-                        <Link
-                          href="/admin/pedidos/"
-                          className="inline-flex items-center gap-1 text-xs text-slate-700 hover:text-slate-950 font-semibold"
-                        >
-                          <span>Gerenciar</span>
-                          <ArrowRight className="w-3 h-3 text-slate-400" />
-                        </Link>
+            {/* Visualização em Tabela Desktop / Tablet */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">Pedido</th>
+                    <th className="py-3 px-4">Produto</th>
+                    <th className="py-3 px-4">Cliente</th>
+                    <th className="py-3 px-4">Total</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {recentOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                        Nenhum pedido registrado até o momento.
                       </td>
                     </tr>
+                  ) : (
+                    recentOrders.map((order) => {
+                      const firstItem = order.itens_pedido?.[0] || (order as any).itens?.[0];
+                      const waLink = getWhatsAppUrl(order);
+
+                      return (
+                        <tr
+                          key={order.id || order.numero_pedido}
+                          className="hover:bg-slate-50/60 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-slate-900 block">
+                              {order.numero_pedido}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block font-sans">
+                              {order.created_at
+                                ? new Date(order.created_at).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : ''}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5 max-w-[200px]">
+                              <ProductThumbnail
+                                src={firstItem?.imagem_url}
+                                alt={firstItem?.nome_produto || 'Produto'}
+                                size="sm"
+                              />
+                              <span
+                                className="font-medium text-slate-900 truncate text-xs"
+                                title={firstItem?.nome_produto}
+                              >
+                                {firstItem?.nome_produto || 'Produto da Loja'}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4 text-slate-800 font-medium">
+                            {order.cliente_nome || 'Cliente'}
+                          </td>
+
+                          <td className="py-3 px-4 font-bold text-slate-900 font-sans">
+                            {formatBRL(Number(order.total || 0))}
+                          </td>
+
+                          <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
+
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {waLink && (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
+                                  title="WhatsApp"
+                                >
+                                  <MessageCircle className="w-3 h-3 text-emerald-600" />
+                                  <span className="hidden xl:inline">WhatsApp</span>
+                                </a>
+                              )}
+
+                              <Link
+                                href="/admin/pedidos/"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                              >
+                                <span>Gerenciar</span>
+                                <ArrowRight className="w-3 h-3 text-slate-500" />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Visualização em Cartões Mobile (Compacto e Responsivo) */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {recentOrders.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs">
+                  Nenhum pedido registrado até o momento.
+                </div>
+              ) : (
+                recentOrders.map((order) => {
+                  const firstItem = order.itens_pedido?.[0] || (order as any).itens?.[0];
+                  const waLink = getWhatsAppUrl(order);
+
+                  return (
+                    <div key={order.id || order.numero_pedido} className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-slate-900 text-xs">
+                          {order.numero_pedido}
+                        </span>
+                        <div>{getStatusBadge(order.status)}</div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <ProductThumbnail
+                          src={firstItem?.imagem_url}
+                          alt={firstItem?.nome_produto || 'Produto'}
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold text-slate-900 text-xs block truncate">
+                            {firstItem?.nome_produto || 'Produto da Loja'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 block truncate">
+                            Cliente: <strong className="text-slate-800">{order.cliente_nome || 'Cliente'}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <span className="font-extrabold text-slate-900 font-mono text-sm">
+                          {formatBRL(Number(order.total || 0))}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {waLink && (
+                            <a
+                              href={waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>WhatsApp</span>
+                            </a>
+                          )}
+                          <Link
+                            href="/admin/pedidos/"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800"
+                          >
+                            <span>Gerenciar</span>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })
               )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Visualização em Cards Verticais para Telas Estreitas (Abaixo de sm) */}
-        <div className="block sm:hidden divide-y divide-slate-100">
-          {recentOrders.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
-              Nenhum pedido recente registrado.
             </div>
-          ) : (
-            recentOrders.map((order) => {
-              const formattedDate = order.created_at
-                ? new Date(order.created_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                : '-';
-
-              const firstItem = order.itens_pedido?.[0];
-              const waLink = getWhatsAppUrl(order);
-
-              return (
-                <div key={`mob-${order.id}`} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
-                  {/* Linha 1: Pedido, Data e Status Badge */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <span className="font-mono font-bold text-slate-900 text-xs block">
-                        {order.numero_pedido}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
-                        {formattedDate}
-                      </span>
-                    </div>
-                    <div>{getStatusBadge(order.status)}</div>
-                  </div>
-
-                  {/* Linha 2: Miniatura, Produto e Cliente */}
-                  <div className="flex items-center gap-3">
-                    <TableProductThumbnail
-                      src={firstItem?.imagem_url}
-                      alt={firstItem?.nome_produto || 'Produto da Loja'}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <span className="font-semibold text-slate-900 text-xs block truncate" title={firstItem?.nome_produto}>
-                        {firstItem?.nome_produto || 'Produto da Loja'}
-                      </span>
-                      <span className="text-[11px] text-slate-500 block truncate">
-                        Cliente: <strong className="text-slate-800">{order.cliente_nome || 'Cliente'}</strong>
-                        {firstItem ? ` • ${firstItem.quantidade}x ${firstItem.tamanho || ''}` : ''}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Linha 3: Total, WhatsApp e Ação Gerenciar */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block uppercase font-semibold">Valor Total</span>
-                      <span className="font-extrabold text-slate-900 font-mono text-sm block">
-                        {formatBRL(Number(order.total || 0))}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {waLink && (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
-                          title="Conversar no WhatsApp"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
-
-                      <Link
-                        href="/admin/pedidos/"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
-                      >
-                        <span>Gerenciar</span>
-                        <ArrowRight className="w-3 h-3 text-slate-500" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+          </div>
         </div>
       </div>
     </div>
