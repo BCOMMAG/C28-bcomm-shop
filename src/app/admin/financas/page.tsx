@@ -18,10 +18,14 @@ import {
   HelpCircle,
   Settings,
   ArrowRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Download,
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 import { getAdminFinanceMetrics, FinanceMetrics } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { exportFinanceDREToCsv } from '@/lib/export';
 
 export default function AdminFinancasPage() {
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
@@ -72,10 +76,58 @@ export default function AdminFinancasPage() {
           { nome: 'Camisa Linho Pura Alfaiataria', quantidadeVendida: 1, faturamento: 290.0, lucro: 174.0 }
         ];
 
+  const periodoLabel =
+    periodo === 'hoje'
+      ? 'Hoje'
+      : periodo === '7dias'
+      ? 'Últimos 7 Dias'
+      : periodo === 'mes'
+      ? 'Este Mês'
+      : 'Histórico Completo';
+
+  const handleExportCsv = () => {
+    exportFinanceDREToCsv({
+      periodoNome: periodoLabel,
+      faturamentoBruto: faturamento,
+      cmvTotal: cmv,
+      lucroBruto: faturamento - cmv,
+      despesasOperacionais: despesas,
+      lucroLiquido: lucroLiquido,
+      margemPercent: margemPercent,
+      pedidosFaturados: pedidosFaturados,
+      pecasVendidas: pecasVendidas,
+      ticketMedio: ticketMedio,
+      topProdutos: topProdutosList
+    });
+  };
+
+  const handlePrintDRE = () => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* CABEÇALHO */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+      {/* CABEÇALHO OFICIAL DE IMPRESSÃO (Visível apenas ao imprimir ou salvar em PDF) */}
+      <div className="hidden print:block pb-6 mb-4 border-b-2 border-slate-900">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold font-serif-luxury text-slate-900">
+              DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE GERENCIAL)
+            </h1>
+            <p className="text-xs text-slate-600 mt-1">
+              Período de Apuração: <strong>{periodoLabel}</strong> &bull; Emissão: {new Date().toLocaleString('pt-BR')}
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold text-slate-500 uppercase">
+            Documento Contábil Oficial
+          </span>
+        </div>
+      </div>
+
+      {/* CABEÇALHO NA TELA */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 print:hidden">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
@@ -90,7 +142,7 @@ export default function AdminFinancasPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Seletor de Período */}
           <div className="flex items-center bg-white border border-slate-300 rounded-lg p-1 text-xs shadow-2xs">
             {[
@@ -113,13 +165,35 @@ export default function AdminFinancasPage() {
             ))}
           </div>
 
+          {/* Botão Exportar CSV */}
+          <button
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            title="Baixar planilha DRE em formato CSV compatível com Excel"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="sm:hidden">CSV</span>
+          </button>
+
+          {/* Botão Imprimir / Salvar PDF */}
+          <button
+            onClick={handlePrintDRE}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 text-amber-400 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer"
+            title="Imprimir relatório DRE oficial ou salvar em PDF"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Imprimir DRE</span>
+            <span className="sm:hidden">PDF</span>
+          </button>
+
           <button
             onClick={fetchFinance}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
-            <span>Atualizar</span>
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
         </div>
       </div>

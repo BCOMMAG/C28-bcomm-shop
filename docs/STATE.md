@@ -60,6 +60,10 @@
     - Edição visual no modal de peça das 4 flags comerciais: `🌟 Destaque` (Lançamento / Home), `🔥 Mais Vendido`, `🏷️ Outlet / Bazar` e `⏳ Últimas Peças` com persistência imediata no Supabase.
     - Badges estéticos diferenciados em cada card de produto na listagem do admin para rápida identificação operacional.
     - Filtros rápidos por tags no topo do catálogo (`🌟 Destaques`, `🔥 Mais Vendidos`, `🏷️ Outlet`, `⚠️ Reposição Urgente`, `⛔ Esgotados`, `✅ Ativas`, `⏸️ Pausadas`).
+  - [x] **Exportação Operacional & Contábil (CSV & Impressão DRE Oficial):**
+    - Módulo `src/lib/export.ts` gerando arquivos `.csv` padrão brasileiro (delimitador `;` e encoding UTF-8 com BOM para abertura perfeita no Microsoft Excel sem corrupção de acentos).
+    - Botão "Exportar Planilha (CSV)" na Central de Pedidos (`/admin/pedidos/`) com todos os dados dos pedidos filtrados (ID, Cliente, WhatsApp, Itens, Valor, Status, Rastreio e Cidade/UF).
+    - Botão "Exportar CSV" e "Imprimir DRE" no painel financeiro (`/admin/financas/`) com estilização de impressão `@media print` para relatórios contábeis oficiais timbrados.
   - [x] **Homologação E2E Completa:** Testes automatizados unitários e de integração em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 

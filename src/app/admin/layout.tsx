@@ -211,7 +211,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           1. SIDEBAR LATERAL FIXA NO DESKTOP (Inspirada no Layout de Referência)
       ========================================================================= */}
       <aside
-        className="hidden md:flex flex-col fixed inset-y-0 left-0 w-64 z-40 transition-colors duration-200 border-r select-none"
+        className="hidden md:flex flex-col fixed inset-y-0 left-0 w-64 z-40 transition-colors duration-200 border-r select-none print:hidden"
         style={{
           backgroundColor: c.sidebarBg,
           borderColor: c.sidebarBorder
@@ -431,9 +431,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* =========================================================================
           3. ÁREA PRINCIPAL (Compensada no Desktop com md:pl-64)
       ========================================================================= */}
-      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+      <div className="flex-1 flex flex-col md:pl-64 print:pl-0 min-w-0">
         {/* TOPBAR FIXO DO APLICATIVO */}
-        <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs">
+        <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs print:hidden">
           {/* LADO ESQUERDO: HAMBÚRGUER MOBILE + BARRA DE BUSCA UNIVERSAL */}
           <div className="flex items-center gap-3 flex-1 max-w-xl">
             <button
@@ -613,7 +613,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* RODAPÉ DO PAINEL */}
-        <footer className="bg-white border-t border-slate-200/80 py-3 text-center text-xs text-slate-500 mt-auto">
+        <footer className="bg-white border-t border-slate-200/80 py-3 text-center text-xs text-slate-500 mt-auto print:hidden">
           <div className="max-w-[1700px] mx-auto px-4 flex items-center justify-center">
             <span>
               Plataforma BCOMM &bull; Gestão da loja <strong className="text-slate-800">{lojaNome}</strong>
