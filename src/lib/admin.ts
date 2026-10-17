@@ -180,8 +180,8 @@ export async function getAdminDashboardStats(lojaId: string = DEFAULT_TENANT_ID)
 
     const ordersList: CustomerOrder[] = (pedidos || []).map((p: any) => ({
       ...p,
-      cliente_nome: p.clientes_loja?.nome || 'Cliente VIP',
-      cliente_telefone: p.clientes_loja?.telefone || '',
+      cliente_nome: p.clientes_loja?.nome || p.endereco_entrega?.destinatario || 'Cliente VIP',
+      cliente_telefone: p.clientes_loja?.telefone || p.endereco_entrega?.telefone || '',
       subtotal: Number(p.subtotal || 0),
       valor_frete: Number(p.valor_frete || 0),
       valor_desconto: Number(p.valor_desconto || 0),
@@ -293,8 +293,8 @@ export async function getAdminOrders(
     
     return (data || []).map((p: any) => ({
       ...p,
-      cliente_nome: p.clientes_loja?.nome || 'Cliente VIP',
-      cliente_telefone: p.clientes_loja?.telefone || '',
+      cliente_nome: p.clientes_loja?.nome || p.endereco_entrega?.destinatario || 'Cliente VIP',
+      cliente_telefone: p.clientes_loja?.telefone || p.endereco_entrega?.telefone || '',
       subtotal: Number(p.subtotal || 0),
       valor_frete: Number(p.valor_frete || 0),
       valor_desconto: Number(p.valor_desconto || 0),

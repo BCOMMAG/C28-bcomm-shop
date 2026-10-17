@@ -782,18 +782,25 @@ export default function AdminDashboardPage() {
                       </td>
 
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2.5 max-w-[200px]">
+                        <div className="flex items-center gap-2.5 max-w-[220px]">
                           <ProductThumbnail
                             src={firstItem?.imagem_url}
                             alt={firstItem?.nome_produto || 'Produto'}
                             size="sm"
                           />
-                          <span
-                            className="font-medium text-slate-900 truncate text-xs"
-                            title={firstItem?.nome_produto}
-                          >
-                            {firstItem?.nome_produto || 'Produto da Loja'}
-                          </span>
+                          <div className="min-w-0">
+                            <span
+                              className="font-medium text-slate-900 truncate text-xs block"
+                              title={firstItem?.nome_produto}
+                            >
+                              {firstItem?.nome_produto || 'Produto da Loja'}
+                            </span>
+                            {order.itens_pedido && order.itens_pedido.length > 1 && (
+                              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60 inline-block mt-0.5">
+                                +{order.itens_pedido.length - 1} outro(s) item(ns)
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -869,6 +876,11 @@ export default function AdminDashboardPage() {
                       <span className="font-semibold text-slate-900 text-xs block truncate">
                         {firstItem?.nome_produto || 'Produto da Loja'}
                       </span>
+                      {order.itens_pedido && order.itens_pedido.length > 1 && (
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60 inline-block mt-0.5">
+                          +{order.itens_pedido.length - 1} outro(s) item(ns)
+                        </span>
+                      )}
                       <span className="text-[11px] text-slate-500 block truncate">
                         Cliente: <strong className="text-slate-800">{order.cliente_nome || 'Cliente'}</strong>
                       </span>
