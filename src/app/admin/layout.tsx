@@ -31,6 +31,9 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { AdminThemeProvider, useAdminTheme } from '@/context/AdminThemeContext';
 import { cn } from '@/lib/chart-utils';
+import { GlobalSearchModal } from '@/components/admin/GlobalSearchModal';
+import { getAdminPendingNotifications } from '@/lib/admin';
+import { DEFAULT_TENANT_ID } from '@/lib/products';
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -39,7 +42,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const { paletteConfig } = useAdminTheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [pendingNotifs, setPendingNotifs] = useState<{
+    count: number;
+    pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }>;
+  }>({ count: 0, pedidos: [] });
 
   const lojaNome = currentTenant?.nome || 'Painel da Loja';
   const lojaSlug = currentTenant?.slug || '';
@@ -78,6 +86,34 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       router.push('/admin/login/');
     }
   }, [cleanPath, isLoginPage, router]);
+
+  // Listener para o atalho de teclado global Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Carrega notificações operacionais de pedidos pendentes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchNotifs = async () => {
+      try {
+        const notifs = await getAdminPendingNotifications(DEFAULT_TENANT_ID);
+        setPendingNotifs(notifs);
+      } catch (err) {
+        console.error('Erro ao buscar notificações:', err);
+      }
+    };
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 45000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   // Se for a página de login, renderiza apenas o conteúdo sem shell
   if (isLoginPage) {
@@ -408,17 +444,30 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Barra de Busca estilo SaaS */}
-            <div className="relative w-full max-w-md hidden sm:block">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar no painel (pedidos, produtos, clientes)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl text-xs text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-              />
-            </div>
+            {/* Barra de Busca Universal (Trigger do Spotlight Ctrl+K) */}
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="w-full max-w-md hidden sm:flex items-center justify-between pl-3.5 pr-3 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl text-xs text-slate-400 border border-slate-200 transition-all text-left shadow-2xs group cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                <span className="text-slate-500 group-hover:text-slate-700">Buscar peças, pedidos ou clientes...</span>
+              </div>
+              <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs">
+                Ctrl K
+              </kbd>
+            </button>
+
+            {/* Botão de Busca no Celular */}
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="sm:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+              title="Buscar no Painel"
+            >
+              <Search className="w-5 h-5" />
+            </button>
           </div>
 
           {/* LADO DIREITO: AÇÕES GLOBAIS, NOTIFICAÇÕES & PERFIL */}
@@ -437,6 +486,64 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
 
             <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
+
+            {/* Sino de Notificações com Dropdown de Pedidos Pendentes */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotifOpen((prev) => !prev)}
+                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative cursor-pointer"
+                title="Pedidos pendentes no WhatsApp"
+              >
+                <Bell className="w-4 h-4" />
+                {pendingNotifs.count > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center animate-pulse">
+                    {pendingNotifs.count}
+                  </span>
+                )}
+              </button>
+
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 animate-fade-in space-y-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-900">Notificações Operacionais</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-full">
+                      {pendingNotifs.count} pendente(s)
+                    </span>
+                  </div>
+
+                  {pendingNotifs.pedidos.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 text-center">Nenhum pedido aguardando ação no momento.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                      {pendingNotifs.pedidos.map((p) => (
+                        <Link
+                          key={p.id}
+                          href="/admin/pedidos/"
+                          onClick={() => setIsNotifOpen(false)}
+                          className="block p-2 rounded-xl hover:bg-slate-50 border border-slate-100 text-xs transition-colors"
+                        >
+                          <div className="flex items-center justify-between font-bold text-slate-800">
+                            <span>#{p.numero_pedido}</span>
+                            <span className="text-emerald-700">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.total)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate">{p.cliente_nome}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  <Link
+                    href="/admin/pedidos/"
+                    onClick={() => setIsNotifOpen(false)}
+                    className="block text-center py-1.5 text-[11px] font-bold text-amber-800 hover:text-amber-900 bg-amber-50 rounded-lg transition-colors"
+                  >
+                    Ver todos os pedidos &rarr;
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Link Rápido de Configurações */}
             <Link
@@ -514,6 +621,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       </div>
+
+      {/* MODAL DE BUSCA UNIVERSAL SPOTLIGHT (CTRL+K) */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        lojaSlug={lojaSlug}
+      />
     </div>
   );
 }

@@ -1493,3 +1493,157 @@ export async function toggleStoreModule(
     return { success: false, error: err?.message };
   }
 }
+
+export interface GlobalSearchResult {
+  produtos: Array<{
+    id: string;
+    nome: string;
+    slug: string;
+    preco: number;
+    foto_principal?: string | null;
+    categoria?: string;
+  }>;
+  pedidos: Array<{
+    id: string;
+    numero_pedido: string;
+    cliente_nome: string;
+    total: number;
+    status: string;
+    created_at: string;
+  }>;
+  clientes: Array<{
+    id: string;
+    nome: string;
+    telefone: string;
+    total_compras: number;
+    valor_total_gasto: number;
+  }>;
+}
+
+/**
+ * Busca universal inteligente no catálogo, pedidos e clientes (Spotlight Ctrl+K).
+ */
+export async function globalAdminSearch(
+  lojaId: string = DEFAULT_TENANT_ID,
+  query: string
+): Promise<GlobalSearchResult> {
+  const supabase = getSupabaseBrowserClient();
+  const trimmed = query.trim().toLowerCase();
+
+  if (!trimmed) {
+    return { produtos: [], pedidos: [], clientes: [] };
+  }
+
+  try {
+    const pattern = `%${trimmed}%`;
+
+    const [prodsRes, pedRes, cliRes] = await Promise.all([
+      supabase
+        .from('produtos')
+        .select('id, nome, slug, preco, foto_principal, categorias(nome)')
+        .eq('loja_id', lojaId)
+        .ilike('nome', pattern)
+        .limit(4),
+      supabase
+        .from('pedidos')
+        .select(`
+          id, numero_pedido, total, status, created_at,
+          clientes_loja (nome)
+        `)
+        .eq('loja_id', lojaId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('clientes_loja')
+        .select(`
+          id, nome, telefone, email,
+          pedidos (total, status)
+        `)
+        .eq('loja_id', lojaId)
+        .or(`nome.ilike.${pattern},telefone.ilike.${pattern}`)
+        .limit(4)
+    ]);
+
+    const produtos = (prodsRes.data || []).map((p: any) => ({
+      id: p.id,
+      nome: p.nome,
+      slug: p.slug,
+      preco: Number(p.preco || 0),
+      foto_principal: p.foto_principal,
+      categoria: p.categorias?.nome || 'Geral'
+    }));
+
+    const allPedidos = (pedRes.data || []).map((o: any) => ({
+      id: o.id,
+      numero_pedido: o.numero_pedido,
+      cliente_nome: o.clientes_loja?.nome || 'Cliente da Loja',
+      total: Number(o.total || 0),
+      status: o.status,
+      created_at: o.created_at
+    }));
+
+    // Filtra pelo número do pedido ou pelo nome do cliente
+    const pedidos = allPedidos
+      .filter((o: any) =>
+        o.numero_pedido.toLowerCase().includes(trimmed) ||
+        o.cliente_nome.toLowerCase().includes(trimmed)
+      )
+      .slice(0, 4);
+
+    const clientes = (cliRes.data || []).map((c: any) => {
+      const validOrders = (c.pedidos || []).filter((o: any) => o.status !== 'cancelado');
+      const total_compras = validOrders.length;
+      const valor_total_gasto = validOrders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+      return {
+        id: c.id,
+        nome: c.nome,
+        telefone: c.telefone,
+        total_compras,
+        valor_total_gasto
+      };
+    });
+
+    return { produtos, pedidos, clientes };
+  } catch (err) {
+    console.error('❌ [Supabase] Erro na busca universal:', err);
+    return { produtos: [], pedidos: [], clientes: [] };
+  }
+}
+
+/**
+ * Notificações rápidas para a barra superior do Admin (Pedidos pendentes no WhatsApp).
+ */
+export async function getAdminPendingNotifications(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{ count: number; pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }> }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select(`
+        id, numero_pedido, total, created_at,
+        clientes_loja (nome)
+      `)
+      .eq('loja_id', lojaId)
+      .in('status', ['aguardando_whatsapp', 'novo', 'pendente'])
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (error) throw error;
+
+    return {
+      count: data?.length || 0,
+      pedidos: (data || []).map((p: any) => ({
+        id: p.id,
+        numero_pedido: p.numero_pedido,
+        cliente_nome: p.clientes_loja?.nome || 'Cliente da Loja',
+        total: Number(p.total || 0),
+        created_at: p.created_at
+      }))
+    };
+  } catch {
+    return { count: 0, pedidos: [] };
+  }
+}
+

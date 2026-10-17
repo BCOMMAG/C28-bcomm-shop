@@ -49,6 +49,10 @@
     - Ajuste imediato de estoque por variação de cor e tamanho com botões `+` e `-` na grade expandida, com sincronização automática do estoque consolidado do produto pai (`produtos.estoque_total`).
     - Botão "Duplicar Peça" (Item 1.3.3 do catálogo) que clona a peça, fotos, descrições, tecidos e grade completa de variações gerando um slug exclusivo e preservando dados originais.
     - Filtro rápido de estoque e status: "Todas as Peças", "⚠️ Reposição Urgente (≤ 2 un)", "⛔ Esgotados", "✅ Ativas na Vitrine" e "⏸️ Pausadas".
+  - [x] **Busca Universal Spotlight (`Ctrl + K`) & Notificações Operacionais (Item F19 do Catálogo):**
+    - Modal de Spotlight acessível via atalho global de teclado (`Ctrl + K` / `Cmd + K`) e pelo campo de busca da barra superior (desktop e mobile).
+    - Pesquisa em tempo real multi-entidade: peças do catálogo (com foto e preço), pedidos recentes (com status e valor) e clientes CRM (com telefone e LTV), além de atalhos rápidos para todas as telas do sistema.
+    - Notificações operacionais na barra superior com ícone de sino (`Bell`), badge numérico pulsante e menu dropdown listando pedidos que aguardam confirmação de pagamento no WhatsApp.
   - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 
