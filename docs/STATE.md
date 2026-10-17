@@ -44,6 +44,7 @@
   - [x] **Vitrine & Banners Hero Sincronizados:** Suporte completo no admin para vídeos/fotos 16:9 (Desktop) e 9:16 (Celular) com upload R2, textos e CTA dinâmicos, e Barra Superior de Avisos (Top Announcement Bar) sincronizada ao vivo com a vitrine.
   - [x] **CRM & Dossiê VIP da Cliente (`/admin/clientes/`):** Cálculo automático de LTV, segmentação por tags (VIP Gold, Recorrente, Compradora, Lead), modal de dossiê completo com histórico de itens comprados, preferências de tamanho habitual e gravação de anotações internas privadas no Supabase.
   - [x] **Configurações Gerais, Chave Pix & Frete Grátis (`/admin/configuracoes/`):** Gestão centralizada dos dados de atendimento da boutique (WhatsApp e E-mail), Chave PIX oficial e dados bancários sincronizados dinamicamente com o checkout e com os snippets de mensagens, regra de Frete Grátis em reais calculada no carrinho/checkout ao vivo, e seletor com 6 paletas de cores gravado no Supabase.
+  - [x] **Trava Dinâmica de Estoque na Vitrine (Provador & PDP):** Bloqueio instantâneo na vitrine de tamanhos com estoque zerado na grade de cor/tamanho, botão riscado e desabilitado com selo "Esgotado", limitação do seletor de quantidade ao estoque real da variação e badge "Esgotado" nos cards quando o produto zera totalmente no estoque físico.
   - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 

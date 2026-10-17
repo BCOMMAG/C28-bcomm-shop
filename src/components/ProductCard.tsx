@@ -44,8 +44,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const router = useRouter();
   const { cartCount, addToCart } = useStore();
 
+  const isOutOfStock = product.totalStock === 0;
+
   const handleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isOutOfStock) {
+      onOpenDetails(product);
+      return;
+    }
     if (cartCount === 0) {
       // 1. Carrinho Vazio: Comprar Agora -> Adiciona e direciona direto para o Checkout seguro
       addToCart({
@@ -111,6 +117,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Badge de Destaque com Regras de Exibição */}
         {(() => {
+          // 0. Produto Esgotado no Estoque Físico
+          if (isOutOfStock) {
+            return (
+              <div
+                className={`absolute top-2.5 left-2.5 bg-neutral-900/95 dark:bg-neutral-950/95 text-neutral-300 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm border border-neutral-700/60 shadow-xs ${
+                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                }`}
+              >
+                Esgotado
+              </div>
+            );
+          }
+
           // 1. Regra para Seção de Lançamentos Exclusivos:
           // O usuário pediu explicitamente: DEIXAR SEM CARDS EM CIMA DOS PRODUTOS!
           if (isNewReleasesSection) {
@@ -296,7 +315,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           {/* Botão de Compra Inteligente (Largura total no mobile para toque confortável e sem colisão) */}
-          {cartCount === 0 ? (
+          {isOutOfStock ? (
+            <button
+              onClick={() => onOpenDetails(product)}
+              className={`w-full sm:w-auto rounded-none bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs ${
+                isCompact
+                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
+                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
+              }`}
+              title="Peça esgotada no estoque"
+              aria-label="Esgotado"
+            >
+              <span>Esgotado</span>
+            </button>
+          ) : cartCount === 0 ? (
             <button
               onClick={handleAction}
               className={`w-full sm:w-auto rounded-none bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs active:scale-[0.98] ${

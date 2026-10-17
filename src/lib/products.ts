@@ -1,4 +1,4 @@
-import { Product, ProductMedia } from '@/types';
+import { Product, ProductMedia, ProductVariation } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -28,12 +28,22 @@ export function mapDbProductToProduct(dbProd: any): Product {
     discountBadge = `OUTLET ${discountPercent}% OFF`;
   }
 
-  // Agrupamento de Variações de Cores
+  // Agrupamento de Variações de Cores e Estoque por Grade
   const colorsMap = new Map<string, { name: string; hex: string; imageSrc?: string }>();
   const sizesSet = new Set<string>();
+  const variations: ProductVariation[] = [];
 
   if (Array.isArray(dbProd.variacoes_produto)) {
     dbProd.variacoes_produto.forEach((v: any) => {
+      const stock = Number(v.estoque ?? 0);
+      variations.push({
+        id: v.id,
+        color: v.cor_nome || '',
+        size: v.tamanho || '',
+        stock,
+        sku: v.sku || undefined,
+        price: v.preco ? Number(v.preco) : undefined
+      });
       if (v.tamanho) sizesSet.add(v.tamanho);
       if (v.cor_nome && !colorsMap.has(v.cor_nome)) {
         colorsMap.set(v.cor_nome, {
@@ -89,6 +99,8 @@ export function mapDbProductToProduct(dbProd: any): Product {
     details: Array.isArray(dbProd.detalhes) ? dbProd.detalhes : [],
     sizes: sizesSet.size > 0 ? Array.from(sizesSet) : ['Tamanho Único'],
     colors: Array.from(colorsMap.values()),
+    variations,
+    totalStock: Number(dbProd.estoque_total ?? variations.reduce((acc, v) => acc + v.stock, 0)),
     media: mediaList,
     thumbnail,
     rating: Number(dbProd.rating || 5.0),

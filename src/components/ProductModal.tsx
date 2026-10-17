@@ -73,7 +73,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     savedAddress,
     setSavedAddressInfo,
     closeProductSilently,
-    products
+    products,
+    currentTenant
   } = useStore();
 
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
@@ -98,6 +99,32 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+
+  // Obter estoque real da combinação Cor + Tamanho
+  const getVariationStock = (colorName: string, sizeName: string): number => {
+    if (!product) return 0;
+    if (product.variations && product.variations.length > 0) {
+      const v = product.variations.find(
+        (item) =>
+          item.color.trim().toLowerCase() === colorName.trim().toLowerCase() &&
+          item.size.trim().toLowerCase() === sizeName.trim().toLowerCase()
+      );
+      if (v !== undefined) return v.stock;
+    }
+    if (product.totalStock !== undefined) return product.totalStock;
+    return product.remainingPieces ?? 10;
+  };
+
+  const isSizeAvailable = (sizeName: string, colorName: string = selectedColor): boolean => {
+    return getVariationStock(colorName, sizeName) > 0;
+  };
+
+  const currentVariationStock = useMemo(() => {
+    if (!product || !selectedColor || !selectedSize) return 0;
+    return getVariationStock(selectedColor, selectedSize);
+  }, [product, selectedColor, selectedSize]);
+
+  const isCurrentSelectionOutOfStock = currentVariationStock <= 0;
 
   // Produtos que combinam para "Compre o Look"
   const matchingProducts = useMemo(() => {
@@ -140,8 +167,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   useEffect(() => {
     if (product) {
       setActiveMediaIndex(0); // O VÍDEO É SEMPRE O PRIMEIRO SLIDE
-      setSelectedColor(product.colors[0]?.name || '');
-      setSelectedSize(product.sizes[0] || '');
+      const initialColor = product.colors[0]?.name || '';
+      setSelectedColor(initialColor);
+
+      // Procura o primeiro tamanho disponível com estoque para esta cor
+      const firstAvailableSize =
+        product.sizes.find((s) => {
+          if (!product.variations || product.variations.length === 0) return true;
+          const v = product.variations.find(
+            (item) =>
+              item.color.trim().toLowerCase() === initialColor.trim().toLowerCase() &&
+              item.size.trim().toLowerCase() === s.trim().toLowerCase()
+          );
+          return v ? v.stock > 0 : true;
+        }) || product.sizes[0] || '';
+
+      setSelectedSize(firstAvailableSize);
       setQuantity(1);
       setIsPlaying(true);
       setIsMuted(true);
@@ -221,6 +262,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleAdd = () => {
+    if (isCurrentSelectionOutOfStock) return;
     onAddToCart({
       product,
       size: selectedSize,
@@ -232,7 +274,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleBuyNow = () => {
-    if (!product) return;
+    if (!product || isCurrentSelectionOutOfStock) return;
     onAddToCart({
       product,
       size: selectedSize || product.sizes[0] || 'Tamanho Único',
@@ -311,12 +353,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const generateWhatsAppDirectLink = () => {
-    let text = `Olá Leidy! Tenho interesse no *${product.name}*.\n- Cor: *${selectedColor}*\n- Tamanho: *${selectedSize}*\n- Quantidade: *${quantity}*\n- Valor da peça: *${product.formattedPrice}*`;
+    const storeWhatsapp = currentTenant?.whatsapp?.replace(/\D/g, '') || STORE_INFO.whatsapp;
+    let text = `Olá! Tenho interesse no *${product.name}*.\n- Cor: *${selectedColor}*\n- Tamanho: *${selectedSize}*\n- Quantidade: *${quantity}*\n- Valor da peça: *${product.formattedPrice}*`;
     if (shippingAddress) {
       text += `\n- Entrega em: *${shippingAddress.localidade}/${shippingAddress.uf}* (CEP: ${shippingAddress.cep})`;
     }
     text += `\n\nPoderia me confirmar a disponibilidade?`;
-    return `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
   };
 
   return (
@@ -341,9 +384,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleAdd}
-              className="bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-2 transition-all duration-300 shadow-sm cursor-pointer"
+              disabled={isCurrentSelectionOutOfStock}
+              className={`${
+                isCurrentSelectionOutOfStock
+                  ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                  : 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer'
+              } text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-2 transition-all duration-300 shadow-sm`}
             >
-              {addedAnimation ? 'ADICIONADO!' : 'ADICIONAR À SACOLA'}
+              {isCurrentSelectionOutOfStock ? 'ESGOTADO' : addedAnimation ? 'ADICIONADO!' : 'ADICIONAR À SACOLA'}
             </button>
             <button
               onClick={onClose}
@@ -604,6 +652,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             const mediaIdx = product.media.findIndex((m) => m.src === color.imageSrc);
                             if (mediaIdx !== -1) setActiveMediaIndex(mediaIdx);
                           }
+                          // Se o tamanho atual não estiver disponível na nova cor, seleciona o primeiro disponível
+                          const stockInNewColor = getVariationStock(color.name, selectedSize);
+                          if (stockInNewColor <= 0) {
+                            const nextAvailable = product.sizes.find((s) => getVariationStock(color.name, s) > 0);
+                            if (nextAvailable) setSelectedSize(nextAvailable);
+                          }
                         }}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-none border text-xs transition-all cursor-pointer ${
                           isColorSelected
@@ -623,7 +677,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                 {/* Frase de Estoque Limitado (Conforme o print) */}
                 <p className="text-[11px] font-bold text-[#1A1918] dark:text-[#FAF8F5] mt-2 mb-2">
-                  {product.remainingPieces && product.remainingPieces <= 5
+                  {currentVariationStock > 0 && currentVariationStock <= 5
+                    ? `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
+                    : product.remainingPieces && product.remainingPieces <= 5
                     ? `Últimas ${product.remainingPieces} unidades em estoque com este preço!`
                     : (product.isOutlet || hasDiscount)
                     ? 'Últimas 3 unidades em estoque com este preço!'
@@ -650,17 +706,29 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <div className="flex flex-wrap gap-2.5">
                   {product.sizes.map((size, idx) => {
                     const isSizeSelected = selectedSize === size;
+                    const available = isSizeAvailable(size, selectedColor);
+                    const stock = getVariationStock(selectedColor, size);
+
                     return (
                       <button
                         key={idx}
-                        onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border cursor-pointer ${
-                          isSizeSelected
-                            ? 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] border-[#1A1918] dark:border-white shadow-xs'
-                            : 'bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/30 hover:border-[#C5A059]'
+                        onClick={() => {
+                          if (!available) return;
+                          setSelectedSize(size);
+                          setQuantity(1);
+                        }}
+                        disabled={!available}
+                        title={!available ? 'Tamanho esgotado nesta cor' : `Em estoque (${stock} unidades)`}
+                        className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border ${
+                          !available
+                            ? 'opacity-40 line-through border-dashed border-red-300 dark:border-red-900 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 cursor-not-allowed'
+                            : isSizeSelected
+                            ? 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] border-[#1A1918] dark:border-white shadow-xs cursor-pointer'
+                            : 'bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/30 hover:border-[#C5A059] cursor-pointer'
                         }`}
                       >
-                        {size}
+                        <span>{size}</span>
+                        {!available && <span className="ml-1 text-[9px] uppercase tracking-tighter no-underline font-normal">(Esgotado)</span>}
                       </button>
                     );
                   })}
@@ -669,12 +737,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
               {/* Seletor de Quantidade & Ações Principais */}
               <div className="mt-5 space-y-2.5">
+                {isCurrentSelectionOutOfStock && (
+                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-2.5 text-xs text-amber-800 dark:text-amber-200">
+                    ⚠️ O tamanho <strong>{selectedSize}</strong> na cor <strong>{selectedColor}</strong> está esgotado no estoque físico. Selecione outro tamanho disponível ou outra cor.
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2.5">
                   {/* Contador de Quantidade */}
                   <div className="flex items-center border border-black/25 dark:border-white/25 rounded-none bg-white dark:bg-[#252220] px-2.5 py-2.5">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer"
+                      disabled={quantity <= 1 || isCurrentSelectionOutOfStock}
+                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
                     >
                       -
                     </button>
@@ -682,8 +757,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       {quantity}
                     </span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer"
+                      onClick={() => {
+                        const maxStock = Math.max(1, currentVariationStock);
+                        setQuantity(Math.min(maxStock, quantity + 1));
+                      }}
+                      disabled={quantity >= currentVariationStock || isCurrentSelectionOutOfStock}
+                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
                     >
                       +
                     </button>
@@ -692,24 +771,34 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   {/* Botão Principal: COMPRAR AGORA (Leva direto ao checkout) */}
                   <button
                     onClick={handleBuyNow}
-                    className="flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all duration-300 shadow-md active:scale-95 cursor-pointer"
-                    title="Comprar esta peça agora e ir para o Checkout"
+                    disabled={isCurrentSelectionOutOfStock}
+                    className={`flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 ${
+                      isCurrentSelectionOutOfStock
+                        ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                        : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer'
+                    }`}
+                    title={isCurrentSelectionOutOfStock ? 'Tamanho esgotado' : 'Comprar esta peça agora e ir para o Checkout'}
                   >
                     <ShoppingBag className="w-4 h-4" />
-                    <span>COMPRAR AGORA</span>
+                    <span>{isCurrentSelectionOutOfStock ? 'TAMANHO ESGOTADO' : 'COMPRAR AGORA'}</span>
                   </button>
                 </div>
 
                 {/* Botão Secundário: Adicionar à Sacola */}
                 <button
                   onClick={handleAdd}
-                  className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border border-[#C5A059]/60 shadow-xs cursor-pointer ${
-                    addedAnimation
-                      ? 'bg-[#25D366] text-white border-[#25D366]'
-                      : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5]'
+                  disabled={isCurrentSelectionOutOfStock}
+                  className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border shadow-xs ${
+                    isCurrentSelectionOutOfStock
+                      ? 'bg-neutral-100 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800 text-neutral-400 cursor-not-allowed'
+                      : addedAnimation
+                      ? 'bg-[#25D366] text-white border-[#25D366] cursor-pointer'
+                      : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/60 cursor-pointer'
                   }`}
                 >
-                  {addedAnimation ? (
+                  {isCurrentSelectionOutOfStock ? (
+                    <span>TAMANHO ESGOTADO</span>
+                  ) : addedAnimation ? (
                     <>
                       <Check className="w-4 h-4 stroke-[3]" />
                       <span>ADICIONADO À SACOLA!</span>

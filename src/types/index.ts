@@ -4,6 +4,15 @@ export interface ProductMedia {
   label: string;
 }
 
+export interface ProductVariation {
+  id?: string;
+  color: string;
+  size: string;
+  stock: number;
+  sku?: string;
+  price?: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -28,6 +37,8 @@ export interface Product {
   details: string[];
   sizes: string[];
   colors: { name: string; hex: string; imageSrc?: string }[];
+  variations?: ProductVariation[];
+  totalStock?: number;
   media: ProductMedia[];
   thumbnail: string;
   rating: number;
