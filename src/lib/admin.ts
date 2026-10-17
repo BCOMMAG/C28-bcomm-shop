@@ -798,7 +798,13 @@ export async function updateAdminProductDetails(
   preco: number,
   precoPromocional: number | null,
   estoqueTotal: number,
-  precoCusto?: number | null
+  precoCusto?: number | null,
+  promotionalFlags?: {
+    destaque?: boolean;
+    mais_vendido?: boolean;
+    outlet?: boolean;
+    ultimas_pecas?: boolean;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseBrowserClient();
 
@@ -812,6 +818,13 @@ export async function updateAdminProductDetails(
 
     if (precoCusto !== undefined) {
       updatePayload.preco_custo = precoCusto;
+    }
+
+    if (promotionalFlags) {
+      if (promotionalFlags.destaque !== undefined) updatePayload.destaque = promotionalFlags.destaque;
+      if (promotionalFlags.mais_vendido !== undefined) updatePayload.mais_vendido = promotionalFlags.mais_vendido;
+      if (promotionalFlags.outlet !== undefined) updatePayload.outlet = promotionalFlags.outlet;
+      if (promotionalFlags.ultimas_pecas !== undefined) updatePayload.ultimas_pecas = promotionalFlags.ultimas_pecas;
     }
 
     const { error } = await supabase

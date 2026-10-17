@@ -52,7 +52,9 @@ export default function AdminProdutosPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
-  const [stockFilter, setStockFilter] = useState<'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados'>('todos');
+  const [stockFilter, setStockFilter] = useState<
+    'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados' | 'destaques' | 'outlet' | 'mais_vendidos'
+  >('todos');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   // Modal de Criação de Produto
@@ -103,6 +105,10 @@ export default function AdminProdutosPage() {
   const [editPromoPrice, setEditPromoPrice] = useState<string>('');
   const [editCostPrice, setEditCostPrice] = useState<string>('');
   const [editStock, setEditStock] = useState<number>(0);
+  const [editDestaque, setEditDestaque] = useState<boolean>(false);
+  const [editMaisVendido, setEditMaisVendido] = useState<boolean>(false);
+  const [editOutlet, setEditOutlet] = useState<boolean>(false);
+  const [editUltimasPecas, setEditUltimasPecas] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingVarId, setUpdatingVarId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -320,6 +326,10 @@ export default function AdminProdutosPage() {
     setEditPromoPrice(product.preco_promocional ? String(product.preco_promocional) : '');
     setEditCostPrice(product.preco_custo ? String(product.preco_custo) : '');
     setEditStock(product.estoque_total);
+    setEditDestaque(Boolean(product.destaque));
+    setEditMaisVendido(Boolean(product.mais_vendido));
+    setEditOutlet(Boolean(product.outlet));
+    setEditUltimasPecas(Boolean(product.ultimas_pecas));
   };
 
   // Salvar Edição Rápida
@@ -335,7 +345,13 @@ export default function AdminProdutosPage() {
       Number(editPrice),
       promoVal,
       Number(editStock),
-      costVal
+      costVal,
+      {
+        destaque: editDestaque,
+        mais_vendido: editMaisVendido,
+        outlet: editOutlet,
+        ultimas_pecas: editUltimasPecas
+      }
     );
 
     if (res.success) {
@@ -347,7 +363,11 @@ export default function AdminProdutosPage() {
                 preco: Number(editPrice),
                 preco_promocional: promoVal,
                 preco_custo: costVal,
-                estoque_total: Number(editStock)
+                estoque_total: Number(editStock),
+                destaque: editDestaque,
+                mais_vendido: editMaisVendido,
+                outlet: editOutlet,
+                ultimas_pecas: editUltimasPecas
               }
             : p
         )
@@ -523,6 +543,12 @@ export default function AdminProdutosPage() {
       if (!p.ativo) return false;
     } else if (stockFilter === 'pausados') {
       if (p.ativo) return false;
+    } else if (stockFilter === 'destaques') {
+      if (!p.destaque) return false;
+    } else if (stockFilter === 'outlet') {
+      if (!p.outlet) return false;
+    } else if (stockFilter === 'mais_vendidos') {
+      if (!p.mais_vendido) return false;
     }
 
     if (searchTerm.trim()) {
@@ -660,6 +686,9 @@ export default function AdminProdutosPage() {
           {[
             { id: 'todos', label: 'Todas as Peças' },
             { id: 'criticos', label: '⚠️ Reposição Urgente (≤ 2 un)' },
+            { id: 'destaques', label: '🌟 Destaques' },
+            { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
+            { id: 'outlet', label: '🏷️ Outlet' },
             { id: 'esgotados', label: '⛔ Esgotados' },
             { id: 'ativos', label: '✅ Ativas na Vitrine' },
             { id: 'pausados', label: '⏸️ Pausadas' }
@@ -740,7 +769,7 @@ export default function AdminProdutosPage() {
 
                     {/* Informações da Peça */}
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                           {product.categoria_nome}
                         </span>
@@ -750,8 +779,23 @@ export default function AdminProdutosPage() {
                           </span>
                         )}
                         {product.destaque && (
-                          <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">
-                            Lançamento
+                          <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase">
+                            🌟 Destaque
+                          </span>
+                        )}
+                        {product.mais_vendido && (
+                          <span className="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded font-bold uppercase">
+                            🔥 Mais Vendido
+                          </span>
+                        )}
+                        {product.outlet && (
+                          <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 rounded font-bold uppercase">
+                            🏷️ Outlet
+                          </span>
+                        )}
+                        {product.ultimas_pecas && (
+                          <span className="text-[10px] bg-orange-50 text-orange-800 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase">
+                            ⏳ Últimas Peças
                           </span>
                         )}
                       </div>
@@ -1333,6 +1377,51 @@ export default function AdminProdutosPage() {
                   onChange={(e) => setEditStock(Number(e.target.value))}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold"
                 />
+              </div>
+
+              {/* Tags & Sinalizadores Promocionais */}
+              <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                  Tags & Sinalizadores Promocionais:
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editDestaque}
+                      onChange={(e) => setEditDestaque(e.target.checked)}
+                      className="accent-amber-600 rounded"
+                    />
+                    <span className="font-semibold text-slate-800">🌟 Destaque</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editMaisVendido}
+                      onChange={(e) => setEditMaisVendido(e.target.checked)}
+                      className="accent-purple-600 rounded"
+                    />
+                    <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editOutlet}
+                      onChange={(e) => setEditOutlet(e.target.checked)}
+                      className="accent-rose-600 rounded"
+                    />
+                    <span className="font-semibold text-slate-800">🏷️ Outlet</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editUltimasPecas}
+                      onChange={(e) => setEditUltimasPecas(e.target.checked)}
+                      className="accent-orange-600 rounded"
+                    />
+                    <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
+                  </label>
+                </div>
               </div>
             </div>
 

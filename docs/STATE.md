@@ -56,6 +56,10 @@
   - [x] **Dinamização Integral do Checkout & WhatsApp Multi-Tenant:**
     - Número de WhatsApp de destino 100% dinâmico puxado das configurações do tenant no Supabase (`storeWhatsapp`) com higienização estrita de caracteres não numéricos (`wa.me/<cleanPhone>`) e fallback seguro.
     - Nome da loja dinâmico (`currentTenant.nome`) aplicado no cabeçalho do pedido no WhatsApp, resumo pós-venda, sacola vazia e modal de pré-preenchimento rápido, eliminando textos hardcoded e garantindo prontidão para novos lojistas SaaS.
+  - [x] **Gestão de Tags Promocionais & Curadoria de Catálogo (Item F17 do Catálogo):**
+    - Edição visual no modal de peça das 4 flags comerciais: `🌟 Destaque` (Lançamento / Home), `🔥 Mais Vendido`, `🏷️ Outlet / Bazar` e `⏳ Últimas Peças` com persistência imediata no Supabase.
+    - Badges estéticos diferenciados em cada card de produto na listagem do admin para rápida identificação operacional.
+    - Filtros rápidos por tags no topo do catálogo (`🌟 Destaques`, `🔥 Mais Vendidos`, `🏷️ Outlet`, `⚠️ Reposição Urgente`, `⛔ Esgotados`, `✅ Ativas`, `⏸️ Pausadas`).
   - [x] **Homologação E2E Completa:** Testes automatizados unitários e de integração em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 
