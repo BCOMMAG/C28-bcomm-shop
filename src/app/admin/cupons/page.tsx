@@ -30,8 +30,13 @@ import {
   CreateCouponInput
 } from '@/lib/coupons';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminCuponsPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,7 +62,7 @@ export default function AdminCuponsPage() {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
-      const data = await getAdminCoupons(DEFAULT_TENANT_ID);
+      const data = await getAdminCoupons(tenantId);
       setCoupons(data);
     } catch (err) {
       console.error('Erro ao buscar cupons:', err);
@@ -68,7 +73,7 @@ export default function AdminCuponsPage() {
 
   useEffect(() => {
     fetchCoupons();
-  }, []);
+  }, [tenantId]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -129,7 +134,7 @@ export default function AdminCuponsPage() {
         ativo: true
       };
 
-      const res = await createAdminCoupon(payload, DEFAULT_TENANT_ID);
+      const res = await createAdminCoupon(payload, tenantId);
       if (res.success) {
         showToast(`Cupom "${payload.codigo}" criado com sucesso!`);
         setIsModalOpen(false);

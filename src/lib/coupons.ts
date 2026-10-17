@@ -31,47 +31,18 @@ export interface CouponValidationResult {
   error?: string;
 }
 
-export const DEFAULT_DEMO_COUPONS: CouponItem[] = [
-  {
-    id: 'demo-cupom-1',
-    loja_id: DEFAULT_TENANT_ID,
-    codigo: 'BEMVINDA10',
-    tipo_desconto: 'porcentagem',
-    valor_desconto: 10,
-    valor_minimo: 0,
-    limite_usos: 500,
-    usos_atuais: 42,
-    ativo: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'demo-cupom-2',
-    loja_id: DEFAULT_TENANT_ID,
-    codigo: 'VIP15',
-    tipo_desconto: 'porcentagem',
-    valor_desconto: 15,
-    valor_minimo: 350,
-    limite_usos: 200,
-    usos_atuais: 89,
-    ativo: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'demo-cupom-3',
-    loja_id: DEFAULT_TENANT_ID,
-    codigo: 'LEIDY50',
-    tipo_desconto: 'fixo',
-    valor_desconto: 50,
-    valor_minimo: 400,
-    limite_usos: 100,
-    usos_atuais: 15,
-    ativo: true,
-    created_at: new Date().toISOString()
-  }
-];
+/**
+ * Normaliza o tipo de desconto vindo do banco (percent/fixed ou porcentagem/fixo)
+ */
+function normalizeTipoDesconto(tipo?: string): 'porcentagem' | 'fixo' {
+  if (!tipo) return 'porcentagem';
+  const lower = tipo.toLowerCase();
+  if (lower === 'fixed' || lower === 'fixo') return 'fixo';
+  return 'porcentagem';
+}
 
 /**
- * Consulta a lista completa de cupons cadastrados na loja.
+ * Consulta a lista completa de cupons cadastrados no banco de dados para a loja.
  */
 export async function getAdminCoupons(
   lojaId: string = DEFAULT_TENANT_ID
@@ -85,19 +56,19 @@ export async function getAdminCoupons(
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('⚠️ [Supabase] Erro ao buscar cupons, usando lista padrão:', error.message);
-      return DEFAULT_DEMO_COUPONS;
+      console.error('❌ [Supabase] Erro ao buscar cupons:', error.message);
+      return [];
     }
 
     if (!data || data.length === 0) {
-      return DEFAULT_DEMO_COUPONS;
+      return [];
     }
 
     return data.map((c: any) => ({
       id: c.id,
       loja_id: c.loja_id,
       codigo: (c.codigo || '').toUpperCase(),
-      tipo_desconto: c.tipo_desconto || 'porcentagem',
+      tipo_desconto: normalizeTipoDesconto(c.tipo_desconto),
       valor_desconto: Number(c.valor_desconto || 0),
       valor_minimo: Number(c.valor_minimo || 0),
       limite_usos: Number(c.limite_usos || 1000),
@@ -106,13 +77,13 @@ export async function getAdminCoupons(
       created_at: c.created_at
     }));
   } catch (err: any) {
-    console.warn('⚠️ [Supabase] Falha ao carregar cupons:', err?.message);
-    return DEFAULT_DEMO_COUPONS;
+    console.error('❌ [Supabase] Falha ao carregar cupons:', err?.message);
+    return [];
   }
 }
 
 /**
- * Cadastra um novo cupom no banco de dados.
+ * Cadastra um novo cupom no banco de dados para a loja especificada.
  */
 export async function createAdminCoupon(
   input: CreateCouponInput,
@@ -146,10 +117,27 @@ export async function createAdminCoupon(
 
     if (error) {
       console.error('❌ [Supabase] Erro ao cadastrar cupom:', error.message);
+      if (error.code === '23505') {
+        return { success: false, error: `Já existe um cupom com o código "${cleanCode}".` };
+      }
       return { success: false, error: error.message };
     }
 
-    return { success: true, coupon: data };
+    return {
+      success: true,
+      coupon: {
+        id: data.id,
+        loja_id: data.loja_id,
+        codigo: data.codigo,
+        tipo_desconto: normalizeTipoDesconto(data.tipo_desconto),
+        valor_desconto: Number(data.valor_desconto),
+        valor_minimo: Number(data.valor_minimo || 0),
+        limite_usos: Number(data.limite_usos || 1000),
+        usos_atuais: Number(data.usos_atuais || 0),
+        ativo: Boolean(data.ativo),
+        created_at: data.created_at
+      }
+    };
   } catch (err: any) {
     console.error('❌ [Supabase] Falha ao criar cupom:', err);
     return { success: false, error: err?.message || 'Falha ao cadastrar cupom.' };
@@ -197,7 +185,7 @@ export async function deleteAdminCoupon(
 
 /**
  * Validação em tempo real de cupom para o Checkout.
- * Verifica existência, loja, ativação, valor mínimo e limite de utilização.
+ * Consulta o banco de dados diretamente, verificando vigência, valor mínimo e limite de utilização.
  */
 export async function validateCouponInDatabase(
   code: string,
@@ -218,18 +206,27 @@ export async function validateCouponInDatabase(
       .ilike('codigo', cleanCode)
       .maybeSingle();
 
-    let couponRecord: CouponItem | undefined = data;
-
-    // Se não encontrou no banco, faz fallback para cupons promocionais oficiais da loja
-    if (!couponRecord) {
-      couponRecord = DEFAULT_DEMO_COUPONS.find(
-        (c) => c.codigo.toUpperCase() === cleanCode
-      );
+    if (error) {
+      console.warn('⚠️ [Supabase] Erro na consulta de cupom:', error.message);
+      return { valid: false, discountAmount: 0, error: 'Falha ao consultar cupom no sistema.' };
     }
 
-    if (!couponRecord) {
+    if (!data) {
       return { valid: false, discountAmount: 0, error: 'Cupom inválido ou expirado.' };
     }
+
+    const couponRecord: CouponItem = {
+      id: data.id,
+      loja_id: data.loja_id,
+      codigo: (data.codigo || '').toUpperCase(),
+      tipo_desconto: normalizeTipoDesconto(data.tipo_desconto),
+      valor_desconto: Number(data.valor_desconto || 0),
+      valor_minimo: Number(data.valor_minimo || 0),
+      limite_usos: Number(data.limite_usos || 1000),
+      usos_atuais: Number(data.usos_atuais || 0),
+      ativo: Boolean(data.ativo),
+      created_at: data.created_at
+    };
 
     if (!couponRecord.ativo) {
       return { valid: false, discountAmount: 0, error: 'Este cupom não está mais ativo.' };
@@ -269,7 +266,39 @@ export async function validateCouponInDatabase(
       discountPercentage
     };
   } catch (err: any) {
-    console.warn('⚠️ [Supabase] Erro ao validar cupom, usando fallback:', err);
+    console.error('❌ [Supabase] Falha inesperada ao validar cupom:', err);
     return { valid: false, discountAmount: 0, error: 'Falha ao validar cupom no momento.' };
+  }
+}
+
+/**
+ * Incrementa o contador de utilizações de um cupom após finalização de pedido.
+ */
+export async function incrementCouponUsage(
+  code: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<void> {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!cleanCode) return;
+
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: cupom } = await supabase
+      .from('cupons')
+      .select('id, usos_atuais')
+      .eq('loja_id', lojaId)
+      .ilike('codigo', cleanCode)
+      .maybeSingle();
+
+    if (cupom) {
+      const nextUsage = (cupom.usos_atuais || 0) + 1;
+      await supabase
+        .from('cupons')
+        .update({ usos_atuais: nextUsage })
+        .eq('id', cupom.id);
+      console.log(`✅ [Supabase] Cupom ${cleanCode} incrementado para ${nextUsage} resgates.`);
+    }
+  } catch (err) {
+    console.warn('⚠️ [Supabase] Não foi possível incrementar uso do cupom:', err);
   }
 }

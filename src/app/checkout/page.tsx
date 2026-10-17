@@ -33,7 +33,7 @@ import {
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { saveCustomerLead, createOrderInDatabase } from '@/lib/orders';
-import { validateCouponInDatabase } from '@/lib/coupons';
+import { validateCouponInDatabase, incrementCouponUsage } from '@/lib/coupons';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
     setCouponSuccess('');
 
     try {
-      const res = await validateCouponInDatabase(code, rawSubtotal);
+      const res = await validateCouponInDatabase(code, rawSubtotal, currentTenant?.id);
       if (res.valid && res.coupon) {
         if (res.coupon.tipo_desconto === 'fixo') {
           setAppliedCoupon({ code, amount: res.discountAmount });
@@ -513,6 +513,11 @@ export default function CheckoutPage() {
       observacoes: orderNotes || undefined,
       status: 'aguardando_whatsapp'
     });
+
+    // Se utilizou cupom promocional, incrementa o contador real no banco de dados
+    if (appliedCoupon?.code) {
+      incrementCouponUsage(appliedCoupon.code, currentTenant?.id);
+    }
 
     // Dispara a abertura do WhatsApp com a mensagem pronta
     const text = buildOrderSummaryText(newOrderId, isDirectWithoutFilling);
