@@ -22,6 +22,15 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     barra_aviso: 'Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp',
     barra_aviso_ativa: true
   },
+  configuracoes_financeiras: {
+    imposto_padrao: 4,
+    taxa_cartao_padrao: 3.5,
+    custo_embalagem_padrao: 8.0,
+    chave_pix: '554197347601',
+    tipo_chave_pix: 'telefone',
+    pix_titular: 'Leidyane Cristina Boutique',
+    pix_banco: 'Nubank'
+  },
   modulos_ativos: {
     frete_automatico: true,
     rastreio_whatsapp: false,
@@ -50,6 +59,15 @@ export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {
     frete_gratis_valor: 400.00,
     barra_aviso: 'Lançamento Coleção Aura Privée: Peças exclusivas sob encomenda',
     barra_aviso_ativa: true
+  },
+  configuracoes_financeiras: {
+    imposto_padrao: 4,
+    taxa_cartao_padrao: 3.5,
+    custo_embalagem_padrao: 8.0,
+    chave_pix: '5511999998888',
+    tipo_chave_pix: 'telefone',
+    pix_titular: 'Aura Privée Moda de Luxo LTDA',
+    pix_banco: 'Banco Inter'
   },
   modulos_ativos: {
     frete_automatico: true,

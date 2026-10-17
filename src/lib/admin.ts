@@ -1236,6 +1236,122 @@ export async function saveStoreAnnouncementBar(
   }
 }
 
+export interface StoreSettingsData {
+  nome: string;
+  slug: string;
+  whatsapp: string;
+  email: string;
+  freteGratisValor: number;
+  chavePix: string;
+  tipoChavePix: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
+  pixTitular: string;
+  pixBanco: string;
+}
+
+export interface SaveStoreSettingsInput {
+  nome?: string;
+  whatsapp?: string;
+  email?: string;
+  freteGratisValor?: number;
+  chavePix?: string;
+  tipoChavePix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
+  pixTitular?: string;
+  pixBanco?: string;
+}
+
+/**
+ * Consulta as configurações gerais da loja (visuais, operacionais e financeiras).
+ */
+export async function getStoreSettings(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<StoreSettingsData | null> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja, error } = await supabase
+      .from('lojas')
+      .select('nome, slug, whatsapp, email, configuracoes_visuais, configuracoes_financeiras')
+      .eq('id', lojaId)
+      .single();
+
+    if (error) throw error;
+
+    const vis = (loja as any)?.configuracoes_visuais || {};
+    const fin = (loja as any)?.configuracoes_financeiras || {};
+
+    return {
+      nome: loja.nome || 'Leidy Boutique',
+      slug: loja.slug || 'leidy-boutique',
+      whatsapp: loja.whatsapp || '554197347601',
+      email: loja.email || 'contato@leidyboutique.com.br',
+      freteGratisValor: Number(vis.frete_gratis_valor || 350),
+      chavePix: fin.chave_pix || '554197347601',
+      tipoChavePix: fin.tipo_chave_pix || 'telefone',
+      pixTitular: fin.pix_titular || 'Leidyane Cristina Boutique',
+      pixBanco: fin.pix_banco || 'Nubank'
+    };
+  } catch (err) {
+    console.error('❌ [Supabase] Erro ao buscar configurações da loja:', err);
+    return null;
+  }
+}
+
+/**
+ * Salva as configurações gerais da loja no Supabase.
+ */
+export async function saveStoreGeneralSettings(
+  lojaId: string = DEFAULT_TENANT_ID,
+  input: SaveStoreSettingsInput
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('nome, whatsapp, email, configuracoes_visuais, configuracoes_financeiras')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentVisuais = (loja as any)?.configuracoes_visuais || {};
+    const updatedVisuais = {
+      ...currentVisuais,
+      ...(input.freteGratisValor !== undefined ? { frete_gratis_valor: Number(input.freteGratisValor) } : {})
+    };
+
+    const currentFin = (loja as any)?.configuracoes_financeiras || {};
+    const updatedFin = {
+      ...currentFin,
+      ...(input.chavePix !== undefined ? { chave_pix: input.chavePix } : {}),
+      ...(input.tipoChavePix !== undefined ? { tipo_chave_pix: input.tipoChavePix } : {}),
+      ...(input.pixTitular !== undefined ? { pix_titular: input.pixTitular } : {}),
+      ...(input.pixBanco !== undefined ? { pix_banco: input.pixBanco } : {})
+    };
+
+    const updatePayload: Record<string, any> = {
+      configuracoes_visuais: updatedVisuais,
+      configuracoes_financeiras: updatedFin,
+      updated_at: new Date().toISOString()
+    };
+
+    if (input.nome !== undefined) updatePayload.nome = input.nome;
+    if (input.whatsapp !== undefined) updatePayload.whatsapp = input.whatsapp.replace(/\D/g, '');
+    if (input.email !== undefined) updatePayload.email = input.email;
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update(updatePayload)
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao salvar configurações da loja:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
 /**
  * Lista os módulos contratáveis da loja e seu estado ativo.
  */

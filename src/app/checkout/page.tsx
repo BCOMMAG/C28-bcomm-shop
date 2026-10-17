@@ -67,7 +67,8 @@ export default function CheckoutPage() {
     setSavedAddressInfo,
     updateCartQuantity,
     removeFromCart,
-    addToCart
+    addToCart,
+    currentTenant
   } = useStore();
 
   // Etapa ativa na trilha de finalização
@@ -122,7 +123,8 @@ export default function CheckoutPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showPendingModal, setShowPendingModal] = useState(false);
 
-  const PIX_KEY = '5549999999999';
+  const PIX_KEY = currentTenant?.configuracoes_financeiras?.chave_pix || '554197347601';
+  const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
 
   // Formatação de telefone brasileiro
   const formatPhone = (val: string) => {
@@ -173,9 +175,10 @@ export default function CheckoutPage() {
 
   // Cálculos de Valores
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const isFreeShipping = rawSubtotal >= STORE_INFO.freeShippingThreshold;
-  const remainingForFreeShipping = Math.max(0, STORE_INFO.freeShippingThreshold - rawSubtotal);
-  const progressToFreeShipping = Math.min(100, (rawSubtotal / STORE_INFO.freeShippingThreshold) * 100);
+  const freeShippingThreshold = currentTenant?.configuracoes_visuais?.frete_gratis_valor ?? STORE_INFO.freeShippingThreshold;
+  const isFreeShipping = rawSubtotal >= freeShippingThreshold;
+  const remainingForFreeShipping = Math.max(0, freeShippingThreshold - rawSubtotal);
+  const progressToFreeShipping = Math.min(100, (rawSubtotal / freeShippingThreshold) * 100);
 
   // Atualiza opções de frete quando o estado ou subtotal mudam
   useEffect(() => {
@@ -596,7 +599,7 @@ export default function CheckoutPage() {
   // Abre WhatsApp diretamente com o texto do pedido
   const handleOpenWhatsApp = () => {
     const text = buildOrderSummaryText();
-    const url = `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
     if (typeof window !== 'undefined') {
       try {
         window.open(url, '_blank');

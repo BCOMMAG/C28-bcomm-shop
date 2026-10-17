@@ -21,6 +21,16 @@ export interface LojaModulosAtivos {
   [key: string]: boolean | undefined;
 }
 
+export interface LojaConfiguracoesFinanceiras {
+  imposto_padrao?: number;
+  taxa_cartao_padrao?: number;
+  custo_embalagem_padrao?: number;
+  chave_pix?: string;
+  tipo_chave_pix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
+  pix_titular?: string;
+  pix_banco?: string;
+}
+
 export interface Loja {
   id: string;
   nome: string;
@@ -29,6 +39,7 @@ export interface Loja {
   whatsapp: string;
   email: string | null;
   configuracoes_visuais: LojaConfiguracoesVisuais;
+  configuracoes_financeiras?: LojaConfiguracoesFinanceiras;
   modulos_ativos: LojaModulosAtivos;
   ativo: boolean;
   created_at: string;
