@@ -64,6 +64,9 @@
     - Módulo `src/lib/export.ts` gerando arquivos `.csv` padrão brasileiro (delimitador `;` e encoding UTF-8 com BOM para abertura perfeita no Microsoft Excel sem corrupção de acentos).
     - Botão "Exportar Planilha (CSV)" na Central de Pedidos (`/admin/pedidos/`) com todos os dados dos pedidos filtrados (ID, Cliente, WhatsApp, Itens, Valor, Status, Rastreio e Cidade/UF).
     - Botão "Exportar CSV" e "Imprimir DRE" no painel financeiro (`/admin/financas/`) com estilização de impressão `@media print` para relatórios contábeis oficiais timbrados.
+  - [x] **Esteira de Provisionamento Multi-Tenant Completa (Super Admin):**
+    - Motor expresso de provisionamento em `src/lib/super-admin.ts` (`createStoreExpress`), clonando categorias, variações de grade P/M/G e peças completas preservando preços de custo CMV (`preco_custo`), flags promocionais (`destaque`, `mais_vendido`, `outlet`, `ultimas_pecas`), modelagem e detalhes têxteis.
+    - Inicialização automática de Hero Banner dinâmico para a nova loja recém-criada, permitindo que a vitrine já nasça 100% pronta para venda e com isolamento total por `loja_id`.
   - [x] **Homologação E2E Completa:** Testes automatizados unitários e de integração em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 

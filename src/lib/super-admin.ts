@@ -268,11 +268,19 @@ export async function createStoreExpress(
               slug: `${prod.slug}-${cleanSlug}`,
               preco: prod.preco,
               preco_promocional: prod.preco_promocional,
+              preco_custo: prod.preco_custo || null,
               tecido: prod.tecido,
               modelagem: prod.modelagem,
+              linha: prod.linha || 'Coleção Nobre',
+              subcategoria: prod.subcategoria || null,
               descricao: prod.descricao,
+              destaque: Boolean(prod.destaque),
+              mais_vendido: Boolean(prod.mais_vendido),
+              outlet: Boolean(prod.outlet),
+              ultimas_pecas: Boolean(prod.ultimas_pecas),
               estoque_total: prod.estoque_total,
               foto_principal: prod.foto_principal,
+              detalhes: prod.detalhes || null,
               ativo: true
             })
             .select()
@@ -308,6 +316,20 @@ export async function createStoreExpress(
           }
         }
       }
+
+      // Cria Hero Banner inicial dinâmico para a nova loja
+      await supabase.from('hero_banners').insert({
+        loja_id: newLojaId,
+        titulo: `Nova Coleção ${payload.nome.trim()}`,
+        subtitulo: 'Moda Feminina & Sofisticação Atemporal',
+        cta_texto: 'Explorar Peças',
+        cta_link: '/catalogo',
+        tipo_midia: 'video',
+        desktop_media_url: '/images/hero-desktop.mp4',
+        mobile_media_url: '/images/hero-mobile.mp4',
+        ativo: true,
+        display_order: 1
+      });
     }
 
     return { success: true, loja: createdStore as StoreTenant };
