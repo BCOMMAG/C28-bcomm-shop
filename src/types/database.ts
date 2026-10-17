@@ -9,6 +9,8 @@ export interface LojaConfiguracoesVisuais {
   logo_url: string;
   tagline: string;
   frete_gratis_valor: number;
+  barra_aviso?: string;
+  barra_aviso_ativa?: boolean;
 }
 
 export interface LojaModulosAtivos {

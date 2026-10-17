@@ -41,6 +41,7 @@
   - [x] **Central de Snippets WhatsApp:** 4 templates prontos de 1 clique (Atendimento Geral, Chave Pix & Reserva, Código de Rastreio e Pós-Venda Carinhoso).
   - [x] **Recuperação de Carrinhos Abandonados:** Segmentação de leads com 0 compras e botão direto de WhatsApp com mensagem amigável.
   - [x] **Central de Cupons & Promoções (`/admin/cupons/`):** Gestão de descontos fixos e percentuais, limites de uso, pedido mínimo e validação dinâmica no checkout da vitrine.
+  - [x] **Vitrine & Banners Hero Sincronizados:** Suporte completo no admin para vídeos/fotos 16:9 (Desktop) e 9:16 (Celular) com upload R2, textos e CTA dinâmicos, e Barra Superior de Avisos (Top Announcement Bar) sincronizada ao vivo com a vitrine.
   - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 

@@ -1091,6 +1091,48 @@ export async function saveAdminHeroBanner(
 }
 
 /**
+ * Salva ou atualiza a barra de avisos superior da loja no Supabase.
+ */
+export async function saveStoreAnnouncementBar(
+  lojaId: string = DEFAULT_TENANT_ID,
+  barraAviso: string,
+  barraAvisoAtiva: boolean = true
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentVisuais = loja?.configuracoes_visuais || {};
+    const updatedVisuais = {
+      ...currentVisuais,
+      barra_aviso: barraAviso,
+      barra_aviso_ativa: barraAvisoAtiva
+    };
+
+    const { error: updateErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: updatedVisuais,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', lojaId);
+
+    if (updateErr) throw updateErr;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao salvar barra de avisos:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
  * Lista os módulos contratáveis da loja e seu estado ativo.
  */
 export async function getStoreModules(lojaId: string = DEFAULT_TENANT_ID): Promise<StoreModuleConfig[]> {

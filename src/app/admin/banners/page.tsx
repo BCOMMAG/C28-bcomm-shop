@@ -21,10 +21,12 @@ import {
 import {
   getAdminHeroBanners,
   saveAdminHeroBanner,
+  saveStoreAnnouncementBar,
   AdminHeroBanner
 } from '@/lib/admin';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState<AdminHeroBanner[]>([]);
@@ -45,6 +47,7 @@ export default function AdminBannersPage() {
 
   // Barra de aviso superior
   const [barraAviso, setBarraAviso] = useState('Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp');
+  const [barraAvisoAtiva, setBarraAvisoAtiva] = useState(true);
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -69,6 +72,24 @@ export default function AdminBannersPage() {
         setTipoMidia(b.tipo_midia);
         setDesktopMediaUrl(b.desktop_media_url);
         setMobileMediaUrl(b.mobile_media_url);
+      }
+
+      // Carrega preferências da barra de avisos do Supabase
+      const supabase = getSupabaseBrowserClient();
+      const { data: loja } = await supabase
+        .from('lojas')
+        .select('configuracoes_visuais')
+        .eq('id', DEFAULT_TENANT_ID)
+        .maybeSingle();
+
+      if (loja?.configuracoes_visuais) {
+        const vis = loja.configuracoes_visuais as any;
+        if (vis.barra_aviso) {
+          setBarraAviso(vis.barra_aviso);
+        }
+        if (vis.barra_aviso_ativa !== undefined) {
+          setBarraAvisoAtiva(Boolean(vis.barra_aviso_ativa));
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar banners:', err);
@@ -124,31 +145,34 @@ export default function AdminBannersPage() {
     }
   };
 
-  // Salvar Banner no Supabase
+  // Salvar Banner e Barra de Avisos no Supabase
   const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
-      const res = await saveAdminHeroBanner(
-        {
-          id: activeBannerId,
-          titulo,
-          subtitulo,
-          cta_texto: ctaTexto,
-          cta_link: ctaLink,
-          tipo_midia: tipoMidia,
-          desktop_media_url: desktopMediaUrl,
-          mobile_media_url: mobileMediaUrl,
-          ativo: true
-        },
-        DEFAULT_TENANT_ID
-      );
+      const [resBanner, resBarra] = await Promise.all([
+        saveAdminHeroBanner(
+          {
+            id: activeBannerId,
+            titulo,
+            subtitulo,
+            cta_texto: ctaTexto,
+            cta_link: ctaLink,
+            tipo_midia: tipoMidia,
+            desktop_media_url: desktopMediaUrl,
+            mobile_media_url: mobileMediaUrl,
+            ativo: true
+          },
+          DEFAULT_TENANT_ID
+        ),
+        saveStoreAnnouncementBar(DEFAULT_TENANT_ID, barraAviso, barraAvisoAtiva)
+      ]);
 
-      if (res.success) {
-        showToast('Banner Hero atualizado e publicado na vitrine da Leidy Boutique!');
+      if (resBanner.success && resBarra.success) {
+        showToast('Banner Hero e Barra Superior atualizados e publicados na vitrine da Leidy Boutique!');
       } else {
-        showToast(res.error || 'Erro ao salvar banner.', 'error');
+        showToast(resBanner.error || resBarra.error || 'Erro ao salvar alterações.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao salvar banner.', 'error');
@@ -364,11 +388,24 @@ export default function AdminBannersPage() {
 
         {/* SEÇÃO 3: BARRA DE AVISOS NO TOPO DA VITRINE */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <h3 className="font-bold text-slate-900 uppercase tracking-wider">
-              4. Barra de Avisos Fixa no Topo da Loja
-            </h3>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <h3 className="font-bold text-slate-900 uppercase tracking-wider">
+                4. Barra de Avisos Fixa no Topo da Loja
+              </h3>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+              <input
+                type="checkbox"
+                checked={barraAvisoAtiva}
+                onChange={(e) => setBarraAvisoAtiva(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-slate-700">
+                {barraAvisoAtiva ? 'Barra Ativa na Vitrine' : 'Barra Pausada'}
+              </span>
+            </label>
           </div>
 
           <div>
@@ -377,14 +414,24 @@ export default function AdminBannersPage() {
               type="text"
               value={barraAviso}
               onChange={(e) => setBarraAviso(e.target.value)}
-              placeholder="Ex: Frete Grátis para todo o Brasil acima de R$ 350"
+              placeholder="Ex: Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP"
               className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
 
           {/* Preview da barra */}
-          <div className="bg-slate-900 text-amber-300 text-center py-2 px-4 rounded-lg text-xs font-semibold shadow-inner">
-            {barraAviso || 'Prévia da barra de avisos da loja'}
+          <div>
+            <span className="text-[11px] text-slate-400 block mb-1">Prévia ao vivo da barra no topo da loja:</span>
+            {barraAvisoAtiva ? (
+              <div className="bg-[#1A1918] text-[#DFBE76] border border-[#DFBE76]/30 text-center py-2 px-4 rounded-lg text-xs font-medium tracking-wide shadow-inner flex items-center justify-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#DFBE76] animate-pulse" />
+                <span>{barraAviso || 'Frete Grátis para todo o Brasil | Atendimento VIP'}</span>
+              </div>
+            ) : (
+              <div className="bg-slate-100 text-slate-400 text-center py-2 px-4 rounded-lg text-xs font-semibold border border-dashed border-slate-300">
+                Barra pausada — não será exibida aos visitantes da loja no momento.
+              </div>
+            )}
           </div>
         </div>
 

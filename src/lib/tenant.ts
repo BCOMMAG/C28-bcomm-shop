@@ -18,7 +18,9 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     cor_fundo: '#FAF8F5',
     logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
     tagline: 'Curadoria Exclusiva em Moda Feminina',
-    frete_gratis_valor: 350.00
+    frete_gratis_valor: 350.00,
+    barra_aviso: 'Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp',
+    barra_aviso_ativa: true
   },
   modulos_ativos: {
     frete_automatico: true,
@@ -45,7 +47,9 @@ export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {
     cor_fundo: '#FAF8F5',
     logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
     tagline: 'Alta Costura & Alfaiataria Feminina Exclusiva',
-    frete_gratis_valor: 400.00
+    frete_gratis_valor: 400.00,
+    barra_aviso: 'Lançamento Coleção Aura Privée: Peças exclusivas sob encomenda',
+    barra_aviso_ativa: true
   },
   modulos_ativos: {
     frete_automatico: true,

@@ -16,7 +16,8 @@ import {
   ChevronRight,
   ChevronDown,
   MessageCircle,
-  User
+  User,
+  Sparkles
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO } from '@/data/products';
@@ -145,7 +146,8 @@ export const Header: React.FC<HeaderProps> = ({
     setSearchQuery,
     isSideDrawerOpen,
     openSideDrawer: openSideDrawerContext,
-    closeSideDrawer: closeSideDrawerContext
+    closeSideDrawer: closeSideDrawerContext,
+    announcementBar
   } = useStore();
 
   const [headerSearchInput, setHeaderSearchInput] = useState(searchQuery || '');
@@ -290,6 +292,14 @@ export const Header: React.FC<HeaderProps> = ({
             : 'bg-[#FAF8F5]/98 dark:bg-[#141312]/98 backdrop-blur-md border-b border-[#C5A059]/25 shadow-xs'
         }`}
       >
+        {/* BARRA SUPERIOR DE AVISOS DINÂMICA (ANNOUNCEMENT BAR) */}
+        {announcementBar?.active && (
+          <div className="bg-[#1A1918]/95 backdrop-blur-md text-[#DFBE76] border-b border-[#DFBE76]/25 py-1.5 px-3 text-center text-[10px] sm:text-xs font-medium tracking-wide flex items-center justify-center gap-1.5 transition-all">
+            <Sparkles className="w-3 h-3 text-[#DFBE76] shrink-0 animate-pulse" />
+            <span className="truncate max-w-[90vw]">{announcementBar.text}</span>
+          </div>
+        )}
+
         <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-10">
           <div className="relative flex items-center justify-between h-16 sm:h-20 lg:h-[86px] transition-all duration-300">
             

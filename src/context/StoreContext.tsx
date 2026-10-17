@@ -7,9 +7,12 @@ import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja } from '@/types/database';
 import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
+import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 
 interface StoreContextType {
   currentTenant: Loja;
+  heroBanner: AdminHeroBanner | null;
+  announcementBar: { text: string; active: boolean };
   products: Product[];
   isLoadingProducts: boolean;
   refreshProducts: () => Promise<void>;
@@ -76,8 +79,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedCep, setSavedCep] = useState<string>('');
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+  const [heroBanner, setHeroBanner] = useState<AdminHeroBanner | null>(null);
 
-  // Carrega produtos dinâmicos do Supabase na inicialização com suporte a ?loja=slug
+  // Barra de avisos superior sincronizada com o banco
+  const announcementBar = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const text = vis?.barra_aviso || 'Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp';
+    const active = vis?.barra_aviso_ativa !== undefined ? Boolean(vis.barra_aviso_ativa) : true;
+    return { text, active };
+  }, [currentTenant]);
+
+  // Carrega produtos dinâmicos e hero banner do Supabase na inicialização com suporte a ?loja=slug
   const refreshProducts = async () => {
     setIsLoadingProducts(true);
     try {
@@ -92,12 +104,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
         setCurrentTenant(tenant);
       }
-      const dynamicProds = await getStoreProducts(tenant.id);
+      const [dynamicProds, heroBanners] = await Promise.all([
+        getStoreProducts(tenant.id),
+        getAdminHeroBanners(tenant.id)
+      ]);
       if (dynamicProds && dynamicProds.length > 0) {
         setProducts(dynamicProds);
       }
+      if (heroBanners && heroBanners.length > 0) {
+        const active = heroBanners.find((b) => b.ativo) || heroBanners[0];
+        setHeroBanner(active);
+      }
     } catch (err) {
-      console.error('Falha ao carregar produtos dinâmicos:', err);
+      console.error('Falha ao carregar produtos e banners dinâmicos:', err);
     } finally {
       setIsLoadingProducts(false);
     }
@@ -402,6 +421,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider
       value={{
         currentTenant,
+        heroBanner,
+        announcementBar,
         products,
         isLoadingProducts,
         refreshProducts,
