@@ -29,12 +29,16 @@ import {
   Gift
 } from 'lucide-react';
 import { getAdminClients, saveClientInternalNotes, AdminClientItem } from '@/lib/admin';
-import { DEMO_ADMIN_CLIENTS } from '@/lib/mock-admin-data';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { useStore } from '@/context/StoreContext';
 
 type SortOption = 'ltv' | 'pedidos' | 'recente' | 'nome';
 
 export default function AdminClientesPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
   const [clients, setClients] = useState<AdminClientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,18 +65,11 @@ export default function AdminClientesPage() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const data = await getAdminClients(DEFAULT_TENANT_ID);
-      if (data && data.length > 2) {
-        setClients(data);
-      } else {
-        // Combina com a base de simulação VIP para demonstração completa de CRM
-        const combined = [...(data || []), ...DEMO_ADMIN_CLIENTS];
-        const unique = combined.filter((v, i, a) => a.findIndex((t) => t.telefone === v.telefone) === i);
-        setClients(unique);
-      }
+      const data = await getAdminClients(tenantId);
+      setClients(data || []);
     } catch (err) {
       console.error('Erro ao carregar clientes:', err);
-      setClients(DEMO_ADMIN_CLIENTS);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -80,7 +77,7 @@ export default function AdminClientesPage() {
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [tenantId]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -107,15 +104,7 @@ export default function AdminClientesPage() {
 
   // Salvar Notas Internas da Cliente
   const handleSaveNotes = async () => {
-    if (!selectedClient?.id) {
-      // Se for cliente mock/demo sem ID real no Supabase
-      if (selectedClient) {
-        selectedClient.notasInternas = editingNotes;
-        selectedClient.tamanhoHabitual = editingSize;
-      }
-      showToast('Anotações VIP salvas na sessão com sucesso!');
-      return;
-    }
+    if (!selectedClient?.id) return;
 
     setIsSavingNotes(true);
     try {
@@ -144,21 +133,21 @@ export default function AdminClientesPage() {
 
     switch (type) {
       case 'aniversario':
-        msg = `🎉 *Parabéns, ${client.nome}!* ✨\n\nNós da Leidy Boutique desejamos um novo ciclo repleto de realizações, saúde e muita elegância!\n\nPara celebrar o seu dia especial, preparamos um presente exclusivo: use o cupom *VIP15* e ganhe *15% de desconto* em qualquer peça da nossa nova coleção!\n\nConfira as novidades em: https://bcomm-shop.pages.dev/catalogo\n\nCom carinho,\nEquipe Leidy Boutique 🤍`;
+        msg = `🎉 *Parabéns, ${client.nome}!* ✨\n\nNós da ${lojaNome} desejamos um novo ciclo repleto de realizações, saúde e muita elegância!\n\nPara celebrar o seu dia especial, preparamos um presente exclusivo: use o cupom *VIP15* e ganhe *15% de desconto* em qualquer peça da nossa nova coleção!\n\nConfira as novidades em: https://bcomm-shop.pages.dev/catalogo\n\nCom carinho,\nEquipe ${lojaNome} 🤍`;
         break;
       case 'lancamento':
-        msg = `✨ Olá, ${client.nome}! Tudo bem?\n\nAqui é da Leidy Boutique. Acabaram de chegar peças exclusivas da nova coleção em tecidos nobres (linho e alfaiataria fina)${
+        msg = `✨ Olá, ${client.nome}! Tudo bem?\n\nAqui é da ${lojaNome}. Acabaram de chegar peças exclusivas da nova coleção em tecidos nobres (linho e alfaiataria fina)${
           client.tamanhoHabitual ? ` no seu tamanho habitual (*${client.tamanhoHabitual}*)` : ''
         }!\n\nSeparei a curadoria especial para você ver em primeira mão antes de esgotar:\n👉 https://bcomm-shop.pages.dev/catalogo?categoria=alfaiataria\n\nSe quiser reservar alguma, é só me avisar por aqui! ✨`;
         break;
       case 'recuperacao':
-        msg = `Olá ${client.nome}! Tudo bem? 🤍\n\nAqui é da Leidy Boutique. Vimos que você começou a escolher peças lindas no nosso site! Ficou alguma dúvida sobre o tamanho ou caimento no corpo? Posso te ajudar a garantir antes que esgote! ✨`;
+        msg = `Olá ${client.nome}! Tudo bem? 🤍\n\nAqui é da ${lojaNome}. Vimos que você começou a escolher peças lindas no nosso site! Ficou alguma dúvida sobre o tamanho ou caimento no corpo? Posso te ajudar a garantir antes que esgote! ✨`;
         break;
       case 'posvenda':
         msg = `Olá ${client.nome}! Tudo bem com você? ✨\n\nPassando para saber se as peças do seu pedido chegaram perfeitamente e se o caimento ficou lindo no corpo! Ficamos à disposição caso precise de algo e será um prazer te atender novamente! 🤍`;
         break;
       default:
-        msg = `Olá ${client.nome}! Tudo bem? Aqui é da Leidy Boutique. Como posso te ajudar hoje? ✨`;
+        msg = `Olá ${client.nome}! Tudo bem? Aqui é da ${lojaNome}. Como posso te ajudar hoje? ✨`;
     }
 
     return `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`;
