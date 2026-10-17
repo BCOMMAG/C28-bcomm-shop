@@ -325,8 +325,8 @@ export async function createStoreExpress(
         cta_texto: 'Explorar Peças',
         cta_link: '/catalogo',
         tipo_midia: 'video',
-        desktop_media_url: '/images/hero-desktop.mp4',
-        mobile_media_url: '/images/hero-mobile.mp4',
+        desktop_media_url: '/video/header_video.mp4',
+        mobile_media_url: '/video/header_video.mp4',
         ativo: true,
         display_order: 1
       });

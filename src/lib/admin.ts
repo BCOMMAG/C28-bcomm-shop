@@ -1219,7 +1219,7 @@ export async function getAdminHeroBanners(
 export async function saveAdminHeroBanner(
   banner: Partial<AdminHeroBanner> & { id?: string },
   lojaId: string = DEFAULT_TENANT_ID
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; id?: string; error?: string }> {
   const supabase = getSupabaseBrowserClient();
 
   try {
@@ -1239,23 +1239,27 @@ export async function saveAdminHeroBanner(
         .eq('id', banner.id);
 
       if (error) throw error;
+      return { success: true, id: banner.id };
     } else {
-      const { error } = await supabase.from('hero_banners').insert({
-        loja_id: lojaId,
-        titulo: banner.titulo || 'Nova Coleção',
-        subtitulo: banner.subtitulo || 'Alta Costura e Sofisticação',
-        cta_texto: banner.cta_texto || 'Explorar Coleção',
-        cta_link: banner.cta_link || '/catalogo',
-        tipo_midia: banner.tipo_midia || 'video',
-        desktop_media_url: banner.desktop_media_url || '/images/hero-desktop.mp4',
-        mobile_media_url: banner.mobile_media_url || '/images/hero-mobile.mp4',
-        ativo: true
-      });
+      const { data, error } = await supabase
+        .from('hero_banners')
+        .insert({
+          loja_id: lojaId,
+          titulo: banner.titulo || 'Coleção Elegance & Alfaiataria',
+          subtitulo: banner.subtitulo || 'Curadoria Exclusiva em Moda Feminina',
+          cta_texto: banner.cta_texto || 'Conhecer Coleção',
+          cta_link: banner.cta_link || '#lancamentos',
+          tipo_midia: banner.tipo_midia || 'video',
+          desktop_media_url: banner.desktop_media_url || '/video/header_video.mp4',
+          mobile_media_url: banner.mobile_media_url || '/video/header_video.mp4',
+          ativo: true
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+      return { success: true, id: data?.id };
     }
-
-    return { success: true };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao salvar hero banner:', err);
     return { success: false, error: err?.message };

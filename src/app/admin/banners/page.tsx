@@ -27,26 +27,32 @@ import {
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminBannersPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
   const [banners, setBanners] = useState<AdminHeroBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingDesktop, setUploadingDesktop] = useState(false);
   const [uploadingMobile, setUploadingMobile] = useState(false);
 
-  // Campos do formulário
+  // Campos do formulário (inicializados com a curadoria real da loja)
   const [activeBannerId, setActiveBannerId] = useState<string | undefined>();
-  const [titulo, setTitulo] = useState('Curadoria Exclusiva & Sofisticada');
-  const [subtitulo, setSubtitulo] = useState('Peças em alfaiataria nobre e tricots selecionados para mulheres que valorizam a elegância.');
-  const [ctaTexto, setCtaTexto] = useState('Explorar Coleção Completa');
-  const [ctaLink, setCtaLink] = useState('/catalogo');
+  const [titulo, setTitulo] = useState('Coleção Elegance & Alfaiataria');
+  const [subtitulo, setSubtitulo] = useState('Curadoria Exclusiva em Moda Feminina');
+  const [ctaTexto, setCtaTexto] = useState('Conhecer Coleção');
+  const [ctaLink, setCtaLink] = useState('#lancamentos');
   const [tipoMidia, setTipoMidia] = useState<'video' | 'image'>('video');
-  const [desktopMediaUrl, setDesktopMediaUrl] = useState('/images/hero-desktop.mp4');
-  const [mobileMediaUrl, setMobileMediaUrl] = useState('/images/hero-mobile.mp4');
+  const [desktopMediaUrl, setDesktopMediaUrl] = useState('/video/header_video.mp4');
+  const [mobileMediaUrl, setMobileMediaUrl] = useState('/video/header_video.mp4');
 
   // Barra de aviso superior
-  const [barraAviso, setBarraAviso] = useState('Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp');
+  const [barraAviso, setBarraAviso] = useState('Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp');
   const [barraAvisoAtiva, setBarraAvisoAtiva] = useState(true);
 
   // Toast
@@ -60,15 +66,15 @@ export default function AdminBannersPage() {
   const fetchBanners = async () => {
     setLoading(true);
     try {
-      const data = await getAdminHeroBanners(DEFAULT_TENANT_ID);
+      const data = await getAdminHeroBanners(tenantId);
       setBanners(data);
       if (data.length > 0) {
         const b = data[0];
         setActiveBannerId(b.id);
-        setTitulo(b.titulo || 'Curadoria Exclusiva & Sofisticada');
+        setTitulo(b.titulo || 'Coleção Elegance & Alfaiataria');
         setSubtitulo(b.subtitulo || '');
-        setCtaTexto(b.cta_texto || 'Explorar Coleção Completa');
-        setCtaLink(b.cta_link || '/catalogo');
+        setCtaTexto(b.cta_texto || 'Conhecer Coleção');
+        setCtaLink(b.cta_link || '#lancamentos');
         setTipoMidia(b.tipo_midia);
         setDesktopMediaUrl(b.desktop_media_url);
         setMobileMediaUrl(b.mobile_media_url);
@@ -79,7 +85,7 @@ export default function AdminBannersPage() {
       const { data: loja } = await supabase
         .from('lojas')
         .select('configuracoes_visuais')
-        .eq('id', DEFAULT_TENANT_ID)
+        .eq('id', tenantId)
         .maybeSingle();
 
       if (loja?.configuracoes_visuais) {
@@ -100,7 +106,7 @@ export default function AdminBannersPage() {
 
   useEffect(() => {
     fetchBanners();
-  }, []);
+  }, [tenantId]);
 
   // Upload Mídia Desktop 16:9 no Cloudflare R2
   const handleUploadDesktop = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +115,7 @@ export default function AdminBannersPage() {
 
     setUploadingDesktop(true);
     try {
-      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'banners');
+      const res = await uploadBrowserFileToR2(file, tenantSlug, 'banners');
       if (res.success && res.url) {
         setDesktopMediaUrl(res.url);
         if (file.type.startsWith('video/')) setTipoMidia('video');
@@ -131,7 +137,7 @@ export default function AdminBannersPage() {
 
     setUploadingMobile(true);
     try {
-      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'banners');
+      const res = await uploadBrowserFileToR2(file, tenantSlug, 'banners');
       if (res.success && res.url) {
         setMobileMediaUrl(res.url);
         showToast('Mídia Mobile (9:16) enviada com sucesso para o Cloudflare R2!');
@@ -164,13 +170,17 @@ export default function AdminBannersPage() {
             mobile_media_url: mobileMediaUrl,
             ativo: true
           },
-          DEFAULT_TENANT_ID
+          tenantId
         ),
-        saveStoreAnnouncementBar(DEFAULT_TENANT_ID, barraAviso, barraAvisoAtiva)
+        saveStoreAnnouncementBar(tenantId, barraAviso, barraAvisoAtiva)
       ]);
 
       if (resBanner.success && resBarra.success) {
-        showToast('Banner Hero e Barra Superior atualizados e publicados na vitrine da Leidy Boutique!');
+        if (resBanner.id && !activeBannerId) {
+          setActiveBannerId(resBanner.id);
+        }
+        await fetchBanners();
+        showToast(`Banner Hero e Barra Superior atualizados e publicados na vitrine da ${lojaNome}!`);
       } else {
         showToast(resBanner.error || resBarra.error || 'Erro ao salvar alterações.', 'error');
       }
@@ -219,7 +229,7 @@ export default function AdminBannersPage() {
 
         <div className="flex items-center gap-2.5">
           <Link
-            href="/?loja=leidy-boutique"
+            href={tenantSlug ? `/?loja=${tenantSlug}` : '/'}
             target="_blank"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs"
           >
