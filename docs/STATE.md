@@ -53,7 +53,10 @@
     - Modal de Spotlight acessível via atalho global de teclado (`Ctrl + K` / `Cmd + K`) e pelo campo de busca da barra superior (desktop e mobile).
     - Pesquisa em tempo real multi-entidade: peças do catálogo (com foto e preço), pedidos recentes (com status e valor) e clientes CRM (com telefone e LTV), além de atalhos rápidos para todas as telas do sistema.
     - Notificações operacionais na barra superior com ícone de sino (`Bell`), badge numérico pulsante e menu dropdown listando pedidos que aguardam confirmação de pagamento no WhatsApp.
-  - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
+  - [x] **Dinamização Integral do Checkout & WhatsApp Multi-Tenant:**
+    - Número de WhatsApp de destino 100% dinâmico puxado das configurações do tenant no Supabase (`storeWhatsapp`) com higienização estrita de caracteres não numéricos (`wa.me/<cleanPhone>`) e fallback seguro.
+    - Nome da loja dinâmico (`currentTenant.nome`) aplicado no cabeçalho do pedido no WhatsApp, resumo pós-venda, sacola vazia e modal de pré-preenchimento rápido, eliminando textos hardcoded e garantindo prontidão para novos lojistas SaaS.
+  - [x] **Homologação E2E Completa:** Testes automatizados unitários e de integração em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 
 ---

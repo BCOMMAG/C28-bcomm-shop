@@ -516,7 +516,8 @@ export default function CheckoutPage() {
 
     // Dispara a abertura do WhatsApp com a mensagem pronta
     const text = buildOrderSummaryText(newOrderId, isDirectWithoutFilling);
-    const url = `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
+    const cleanPhone = (storeWhatsapp || STORE_INFO.whatsapp).replace(/\D/g, '');
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
     if (typeof window !== 'undefined') {
       try {
         window.open(url, '_blank');
@@ -539,9 +540,10 @@ export default function CheckoutPage() {
   // Monta a mensagem completa formatada e inviolável do pedido
   const buildOrderSummaryText = (customOrderId?: string, isDirectWithoutFilling?: boolean) => {
     const finalId = customOrderId || orderId || 'LB-2026';
-    let msg = `✨ *PEDIDO CONFIRMADO NO SITE LEIDY BOUTIQUE* ✨\n`;
+    const storeDisplayName = currentTenant?.nome || 'Leidy Boutique';
+    let msg = `✨ *PEDIDO CONFIRMADO NO SITE ${storeDisplayName.toUpperCase()}* ✨\n`;
     msg += `🔖 *Pedido:* #${finalId}\n\n`;
-    msg += `👤 *Cliente:* ${customerName || 'Cliente Leidy Boutique'}\n`;
+    msg += `👤 *Cliente:* ${customerName || `Cliente ${storeDisplayName}`}\n`;
     msg += `📱 *WhatsApp:* ${customerPhone || 'A confirmar diretamente no chat'}\n`;
     if (customerEmail) msg += `✉️ *E-mail:* ${customerEmail}\n`;
     if (customerCpf) msg += `📄 *CPF:* ${customerCpf}\n`;
@@ -588,9 +590,9 @@ export default function CheckoutPage() {
     }
 
     if (isDirectWithoutFilling && pendingSteps.length > 0) {
-      msg += `\nOlá Leidy! Preferi adiantar meu pedido pelo site e combinar meus dados de *${pendingSteps.join(' e ')}* aqui com você no WhatsApp! Poderia me atender? ✨`;
+      msg += `\nOlá! Preferi adiantar meu pedido pelo site da *${storeDisplayName}* e combinar meus dados de *${pendingSteps.join(' e ')}* aqui com vocês no WhatsApp! Poderia me atender? ✨`;
     } else {
-      msg += `\nOlá Leidy! Acabei de registrar meu pedido com meus dados preenchidos no site e gostaria de confirmar a reserva e os dados de envio! ✨`;
+      msg += `\nOlá! Acabei de registrar meu pedido com meus dados preenchidos no site da *${storeDisplayName}* e gostaria de confirmar a reserva e os dados de envio! ✨`;
     }
 
     return msg;
@@ -599,7 +601,8 @@ export default function CheckoutPage() {
   // Abre WhatsApp diretamente com o texto do pedido
   const handleOpenWhatsApp = () => {
     const text = buildOrderSummaryText();
-    const url = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
+    const cleanPhone = (storeWhatsapp || STORE_INFO.whatsapp).replace(/\D/g, '');
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
     if (typeof window !== 'undefined') {
       try {
         window.open(url, '_blank');
@@ -693,7 +696,7 @@ export default function CheckoutPage() {
               Sua sacola está vazia
             </h2>
             <p className="text-xs sm:text-sm text-[#78716C] dark:text-[#A8A29E] mb-6 leading-relaxed">
-              Explore o catálogo da Leidy Boutique e escolha suas peças favoritas para finalizar o pedido.
+              Explore o catálogo da {currentTenant?.nome || 'Leidy Boutique'} e escolha suas peças favoritas para finalizar o pedido.
             </p>
             <Link
               href="/catalogo"
@@ -757,7 +760,7 @@ export default function CheckoutPage() {
                   </button>
                 </div>
                 <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
-                  Envie o comprovante do PIX para a consultora Leidy no WhatsApp para liberação imediata do envio.
+                  Envie o comprovante do PIX para a equipe da {currentTenant?.nome || 'Leidy Boutique'} no WhatsApp para liberação imediata do envio.
                 </p>
               </div>
             )}
@@ -768,7 +771,7 @@ export default function CheckoutPage() {
                   <CreditCard className="w-4 h-4" /> Cartão de Crédito em {cardInstallments}x Sem Juros
                 </div>
                 <p className="text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed">
-                  A Leidy enviará o link de pagamento 100% seguro diretamente no seu WhatsApp para parcelamento em {cardInstallments}x de R$ {(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros.
+                  Nossa equipe enviará o link de pagamento 100% seguro diretamente no seu WhatsApp para parcelamento em {cardInstallments}x de R$ {(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros.
                 </p>
               </div>
             )}
@@ -781,7 +784,7 @@ export default function CheckoutPage() {
                 className="w-full py-4 px-6 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 cursor-pointer"
               >
                 <MessageCircle className="w-5 h-5 fill-white stroke-[#25D366]" />
-                <span>Enviar Pedido para a Leidy no WhatsApp</span>
+                <span>Enviar Pedido no WhatsApp da Loja</span>
               </button>
 
               <button
@@ -1450,7 +1453,7 @@ export default function CheckoutPage() {
                     <div className="hidden sm:flex p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed items-start gap-2.5">
                       <ShieldCheck className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
                       <span>
-                        Seus dados são usados com total privacidade para a Leidy confirmar a reserva imediata das peças e enviar o código de rastreio da encomenda.
+                        Seus dados são usados com total privacidade para a equipe da {currentTenant?.nome || 'Leidy Boutique'} confirmar a reserva imediata das peças e enviar o código de rastreio da encomenda.
                       </span>
                     </div>
 
@@ -1642,7 +1645,7 @@ export default function CheckoutPage() {
                             </span>
                           </div>
                           <p className="text-xs text-[#78716C] dark:text-[#A8A29E] leading-relaxed mb-3">
-                            A Leidy enviará o link de pagamento blindado para parcelamento no cartão.
+                            Nossa equipe enviará o link de pagamento blindado para parcelamento no cartão.
                           </p>
 
                           {/* Seletor de Parcelas */}
@@ -1689,7 +1692,7 @@ export default function CheckoutPage() {
                             Combinar Pagamento no WhatsApp
                           </span>
                           <p className="text-xs text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
-                            A consultora Leidy te orienta sobre a melhor forma na conversa.
+                            Nossa equipe de atendimento te orienta sobre a melhor forma na conversa.
                           </p>
                         </div>
                       </label>
@@ -2010,7 +2013,7 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#C5A059] block mb-0.5">
-                  Atendimento VIP Leidy Boutique
+                  Atendimento VIP {currentTenant?.nome || 'Leidy Boutique'}
                 </span>
                 <h3 className="font-serif-luxury text-lg sm:text-xl font-bold leading-tight text-[#1A1918] dark:text-[#FAF8F5]">
                   Falta pouco para garantir suas peças!
@@ -2048,7 +2051,7 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
                 <div className="p-2.5 bg-white dark:bg-[#201D1B] border border-[#C5A059]/20 flex items-start gap-2">
                   <Clock className="w-4 h-4 text-[#C5A059] shrink-0 mt-0.5" />
-                  <span><strong>3x Mais Rápido:</strong> A Leidy já recebe sua ficha completa sem você precisar digitar endereço no chat.</span>
+                  <span><strong>3x Mais Rápido:</strong> A equipe já recebe sua ficha completa sem você precisar digitar endereço no chat.</span>
                 </div>
                 <div className="p-2.5 bg-white dark:bg-[#201D1B] border border-[#C5A059]/20 flex items-start gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
@@ -2056,7 +2059,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <p className="text-[11px] italic text-[#78716C] dark:text-[#A8A29E] pt-1">
-                Deseja preencher rapidinho agora ou prefere ir para o WhatsApp sem finalizar aqui no site e passar essas informações manualmente na conversa com a Leidy?
+                Deseja preencher rapidinho agora ou prefere ir para o WhatsApp sem finalizar aqui no site e passar essas informações manualmente na conversa?
               </p>
             </div>
 
