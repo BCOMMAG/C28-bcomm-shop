@@ -117,6 +117,7 @@ export interface AdminClientItem {
   nome: string;
   telefone: string;
   email?: string | null;
+  cpf?: string | null;
   cidade?: string | null;
   estado?: string | null;
   totalPedidos: number;
@@ -127,6 +128,22 @@ export interface AdminClientItem {
   ultimoPedido?: string | null;
   isVIP?: boolean;
   tag?: 'vip' | 'recorrente' | 'compradora' | 'lead';
+  notasInternas?: string | null;
+  tamanhoHabitual?: string | null;
+  pedidos?: Array<{
+    id: string;
+    numeroPedido: string;
+    total: number;
+    status: string;
+    createdAt: string;
+    itens: Array<{
+      nome: string;
+      cor?: string;
+      tamanho?: string;
+      quantidade: number;
+      preco: number;
+    }>;
+  }>;
 }
 
 export interface AdminHeroBanner {
@@ -962,8 +979,24 @@ export async function getAdminClients(
         nome,
         telefone,
         email,
+        cpf,
+        preferencias,
         created_at,
-        pedidos (id, total, status, created_at)
+        pedidos (
+          id,
+          numero_pedido,
+          total,
+          status,
+          created_at,
+          itens_pedido (
+            id,
+            nome_produto,
+            quantidade,
+            preco_unitario,
+            cor,
+            tamanho
+          )
+        )
       `)
       .eq('loja_id', lojaId)
       .order('created_at', { ascending: false });
@@ -977,8 +1010,9 @@ export async function getAdminClients(
       const totalGasto = paidOrders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
       const ticketMedio = totalPedidos > 0 ? totalGasto / totalPedidos : 0;
 
+      const isVIP = totalGasto >= 1000 || totalPedidos >= 3;
       let tag: 'vip' | 'recorrente' | 'compradora' | 'lead' = 'lead';
-      if (totalGasto >= 500 || totalPedidos >= 3) {
+      if (isVIP) {
         tag = 'vip';
       } else if (totalPedidos >= 2) {
         tag = 'recorrente';
@@ -986,25 +1020,95 @@ export async function getAdminClients(
         tag = 'compradora';
       }
 
-      const lastOrder = orders.sort(
+      const sortedOrders = [...orders].sort(
         (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0];
+      );
+      const lastOrder = sortedOrders[0];
+      const firstOrder = sortedOrders[sortedOrders.length - 1];
+
+      const mappedOrders = sortedOrders.map((o: any) => ({
+        id: o.id,
+        numeroPedido: o.numero_pedido,
+        total: Number(o.total || 0),
+        status: o.status,
+        createdAt: o.created_at,
+        itens: (o.itens_pedido || []).map((it: any) => ({
+          nome: it.nome_produto,
+          cor: it.cor,
+          tamanho: it.tamanho,
+          quantidade: Number(it.quantidade || 1),
+          preco: Number(it.preco_unitario || 0)
+        }))
+      }));
+
+      const pref = c.preferencias || {};
 
       return {
         id: c.id,
         nome: c.nome,
         telefone: c.telefone,
         email: c.email,
+        cpf: c.cpf,
+        cidade: pref.cidade || null,
+        estado: pref.uf || null,
         totalPedidos,
         totalGasto,
         ticketMedio,
         ultimaCompra: lastOrder?.created_at || c.created_at,
-        tag
+        primeiroPedido: firstOrder?.created_at || c.created_at,
+        ultimoPedido: lastOrder?.created_at || c.created_at,
+        isVIP,
+        tag,
+        notasInternas: pref.notas_internas || null,
+        tamanhoHabitual: pref.tamanho_habitual || null,
+        pedidos: mappedOrders
       };
     });
   } catch (err) {
     console.error('❌ [Supabase] Erro ao listar clientes no admin:', err);
     return [];
+  }
+}
+
+/**
+ * Salva notas internas privadas e preferências da cliente no Supabase.
+ */
+export async function saveClientInternalNotes(
+  clienteId: string,
+  notas: string,
+  tamanhoHabitual?: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: client, error: getErr } = await supabase
+      .from('clientes_loja')
+      .select('preferencias')
+      .eq('id', clienteId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentPref = client?.preferencias || {};
+    const updatedPref = {
+      ...currentPref,
+      notas_internas: notas,
+      ...(tamanhoHabitual !== undefined ? { tamanho_habitual: tamanhoHabitual } : {})
+    };
+
+    const { error: updErr } = await supabase
+      .from('clientes_loja')
+      .update({
+        preferencias: updatedPref,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', clienteId);
+
+    if (updErr) throw updErr;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao salvar notas da cliente:', err);
+    return { success: false, error: err?.message };
   }
 }
 
