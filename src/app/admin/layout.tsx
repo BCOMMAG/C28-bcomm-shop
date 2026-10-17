@@ -24,7 +24,8 @@ import {
   Bell,
   MessageSquare,
   Sliders,
-  Check
+  Check,
+  Tag
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -138,6 +139,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       title: 'Clientes & CRM',
       href: '/admin/clientes/',
       icon: Users
+    },
+    {
+      title: 'Cupons & Descontos',
+      href: '/admin/cupons/',
+      icon: Tag
     },
     {
       title: 'Vitrine & Banners',

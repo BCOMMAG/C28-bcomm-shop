@@ -33,6 +33,7 @@ import {
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { saveCustomerLead, createOrderInDatabase } from '@/lib/orders';
+import { validateCouponInDatabase } from '@/lib/coupons';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -103,7 +104,12 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card' | 'whatsapp'>('pix');
   const [cardInstallments, setCardInstallments] = useState<number>(1);
   const [couponInput, setCouponInput] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percent: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    percent?: number;
+    amount?: number;
+  } | null>(null);
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [couponError, setCouponError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
@@ -189,7 +195,13 @@ export default function CheckoutPage() {
     ? chosenShippingOption.price
     : 0;
 
-  const couponDiscount = appliedCoupon ? (rawSubtotal * appliedCoupon.percent) / 100 : 0;
+  const couponDiscount = appliedCoupon
+    ? appliedCoupon.amount !== undefined
+      ? Math.min(rawSubtotal, appliedCoupon.amount)
+      : appliedCoupon.percent
+      ? (rawSubtotal * appliedCoupon.percent) / 100
+      : 0
+    : 0;
   const subtotalAfterCoupon = Math.max(0, rawSubtotal - couponDiscount);
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
   const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount);
@@ -289,23 +301,37 @@ export default function CheckoutPage() {
     }
   };
 
-  // Aplicação de Cupom
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  // Aplicação de Cupom com validação em tempo real no Supabase
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'LEIDY10' || code === 'VIP10' || code === 'PRIMEIRACOMPRA' || code === 'BEMVINDA') {
-      setAppliedCoupon({ code, percent: 10 });
-      setCouponSuccess(`Cupom ${code} aplicado: 10% de desconto!`);
-      setCouponError('');
-    } else if (code === 'LEIDY15') {
-      setAppliedCoupon({ code, percent: 15 });
-      setCouponSuccess(`Cupom ${code} aplicado: 15% de desconto especial!`);
-      setCouponError('');
-    } else {
-      setCouponError('Cupom inválido ou expirado.');
+    setIsCheckingCoupon(true);
+    setCouponError('');
+    setCouponSuccess('');
+
+    try {
+      const res = await validateCouponInDatabase(code, rawSubtotal);
+      if (res.valid && res.coupon) {
+        if (res.coupon.tipo_desconto === 'fixo') {
+          setAppliedCoupon({ code, amount: res.discountAmount });
+          setCouponSuccess(`Cupom ${code} aplicado: R$ ${res.discountAmount.toFixed(2).replace('.', ',')} de desconto!`);
+        } else {
+          const pct = res.discountPercentage || res.coupon.valor_desconto;
+          setAppliedCoupon({ code, percent: pct });
+          setCouponSuccess(`Cupom ${code} aplicado: ${pct}% de desconto!`);
+        }
+        setCouponError('');
+      } else {
+        setCouponError(res.error || 'Cupom inválido ou expirado.');
+        setCouponSuccess('');
+      }
+    } catch {
+      setCouponError('Falha ao validar cupom. Tente novamente.');
       setCouponSuccess('');
+    } finally {
+      setIsCheckingCoupon(false);
     }
   };
 
@@ -1115,12 +1141,16 @@ export default function CheckoutPage() {
                       {appliedCoupon ? (
                         <div className="flex items-center justify-between p-2 sm:p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-xs">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                            ✓ {appliedCoupon.code} ({appliedCoupon.percent}% OFF aplicado)
+                            ✓ {appliedCoupon.code} (
+                            {appliedCoupon.percent !== undefined
+                              ? `${appliedCoupon.percent}%`
+                              : `R$ ${appliedCoupon.amount?.toFixed(2).replace('.', ',')}`}{' '}
+                            OFF aplicado)
                           </span>
                           <button
                             type="button"
                             onClick={handleRemoveCoupon}
-                            className="text-rose-500 hover:text-rose-700 font-bold"
+                            className="text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
                           >
                             Remover
                           </button>
@@ -1131,14 +1161,15 @@ export default function CheckoutPage() {
                             type="text"
                             value={couponInput}
                             onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder="Ex: VIP10, LEIDY15"
+                            placeholder="Ex: BEMVINDA10, VIP15"
                             className="flex-1 px-3 py-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] uppercase focus:outline-none"
                           />
                           <button
                             type="submit"
-                            className="px-4 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            disabled={isCheckingCoupon}
+                            className="px-4 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
                           >
-                            Aplicar
+                            {isCheckingCoupon ? 'Validando...' : 'Aplicar'}
                           </button>
                         </form>
                       )}

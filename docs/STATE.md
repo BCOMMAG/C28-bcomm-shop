@@ -36,10 +36,11 @@
   - Reconhecimento automático pelo número de WhatsApp.
   - Área da cliente (`/minha-conta`) com histórico de pedidos, status em tempo real e rastreamento Correios.
 
-- [x] **FASE 5 (MARCO ATUAL): Blindagem Operacional & Ferramentas de Expedição**
+- [x] **FASE 5 (MARCO ATUAL): Blindagem Operacional, Ferramentas de Expedição & Promoções**
   - [x] **Expedição em 1 Clique:** Gerador e impressor de Declaração de Conteúdo Oficial dos Correios e Romaneio de Separação (Packing List) com checklist de embalagem de luxo.
   - [x] **Central de Snippets WhatsApp:** 4 templates prontos de 1 clique (Atendimento Geral, Chave Pix & Reserva, Código de Rastreio e Pós-Venda Carinhoso).
   - [x] **Recuperação de Carrinhos Abandonados:** Segmentação de leads com 0 compras e botão direto de WhatsApp com mensagem amigável.
+  - [x] **Central de Cupons & Promoções (`/admin/cupons/`):** Gestão de descontos fixos e percentuais, limites de uso, pedido mínimo e validação dinâmica no checkout da vitrine.
   - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 
