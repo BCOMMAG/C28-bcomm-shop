@@ -45,15 +45,20 @@ import {
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminProdutosPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
+
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [categoriesList, setCategoriesList] = useState<Array<{ id: string; nome: string; slug: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
   const [stockFilter, setStockFilter] = useState<
-    'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados' | 'destaques' | 'outlet' | 'mais_vendidos'
+    'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados' | 'destaques' | 'outlet' | 'mais_vendidos' | 'ultimas_pecas'
   >('todos');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
@@ -126,16 +131,16 @@ export default function AdminProdutosPage() {
     setLoading(true);
     try {
       const [prodsData, catsData] = await Promise.all([
-        getAdminProducts(DEFAULT_TENANT_ID),
-        getAdminCategories(DEFAULT_TENANT_ID)
+        getAdminProducts(tenantId),
+        getAdminCategories(tenantId)
       ]);
 
       setCategoriesList(catsData || []);
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
-      } else {
-        // Fallback: Mapeia os 16 produtos oficiais da Leidy Boutique para exibição rica
+      } else if (tenantId === DEFAULT_TENANT_ID) {
+        // Fallback apenas para o tenant padrão inicial se o banco estiver inacessível
         const mappedProducts: AdminProductItem[] = PRODUCTS.map((p, idx) => ({
           id: p.id,
           nome: p.name,
@@ -174,6 +179,8 @@ export default function AdminProdutosPage() {
           )
         }));
         setProducts(mappedProducts);
+      } else {
+        setProducts([]);
       }
     } catch (err) {
       console.error('Erro ao buscar produtos:', err);
@@ -184,7 +191,7 @@ export default function AdminProdutosPage() {
 
   useEffect(() => {
     fetchProductsData();
-  }, []);
+  }, [tenantId]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -305,7 +312,7 @@ export default function AdminProdutosPage() {
         }))
       };
 
-      const res = await createAdminProduct(payload, DEFAULT_TENANT_ID);
+      const res = await createAdminProduct(payload, tenantId);
       if (res.success) {
         showToast(`Peça "${product.nome}" duplicada com sucesso!`);
         fetchProductsData();
@@ -387,7 +394,7 @@ export default function AdminProdutosPage() {
 
     setUploadingImage(true);
     try {
-      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
+      const res = await uploadBrowserFileToR2(file, tenantSlug, 'produtos');
       if (res.success && res.url) {
         setUploadedPhotos((prev) => [...prev, res.url!]);
         showToast('Foto enviada com sucesso para o Cloudflare R2!');
@@ -408,7 +415,7 @@ export default function AdminProdutosPage() {
 
     setUploadingVideo(true);
     try {
-      const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'videos');
+      const res = await uploadBrowserFileToR2(file, tenantSlug, 'videos');
       if (res.success && res.url) {
         setUploadedVideoUrl(res.url);
         showToast('Vídeo de Provador (9:16) enviado para o Cloudflare R2!');
@@ -499,7 +506,7 @@ export default function AdminProdutosPage() {
         variacoes: newProductHasGrid ? gridVariations : []
       };
 
-      const res = await createAdminProduct(payload, DEFAULT_TENANT_ID);
+      const res = await createAdminProduct(payload, tenantId);
       if (res.success) {
         showToast(`Peça "${newProductName}" cadastrada com sucesso!`);
         setIsCreateModalOpen(false);
@@ -549,6 +556,8 @@ export default function AdminProdutosPage() {
       if (!p.outlet) return false;
     } else if (stockFilter === 'mais_vendidos') {
       if (!p.mais_vendido) return false;
+    } else if (stockFilter === 'ultimas_pecas') {
+      if (!p.ultimas_pecas) return false;
     }
 
     if (searchTerm.trim()) {
@@ -689,6 +698,7 @@ export default function AdminProdutosPage() {
             { id: 'destaques', label: '🌟 Destaques' },
             { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
             { id: 'outlet', label: '🏷️ Outlet' },
+            { id: 'ultimas_pecas', label: '⏳ Últimas Peças' },
             { id: 'esgotados', label: '⛔ Esgotados' },
             { id: 'ativos', label: '✅ Ativas na Vitrine' },
             { id: 'pausados', label: '⏸️ Pausadas' }
