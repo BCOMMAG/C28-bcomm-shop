@@ -26,8 +26,13 @@ import {
 import { getAdminFinanceMetrics, FinanceMetrics } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportFinanceDREToCsv } from '@/lib/export';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminFinancasPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<'hoje' | '7dias' | 'mes' | 'tudo'>('tudo');
@@ -35,7 +40,7 @@ export default function AdminFinancasPage() {
   const fetchFinance = async () => {
     setLoading(true);
     try {
-      const data = await getAdminFinanceMetrics(DEFAULT_TENANT_ID, periodo);
+      const data = await getAdminFinanceMetrics(tenantId, periodo);
       setMetrics(data);
     } catch (err) {
       console.error('Erro ao buscar métricas financeiras:', err);
@@ -46,7 +51,7 @@ export default function AdminFinancasPage() {
 
   useEffect(() => {
     fetchFinance();
-  }, [periodo]);
+  }, [tenantId, periodo]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -55,26 +60,16 @@ export default function AdminFinancasPage() {
     }).format(val || 0);
   };
 
-  // Se o banco tiver apenas 1 pedido ou 0, complementa com a simulação rica solicitada
-  const faturamento = metrics && metrics.faturamentoBruto > 400 ? metrics.faturamentoBruto : 2409.4;
-  const cmv = metrics && metrics.cmvTotal > 200 ? metrics.cmvTotal : 963.76;
-  const despesas = metrics && metrics.despesasOperacionais > 30 ? metrics.despesasOperacionais : 124.33;
-  const lucroLiquido = faturamento - cmv - despesas;
-  const margemPercent = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 54.8;
-  const pedidosFaturados = metrics && metrics.totalPedidosFaturados > 1 ? metrics.totalPedidosFaturados : 6;
-  const pecasVendidas = metrics && metrics.totalPecasVendidas > 1 ? metrics.totalPecasVendidas : 8;
-  const ticketMedio = faturamento / pedidosFaturados;
-
-  const topProdutosList =
-    metrics?.topProdutos && metrics.topProdutos.length > 1
-      ? metrics.topProdutos
-      : [
-          { nome: 'Vestido Seda Alfaiataria Florença', quantidadeVendida: 3, faturamento: 1467.0, lucro: 880.2 },
-          { nome: 'Blazer Alfaiataria Estruturado Roma', quantidadeVendida: 2, faturamento: 1040.0, lucro: 624.0 },
-          { nome: 'Conjunto Cetim Nobre Milano', quantidadeVendida: 2, faturamento: 760.0, lucro: 456.0 },
-          { nome: 'Calça Pantalona Alfaiataria', quantidadeVendida: 2, faturamento: 760.0, lucro: 456.0 },
-          { nome: 'Camisa Linho Pura Alfaiataria', quantidadeVendida: 1, faturamento: 290.0, lucro: 174.0 }
-        ];
+  // Métricas 100% reais do banco de dados (sem suposição ou mock)
+  const faturamento = metrics?.faturamentoBruto || 0;
+  const cmv = metrics?.cmvTotal || 0;
+  const despesas = metrics?.despesasOperacionais || 0;
+  const lucroLiquido = metrics?.lucroLiquido || 0;
+  const margemPercent = metrics?.margemLiquidaPercent || 0;
+  const pedidosFaturados = metrics?.totalPedidosFaturados || 0;
+  const pecasVendidas = metrics?.totalPecasVendidas || 0;
+  const ticketMedio = metrics?.ticketMedio || 0;
+  const topProdutosList = metrics?.topProdutos || [];
 
   const periodoLabel =
     periodo === 'hoje'
@@ -114,7 +109,7 @@ export default function AdminFinancasPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold font-serif-luxury text-slate-900">
-              DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE GERENCIAL)
+              DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE GERENCIAL) &bull; {lojaNome.toUpperCase()}
             </h1>
             <p className="text-xs text-slate-600 mt-1">
               Período de Apuração: <strong>{periodoLabel}</strong> &bull; Emissão: {new Date().toLocaleString('pt-BR')}
@@ -387,30 +382,38 @@ export default function AdminFinancasPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">
-              {topProdutosList.map((prod, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                    <span>{prod.nome}</span>
-                  </td>
-                  <td className="py-3 px-4 text-center font-semibold text-slate-700">
-                    {prod.quantidadeVendida} un
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-medium text-slate-600">
-                    {formatCurrency(prod.faturamento)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-extrabold text-emerald-700">
-                    {formatCurrency(prod.lucro)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                      Alta Margem
-                    </span>
+              {topProdutosList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                    Nenhuma venda registrada no período selecionado ({periodoLabel}).
                   </td>
                 </tr>
-              ))}
+              ) : (
+                topProdutosList.map((prod, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-slate-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
+                      <span>{prod.nome}</span>
+                    </td>
+                    <td className="py-3 px-4 text-center font-semibold text-slate-700">
+                      {prod.quantidadeVendida} un
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-medium text-slate-600">
+                      {formatCurrency(prod.faturamento)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-extrabold text-emerald-700">
+                      {formatCurrency(prod.lucro)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                        Alta Margem
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

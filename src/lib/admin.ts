@@ -950,8 +950,11 @@ export async function getAdminFinanceMetrics(
       .eq('loja_id', lojaId);
 
     const custoMap: Record<string, number> = {};
+    const custoMapByName: Record<string, number> = {};
     (produtosData || []).forEach((p) => {
-      custoMap[p.id] = p.preco_custo ? Number(p.preco_custo) : Number(p.preco) * 0.4;
+      const c = p.preco_custo !== null && p.preco_custo !== undefined ? Number(p.preco_custo) : Number(p.preco) * 0.4;
+      custoMap[p.id] = c;
+      if (p.nome) custoMapByName[p.nome.toLowerCase().trim()] = c;
     });
 
     let totalPecasVendidas = 0;
@@ -963,7 +966,13 @@ export async function getAdminFinanceMetrics(
       for (const item of itens) {
         const qtd = Number(item.quantidade || 1);
         const precoUnit = Number(item.preco_unitario || 0);
-        const custoUnit = item.produto_id && custoMap[item.produto_id] ? custoMap[item.produto_id] : precoUnit * 0.4;
+        const nameKey = item.nome_produto?.toLowerCase().trim();
+        const custoUnit =
+          item.produto_id && custoMap[item.produto_id] !== undefined
+            ? custoMap[item.produto_id]
+            : nameKey && custoMapByName[nameKey] !== undefined
+            ? custoMapByName[nameKey]
+            : precoUnit * 0.4;
 
         totalPecasVendidas += qtd;
         cmvTotal += custoUnit * qtd;
