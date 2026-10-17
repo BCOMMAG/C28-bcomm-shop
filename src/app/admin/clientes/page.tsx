@@ -71,9 +71,10 @@ export default function AdminClientesPage() {
 
   // Filtragem
   const filteredClients = clients.filter((c) => {
-    if (selectedTag === 'vip' && !c.isVIP) return false;
-    if (selectedTag === 'recorrente' && c.totalPedidos < 2) return false;
+    if (selectedTag === 'vip' && !c.isVIP && c.tag !== 'vip') return false;
+    if (selectedTag === 'recorrente' && c.totalPedidos < 2 && c.tag !== 'recorrente') return false;
     if (selectedTag === 'compradora' && c.totalPedidos === 0) return false;
+    if (selectedTag === 'lead' && c.totalPedidos > 0) return false;
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -166,7 +167,8 @@ export default function AdminClientesPage() {
             { id: 'todas', label: 'Todas as Clientes' },
             { id: 'vip', label: 'Clientes VIP (Alto Valor)' },
             { id: 'recorrente', label: 'Clientes Recorrentes (2+ Compras)' },
-            { id: 'compradora', label: 'Novas Compradoras' }
+            { id: 'compradora', label: 'Novas Compradoras' },
+            { id: 'lead', label: 'Leads & Carrinho Abandonado' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -266,26 +268,45 @@ export default function AdminClientesPage() {
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
                             <Award className="w-3 h-3 text-emerald-600" /> Recorrente
                           </span>
-                        ) : (
+                        ) : client.totalPedidos === 1 ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">
                             Nova Compradora
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            Lead / Abandono
                           </span>
                         )}
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
                         {cleanPhone ? (
-                          <a
-                            href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-                              `Olá ${client.nome}! Tudo bem? Aqui é da Leidy Boutique. Estamos com peças exclusivas na nova coleção que têm tudo a ver com o seu estilo!`
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-colors"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>WhatsApp VIP</span>
-                          </a>
+                          client.totalPedidos === 0 ? (
+                            <a
+                              href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                `Olá ${client.nome}! Tudo bem? Aqui é da Leidy Boutique. Vimos que você estava escolhendo peças lindas no nosso site! Ficou alguma dúvida sobre o tamanho ou caimento no corpo? Posso te ajudar a garantir antes que esgote!`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 transition-colors shadow-2xs"
+                              title="Recuperar venda abandonada no WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Recuperar Carrinho</span>
+                            </a>
+                          ) : (
+                            <a
+                              href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                `Olá ${client.nome}! Tudo bem? Aqui é da Leidy Boutique. Estamos com peças exclusivas na nova coleção que têm tudo a ver com o seu estilo!`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-colors"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>WhatsApp VIP</span>
+                            </a>
+                          )
                         ) : (
                           <span className="text-slate-400 text-xs">-</span>
                         )}
