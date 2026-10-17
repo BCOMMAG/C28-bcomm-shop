@@ -37,11 +37,19 @@ import {
   updateAdminOrderTracking
 } from '@/lib/admin';
 import { CustomerOrder } from '@/lib/orders';
-import { DEMO_ADMIN_ORDERS } from '@/lib/mock-admin-data';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminPedidosPage() {
+  const { currentTenant } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+  const chavePix = currentTenant?.configuracoes_financeiras?.chave_pix || currentTenant?.whatsapp || '554197347601';
+  const bancoPix = currentTenant?.configuracoes_financeiras?.pix_banco || 'Nu Pagamentos S.A. (Nubank)';
+  const titularPix = currentTenant?.configuracoes_financeiras?.pix_titular || lojaNome;
+  const tipoChavePix = currentTenant?.configuracoes_financeiras?.tipo_chave_pix || 'telefone';
+
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -79,20 +87,11 @@ export default function AdminPedidosPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const data = await getAdminOrders(DEFAULT_TENANT_ID);
-      // Mescla pedidos reais com os pedidos de exemplo para demonstração rica
-      if (data && data.length > 2) {
-        setOrders(data);
-      } else {
-        // Se houver pedido no Supabase, coloca no topo e completa com a simulação
-        const combined = [...(data || []), ...DEMO_ADMIN_ORDERS];
-        // Remove duplicatas por numero_pedido
-        const unique = combined.filter((v, i, a) => a.findIndex((t) => t.numero_pedido === v.numero_pedido) === i);
-        setOrders(unique);
-      }
+      const data = await getAdminOrders(tenantId);
+      setOrders(data || []);
     } catch (err) {
       console.error('Erro ao carregar pedidos:', err);
-      setOrders(DEMO_ADMIN_ORDERS);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -100,7 +99,7 @@ export default function AdminPedidosPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [tenantId]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -183,7 +182,7 @@ export default function AdminPedidosPage() {
     if (!statusModalOrder || !selectedNewStatus) return;
     setIsUpdatingStatus(true);
 
-    const res = await updateAdminOrderStatusWithStock(statusModalOrder.id, selectedNewStatus, DEFAULT_TENANT_ID);
+    const res = await updateAdminOrderStatusWithStock(statusModalOrder.id, selectedNewStatus, tenantId);
     if (res.success) {
       showToast(`Status do pedido ${statusModalOrder.numero_pedido} atualizado para "${selectedNewStatus}"!`);
       setOrders((prev) =>
@@ -425,7 +424,7 @@ export default function AdminPedidosPage() {
                             </span>
                             <a
                               href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-                                `Olá ${order.cliente_nome}! Aqui é da Leidy Boutique referente ao seu pedido #${order.numero_pedido}. Como podemos te ajudar?`
+                                `Olá ${order.cliente_nome}! Aqui é da ${lojaNome} referente ao seu pedido #${order.numero_pedido}. Como podemos te ajudar?`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -437,7 +436,7 @@ export default function AdminPedidosPage() {
                             </a>
                             <a
                               href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-                                `Olá ${order.cliente_nome}! Seu pedido #${order.numero_pedido} na Leidy Boutique foi confirmado no valor de ${formatCurrency(Number(order.total || 0))}. Chave Pix CNPJ: 45.123.456/0001-89 (Banco Inter - Leidy Boutique). Aguardamos seu comprovante para embalar suas peças com todo carinho!`
+                                `Olá ${order.cliente_nome}! Seu pedido #${order.numero_pedido} na ${lojaNome} foi confirmado no valor de ${formatCurrency(Number(order.total || 0))}. Chave Pix (${tipoChavePix}): ${chavePix} (${bancoPix} - ${titularPix}). Aguardamos seu comprovante para embalar suas peças com todo carinho!`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -449,7 +448,7 @@ export default function AdminPedidosPage() {
                             </a>
                             <a
                               href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-                                `Olá ${order.cliente_nome}! Suas peças do pedido #${order.numero_pedido} foram despachadas com carinho! 🚚 Código de rastreio Correios: ${order.codigo_rastreio || 'Em processamento'}. Acompanhe em: https://bcomm-shop.pages.dev/minha-conta/`
+                                `Olá ${order.cliente_nome}! Suas peças do pedido #${order.numero_pedido} na ${lojaNome} foram despachadas com carinho! 🚚 Código de rastreio Correios: ${order.codigo_rastreio || 'Em processamento'}. Acompanhe em: https://bcomm-shop.pages.dev/minha-conta/`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -461,7 +460,7 @@ export default function AdminPedidosPage() {
                             </a>
                             <a
                               href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-                                `Olá ${order.cliente_nome}! Aqui é da Leidy Boutique. Suas peças do pedido #${order.numero_pedido} chegaram perfeitamente? O que achou do caimento no corpo? Estamos muito felizes em te vestir!`
+                                `Olá ${order.cliente_nome}! Aqui é da ${lojaNome}. Suas peças do pedido #${order.numero_pedido} chegaram perfeitamente? O que achou do caimento no corpo? Estamos muito felizes em te vestir!`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -803,9 +802,9 @@ export default function AdminPedidosPage() {
                   <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 text-[11px]">
                     <div className="space-y-1">
                       <strong className="block text-slate-900 uppercase">REMETENTE:</strong>
-                      <p><strong>Nome/Razão:</strong> Leidy Boutique Moda Feminina</p>
-                      <p><strong>CNPJ:</strong> 45.123.456/0001-89</p>
-                      <p><strong>Endereço:</strong> Alameda das Acácias, 1024</p>
+                      <p><strong>Nome/Razão:</strong> {lojaNome} Moda Feminina</p>
+                      <p><strong>Chave / Identificador:</strong> {chavePix}</p>
+                      <p><strong>Atendimento:</strong> {currentTenant?.whatsapp || '(41) 97347-601'}</p>
                       <p><strong>Cidade/UF:</strong> Curitiba - PR | CEP: 80000-000</p>
                     </div>
 
