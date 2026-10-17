@@ -828,6 +828,52 @@ export async function updateAdminProductDetails(
 }
 
 /**
+ * Atualiza o estoque físico de uma variação (cor/tamanho) e sincroniza o estoque total do produto.
+ */
+export async function updateAdminVariationStock(
+  variationId: string,
+  productId: string,
+  novoEstoque: number
+): Promise<{ success: boolean; novoEstoqueTotal?: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const validStock = Math.max(0, Number(novoEstoque) || 0);
+
+    // 1. Atualiza a variação específica
+    const { error: varErr } = await supabase
+      .from('variacoes_produto')
+      .update({ estoque: validStock })
+      .eq('id', variationId);
+
+    if (varErr) throw varErr;
+
+    // 2. Busca todas as variações para recalcular a soma do estoque do produto pai
+    const { data: allVars, error: sumErr } = await supabase
+      .from('variacoes_produto')
+      .select('estoque')
+      .eq('produto_id', productId);
+
+    if (sumErr) throw sumErr;
+
+    const totalEstoque = (allVars || []).reduce((acc, v) => acc + (Number(v.estoque) || 0), 0);
+
+    // 3. Atualiza o produto pai com a soma real da grade
+    const { error: prodErr } = await supabase
+      .from('produtos')
+      .update({ estoque_total: totalEstoque, updated_at: new Date().toISOString() })
+      .eq('id', productId);
+
+    if (prodErr) throw prodErr;
+
+    return { success: true, novoEstoqueTotal: totalEstoque };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao atualizar estoque da variação:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
  * Calcula métricas do DRE Financeiro (Receita, CMV, Despesas e Lucro Líquido Real).
  */
 export async function getAdminFinanceMetrics(

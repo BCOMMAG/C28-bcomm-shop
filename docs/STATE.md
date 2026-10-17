@@ -45,6 +45,10 @@
   - [x] **CRM & Dossiê VIP da Cliente (`/admin/clientes/`):** Cálculo automático de LTV, segmentação por tags (VIP Gold, Recorrente, Compradora, Lead), modal de dossiê completo com histórico de itens comprados, preferências de tamanho habitual e gravação de anotações internas privadas no Supabase.
   - [x] **Configurações Gerais, Chave Pix & Frete Grátis (`/admin/configuracoes/`):** Gestão centralizada dos dados de atendimento da boutique (WhatsApp e E-mail), Chave PIX oficial e dados bancários sincronizados dinamicamente com o checkout e com os snippets de mensagens, regra de Frete Grátis em reais calculada no carrinho/checkout ao vivo, e seletor com 6 paletas de cores gravado no Supabase.
   - [x] **Trava Dinâmica de Estoque na Vitrine (Provador & PDP):** Bloqueio instantâneo na vitrine de tamanhos com estoque zerado na grade de cor/tamanho, botão riscado e desabilitado com selo "Esgotado", limitação do seletor de quantidade ao estoque real da variação e badge "Esgotado" nos cards quando o produto zera totalmente no estoque físico.
+  - [x] **Gestão Ágil de Grade & Clonagem de Peças em 1 Clique (`/admin/produtos/`):**
+    - Ajuste imediato de estoque por variação de cor e tamanho com botões `+` e `-` na grade expandida, com sincronização automática do estoque consolidado do produto pai (`produtos.estoque_total`).
+    - Botão "Duplicar Peça" (Item 1.3.3 do catálogo) que clona a peça, fotos, descrições, tecidos e grade completa de variações gerando um slug exclusivo e preservando dados originais.
+    - Filtro rápido de estoque e status: "Todas as Peças", "⚠️ Reposição Urgente (≤ 2 un)", "⛔ Esgotados", "✅ Ativas na Vitrine" e "⏸️ Pausadas".
   - [x] **Homologação E2E Completa:** Teste automatizado cobrindo todo o ciclo em banco real com 100% de sucesso.
   - [x] **Deploy Contínuo:** Publicação no Cloudflare Pages validada e monitorada.
 

@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Edit2,
+  Copy,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -34,6 +35,7 @@ import {
   getAdminProducts,
   toggleAdminProductActive,
   updateAdminProductDetails,
+  updateAdminVariationStock,
   createAdminProduct,
   deleteAdminProduct,
   getAdminCategories,
@@ -50,6 +52,7 @@ export default function AdminProdutosPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
+  const [stockFilter, setStockFilter] = useState<'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados'>('todos');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   // Modal de Criação de Produto
@@ -101,6 +104,8 @@ export default function AdminProdutosPage() {
   const [editCostPrice, setEditCostPrice] = useState<string>('');
   const [editStock, setEditStock] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [updatingVarId, setUpdatingVarId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -212,6 +217,99 @@ export default function AdminProdutosPage() {
       showToast(`Peça "${product.nome}" arquivada com sucesso!`);
     } else {
       showToast(res.error || 'Erro ao excluir produto.', 'error');
+    }
+  };
+
+  // Ajuste Rápido de Estoque por Variação (+ / -)
+  const handleQuickVariationStockChange = async (
+    variationId: string,
+    productId: string,
+    delta: number
+  ) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product || !product.variacoes) return;
+
+    const variation = product.variacoes.find((v) => v.id === variationId);
+    if (!variation) return;
+
+    const novoEstoque = Math.max(0, variation.estoque + delta);
+    setUpdatingVarId(variationId);
+
+    try {
+      const res = await updateAdminVariationStock(variationId, productId, novoEstoque);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id !== productId) return p;
+            const updatedVars = (p.variacoes || []).map((v) =>
+              v.id === variationId ? { ...v, estoque: novoEstoque } : v
+            );
+            return {
+              ...p,
+              estoque_total: res.novoEstoqueTotal ?? updatedVars.reduce((acc, v) => acc + v.estoque, 0),
+              variacoes: updatedVars
+            };
+          })
+        );
+        showToast(`Estoque de ${variation.tamanho} (${variation.cor_nome}) atualizado para ${novoEstoque} un!`);
+      } else {
+        showToast(res.error || 'Erro ao atualizar estoque da variação.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao salvar estoque.', 'error');
+    } finally {
+      setUpdatingVarId(null);
+    }
+  };
+
+  // Duplicar Peça em 1 Clique (Clonagem com Variações de Grade)
+  const handleDuplicateProduct = async (product: AdminProductItem) => {
+    setDuplicatingId(product.id);
+    try {
+      const timestampSuffix = Math.floor(1000 + Math.random() * 9000);
+      const generatedSlug = `${product.slug}-copia-${timestampSuffix}`;
+
+      const payload: CreateProductInput = {
+        nome: `${product.nome} (Cópia)`,
+        slug: generatedSlug,
+        descricao: product.descricao || '',
+        preco: product.preco,
+        preco_promocional: product.preco_promocional || null,
+        preco_custo: product.preco_custo || null,
+        categoria_id: product.categoria_id || undefined,
+        tecido: product.tecido || 'Alfaiataria Premium',
+        modelagem: product.modelagem || 'Fluido',
+        linha: product.linha || 'Coleção Nobre',
+        destaque: false,
+        mais_vendido: false,
+        outlet: Boolean(product.outlet),
+        ultimas_pecas: false,
+        estoque_total: product.estoque_total,
+        foto_principal: product.foto_principal || '',
+        fotos: (product.midias || [])
+          .filter((m) => m.tipo !== 'video')
+          .map((m) => m.url),
+        video_provador_url: (product.midias || []).find((m) => m.tipo === 'video')?.url,
+        tem_grade: Boolean(product.variacoes && product.variacoes.length > 0),
+        variacoes: (product.variacoes || []).map((v) => ({
+          cor_nome: v.cor_nome,
+          cor_hex: v.cor_hex,
+          tamanho: v.tamanho,
+          estoque: v.estoque
+        }))
+      };
+
+      const res = await createAdminProduct(payload, DEFAULT_TENANT_ID);
+      if (res.success) {
+        showToast(`Peça "${product.nome}" duplicada com sucesso!`);
+        fetchProductsData();
+      } else {
+        showToast(res.error || 'Erro ao duplicar peça.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao duplicar peça.', 'error');
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -411,11 +509,22 @@ export default function AdminProdutosPage() {
     ...Array.from(new Set(products.map((p) => p.categoria_nome || 'Geral')))
   ];
 
-  // Filtro de Busca
+  // Filtro de Busca e Estoque
   const filteredProducts = products.filter((p) => {
     if (selectedCategory !== 'todas' && p.categoria_nome !== selectedCategory) {
       return false;
     }
+    if (stockFilter === 'criticos') {
+      const temCritico = p.estoque_total <= 2 || (p.variacoes && p.variacoes.some((v) => v.estoque <= 2));
+      if (!temCritico) return false;
+    } else if (stockFilter === 'esgotados') {
+      if (p.estoque_total > 0) return false;
+    } else if (stockFilter === 'ativos') {
+      if (!p.ativo) return false;
+    } else if (stockFilter === 'pausados') {
+      if (p.ativo) return false;
+    }
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       const matchName = p.nome.toLowerCase().includes(term);
@@ -539,6 +648,32 @@ export default function AdminProdutosPage() {
               }`}
             >
               {cat === 'todas' ? 'Todas as Coleções' : cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Abas de Estoque & Status */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 pt-2.5">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+            <Filter className="w-3 h-3" /> Status / Grade:
+          </span>
+          {[
+            { id: 'todos', label: 'Todas as Peças' },
+            { id: 'criticos', label: '⚠️ Reposição Urgente (≤ 2 un)' },
+            { id: 'esgotados', label: '⛔ Esgotados' },
+            { id: 'ativos', label: '✅ Ativas na Vitrine' },
+            { id: 'pausados', label: '⏸️ Pausadas' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStockFilter(tab.id as any)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                stockFilter === tab.id
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-2xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
+              }`}
+            >
+              {tab.label}
             </button>
           ))}
         </div>
@@ -691,6 +826,17 @@ export default function AdminProdutosPage() {
                         <span className="hidden sm:inline">{product.ativo ? 'Pausar' : 'Ativar'}</span>
                       </button>
 
+                      {/* Duplicar Peça */}
+                      <button
+                        onClick={() => handleDuplicateProduct(product)}
+                        disabled={duplicatingId === product.id}
+                        title="Duplicar peça em 1 clique (clona fotos, categorias e variações)"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">Duplicar</span>
+                      </button>
+
                       {/* Editar Rápido */}
                       <button
                         onClick={() => handleOpenEdit(product)}
@@ -753,17 +899,35 @@ export default function AdminProdutosPage() {
                                 </span>
                               </div>
                             </div>
-                            <span
-                              className={`text-xs font-extrabold px-1.5 py-0.5 rounded ${
-                                v.estoque > 2
-                                  ? 'bg-emerald-50 text-emerald-800'
-                                  : v.estoque > 0
-                                  ? 'bg-amber-50 text-amber-800'
-                                  : 'bg-rose-50 text-rose-800'
-                              }`}
-                            >
-                              {v.estoque} un
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleQuickVariationStockChange(v.id, product.id, -1)}
+                                disabled={updatingVarId === v.id || v.estoque <= 0}
+                                className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                title="Diminuir estoque (-1)"
+                              >
+                                -
+                              </button>
+                              <span
+                                className={`text-xs font-extrabold px-1.5 py-0.5 rounded min-w-[28px] text-center ${
+                                  v.estoque > 2
+                                    ? 'bg-emerald-50 text-emerald-800'
+                                    : v.estoque > 0
+                                    ? 'bg-amber-50 text-amber-800'
+                                    : 'bg-rose-50 text-rose-800'
+                                }`}
+                              >
+                                {v.estoque}
+                              </span>
+                              <button
+                                onClick={() => handleQuickVariationStockChange(v.id, product.id, 1)}
+                                disabled={updatingVarId === v.id}
+                                className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition-colors disabled:opacity-30 cursor-pointer"
+                                title="Aumentar estoque (+1)"
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
