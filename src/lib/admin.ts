@@ -321,11 +321,27 @@ export async function updateAdminOrderStatusWithStock(
     if (isNowPaid && wasPending) {
       console.log('📉 [Estoque] Baixando estoque para pedido confirmado:', orderId);
       for (const item of itens) {
-        if (item.produto_id) {
+        let prodId = item.produto_id;
+        if (!prodId && item.nome_produto) {
+          const { data: foundProd } = await supabase
+            .from('produtos')
+            .select('id')
+            .eq('loja_id', lojaId)
+            .ilike('nome', item.nome_produto)
+            .limit(1)
+            .maybeSingle();
+
+          if (foundProd) {
+            prodId = foundProd.id;
+            await supabase.from('itens_pedido').update({ produto_id: prodId }).eq('id', item.id);
+          }
+        }
+
+        if (prodId) {
           const { data: prod } = await supabase
             .from('produtos')
             .select('estoque_total')
-            .eq('id', item.produto_id)
+            .eq('id', prodId)
             .single();
 
           if (prod) {
@@ -333,14 +349,14 @@ export async function updateAdminOrderStatusWithStock(
             await supabase
               .from('produtos')
               .update({ estoque_total: novoEstoque })
-              .eq('id', item.produto_id);
+              .eq('id', prodId);
           }
 
           if (item.cor && item.tamanho) {
             const { data: vars } = await supabase
               .from('variacoes_produto')
               .select('id, estoque')
-              .eq('produto_id', item.produto_id)
+              .eq('produto_id', prodId)
               .ilike('cor_nome', item.cor)
               .ilike('tamanho', item.tamanho);
 
@@ -364,25 +380,41 @@ export async function updateAdminOrderStatusWithStock(
     if (isNowCanceled && wasPaidOrProcessing) {
       console.log('📈 [Estoque] Devolvendo estoque para pedido cancelado:', orderId);
       for (const item of itens) {
-        if (item.produto_id) {
+        let prodId = item.produto_id;
+        if (!prodId && item.nome_produto) {
+          const { data: foundProd } = await supabase
+            .from('produtos')
+            .select('id')
+            .eq('loja_id', lojaId)
+            .ilike('nome', item.nome_produto)
+            .limit(1)
+            .maybeSingle();
+
+          if (foundProd) {
+            prodId = foundProd.id;
+            await supabase.from('itens_pedido').update({ produto_id: prodId }).eq('id', item.id);
+          }
+        }
+
+        if (prodId) {
           const { data: prod } = await supabase
             .from('produtos')
             .select('estoque_total')
-            .eq('id', item.produto_id)
+            .eq('id', prodId)
             .single();
 
           if (prod) {
             await supabase
               .from('produtos')
               .update({ estoque_total: (prod.estoque_total || 0) + (item.quantidade || 1) })
-              .eq('id', item.produto_id);
+              .eq('id', prodId);
           }
 
           if (item.cor && item.tamanho) {
             const { data: vars } = await supabase
               .from('variacoes_produto')
               .select('id, estoque')
-              .eq('produto_id', item.produto_id)
+              .eq('produto_id', prodId)
               .ilike('cor_nome', item.cor)
               .ilike('tamanho', item.tamanho);
 

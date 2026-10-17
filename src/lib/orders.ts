@@ -163,18 +163,52 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
 
     const orderId = pedidoData.id;
 
-    // 3. Inserir itens do pedido
+    // 3. Inserir itens do pedido com amarração correta ao produto no banco
     if (payload.itens && payload.itens.length > 0) {
-      const orderItems = payload.itens.map((item) => ({
-        pedido_id: orderId,
-        loja_id: lojaId,
-        nome_produto: item.name,
-        cor: item.color,
-        tamanho: item.size,
-        preco_unitario: item.price,
-        quantidade: item.quantity,
-        imagem_url: item.image || null
-      }));
+      const isUuid = (val?: string) =>
+        Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+      // Busca mapeamento de slug / nome -> id para os produtos que não vieram como UUID
+      const unresolvedItems = payload.itens.filter((i) => !isUuid(i.productId));
+      const productMapByName = new Map<string, string>();
+      const productMapBySlug = new Map<string, string>();
+
+      if (unresolvedItems.length > 0) {
+        const { data: dbProducts } = await supabase
+          .from('produtos')
+          .select('id, slug, nome')
+          .eq('loja_id', lojaId);
+
+        if (dbProducts) {
+          dbProducts.forEach((p) => {
+            if (p.slug) productMapBySlug.set(p.slug.toLowerCase(), p.id);
+            if (p.nome) productMapByName.set(p.nome.toLowerCase().trim(), p.id);
+          });
+        }
+      }
+
+      const orderItems = payload.itens.map((item) => {
+        let produtoId: string | null = null;
+        if (isUuid(item.productId)) {
+          produtoId = item.productId!;
+        } else if (item.productId && productMapBySlug.has(item.productId.toLowerCase())) {
+          produtoId = productMapBySlug.get(item.productId.toLowerCase())!;
+        } else if (item.name && productMapByName.has(item.name.toLowerCase().trim())) {
+          produtoId = productMapByName.get(item.name.toLowerCase().trim())!;
+        }
+
+        return {
+          pedido_id: orderId,
+          loja_id: lojaId,
+          produto_id: produtoId,
+          nome_produto: item.name,
+          cor: item.color,
+          tamanho: item.size,
+          preco_unitario: item.price,
+          quantidade: item.quantity,
+          imagem_url: item.image || null
+        };
+      });
 
       const { error: itemsError } = await supabase.from('itens_pedido').insert(orderItems);
       if (itemsError) {
