@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 // Variáveis de ambiente para o Cloudflare R2
 const R2_ACCOUNT_ID =
@@ -128,3 +128,39 @@ export async function uploadBrowserFileToR2(
     };
   }
 }
+
+/**
+ * Exclui um arquivo do Cloudflare R2 a partir de sua URL pública ou chave de objeto (Key).
+ */
+export async function deleteFromR2(
+  fileUrlOrKey: string,
+  bucketName = R2_BUCKET_NAME
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!fileUrlOrKey) return { success: true };
+
+    // Extrai a chave (key) caso tenha sido passada a URL completa do R2
+    let key = fileUrlOrKey;
+    const cleanPublicUrl = R2_PUBLIC_URL.replace(/\/$/, '');
+    if (key.startsWith(cleanPublicUrl)) {
+      key = key.replace(cleanPublicUrl, '').replace(/^\//, '');
+    } else if (key.startsWith('http://') || key.startsWith('https://')) {
+      const urlObj = new URL(key);
+      key = urlObj.pathname.replace(/^\//, '');
+    }
+
+    const client = getR2Client();
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    await client.send(command);
+    console.log(`🗑️ [Cloudflare R2] Arquivo excluído com sucesso: ${key}`);
+    return { success: true };
+  } catch (err: any) {
+    console.warn('⚠️ [Cloudflare R2] Falha ao excluir arquivo do R2:', err?.message || err);
+    return { success: false, error: err?.message };
+  }
+}
+

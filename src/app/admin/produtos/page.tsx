@@ -29,7 +29,13 @@ import {
   Tag,
   FileText,
   Palette,
-  ArrowRight
+  ArrowRight,
+  Download,
+  CheckSquare,
+  Square,
+  ShieldAlert,
+  Sliders,
+  Scissors
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -39,10 +45,17 @@ import {
   createAdminProduct,
   deleteAdminProduct,
   getAdminCategories,
+  checkProductOrdersCount,
+  updateAdminProductFull,
+  bulkToggleProductActive,
+  bulkApplyDiscount,
+  bulkUpdateCategory,
+  bulkArchiveProducts,
   AdminProductItem,
-  CreateProductInput
+  CreateProductInput,
+  UpdateProductInput
 } from '@/lib/admin';
-import { uploadBrowserFileToR2 } from '@/lib/r2';
+import { uploadBrowserFileToR2, deleteFromR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
@@ -117,6 +130,56 @@ export default function AdminProdutosPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [updatingVarId, setUpdatingVarId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  // Ações em Massa (Bulk Actions)
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
+  const [showBulkDiscountModal, setShowBulkDiscountModal] = useState(false);
+  const [bulkDiscountValue, setBulkDiscountValue] = useState('10');
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [bulkCategoryTarget, setBulkCategoryTarget] = useState('');
+
+  // Modal Visual de Exclusão / Arquivamento
+  const [deleteModalProduct, setDeleteModalProduct] = useState<AdminProductItem | null>(null);
+  const [isCheckingOrdersCount, setIsCheckingOrdersCount] = useState(false);
+  const [productOrdersCount, setProductOrdersCount] = useState<number>(0);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
+  // Modal de Edição Completa da Peça (Dossiê Integral)
+  const [editingFullProduct, setEditingFullProduct] = useState<AdminProductItem | null>(null);
+  const [activeEditTab, setActiveEditTab] = useState<'geral' | 'midias' | 'grade' | 'comercial'>('geral');
+  const [editFullName, setEditFullName] = useState('');
+  const [editFullSlug, setEditFullSlug] = useState('');
+  const [editFullCatId, setEditFullCatId] = useState('');
+  const [editFullDesc, setEditFullDesc] = useState('');
+  const [editFullFabric, setEditFullFabric] = useState('');
+  const [editFullModeling, setEditFullModeling] = useState('');
+  const [editFullCollection, setEditFullCollection] = useState('');
+  const [editFullPairedSlug, setEditFullPairedSlug] = useState('');
+  const [editFullDetails, setEditFullDetails] = useState('');
+  const [editFullPrice, setEditFullPrice] = useState<number>(0);
+  const [editFullPromoPrice, setEditFullPromoPrice] = useState<string>('');
+  const [editFullCostPrice, setEditFullCostPrice] = useState<string>('');
+  const [editFullDestaque, setEditFullDestaque] = useState(false);
+  const [editFullMaisVendido, setEditFullMaisVendido] = useState(false);
+  const [editFullOutlet, setEditFullOutlet] = useState(false);
+  const [editFullUltimasPecas, setEditFullUltimasPecas] = useState(false);
+  const [editFullFotos, setEditFullFotos] = useState<
+    Array<{ id?: string; url: string; tipo: 'image' | 'video'; label?: string | null; display_order: number }>
+  >([]);
+  const [editFullCoverIndex, setEditFullCoverIndex] = useState(0);
+  const [editFullVideoProvador, setEditFullVideoProvador] = useState('');
+  const [editFullVariacoes, setEditFullVariacoes] = useState<
+    Array<{ id?: string; cor_nome: string; cor_hex: string; tamanho: string; estoque: number; sku?: string | null }>
+  >([]);
+  const [newVarColorName, setNewVarColorName] = useState('Preto');
+  const [newVarColorHex, setNewVarColorHex] = useState('#111111');
+  const [newVarSize, setNewVarSize] = useState('M');
+  const [newVarStock, setNewVarStock] = useState('5');
+  const [newVarSku, setNewVarSku] = useState('');
+  const [isSavingFullEdit, setIsSavingFullEdit] = useState(false);
+  const [uploadingEditPhoto, setUploadingEditPhoto] = useState(false);
+  const [uploadingEditVideo, setUploadingEditVideo] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -218,18 +281,467 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Excluir Peça (Soft-Delete)
-  const handleDeleteProduct = async (product: AdminProductItem) => {
-    if (!confirm(`Deseja realmente arquivar a peça "${product.nome}"? O histórico de pedidos será preservado.`)) {
+  // Abrir Modal Visual de Exclusão / Arquivamento
+  const handleOpenDeleteModal = async (product: AdminProductItem) => {
+    setDeleteModalProduct(product);
+    setIsCheckingOrdersCount(true);
+    setProductOrdersCount(0);
+    try {
+      const res = await checkProductOrdersCount(product.id);
+      setProductOrdersCount(res.count);
+    } catch {
+      setProductOrdersCount(0);
+    } finally {
+      setIsCheckingOrdersCount(false);
+    }
+  };
+
+  // Confirmar Exclusão ou Arquivamento
+  const handleConfirmDelete = async () => {
+    if (!deleteModalProduct) return;
+    setIsDeletingProduct(true);
+    try {
+      const res = await deleteAdminProduct(deleteModalProduct.id);
+      if (res.success) {
+        if (res.action === 'archived') {
+          setProducts((prev) =>
+            prev.map((p) => (p.id === deleteModalProduct.id ? { ...p, ativo: false } : p))
+          );
+          showToast(`Peça "${deleteModalProduct.nome}" arquivada e desativada da vitrine! Histórico de vendas preservado.`);
+        } else {
+          setProducts((prev) => prev.filter((p) => p.id !== deleteModalProduct.id));
+          showToast(`Peça "${deleteModalProduct.nome}" excluída definitivamente do catálogo.`);
+        }
+        setDeleteModalProduct(null);
+      } else {
+        showToast(res.error || 'Erro ao processar exclusão/arquivamento.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
+
+  // Abrir Modal de Edição Completa da Peça
+  const handleOpenFullEdit = (product: AdminProductItem) => {
+    setEditingFullProduct(product);
+    setActiveEditTab('geral');
+    setEditFullName(product.nome);
+    setEditFullSlug(product.slug);
+    setEditFullCatId(product.categoria_id || '');
+    setEditFullDesc(product.descricao || '');
+    setEditFullFabric(product.tecido || '');
+    setEditFullModeling(product.modelagem || '');
+    setEditFullCollection(product.linha || '');
+    setEditFullPairedSlug(product.paired_with_slug || '');
+    setEditFullDetails(Array.isArray(product.detalhes) ? product.detalhes.join('\n') : '');
+    setEditFullPrice(product.preco);
+    setEditFullPromoPrice(product.preco_promocional ? String(product.preco_promocional) : '');
+    setEditFullCostPrice(product.preco_custo ? String(product.preco_custo) : '');
+    setEditFullDestaque(Boolean(product.destaque));
+    setEditFullMaisVendido(Boolean(product.mais_vendido));
+    setEditFullOutlet(Boolean(product.outlet));
+    setEditFullUltimasPecas(Boolean(product.ultimas_pecas));
+
+    // Mídias
+    const existingMidias = (product.midias || []).map((m, idx) => ({
+      id: m.id,
+      url: m.url,
+      tipo: m.tipo || ('image' as const),
+      label: m.label || (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`),
+      display_order: m.display_order ?? idx
+    }));
+
+    // Se a foto_principal não estiver na lista de mídias, inclui no início
+    if (product.foto_principal && !existingMidias.some((m) => m.url === product.foto_principal)) {
+      existingMidias.unshift({
+        id: 'capa_inicial',
+        url: product.foto_principal,
+        tipo: 'image',
+        label: 'Capa Principal',
+        display_order: 0
+      });
+    }
+
+    setEditFullFotos(existingMidias);
+    setEditFullCoverIndex(0);
+
+    const videoMedia = existingMidias.find((m) => m.tipo === 'video');
+    setEditFullVideoProvador(videoMedia ? videoMedia.url : '');
+
+    // Variações
+    const existingVars = (product.variacoes || []).map((v) => ({
+      id: v.id,
+      cor_nome: v.cor_nome,
+      cor_hex: v.cor_hex,
+      tamanho: v.tamanho,
+      estoque: v.estoque,
+      sku: v.sku || ''
+    }));
+    setEditFullVariacoes(existingVars);
+  };
+
+  // Salvar Edição Completa da Peça
+  const handleSaveFullEdit = async () => {
+    if (!editingFullProduct) return;
+    if (!editFullName.trim()) {
+      showToast('O nome da peça é obrigatório.', 'error');
+      return;
+    }
+    if (editFullPrice <= 0) {
+      showToast('O preço de venda deve ser maior que zero.', 'error');
       return;
     }
 
-    const res = await deleteAdminProduct(product.id);
-    if (res.success) {
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
-      showToast(`Peça "${product.nome}" arquivada com sucesso!`);
+    setIsSavingFullEdit(true);
+    try {
+      const parsedPromo = editFullPromoPrice ? parseFloat(editFullPromoPrice) : null;
+      const parsedCost = editFullCostPrice ? parseFloat(editFullCostPrice) : null;
+
+      const detailsArray = editFullDetails
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // Reordena fotos com base no coverIndex
+      const orderedFotos = [...editFullFotos];
+      if (editFullCoverIndex > 0 && editFullCoverIndex < orderedFotos.length) {
+        const [coverItem] = orderedFotos.splice(editFullCoverIndex, 1);
+        orderedFotos.unshift(coverItem);
+      }
+
+      const payload: UpdateProductInput = {
+        id: editingFullProduct.id,
+        loja_id: tenantId,
+        nome: editFullName.trim(),
+        slug: editFullSlug.trim().toLowerCase() || editingFullProduct.slug,
+        categoria_id: editFullCatId || null,
+        descricao: editFullDesc,
+        preco: editFullPrice,
+        preco_promocional: parsedPromo,
+        preco_custo: parsedCost,
+        tecido: editFullFabric || null,
+        modelagem: editFullModeling || null,
+        linha: editFullCollection || null,
+        destaque: editFullDestaque,
+        mais_vendido: editFullMaisVendido,
+        outlet: editFullOutlet,
+        ultimas_pecas: editFullUltimasPecas,
+        paired_with_slug: editFullPairedSlug || null,
+        detalhes: detailsArray.length > 0 ? detailsArray : null,
+        foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : editingFullProduct.foto_principal,
+        fotos: orderedFotos,
+        video_provador_url: editFullVideoProvador.trim() || null,
+        variacoes: editFullVariacoes
+      };
+
+      const res = await updateAdminProductFull(payload);
+      if (res.success) {
+        const catObj = categoriesList.find((c) => c.id === editFullCatId);
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id !== editingFullProduct.id) return p;
+            return {
+              ...p,
+              nome: editFullName.trim(),
+              slug: payload.slug || p.slug,
+              categoria_id: editFullCatId || null,
+              categoria_nome: catObj ? catObj.nome : p.categoria_nome,
+              descricao: editFullDesc,
+              preco: editFullPrice,
+              preco_promocional: parsedPromo,
+              preco_custo: parsedCost,
+              tecido: editFullFabric,
+              modelagem: editFullModeling,
+              linha: editFullCollection,
+              destaque: editFullDestaque,
+              mais_vendido: editFullMaisVendido,
+              outlet: editFullOutlet,
+              ultimas_pecas: editFullUltimasPecas,
+              paired_with_slug: editFullPairedSlug || null,
+              detalhes: detailsArray,
+              foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : p.foto_principal,
+              midias: orderedFotos.map((f, i) => ({
+                id: f.id || `m_${i}`,
+                url: f.url,
+                tipo: f.tipo || 'image',
+                display_order: i,
+                label: i === 0 ? 'Capa Principal' : `Foto ${i + 1}`
+              })),
+              variacoes: editFullVariacoes.map((v, i) => ({
+                id: v.id || `v_${i}`,
+                cor_nome: v.cor_nome,
+                cor_hex: v.cor_hex,
+                tamanho: v.tamanho,
+                estoque: v.estoque,
+                sku: v.sku
+              })),
+              estoque_total: editFullVariacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0)
+            };
+          })
+        );
+
+        showToast(`Peça "${editFullName}" atualizada com sucesso!`);
+        setEditingFullProduct(null);
+      } else {
+        showToast(res.error || 'Erro ao salvar alterações da peça.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao salvar peça.', 'error');
+    } finally {
+      setIsSavingFullEdit(false);
+    }
+  };
+
+  // Upload de Foto na Edição Completa para o Cloudflare R2
+  const handleUploadEditPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingEditPhoto(true);
+    try {
+      const res = await uploadBrowserFileToR2(file, tenantSlug, 'produtos');
+      if (res.success && res.url) {
+        setEditFullFotos((prev) => [
+          ...prev,
+          {
+            id: `r2_${Date.now()}`,
+            url: res.url,
+            tipo: 'image',
+            label: `Foto ${prev.length + 1}`,
+            display_order: prev.length
+          }
+        ]);
+        showToast('Foto enviada com sucesso para o Cloudflare R2!');
+      } else {
+        showToast(res.error || 'Erro ao enviar foto para o R2.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Falha no upload da foto.', 'error');
+    } finally {
+      setUploadingEditPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  // Excluir Foto na Edição Completa
+  const handleDeleteEditPhoto = async (index: number) => {
+    const photo = editFullFotos[index];
+    if (!photo) return;
+
+    // Tenta remover do Cloudflare R2 em background
+    if (photo.url && photo.url.includes('.r2.dev')) {
+      deleteFromR2(photo.url).catch(console.warn);
+    }
+
+    setEditFullFotos((prev) => prev.filter((_, idx) => idx !== index));
+    if (editFullCoverIndex === index) {
+      setEditFullCoverIndex(0);
+    } else if (editFullCoverIndex > index) {
+      setEditFullCoverIndex((prev) => prev - 1);
+    }
+    showToast('Foto removida da galeria.');
+  };
+
+  // Adicionar Variação na Grade da Edição Completa
+  const handleAddVariationInFullEdit = () => {
+    if (!newVarColorName.trim() || !newVarSize.trim()) {
+      showToast('Informe o nome da cor e o tamanho da nova variação.', 'error');
+      return;
+    }
+
+    const est = parseInt(newVarStock) || 0;
+    const generatedSku = newVarSku.trim() || `${editFullSlug || 'peca'}-${newVarColorName.trim()}-${newVarSize.trim()}`.toUpperCase();
+
+    setEditFullVariacoes((prev) => [
+      ...prev,
+      {
+        id: `temp_${Date.now()}`,
+        cor_nome: newVarColorName.trim(),
+        cor_hex: newVarColorHex,
+        tamanho: newVarSize.trim(),
+        estoque: est,
+        sku: generatedSku
+      }
+    ]);
+
+    setNewVarStock('5');
+    setNewVarSku('');
+    showToast(`Variação ${newVarColorName} (${newVarSize}) adicionada à grade!`);
+  };
+
+  // Remover Variação na Grade da Edição Completa
+  const handleRemoveVariationInFullEdit = (index: number) => {
+    setEditFullVariacoes((prev) => prev.filter((_, idx) => idx !== index));
+    showToast('Variação removida da grade.');
+  };
+
+  // --- SELEÇÃO & AÇÕES EM MASSA ---
+  const handleToggleSelectProduct = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllFiltered = (filteredIds: string[]) => {
+    if (selectedProductIds.size === filteredIds.length) {
+      setSelectedProductIds(new Set());
     } else {
-      showToast(res.error || 'Erro ao excluir produto.', 'error');
+      setSelectedProductIds(new Set(filteredIds));
+    }
+  };
+
+  const handleBulkToggle = async (active: boolean) => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkToggleProductActive(ids, active);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => (selectedProductIds.has(p.id) ? { ...p, ativo: active } : p))
+        );
+        showToast(`${res.count} peças ${active ? 'ativadas' : 'pausadas'} na vitrine com sucesso!`);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao alterar status em massa.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkApplyDiscountAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    const percent = parseFloat(bulkDiscountValue) || 0;
+    if (ids.length === 0 || percent <= 0) return;
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkApplyDiscount(ids, percent);
+      if (res.success) {
+        await fetchProductsData();
+        showToast(`Desconto de ${percent}% aplicado em ${res.count} peças!`);
+        setShowBulkDiscountModal(false);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao aplicar desconto em lote.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkUpdateCategoryAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0 || !bulkCategoryTarget) return;
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkUpdateCategory(ids, bulkCategoryTarget);
+      if (res.success) {
+        await fetchProductsData();
+        showToast(`${res.count} peças movidas para a nova categoria!`);
+        setShowBulkCategoryModal(false);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao mover categoria em lote.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkArchiveAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    if (!confirm(`Deseja realmente arquivar as ${ids.length} peças selecionadas? Elas serão desativadas da vitrine.`)) {
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkArchiveProducts(ids);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => (selectedProductIds.has(p.id) ? { ...p, ativo: false } : p))
+        );
+        showToast(`${res.count} peças arquivadas da vitrine!`);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao arquivar peças em massa.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  // Exportar Catálogo em CSV
+  const handleExportCatalogCSV = () => {
+    try {
+      const headers = [
+        'ID',
+        'Nome da Peça',
+        'Slug',
+        'Categoria',
+        'Preço de Venda (R$)',
+        'Preço Promocional (R$)',
+        'Custo CMV (R$)',
+        'Margem Bruta (%)',
+        'Estoque Total',
+        'Status Vitrine',
+        'Tags',
+        'Grade de Cores e Tamanhos'
+      ];
+
+      const rows = products.map((p) => {
+        const custo = p.preco_custo || p.preco * 0.4;
+        const margem = p.preco > 0 ? (((p.preco - custo) / p.preco) * 100).toFixed(1) : '0';
+        const tags = [
+          p.destaque ? 'Destaque' : '',
+          p.mais_vendido ? 'Mais Vendido' : '',
+          p.outlet ? 'Outlet' : '',
+          p.ultimas_pecas ? 'Últimas Peças' : ''
+        ].filter(Boolean).join(' | ');
+
+        const grade = (p.variacoes || [])
+          .map((v) => `${v.cor_nome} ${v.tamanho}: ${v.estoque} un`)
+          .join('; ');
+
+        return [
+          p.id,
+          `"${p.nome.replace(/"/g, '""')}"`,
+          p.slug,
+          `"${p.categoria_nome || 'Geral'}"`,
+          p.preco.toFixed(2),
+          p.preco_promocional ? p.preco_promocional.toFixed(2) : '',
+          custo.toFixed(2),
+          `${margem}%`,
+          p.estoque_total,
+          p.ativo ? 'Ativo' : 'Pausado',
+          `"${tags}"`,
+          `"${grade}"`
+        ].join(';');
+      });
+
+      const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `catalogo_${tenantSlug}_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Planilha do catálogo exportada com sucesso!');
+    } catch (err: any) {
+      showToast('Erro ao exportar planilha do catálogo.', 'error');
     }
   };
 
@@ -609,7 +1121,16 @@ export default function AdminProdutosPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={handleExportCatalogCSV}
+            title="Exportar planilha completa do catálogo com estoque e CMV"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600" />
+            <span>Exportar CSV</span>
+          </button>
+
           <button
             onClick={fetchProductsData}
             disabled={loading}
@@ -739,6 +1260,32 @@ export default function AdminProdutosPage() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Barra de Seleção em Massa */}
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
+              <input
+                type="checkbox"
+                checked={filteredProducts.length > 0 && selectedProductIds.size === filteredProducts.length}
+                onChange={() => handleSelectAllFiltered(filteredProducts.map((p) => p.id))}
+                className="accent-amber-600 rounded cursor-pointer"
+              />
+              <span>
+                {selectedProductIds.size === 0
+                  ? `Selecionar todas as ${filteredProducts.length} peças filtradas`
+                  : `${selectedProductIds.size} de ${filteredProducts.length} peças selecionadas para ação em lote`}
+              </span>
+            </label>
+
+            {selectedProductIds.size > 0 && (
+              <button
+                onClick={() => setSelectedProductIds(new Set())}
+                className="text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer text-xs"
+              >
+                Limpar seleção
+              </button>
+            )}
+          </div>
+
           {filteredProducts.map((product) => {
             const isExpanded = expandedProductId === product.id;
             const hasPromo = product.preco_promocional && product.preco_promocional > 0;
@@ -754,7 +1301,21 @@ export default function AdminProdutosPage() {
               >
                 {/* Linha Principal da Peça */}
                 <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    {/* Checkbox de Seleção em Massa */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSelectProduct(product.id)}
+                      className="text-slate-400 hover:text-amber-600 transition-colors p-1 shrink-0 cursor-pointer"
+                      title={selectedProductIds.has(product.id) ? 'Desmarcar peça' : 'Selecionar para ações em lote'}
+                    >
+                      {selectedProductIds.has(product.id) ? (
+                        <CheckSquare className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />
+                      )}
+                    </button>
+
                     {/* Foto da Peça */}
                     <div className="relative w-16 h-20 bg-slate-100 rounded-lg shrink-0 border border-slate-200 overflow-hidden shadow-2xs">
                       {product.foto_principal ? (
@@ -865,7 +1426,37 @@ export default function AdminProdutosPage() {
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Ver na Vitrine Pública */}
+                      <Link
+                        href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
+                        target="_blank"
+                        title="Ver peça na vitrine pública da boutique"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+
+                      {/* Editar Completo (Destaque Principal) */}
+                      <button
+                        onClick={() => handleOpenFullEdit(product)}
+                        title="Editar Cadastro Completo: Fotos R2, Descrição, Grade e Estilo"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
+
+                      {/* Editar Preços Rápido */}
+                      <button
+                        onClick={() => handleOpenEdit(product)}
+                        title="Ajuste Rápido de Preços e CMV"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <DollarSign className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="hidden sm:inline">Preços</span>
+                      </button>
+
                       {/* Pausar / Ativar */}
                       <button
                         onClick={() => handleToggleActive(product)}
@@ -891,21 +1482,11 @@ export default function AdminProdutosPage() {
                         <span className="hidden sm:inline">Duplicar</span>
                       </button>
 
-                      {/* Editar Rápido */}
+                      {/* Excluir / Arquivar (Abre Modal Visual) */}
                       <button
-                        onClick={() => handleOpenEdit(product)}
-                        title="Editar Preço e Estoque"
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Preços</span>
-                      </button>
-
-                      {/* Excluir (Soft-Delete) */}
-                      <button
-                        onClick={() => handleDeleteProduct(product)}
-                        title="Arquivar peça"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        onClick={() => handleOpenDeleteModal(product)}
+                        title="Excluir ou arquivar peça"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1438,16 +2019,842 @@ export default function AdminProdutosPage() {
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setEditingProduct(null)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={isSaving}
-                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
               >
                 {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BARRA FLUTUANTE DE AÇÕES EM MASSA */}
+      {selectedProductIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-fade-in flex-wrap max-w-[95vw]">
+          <div className="flex items-center gap-2 border-r border-slate-700 pr-3">
+            <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+              {selectedProductIds.size}
+            </span>
+            <span className="text-xs font-semibold hidden sm:inline">peças selecionadas</span>
+          </div>
+
+          <button
+            onClick={() => handleBulkToggle(true)}
+            disabled={isBulkActionRunning}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ativar</span>
+          </button>
+
+          <button
+            onClick={() => handleBulkToggle(false)}
+            disabled={isBulkActionRunning}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <EyeOff className="w-3.5 h-3.5" />
+            <span>Pausar</span>
+          </button>
+
+          <button
+            onClick={() => setShowBulkDiscountModal(true)}
+            disabled={isBulkActionRunning}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>% Desconto</span>
+          </button>
+
+          <button
+            onClick={() => setShowBulkCategoryModal(true)}
+            disabled={isBulkActionRunning}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Mover Categoria</span>
+          </button>
+
+          <button
+            onClick={handleBulkArchiveAction}
+            disabled={isBulkActionRunning}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Arquivar</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedProductIds(new Set())}
+            className="text-xs text-slate-400 hover:text-white underline pl-2 cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* MODAL VISUAL DE EXCLUSÃO / ARQUIVAMENTO COM PROTEÇÃO CONTÁBIL */}
+      {deleteModalProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-rose-600" />
+                <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                  {productOrdersCount > 0 ? 'Arquivar Peça do Catálogo' : 'Excluir Peça Definitivamente'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setDeleteModalProduct(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="relative w-14 h-18 bg-slate-200 rounded-lg overflow-hidden shrink-0">
+                {deleteModalProduct.foto_principal ? (
+                  <Image
+                    src={deleteModalProduct.foto_principal}
+                    alt={deleteModalProduct.nome}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
+                    Sem Foto
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                  {deleteModalProduct.categoria_nome}
+                </span>
+                <h4 className="text-sm font-bold text-slate-900 leading-tight mt-0.5">
+                  {deleteModalProduct.nome}
+                </h4>
+                <span className="text-xs text-slate-500 block mt-1">
+                  Estoque: <strong>{deleteModalProduct.estoque_total} un</strong> • Preço: <strong>{formatCurrency(deleteModalProduct.preco)}</strong>
+                </span>
+              </div>
+            </div>
+
+            {isCheckingOrdersCount ? (
+              <div className="p-4 rounded-xl bg-slate-50 text-center text-xs text-slate-500">
+                <RefreshCw className="w-4 h-4 animate-spin text-amber-600 mx-auto mb-1" />
+                Verificando histórico contábil e de pedidos...
+              </div>
+            ) : productOrdersCount > 0 ? (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Peça com {productOrdersCount} pedido(s) registrado(s)</span>
+                </div>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Esta peça já foi vendida anteriormente. Para proteger a <strong>integridade contábil</strong>, a <strong>apuração de DRE</strong> e o <strong>histórico de pedidos das clientes</strong>, a peça será <strong>arquivada e pausada da vitrine pública</strong> (Soft-Delete). As fotos e registros de vendas permanecerão preservados.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
+                <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
+                  <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Sem vendas registradas: exclusão física permitida</span>
+                </div>
+                <p className="text-xs text-rose-800 leading-relaxed">
+                  Esta peça nunca foi comprada por clientes. Ela será <strong>removida definitivamente</strong> do catálogo e banco de dados, incluindo suas variações de grade e mídias associadas.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setDeleteModalProduct(null)}
+                disabled={isDeletingProduct}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeletingProduct || isCheckingOrdersCount}
+                className={`px-4 py-2 rounded-lg text-xs font-bold text-white transition-colors cursor-pointer shadow-sm ${
+                  productOrdersCount > 0
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isDeletingProduct
+                  ? 'Processando...'
+                  : productOrdersCount > 0
+                  ? 'Confirmar Arquivamento Seguro'
+                  : 'Excluir Peça Definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO COMPLETA DA PEÇA (DOSSIÊ INTEGRAL) */}
+      {editingFullProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] animate-fade-in overflow-hidden">
+            {/* Cabeçalho do Modal */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                    Edição Completa da Peça
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {editingFullProduct.nome} • Slug: <span className="font-mono">{editingFullProduct.slug}</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEditingFullProduct(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Abas de Navegação */}
+            <div className="flex items-center gap-1 px-5 border-b border-slate-200 bg-white overflow-x-auto scrollbar-none">
+              {[
+                { id: 'geral', label: '1. Dados Gerais & Estilo', icon: FileText },
+                { id: 'midias', label: '2. Galeria R2 & Reels 9:16', icon: Video },
+                { id: 'grade', label: '3. Grade de Cores & Tamanhos', icon: Layers },
+                { id: 'comercial', label: '4. Preços, CMV & Cross-Sell', icon: DollarSign }
+              ].map((tab) => {
+                const IconComponent = tab.icon;
+                const isActive = activeEditTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveEditTab(tab.id as any)}
+                    className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+                      isActive
+                        ? 'border-amber-600 text-amber-800 bg-amber-50/40'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-amber-600' : 'text-slate-400'}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Corpo com Scroll */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs flex-1">
+              {/* ABA 1: DADOS GERAIS */}
+              {activeEditTab === 'geral' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Nome da Peça *</label>
+                      <input
+                        type="text"
+                        value={editFullName}
+                        onChange={(e) => setEditFullName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+                        placeholder="Ex: Conjunto Alfaiataria Nobre"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Slug URL (amigável)</label>
+                      <input
+                        type="text"
+                        value={editFullSlug}
+                        onChange={(e) => setEditFullSlug(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
+                        placeholder="ex: conjunto-alfaiataria-nobre"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Categoria</label>
+                      <select
+                        value={editFullCatId}
+                        onChange={(e) => setEditFullCatId(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="">Selecione uma categoria...</option>
+                        {categoriesList.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Tecido / Composição</label>
+                      <input
+                        type="text"
+                        value={editFullFabric}
+                        onChange={(e) => setEditFullFabric(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                        placeholder="Ex: Crepe Alfaiataria / Tricot"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Modelagem / Caimento</label>
+                      <input
+                        type="text"
+                        value={editFullModeling}
+                        onChange={(e) => setEditFullModeling(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                        placeholder="Ex: Alfaiataria Estruturada / Fluida"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold">Linha / Coleção</label>
+                    <input
+                      type="text"
+                      value={editFullCollection}
+                      onChange={(e) => setEditFullCollection(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      placeholder="Ex: Trabalho & Alfaiataria / Festa & Noite"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold">Descrição Comercial da Peça</label>
+                    <textarea
+                      rows={3}
+                      value={editFullDesc}
+                      onChange={(e) => setEditFullDesc(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      placeholder="Descreva a elegância, o caimento e as ocasiões de uso da peça..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold">
+                      Detalhes, Tabela de Medidas & Cuidados (1 por linha)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editFullDetails}
+                      onChange={(e) => setEditFullDetails(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-[11px] focus:bg-white"
+                      placeholder="Modelo veste tamanho P (altura 1,72m)&#10;Composição: 97% Crepe Premium, 3% Elastano&#10;Lavagem delicada à mão para proteger o tecido"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 2: MÍDIAS & R2 */}
+              {activeEditTab === 'midias' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Galeria de Fotos da Peça</h4>
+                      <p className="text-[11px] text-slate-500">
+                        Defina a capa principal da vitrine ou envie novas fotos diretamente para o Cloudflare R2 da loja.
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingEditPhoto ? 'Enviando...' : 'Adicionar Foto no R2'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingEditPhoto}
+                        onChange={handleUploadEditPhoto}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Grid de Fotos */}
+                  {editFullFotos.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400">
+                      Nenhuma foto cadastrada. Faça upload de imagens no Cloudflare R2 acima.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      {editFullFotos.map((foto, idx) => {
+                        const isCover = editFullCoverIndex === idx;
+                        return (
+                          <div
+                            key={idx}
+                            className={`relative rounded-xl border-2 overflow-hidden bg-slate-100 group transition-all shadow-2xs ${
+                              isCover ? 'border-amber-500 ring-2 ring-amber-400/30' : 'border-slate-200'
+                            }`}
+                          >
+                            <div className="relative aspect-3/4 w-full">
+                              <Image
+                                src={foto.url}
+                                alt={`Foto ${idx + 1}`}
+                                fill
+                                sizes="160px"
+                                className="object-cover"
+                              />
+                            </div>
+
+                            {/* Badge Capa */}
+                            {isCover && (
+                              <span className="absolute top-1.5 left-1.5 bg-amber-500 text-slate-950 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs">
+                                Capa Principal
+                              </span>
+                            )}
+
+                            {/* Ações da Foto */}
+                            <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2">
+                              {!isCover && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditFullCoverIndex(idx)}
+                                  className="w-full py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] rounded cursor-pointer transition-colors"
+                                >
+                                  Tornar Capa
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEditPhoto(idx)}
+                                className="w-full py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] rounded cursor-pointer transition-colors flex items-center justify-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Remover</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Vídeo de Provador Vertical (9:16) */}
+                  <div className="pt-4 border-t border-slate-100 space-y-2">
+                    <label className="block text-slate-700 font-bold">
+                      Vídeo de Provador Virtual (Reels / 9:16)
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Cole a URL do vídeo vertical (.mp4) hospedado no Cloudflare R2 ou na vitrine para exibição interativa.
+                    </p>
+                    <input
+                      type="text"
+                      value={editFullVideoProvador}
+                      onChange={(e) => setEditFullVideoProvador(e.target.value)}
+                      placeholder="Ex: /video/header_video.mp4 ou URL R2"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 3: GRADE DE CORES & TAMANHOS */}
+              {activeEditTab === 'grade' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Variações de Grade Ativas</h4>
+                      <p className="text-[11px] text-slate-500">
+                        Adicione novas cores e tamanhos ou remova variações que não são mais fabricadas.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg">
+                      Total: {editFullVariacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0)} unidades
+                    </span>
+                  </div>
+
+                  {/* Lista de Variações Existentes */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
+                    {editFullVariacoes.map((v, idx) => (
+                      <div key={idx} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs"
+                            style={{ backgroundColor: v.cor_hex || '#111' }}
+                          />
+                          <div>
+                            <span className="font-bold text-slate-900 text-xs">
+                              {v.tamanho} • {v.cor_nome}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              SKU: {v.sku || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-slate-500 font-semibold">Estoque:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={v.estoque}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setEditFullVariacoes((prev) =>
+                                  prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
+                                );
+                              }}
+                              className="w-16 bg-slate-50 border border-slate-300 rounded p-1 text-center font-bold text-slate-900 text-xs"
+                            />
+                            <span className="text-[11px] text-slate-400">un</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariationInFullEdit(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                            title="Remover esta variação da grade"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Formulário para Adicionar Nova Variação */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-amber-600" />
+                      Adicionar Nova Variação à Grade
+                    </h5>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      <div>
+                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Cor</label>
+                        <input
+                          type="text"
+                          value={newVarColorName}
+                          onChange={(e) => setNewVarColorName(e.target.value)}
+                          placeholder="Ex: Areia Nobre"
+                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Cor</label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="color"
+                            value={newVarColorHex}
+                            onChange={(e) => setNewVarColorHex(e.target.value)}
+                            className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={newVarColorHex}
+                            onChange={(e) => setNewVarColorHex(e.target.value)}
+                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Tamanho</label>
+                        <select
+                          value={newVarSize}
+                          onChange={(e) => setNewVarSize(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-bold"
+                        >
+                          {['PP', 'P', 'M', 'G', 'GG', 'Tamanho Único', '36', '38', '40', '42', '44'].map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Estoque Inicial</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newVarStock}
+                          onChange={(e) => setNewVarStock(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-bold text-center"
+                        />
+                      </div>
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={handleAddVariationInFullEdit}
+                          className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 4: PREÇOS, CMV & CROSS-SELL */}
+              {activeEditTab === 'comercial' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editFullPrice}
+                        onChange={(e) => setEditFullPrice(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-sm focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Vazio para sem promoção"
+                        value={editFullPromoPrice}
+                        onChange={(e) => setEditFullPromoPrice(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Custo real da confecção"
+                        value={editFullCostPrice}
+                        onChange={(e) => setEditFullCostPrice(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Margem Bruta em Tempo Real */}
+                  {editFullPrice > 0 && editFullCostPrice && (
+                    <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                      <div>
+                        <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                          Margem Bruta Estimada da Peça:
+                        </span>
+                        <span className="text-sm font-extrabold text-emerald-950 font-serif-luxury block mt-0.5">
+                          {(((editFullPrice - parseFloat(editFullCostPrice)) / editFullPrice) * 100).toFixed(1)}% de Margem
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-800">
+                        Lucro Bruto: {formatCurrency(editFullPrice - parseFloat(editFullCostPrice))} / un
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Cross-Sell / Monte o Look */}
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <label className="block text-slate-700 font-bold">
+                      👠 "Monte o Look" / Peça Combinada (Cross-Sell)
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Selecione uma peça complementar que combina perfeitamente com esta para sugerir na vitrine e elevar o Ticket Médio:
+                    </p>
+                    <select
+                      value={editFullPairedSlug}
+                      onChange={(e) => setEditFullPairedSlug(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white"
+                    >
+                      <option value="">Sem sugestão de look combinado</option>
+                      {products
+                        .filter((p) => p.id !== editingFullProduct.id)
+                        .map((p) => (
+                          <option key={p.id} value={p.slug}>
+                            {p.nome} ({formatCurrency(p.preco)})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Tags Comerciais */}
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                      Sinalizadores Comerciais na Vitrine:
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editFullDestaque}
+                          onChange={(e) => setEditFullDestaque(e.target.checked)}
+                          className="accent-amber-600 rounded"
+                        />
+                        <span className="font-semibold text-slate-800">🌟 Destaque</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editFullMaisVendido}
+                          onChange={(e) => setEditFullMaisVendido(e.target.checked)}
+                          className="accent-purple-600 rounded"
+                        />
+                        <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editFullOutlet}
+                          onChange={(e) => setEditFullOutlet(e.target.checked)}
+                          className="accent-rose-600 rounded"
+                        />
+                        <span className="font-semibold text-slate-800">🏷️ Outlet</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editFullUltimasPecas}
+                          onChange={(e) => setEditFullUltimasPecas(e.target.checked)}
+                          className="accent-orange-600 rounded"
+                        />
+                        <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé do Modal com Ações */}
+            <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+              <span className="text-[11px] text-slate-500 hidden sm:inline">
+                As alterações serão refletidas instantaneamente na vitrine pública.
+              </span>
+
+              <div className="flex items-center gap-2.5 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setEditingFullProduct(null)}
+                  disabled={isSavingFullEdit}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFullEdit}
+                  disabled={isSavingFullEdit}
+                  className="px-5 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  {isSavingFullEdit ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Salvando Peça no Banco...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Salvar Cadastro Completo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MINI MODAL: DESCONTO EM MASSA */}
+      {showBulkDiscountModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
+            <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
+              Aplicar Desconto em {selectedProductIds.size} Peças
+            </h4>
+            <div>
+              <label className="block text-slate-700 text-xs mb-1 font-semibold">
+                Percentual de Desconto (% OFF):
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="90"
+                value={bulkDiscountValue}
+                onChange={(e) => setBulkDiscountValue(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-center text-sm"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowBulkDiscountModal(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkApplyDiscountAction}
+                disabled={isBulkActionRunning}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+              >
+                {isBulkActionRunning ? 'Aplicando...' : 'Aplicar Desconto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MINI MODAL: MOVER CATEGORIA EM MASSA */}
+      {showBulkCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
+            <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
+              Mover {selectedProductIds.size} Peças para Categoria
+            </h4>
+            <div>
+              <label className="block text-slate-700 text-xs mb-1 font-semibold">
+                Selecione a Categoria de Destino:
+              </label>
+              <select
+                value={bulkCategoryTarget}
+                onChange={(e) => setBulkCategoryTarget(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs"
+              >
+                <option value="">Selecione...</option>
+                {categoriesList.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowBulkCategoryModal(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkUpdateCategoryAction}
+                disabled={isBulkActionRunning || !bulkCategoryTarget}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 cursor-pointer"
+              >
+                {isBulkActionRunning ? 'Movendo...' : 'Confirmar Mudança'}
               </button>
             </div>
           </div>

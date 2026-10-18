@@ -42,8 +42,49 @@ export interface AdminProductItem {
     display_order: number;
     label?: string | null;
   }>;
+  paired_with_slug?: string | null;
+  detalhes?: string[] | null;
   variacoes: Array<{
     id: string;
+    cor_nome: string;
+    cor_hex: string;
+    tamanho: string;
+    estoque: number;
+    sku?: string | null;
+  }>;
+}
+
+export interface UpdateProductInput {
+  id: string;
+  loja_id?: string;
+  nome?: string;
+  slug?: string;
+  categoria_id?: string | null;
+  descricao?: string | null;
+  preco?: number;
+  preco_promocional?: number | null;
+  preco_custo?: number | null;
+  tecido?: string | null;
+  modelagem?: string | null;
+  linha?: string | null;
+  destaque?: boolean;
+  mais_vendido?: boolean;
+  outlet?: boolean;
+  ultimas_pecas?: boolean;
+  estoque_total?: number;
+  foto_principal?: string | null;
+  paired_with_slug?: string | null;
+  detalhes?: string[] | null;
+  fotos?: Array<{
+    id?: string;
+    url: string;
+    tipo?: 'image' | 'video';
+    label?: string | null;
+    display_order?: number;
+  }>;
+  video_provador_url?: string | null;
+  variacoes?: Array<{
+    id?: string;
     cor_nome: string;
     cor_hex: string;
     tamanho: string;
@@ -550,6 +591,8 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
         ativo,
         foto_principal,
         categoria_id,
+        paired_with_slug,
+        detalhes,
         categorias (nome),
         variacoes_produto (*),
         midias_produto (*)
@@ -579,6 +622,8 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       foto_principal: p.foto_principal,
       categoria_id: p.categoria_id,
       categoria_nome: p.categorias?.nome || 'Geral',
+      paired_with_slug: p.paired_with_slug || null,
+      detalhes: Array.isArray(p.detalhes) ? p.detalhes : null,
       midias: (p.midias_produto || []).map((m: any) => ({
         id: m.id,
         url: m.url,
@@ -723,11 +768,32 @@ export async function createAdminProduct(
 }
 
 /**
- * Exclui ou arquiva um produto com segurança contábil.
+ * Checa quantos pedidos utilizam este produto (para decidir entre arquivar ou excluir).
+ */
+export async function checkProductOrdersCount(
+  productId: string
+): Promise<{ count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { count, error } = await supabase
+      .from('itens_pedido')
+      .select('*', { count: 'exact', head: true })
+      .eq('produto_id', productId);
+
+    if (error) throw error;
+    return { count: count || 0 };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao checar pedidos do produto:', err);
+    return { count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Exclui ou arquiva um produto com segurança contábil e transparência operacional.
  */
 export async function deleteAdminProduct(
   productId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; action?: 'archived' | 'deleted'; error?: string }> {
   const supabase = getSupabaseBrowserClient();
 
   try {
@@ -748,7 +814,7 @@ export async function deleteAdminProduct(
         .eq('id', productId);
 
       if (error) throw error;
-      return { success: true };
+      return { success: true, action: 'archived' };
     }
 
     // 2. Se nunca foi vendido, pode excluir com segurança física
@@ -757,10 +823,265 @@ export async function deleteAdminProduct(
     const { error: delErr } = await supabase.from('produtos').delete().eq('id', productId);
     if (delErr) throw delErr;
 
-    return { success: true };
+    return { success: true, action: 'deleted' };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao excluir produto:', err);
     return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Atualiza o cadastro COMPLETO de um produto: dados gerais, tecidos, categorias,
+ * grade de variações (cores/tamanhos), mídias (fotos R2 e reels 9:16) e cross-sell.
+ */
+export async function updateAdminProductFull(
+  input: UpdateProductInput
+): Promise<{ success: boolean; product?: any; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    // 1. Atualizar a tabela 'produtos'
+    const updateFields: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (input.nome !== undefined) updateFields.nome = input.nome.trim();
+    if (input.slug !== undefined) updateFields.slug = input.slug.trim().toLowerCase();
+    if (input.categoria_id !== undefined) updateFields.categoria_id = input.categoria_id;
+    if (input.descricao !== undefined) updateFields.descricao = input.descricao;
+    if (input.preco !== undefined) updateFields.preco = Number(input.preco);
+    if (input.preco_promocional !== undefined) updateFields.preco_promocional = input.preco_promocional;
+    if (input.preco_custo !== undefined) updateFields.preco_custo = input.preco_custo;
+    if (input.tecido !== undefined) updateFields.tecido = input.tecido;
+    if (input.modelagem !== undefined) updateFields.modelagem = input.modelagem;
+    if (input.linha !== undefined) updateFields.linha = input.linha;
+    if (input.destaque !== undefined) updateFields.destaque = Boolean(input.destaque);
+    if (input.mais_vendido !== undefined) updateFields.mais_vendido = Boolean(input.mais_vendido);
+    if (input.outlet !== undefined) updateFields.outlet = Boolean(input.outlet);
+    if (input.ultimas_pecas !== undefined) updateFields.ultimas_pecas = Boolean(input.ultimas_pecas);
+    if (input.paired_with_slug !== undefined) updateFields.paired_with_slug = input.paired_with_slug;
+    if (input.detalhes !== undefined) updateFields.detalhes = input.detalhes;
+    if (input.foto_principal !== undefined) updateFields.foto_principal = input.foto_principal;
+
+    const { data: updatedProd, error: prodErr } = await supabase
+      .from('produtos')
+      .update(updateFields)
+      .eq('id', input.id)
+      .select('*')
+      .single();
+
+    if (prodErr) throw prodErr;
+
+    // 2. Sincronizar grade de variações (se enviada)
+    if (input.variacoes && Array.isArray(input.variacoes)) {
+      const { data: existingVars } = await supabase
+        .from('variacoes_produto')
+        .select('id')
+        .eq('produto_id', input.id);
+
+      const existingIds = new Set((existingVars || []).map((v) => v.id));
+      const incomingIds = new Set(input.variacoes.filter((v) => v.id && !v.id.startsWith('temp_')).map((v) => v.id!));
+
+      // 2a. Deletar variações removidas pelo usuário
+      const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id));
+      if (toDelete.length > 0) {
+        await supabase.from('variacoes_produto').delete().in('id', toDelete);
+      }
+
+      // 2b. Atualizar existentes e inserir novas
+      let totalEstoqueCalc = 0;
+      for (const v of input.variacoes) {
+        const est = Number(v.estoque || 0);
+        totalEstoqueCalc += est;
+
+        const isNew = !v.id || v.id.startsWith('temp_');
+        if (isNew) {
+          await supabase.from('variacoes_produto').insert({
+            loja_id: input.loja_id || updatedProd.loja_id,
+            produto_id: input.id,
+            cor_nome: v.cor_nome || 'Padrão',
+            cor_hex: v.cor_hex || '#111111',
+            tamanho: v.tamanho || 'U',
+            estoque: est,
+            sku: v.sku || `${updatedProd.slug}-${v.cor_nome}-${v.tamanho}`.toUpperCase()
+          });
+        } else {
+          await supabase
+            .from('variacoes_produto')
+            .update({
+              cor_nome: v.cor_nome,
+              cor_hex: v.cor_hex,
+              tamanho: v.tamanho,
+              estoque: est,
+              sku: v.sku || undefined
+            })
+            .eq('id', v.id);
+        }
+      }
+
+      // 2c. Atualiza estoque_total recalculado em produtos
+      await supabase
+        .from('produtos')
+        .update({ estoque_total: totalEstoqueCalc })
+        .eq('id', input.id);
+    }
+
+    // 3. Sincronizar Mídias (se enviadas)
+    if (input.fotos && Array.isArray(input.fotos)) {
+      // Remove mídias anteriores e insere a lista atualizada com a nova ordenação
+      await supabase.from('midias_produto').delete().eq('produto_id', input.id);
+
+      const midiasToInsert = input.fotos.map((f, idx) => ({
+        loja_id: input.loja_id || updatedProd.loja_id,
+        produto_id: input.id,
+        tipo: f.tipo || 'image',
+        url: f.url,
+        label: f.label || (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`),
+        display_order: f.display_order !== undefined ? f.display_order : idx
+      }));
+
+      if (input.video_provador_url?.trim()) {
+        midiasToInsert.push({
+          loja_id: input.loja_id || updatedProd.loja_id,
+          produto_id: input.id,
+          tipo: 'video',
+          url: input.video_provador_url.trim(),
+          label: 'Vídeo de Provador (9:16)',
+          display_order: 99
+        });
+      }
+
+      if (midiasToInsert.length > 0) {
+        await supabase.from('midias_produto').insert(midiasToInsert);
+
+        // Garante que a primeira foto válida vire a foto_principal
+        const firstPhoto = midiasToInsert.find((m) => m.tipo === 'image');
+        if (firstPhoto) {
+          await supabase
+            .from('produtos')
+            .update({ foto_principal: firstPhoto.url })
+            .eq('id', input.id);
+        }
+      }
+    }
+
+    return { success: true, product: updatedProd };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao atualizar cadastro completo da peça:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar alterações' };
+  }
+}
+
+/**
+ * Ações em Massa: Ativar ou pausar múltiplos produtos na vitrine.
+ */
+export async function bulkToggleProductActive(
+  productIds: string[],
+  novoStatus: boolean
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        ativo: novoStatus,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds);
+
+    if (error) throw error;
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao alternar status em massa:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Ações em Massa: Aplicar percentual de desconto promocional em lote.
+ */
+export async function bulkApplyDiscount(
+  productIds: string[],
+  discountPercent: number
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: prods, error: getErr } = await supabase
+      .from('produtos')
+      .select('id, preco')
+      .in('id', productIds);
+
+    if (getErr) throw getErr;
+
+    for (const p of prods || []) {
+      const precoOriginal = Number(p.preco || 0);
+      const novoPromo = discountPercent > 0
+        ? Number((precoOriginal * (1 - discountPercent / 100)).toFixed(2))
+        : null;
+
+      await supabase
+        .from('produtos')
+        .update({
+          preco_promocional: novoPromo,
+          outlet: discountPercent > 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', p.id);
+    }
+
+    return { success: true, count: (prods || []).length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao aplicar desconto em lote:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Ações em Massa: Mover múltiplos produtos para uma categoria.
+ */
+export async function bulkUpdateCategory(
+  productIds: string[],
+  categoryId: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        categoria_id: categoryId,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds);
+
+    if (error) throw error;
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao mover categoria em lote:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Ações em Massa: Arquivar múltiplos produtos da vitrine com segurança.
+ */
+export async function bulkArchiveProducts(
+  productIds: string[]
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        ativo: false,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds);
+
+    if (error) throw error;
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao arquivar produtos em lote:', err);
+    return { success: false, count: 0, error: err?.message };
   }
 }
 
