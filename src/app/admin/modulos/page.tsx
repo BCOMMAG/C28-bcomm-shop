@@ -22,8 +22,13 @@ import {
   StoreModuleConfig
 } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { useStore } from '@/context/StoreContext';
 
 export default function AdminModulosPage() {
+  const { currentTenant, refreshProducts } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
   const [modules, setModules] = useState<StoreModuleConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
@@ -39,7 +44,7 @@ export default function AdminModulosPage() {
   const fetchModules = async () => {
     setLoading(true);
     try {
-      const data = await getStoreModules(DEFAULT_TENANT_ID);
+      const data = await getStoreModules(tenantId);
       setModules(data);
     } catch (err) {
       console.error('Erro ao carregar módulos:', err);
@@ -50,20 +55,23 @@ export default function AdminModulosPage() {
 
   useEffect(() => {
     fetchModules();
-  }, []);
+  }, [tenantId]);
 
   const handleToggle = async (module: StoreModuleConfig) => {
     setTogglingKey(module.key);
     const nextState = !module.active;
 
-    const res = await toggleStoreModule(DEFAULT_TENANT_ID, module.key, nextState);
+    const res = await toggleStoreModule(tenantId, module.key, nextState);
     if (res.success) {
       setModules((prev) =>
         prev.map((m) => (m.key === module.key ? { ...m, active: nextState } : m))
       );
+      try {
+        await refreshProducts();
+      } catch {}
       showToast(
         nextState
-          ? `Módulo "${module.title}" ativado com sucesso para esta loja!`
+          ? `Módulo "${module.title}" ativado com sucesso para ${lojaNome}!`
           : `Módulo "${module.title}" desativado.`
       );
     } else {
@@ -121,7 +129,7 @@ export default function AdminModulosPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Ative recursos sob demanda para a Leidy Boutique com ativação instantânea no Supabase.
+            Ative recursos sob demanda para a {lojaNome} com ativação instantânea no Supabase.
           </p>
         </div>
 

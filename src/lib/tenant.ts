@@ -86,13 +86,13 @@ export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {
 export async function getTenantByHost(host: string): Promise<Loja> {
   const cleanHost = host.split(':')[0].toLowerCase();
 
-  // Se for ambiente local ou preview genérico da Cloudflare Pages
+  // Se for ambiente local ou preview genérico da Cloudflare Pages, consulta pelo slug padrão
   if (
     cleanHost === 'localhost' ||
     cleanHost === '127.0.0.1' ||
     cleanHost.includes('pages.dev')
   ) {
-    return DEFAULT_LEIDY_TENANT;
+    return getTenantBySlug('leidy-boutique');
   }
 
   // Verifica cache
@@ -135,30 +135,7 @@ export async function getTenantByHost(host: string): Promise<Loja> {
  * Resolve a loja pelo slug único (ex: 'aura-privee' via ?loja=aura-privee)
  */
 export async function getTenantBySlug(slug: string): Promise<Loja> {
-  const cleanSlug = slug.trim().toLowerCase();
-  if (!cleanSlug || cleanSlug === 'leidy-boutique') {
-    return DEFAULT_LEIDY_TENANT;
-  }
-
-  if (cleanSlug === 'aura-privee') {
-    // Tenta primeiro no Supabase
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (supabaseUrl && supabaseKey) {
-        const res = await fetch(`${supabaseUrl}/rest/v1/lojas?slug=eq.aura-privee&ativo=eq.true&select=*`, {
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
-        });
-        if (res.ok) {
-          const data: Loja[] = await res.json();
-          if (data && data.length > 0) {
-            return data[0];
-          }
-        }
-      }
-    } catch {}
-    return DEFAULT_AURA_PRIVEE_TENANT;
-  }
+  const cleanSlug = (slug || '').trim().toLowerCase() || 'leidy-boutique';
 
   const cached = tenantCache.get(`slug:${cleanSlug}`);
   if (cached && cached.expiresAt > Date.now()) {
@@ -187,6 +164,13 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
     }
   } catch (error) {
     console.warn(`Erro ao resolver tenant para o slug ${cleanSlug}:`, error);
+  }
+
+  if (cleanSlug === 'leidy-boutique') {
+    return DEFAULT_LEIDY_TENANT;
+  }
+  if (cleanSlug === 'aura-privee') {
+    return DEFAULT_AURA_PRIVEE_TENANT;
   }
 
   // Gera um Tenant dinâmico para o slug (nunca cai na Leidy Boutique)
