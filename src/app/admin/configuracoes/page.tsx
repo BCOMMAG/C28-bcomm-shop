@@ -37,24 +37,25 @@ import {
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 
 export default function AdminSettingsPage() {
-  const { currentTenant } = useStore();
+  const { currentTenant, refreshProducts } = useStore();
+  const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const { palette, setPalette, availablePalettes, paletteConfig } = useAdminTheme();
 
   // Estados dos formulários gerais
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [nomeLoja, setNomeLoja] = useState('Leidy Boutique');
-  const [slugLoja, setSlugLoja] = useState('leidy-boutique');
-  const [whatsappLoja, setWhatsappLoja] = useState('554197347601');
-  const [emailLoja, setEmailLoja] = useState('contato@leidyboutique.com.br');
+  const [nomeLoja, setNomeLoja] = useState(currentTenant?.nome || 'Leidy Boutique');
+  const [slugLoja, setSlugLoja] = useState(currentTenant?.slug || 'leidy-boutique');
+  const [whatsappLoja, setWhatsappLoja] = useState(currentTenant?.whatsapp || '554197347601');
+  const [emailLoja, setEmailLoja] = useState(currentTenant?.email || 'contato@leidyboutique.com.br');
   const [freteGratis, setFreteGratis] = useState(350);
 
-  // PIX e Dados Bancários
+  // PIX e Dados Bancários Oficiais
   const [tipoChavePix, setTipoChavePix] = useState<'telefone' | 'cnpj' | 'email' | 'aleatoria'>('telefone');
   const [chavePix, setChavePix] = useState('554197347601');
-  const [pixTitular, setPixTitular] = useState('Leidyane Cristina Boutique');
-  const [pixBanco, setPixBanco] = useState('Nubank');
+  const [pixTitular, setPixTitular] = useState('Leidyane Cristina da Silva');
+  const [pixBanco, setPixBanco] = useState('Nu Pagamentos S.A. (Nubank)');
 
   // Toast
   const [saveToast, setSaveToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -68,7 +69,7 @@ export default function AdminSettingsPage() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const data = await getStoreSettings(DEFAULT_TENANT_ID);
+      const data = await getStoreSettings(tenantId);
       if (data) {
         setNomeLoja(data.nome);
         setSlugLoja(data.slug);
@@ -89,7 +90,7 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [tenantId]);
 
   const handleSelectPalette = (key: AdminPaletteKey) => {
     setPalette(key);
@@ -103,7 +104,7 @@ export default function AdminSettingsPage() {
     setIsSaving(true);
 
     try {
-      const res = await saveStoreGeneralSettings(DEFAULT_TENANT_ID, {
+      const res = await saveStoreGeneralSettings(tenantId, {
         nome: nomeLoja,
         whatsapp: whatsappLoja,
         email: emailLoja,
@@ -115,7 +116,10 @@ export default function AdminSettingsPage() {
       });
 
       if (res.success) {
-        showToast('Configurações salvas e publicadas com sucesso na boutique!');
+        try {
+          await refreshProducts();
+        } catch {}
+        showToast(`Configurações salvas e publicadas com sucesso para ${nomeLoja}!`);
       } else {
         showToast(res.error || 'Erro ao salvar configurações.', 'error');
       }

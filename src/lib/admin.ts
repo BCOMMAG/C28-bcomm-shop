@@ -1359,8 +1359,8 @@ export async function getStoreSettings(
       freteGratisValor: Number(vis.frete_gratis_valor || 350),
       chavePix: fin.chave_pix || '554197347601',
       tipoChavePix: fin.tipo_chave_pix || 'telefone',
-      pixTitular: fin.pix_titular || 'Leidyane Cristina Boutique',
-      pixBanco: fin.pix_banco || 'Nubank'
+      pixTitular: fin.pix_titular || 'Leidyane Cristina da Silva',
+      pixBanco: fin.pix_banco || 'Nu Pagamentos S.A. (Nubank)'
     };
   } catch (err) {
     console.error('❌ [Supabase] Erro ao buscar configurações da loja:', err);
