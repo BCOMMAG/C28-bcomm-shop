@@ -320,10 +320,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isWishlisted = (productId: string) => wishlistIds.includes(productId);
 
-  // Controle de histórico do navegador/mobile para fechar o modal ou sacola com o botão "Voltar" do celular
-  const productModalHistoryPushedRef = useRef(false);
-  const cartDrawerHistoryPushedRef = useRef(false);
-
   const addToRecentlyViewed = (productId: string) => {
     setRecentlyViewedIds((prev) => {
       const updated = [productId, ...prev.filter((id) => id !== productId)].slice(0, 8);
@@ -368,81 +364,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSelectedProduct(product);
     setIsProductModalOpen(true);
     addToRecentlyViewed(product.id);
-
-    if (typeof window !== 'undefined') {
-      try {
-        window.history.pushState(
-          { leidyModal: 'product', productId: product.id },
-          '',
-          window.location.href
-        );
-        productModalHistoryPushedRef.current = true;
-      } catch (e) {
-        console.error(e);
-      }
-    }
   };
 
   const closeProduct = () => {
     setIsProductModalOpen(false);
-    if (typeof window !== 'undefined' && productModalHistoryPushedRef.current) {
-      productModalHistoryPushedRef.current = false;
-      window.history.back();
-    }
   };
 
   const closeProductSilently = () => {
     setIsProductModalOpen(false);
-    productModalHistoryPushedRef.current = false;
   };
 
   const openCart = () => {
     setIsCartOpen(true);
-    if (typeof window !== 'undefined' && !cartDrawerHistoryPushedRef.current) {
-      try {
-        window.history.pushState(
-          { leidyModal: 'cart' },
-          '',
-          window.location.href
-        );
-        cartDrawerHistoryPushedRef.current = true;
-      } catch (e) {
-        console.error(e);
-      }
-    }
   };
 
   const closeCart = () => {
     setIsCartOpen(false);
-    if (typeof window !== 'undefined' && cartDrawerHistoryPushedRef.current) {
-      cartDrawerHistoryPushedRef.current = false;
-      window.history.back();
-    }
   };
 
   const closeCartSilently = () => {
     setIsCartOpen(false);
-    cartDrawerHistoryPushedRef.current = false;
   };
-
-  // Interceptador do evento popstate (botão voltar do celular ou navegador)
-  useEffect(() => {
-    const handlePopState = () => {
-      if (cartDrawerHistoryPushedRef.current) {
-        cartDrawerHistoryPushedRef.current = false;
-        setIsCartOpen(false);
-      }
-      if (productModalHistoryPushedRef.current) {
-        productModalHistoryPushedRef.current = false;
-        setIsProductModalOpen(false);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
 
   const openSizeGuide = () => setIsSizeGuideOpen(true);
   const closeSizeGuide = () => setIsSizeGuideOpen(false);

@@ -47,6 +47,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isOutOfStock = product.totalStock === 0;
 
   const handleAction = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) {
       onOpenDetails(product);
@@ -307,7 +308,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Botão de Compra Inteligente (Largura total no mobile para toque confortável e sem colisão) */}
           {isOutOfStock ? (
             <button
-              onClick={() => onOpenDetails(product)}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenDetails(product);
+              }}
               className={`w-full sm:w-auto rounded-none bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs ${
                 isCompact
                   ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
@@ -320,6 +326,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleAction}
               className={`w-full sm:w-auto rounded-none transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs active:scale-[0.98] ${
                 isJustAdded
