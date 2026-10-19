@@ -1634,24 +1634,156 @@ export interface StoreSettingsData {
   slug: string;
   whatsapp: string;
   email: string;
+
+  // Fiscal & Identificação
+  razaoSocial?: string;
+  cnpj?: string;
+  inscricaoEstadual?: string;
+
+  // Endereço Físico
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+
+  // Horários de Atendimento Boutique
+  horarioSemana?: string;
+  horarioSabado?: string;
+  horarioDomingo?: string;
+
+  // Canais Sociais & Comunicação
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+
+  // Políticas e Termos Legais
+  politicaTrocas?: string;
+  politicaPrivacidade?: string;
+  termosUso?: string;
+
+  // Pagamentos & PIX
   freteGratisValor: number;
   chavePix: string;
   tipoChavePix: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pixTitular: string;
   pixBanco: string;
+  pixDescontoPercent: number;
+  pixExpiracaoMinutos: number;
+  pixWhatsappComprovante?: string;
   senhaMestraBalcao?: string;
+
+  // Logística & Envios
+  prazoManuseioDias: number;
+  retiradaBoutiqueAtiva: boolean;
+  instrucoesRetirada?: string;
+  entregaLocalAtiva: boolean;
+  entregaLocalTaxa: number;
+  entregaLocalBairros?: string;
+
+  // Checkout & Experiência
+  presenteAtivo: boolean;
+  taxaPresente: number;
+  permitirMensagemPresente: boolean;
+  pedidoMinimoValor: number;
+
+  // Marca & Identidade Visual
+  logoUrl?: string;
+  logoDarkUrl?: string;
+  faviconUrl?: string;
+  slogan?: string;
+
+  // Marketing & SEO
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  metaTitlePadrao?: string;
+  metaDescriptionPadrao?: string;
+  ogImageUrl?: string;
+
+  // Alertas & Notificações
+  somNovaVendaAtivo: boolean;
+  alertaEstoqueMinimo: number;
+  notificarListaEsperaEmail: boolean;
 }
 
 export interface SaveStoreSettingsInput {
   nome?: string;
   whatsapp?: string;
   email?: string;
+
+  // Fiscal & Identificação
+  razaoSocial?: string;
+  cnpj?: string;
+  inscricaoEstadual?: string;
+
+  // Endereço Físico
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+
+  // Horários de Atendimento Boutique
+  horarioSemana?: string;
+  horarioSabado?: string;
+  horarioDomingo?: string;
+
+  // Canais Sociais & Comunicação
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+
+  // Políticas e Termos Legais
+  politicaTrocas?: string;
+  politicaPrivacidade?: string;
+  termosUso?: string;
+
+  // Pagamentos & PIX
   freteGratisValor?: number;
   chavePix?: string;
   tipoChavePix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pixTitular?: string;
   pixBanco?: string;
+  pixDescontoPercent?: number;
+  pixExpiracaoMinutos?: number;
+  pixWhatsappComprovante?: string;
   senhaMestraBalcao?: string;
+
+  // Logística & Envios
+  prazoManuseioDias?: number;
+  retiradaBoutiqueAtiva?: boolean;
+  instrucoesRetirada?: string;
+  entregaLocalAtiva?: boolean;
+  entregaLocalTaxa?: number;
+  entregaLocalBairros?: string;
+
+  // Checkout & Experiência
+  presenteAtivo?: boolean;
+  taxaPresente?: number;
+  permitirMensagemPresente?: boolean;
+  pedidoMinimoValor?: number;
+
+  // Marca & Identidade Visual
+  logoUrl?: string;
+  logoDarkUrl?: string;
+  faviconUrl?: string;
+  slogan?: string;
+
+  // Marketing & SEO
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  metaTitlePadrao?: string;
+  metaDescriptionPadrao?: string;
+  ogImageUrl?: string;
+
+  // Alertas & Notificações
+  somNovaVendaAtivo?: boolean;
+  alertaEstoqueMinimo?: number;
+  notificarListaEsperaEmail?: boolean;
 }
 
 /**
@@ -1679,12 +1811,78 @@ export async function getStoreSettings(
       slug: loja.slug || 'leidy-boutique',
       whatsapp: loja.whatsapp || '554197347601',
       email: loja.email || 'contato@leidyboutique.com.br',
+
+      // Fiscal & Identificação
+      razaoSocial: vis.razao_social || 'Leidyane Cristina da Silva ME',
+      cnpj: vis.cnpj || '48.912.345/0001-67',
+      inscricaoEstadual: vis.inscricao_estadual || 'ISENTO',
+
+      // Endereço Físico
+      cep: vis.cep || '80010-000',
+      logradouro: vis.logradouro || 'Rua XV de Novembro',
+      numero: vis.numero || '1234',
+      complemento: vis.complemento || 'Loja 02 - Térreo',
+      bairro: vis.bairro || 'Centro',
+      cidade: vis.cidade || 'Curitiba',
+      estado: vis.estado || 'PR',
+
+      // Horários de Atendimento Boutique
+      horarioSemana: vis.horario_semana || '09:00 às 19:00',
+      horarioSabado: vis.horario_sabado || '09:00 às 17:00',
+      horarioDomingo: vis.horario_domingo || 'Fechado',
+
+      // Canais Sociais & Comunicação
+      instagram: vis.instagram || '@leidyboutique_oficial',
+      facebook: vis.facebook || 'facebook.com/leidyboutique',
+      tiktok: vis.tiktok || '@leidyboutique',
+
+      // Políticas e Termos Legais
+      politicaTrocas: vis.politica_trocas || 'Você tem até 7 (sete) dias corridos a partir da data de entrega para solicitar a troca ou devolução do seu pedido, conforme o Código de Defesa do Consumidor (CDC art. 49). As peças devem estar em perfeito estado, sem indícios de uso e com a etiqueta afixada.',
+      politicaPrivacidade: vis.politica_privacidade || 'Respeitamos sua privacidade e protegemos seus dados pessoais de acordo com a LGPD (Lei Geral de Proteção de Dados - Lei 13.709/2018). Seus dados cadastrais e de pagamento são utilizados exclusivamente para o processamento de compras e emissão de notas.',
+      termosUso: vis.termos_uso || 'Ao navegar e efetuar compras em nossa vitrine virtual, o cliente concorda com as condições de pagamento, prazos de envio e políticas de trocas da Leidy Boutique.',
+
+      // Pagamentos & PIX
       freteGratisValor: Number(vis.frete_gratis_valor || 350),
       chavePix: fin.chave_pix || '554197347601',
       tipoChavePix: fin.tipo_chave_pix || 'telefone',
       pixTitular: fin.pix_titular || 'Leidyane Cristina da Silva',
       pixBanco: fin.pix_banco || 'Nu Pagamentos S.A. (Nubank)',
-      senhaMestraBalcao: fin.senha_mestra_balcao || 'Leidy@2026!'
+      pixDescontoPercent: Number(fin.pix_desconto_percent ?? 5),
+      pixExpiracaoMinutos: Number(fin.pix_expiracao_minutos ?? 30),
+      pixWhatsappComprovante: fin.pix_whatsapp_comprovante || '554197347601',
+      senhaMestraBalcao: fin.senha_mestra_balcao || 'Leidy@2026!',
+
+      // Logística & Envios
+      prazoManuseioDias: Number(vis.prazo_manuseio_dias ?? 1),
+      retiradaBoutiqueAtiva: vis.retirada_boutique_ativa ?? true,
+      instrucoesRetirada: vis.instrucoes_retirada || 'Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.',
+      entregaLocalAtiva: vis.entrega_local_ativa ?? true,
+      entregaLocalTaxa: Number(vis.entrega_local_taxa ?? 18.00),
+      entregaLocalBairros: vis.entrega_local_bairros || 'Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)',
+
+      // Checkout & Experiência
+      presenteAtivo: vis.presente_ativo ?? true,
+      taxaPresente: Number(vis.taxa_presente ?? 12.00),
+      permitirMensagemPresente: vis.permitir_mensagem_presente ?? true,
+      pedidoMinimoValor: Number(vis.pedido_minimo_valor ?? 0),
+
+      // Marca & Identidade Visual
+      logoUrl: vis.logo_url || '',
+      logoDarkUrl: vis.logo_dark_url || '',
+      faviconUrl: vis.favicon_url || '',
+      slogan: vis.slogan || 'Moda Feminina Autêntica & Elegância Diária',
+
+      // Marketing & SEO
+      metaPixelId: vis.meta_pixel_id || '',
+      googleAnalyticsId: vis.google_analytics_id || '',
+      metaTitlePadrao: vis.meta_title_padrao || 'Leidy Boutique | Moda Feminina Exclusiva',
+      metaDescriptionPadrao: vis.meta_description_padrao || 'Encontre vestidos, conjuntos, alfaiataria e moda feminina contemporânea com entrega rápida para todo o Brasil.',
+      ogImageUrl: vis.og_image_url || '',
+
+      // Alertas & Notificações
+      somNovaVendaAtivo: vis.som_nova_venda_ativo ?? true,
+      alertaEstoqueMinimo: Number(vis.alerta_estoque_minimo ?? 3),
+      notificarListaEsperaEmail: vis.notificar_lista_espera_email ?? true
     };
   } catch (err) {
     console.error('❌ [Supabase] Erro ao buscar configurações da loja:', err);
@@ -1713,16 +1911,80 @@ export async function saveStoreGeneralSettings(
     const currentVisuais = (loja as any)?.configuracoes_visuais || {};
     const updatedVisuais = {
       ...currentVisuais,
-      ...(input.freteGratisValor !== undefined ? { frete_gratis_valor: Number(input.freteGratisValor) } : {})
+      ...(input.freteGratisValor !== undefined ? { frete_gratis_valor: Number(input.freteGratisValor) } : {}),
+
+      // Fiscal
+      ...(input.razaoSocial !== undefined ? { razao_social: input.razaoSocial.trim() } : {}),
+      ...(input.cnpj !== undefined ? { cnpj: input.cnpj.trim() } : {}),
+      ...(input.inscricaoEstadual !== undefined ? { inscricao_estadual: input.inscricaoEstadual.trim() } : {}),
+
+      // Endereço
+      ...(input.cep !== undefined ? { cep: input.cep.trim() } : {}),
+      ...(input.logradouro !== undefined ? { logradouro: input.logradouro.trim() } : {}),
+      ...(input.numero !== undefined ? { numero: input.numero.trim() } : {}),
+      ...(input.complemento !== undefined ? { complemento: input.complemento.trim() } : {}),
+      ...(input.bairro !== undefined ? { bairro: input.bairro.trim() } : {}),
+      ...(input.cidade !== undefined ? { cidade: input.cidade.trim() } : {}),
+      ...(input.estado !== undefined ? { estado: input.estado.trim() } : {}),
+
+      // Horários
+      ...(input.horarioSemana !== undefined ? { horario_semana: input.horarioSemana.trim() } : {}),
+      ...(input.horarioSabado !== undefined ? { horario_sabado: input.horarioSabado.trim() } : {}),
+      ...(input.horarioDomingo !== undefined ? { horario_domingo: input.horarioDomingo.trim() } : {}),
+
+      // Redes Sociais
+      ...(input.instagram !== undefined ? { instagram: input.instagram.trim() } : {}),
+      ...(input.facebook !== undefined ? { facebook: input.facebook.trim() } : {}),
+      ...(input.tiktok !== undefined ? { tiktok: input.tiktok.trim() } : {}),
+
+      // Políticas
+      ...(input.politicaTrocas !== undefined ? { politica_trocas: input.politicaTrocas.trim() } : {}),
+      ...(input.politicaPrivacidade !== undefined ? { politica_privacidade: input.politicaPrivacidade.trim() } : {}),
+      ...(input.termosUso !== undefined ? { termos_uso: input.termosUso.trim() } : {}),
+
+      // Logística
+      ...(input.prazoManuseioDias !== undefined ? { prazo_manuseio_dias: Number(input.prazoManuseioDias) } : {}),
+      ...(input.retiradaBoutiqueAtiva !== undefined ? { retirada_boutique_ativa: Boolean(input.retiradaBoutiqueAtiva) } : {}),
+      ...(input.instrucoesRetirada !== undefined ? { instrucoes_retirada: input.instrucoesRetirada.trim() } : {}),
+      ...(input.entregaLocalAtiva !== undefined ? { entrega_local_ativa: Boolean(input.entregaLocalAtiva) } : {}),
+      ...(input.entregaLocalTaxa !== undefined ? { entrega_local_taxa: Number(input.entregaLocalTaxa) } : {}),
+      ...(input.entregaLocalBairros !== undefined ? { entrega_local_bairros: input.entregaLocalBairros.trim() } : {}),
+
+      // Checkout
+      ...(input.presenteAtivo !== undefined ? { presente_ativo: Boolean(input.presenteAtivo) } : {}),
+      ...(input.taxaPresente !== undefined ? { taxa_presente: Number(input.taxaPresente) } : {}),
+      ...(input.permitirMensagemPresente !== undefined ? { permitir_mensagem_presente: Boolean(input.permitirMensagemPresente) } : {}),
+      ...(input.pedidoMinimoValor !== undefined ? { pedido_minimo_valor: Number(input.pedidoMinimoValor) } : {}),
+
+      // Marca
+      ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl.trim() } : {}),
+      ...(input.logoDarkUrl !== undefined ? { logo_dark_url: input.logoDarkUrl.trim() } : {}),
+      ...(input.faviconUrl !== undefined ? { favicon_url: input.faviconUrl.trim() } : {}),
+      ...(input.slogan !== undefined ? { slogan: input.slogan.trim() } : {}),
+
+      // Marketing & SEO
+      ...(input.metaPixelId !== undefined ? { meta_pixel_id: input.metaPixelId.trim() } : {}),
+      ...(input.googleAnalyticsId !== undefined ? { google_analytics_id: input.googleAnalyticsId.trim() } : {}),
+      ...(input.metaTitlePadrao !== undefined ? { meta_title_padrao: input.metaTitlePadrao.trim() } : {}),
+      ...(input.metaDescriptionPadrao !== undefined ? { meta_description_padrao: input.metaDescriptionPadrao.trim() } : {}),
+      ...(input.ogImageUrl !== undefined ? { og_image_url: input.ogImageUrl.trim() } : {}),
+
+      // Alertas
+      ...(input.somNovaVendaAtivo !== undefined ? { som_nova_venda_ativo: Boolean(input.somNovaVendaAtivo) } : {}),
+      ...(input.alertaEstoqueMinimo !== undefined ? { alerta_estoque_minimo: Number(input.alertaEstoqueMinimo) } : {}),
+      ...(input.notificarListaEsperaEmail !== undefined ? { notificar_lista_espera_email: Boolean(input.notificarListaEsperaEmail) } : {})
     };
 
     const currentFin = (loja as any)?.configuracoes_financeiras || {};
     const updatedFin = {
       ...currentFin,
-      ...(input.chavePix !== undefined ? { chave_pix: input.chavePix } : {}),
+      ...(input.chavePix !== undefined ? { chave_pix: input.chavePix.trim() } : {}),
       ...(input.tipoChavePix !== undefined ? { tipo_chave_pix: input.tipoChavePix } : {}),
-      ...(input.pixTitular !== undefined ? { pix_titular: input.pixTitular } : {}),
-      ...(input.pixBanco !== undefined ? { pix_banco: input.pixBanco } : {}),
+      ...(input.pixTitular !== undefined ? { pix_titular: input.pixTitular.trim() } : {}),
+      ...(input.pixBanco !== undefined ? { pix_banco: input.pixBanco.trim() } : {}),
+      ...(input.pixDescontoPercent !== undefined ? { pix_desconto_percent: Number(input.pixDescontoPercent) } : {}),
+      ...(input.pixExpiracaoMinutos !== undefined ? { pix_expiracao_minutos: Number(input.pixExpiracaoMinutos) } : {}),
+      ...(input.pixWhatsappComprovante !== undefined ? { pix_whatsapp_comprovante: input.pixWhatsappComprovante.replace(/\D/g, '') } : {}),
       ...(input.senhaMestraBalcao !== undefined ? { senha_mestra_balcao: input.senhaMestraBalcao.trim() } : {})
     };
 
@@ -1732,9 +1994,9 @@ export async function saveStoreGeneralSettings(
       updated_at: new Date().toISOString()
     };
 
-    if (input.nome !== undefined) updatePayload.nome = input.nome;
+    if (input.nome !== undefined) updatePayload.nome = input.nome.trim();
     if (input.whatsapp !== undefined) updatePayload.whatsapp = input.whatsapp.replace(/\D/g, '');
-    if (input.email !== undefined) updatePayload.email = input.email;
+    if (input.email !== undefined) updatePayload.email = input.email.trim();
 
     const { error: updErr } = await supabase
       .from('lojas')
