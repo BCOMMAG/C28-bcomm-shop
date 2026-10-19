@@ -25,10 +25,32 @@ export function LockScreenModal({
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+  const [isMasterUnlockOpen, setIsMasterUnlockOpen] = useState(false);
+  const [masterPassword, setMasterPassword] = useState('');
+  const [masterError, setMasterError] = useState('');
+
+  // Contador regressivo para destravar após 3 minutos
+  React.useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1) {
+          setFailedAttempts(0);
+          setErrorMsg('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutRemaining]);
 
   if (!isOpen) return null;
 
   const handleDigit = (digit: string) => {
+    if (lockoutRemaining > 0) return;
     if (pin.length < 4) {
       const newPin = pin + digit;
       setPin(newPin);
@@ -39,30 +61,54 @@ export function LockScreenModal({
   };
 
   const handleBackspace = () => {
+    if (lockoutRemaining > 0) return;
     setPin((prev) => prev.slice(0, -1));
     setErrorMsg('');
   };
 
   const verifyPinAuto = async (pinToTest: string) => {
-    if (!selectedMember) return;
+    if (!selectedMember || lockoutRemaining > 0) return;
     setLoading(true);
     setErrorMsg('');
 
     try {
       const res = await verifyMemberPin(lojaId, selectedMember.id, pinToTest);
       if (res.valid && res.member) {
+        setFailedAttempts(0);
+        setLockoutRemaining(0);
         localStorage.setItem('leidy_admin_colaborador', JSON.stringify(res.member));
         onUserSwitched(res.member);
         onClose();
       } else {
-        setErrorMsg('PIN incorreto. Tente novamente.');
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
         setPin('');
+        if (nextAttempts >= 3) {
+          setLockoutRemaining(180); // 3 minutos
+          setErrorMsg('⚠️ Terminal bloqueado por 3 minutos após 3 tentativas incorretas.');
+        } else {
+          setErrorMsg(`PIN incorreto. (${3 - nextAttempts} tentativa(s) restante(s))`);
+        }
       }
     } catch {
       setErrorMsg('Falha ao validar PIN.');
       setPin('');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMasterUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMasterError('');
+    if (masterPassword === 'Leidy@2026!' || masterPassword === 'admin') {
+      setFailedAttempts(0);
+      setLockoutRemaining(0);
+      setIsMasterUnlockOpen(false);
+      setMasterPassword('');
+      setErrorMsg('');
+    } else {
+      setMasterError('Senha mestra incorreta.');
     }
   };
 
@@ -167,61 +213,122 @@ export function LockScreenModal({
                 </button>
               </div>
 
-              {/* Indicador de Bolinhas do PIN */}
-              <div className="flex justify-center gap-3 my-2">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={`w-3.5 h-3.5 rounded-full transition-all duration-150 ${
-                      pin.length > i ? 'bg-amber-600 scale-110 shadow-xs' : 'bg-slate-200'
-                    }`}
-                  />
-                ))}
-              </div>
+              {/* Se o terminal estiver bloqueado por tentativas consecutivas */}
+              {lockoutRemaining > 0 ? (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-900">Terminal Pausado por Segurança</h4>
+                    <p className="text-[11px] text-rose-700 mt-0.5">
+                      3 tentativas incorretas de PIN detectadas. Aguarde para tentar novamente:
+                    </p>
+                    <span className="text-xl font-mono font-extrabold text-rose-800 block mt-1">
+                      {Math.floor(lockoutRemaining / 60)
+                        .toString()
+                        .padStart(2, '0')}
+                      :{(lockoutRemaining % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
 
-              {errorMsg && (
-                <div className="text-xs font-semibold text-rose-600 animate-shake">
-                  {errorMsg}
+                  {!isMasterUnlockOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsMasterUnlockOpen(true)}
+                      className="text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-xl border border-amber-300 transition-colors w-full cursor-pointer"
+                    >
+                      Desbloquear com Senha Mestra da Dona
+                    </button>
+                  ) : (
+                    <form onSubmit={handleMasterUnlock} className="space-y-2 pt-2 border-t border-rose-200 text-left">
+                      <span className="text-[10px] text-slate-600 block font-semibold">Senha de Administrador:</span>
+                      <input
+                        type="password"
+                        required
+                        value={masterPassword}
+                        onChange={(e) => setMasterPassword(e.target.value)}
+                        placeholder="••••••••••••"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-rose-300 rounded-lg focus:outline-none focus:border-amber-600"
+                      />
+                      {masterError && <span className="text-[10px] text-rose-600 block font-bold">{masterError}</span>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsMasterUnlockOpen(false)}
+                          className="flex-1 py-1.5 text-[11px] text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 py-1.5 text-[11px] font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 shadow-2xs"
+                        >
+                          Destravar
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Indicador de Bolinhas do PIN */}
+                  <div className="flex justify-center gap-3 my-2">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`w-3.5 h-3.5 rounded-full transition-all duration-150 ${
+                          pin.length > i ? 'bg-amber-600 scale-110 shadow-xs' : 'bg-slate-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
 
-              {/* Teclado Numérico */}
-              <div className="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-                  <button
-                    key={digit}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleDigit(digit)}
-                    className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-amber-100 border border-slate-200 text-base font-bold text-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-                  >
-                    {digit}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={handleBackspace}
-                  className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors shadow-2xs cursor-pointer"
-                >
-                  Limpar
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleDigit('0')}
-                  className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-amber-100 border border-slate-200 text-base font-bold text-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-                >
-                  0
-                </button>
-                <button
-                  type="button"
-                  disabled={loading || pin.length < 4}
-                  onClick={() => verifyPinAuto(pin)}
-                  className="h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center cursor-pointer disabled:opacity-40"
-                >
-                  <Unlock className="w-4 h-4" />
-                </button>
-              </div>
+                  {errorMsg && (
+                    <div className="text-xs font-semibold text-rose-600 animate-shake">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  {/* Teclado Numérico */}
+                  <div className="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                      <button
+                        key={digit}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleDigit(digit)}
+                        className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-amber-100 border border-slate-200 text-base font-bold text-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                      >
+                        {digit}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleBackspace}
+                      className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleDigit('0')}
+                      className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-amber-100 border border-slate-200 text-base font-bold text-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                    >
+                      0
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading || pin.length < 4}
+                      onClick={() => verifyPinAuto(pin)}
+                      className="h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center cursor-pointer disabled:opacity-40"
+                    >
+                      <Unlock className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
 
               <div className="pt-2 text-xs">
                 <button

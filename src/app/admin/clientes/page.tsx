@@ -26,7 +26,8 @@ import {
   Heart,
   Save,
   ChevronDown,
-  Gift
+  Gift,
+  UserCheck
 } from 'lucide-react';
 import { getAdminClients, saveClientInternalNotes, AdminClientItem } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -38,6 +39,21 @@ export default function AdminClientesPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+
+  const [activeColab, setActiveColab] = useState<{ nome: string; codigo?: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('leidy_admin_colaborador');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setActiveColab({
+          nome: parsed.nome || 'Equipe',
+          codigo: parsed.codigo_vendedora || ''
+        });
+      }
+    } catch {}
+  }, []);
 
   const [clients, setClients] = useState<AdminClientItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,23 +147,33 @@ export default function AdminClientesPage() {
     const cleanPhone = client.telefone.replace(/\D/g, '');
     let msg = '';
 
+    const vendedoraNome = activeColab?.nome ? activeColab.nome.split(' ')[0] : null;
+    const vendedoraCodigo = activeColab?.codigo ? `?v=${encodeURIComponent(activeColab.codigo)}` : '';
+    const saudacao = vendedoraNome 
+      ? `Olá ${client.nome}! Tudo bem? Aqui é a ${vendedoraNome} da ${lojaNome} 🤍` 
+      : `Olá ${client.nome}! Tudo bem? Aqui é da ${lojaNome} 🤍`;
+
+    const assinatura = vendedoraNome 
+      ? `\n\nCom carinho,\n*${vendedoraNome}* | ${lojaNome} ✨`
+      : `\n\nCom carinho,\nEquipe ${lojaNome} 🤍`;
+
     switch (type) {
       case 'aniversario':
-        msg = `🎉 *Parabéns, ${client.nome}!* ✨\n\nNós da ${lojaNome} desejamos um novo ciclo repleto de realizações, saúde e muita elegância!\n\nPara celebrar o seu dia especial, preparamos um presente exclusivo: use o cupom *VIP15* e ganhe *15% de desconto* em qualquer peça da nossa nova coleção!\n\nConfira as novidades em: https://bcomm-shop.pages.dev/catalogo\n\nCom carinho,\nEquipe ${lojaNome} 🤍`;
+        msg = `🎉 *Parabéns, ${client.nome}!* ✨\n\nNós da ${lojaNome} desejamos um novo ciclo repleto de realizações, saúde e muita elegância!\n\nPara celebrar o seu dia especial, preparamos um presente exclusivo: use o cupom *VIP15* e ganhe *15% de desconto* em qualquer peça da nossa nova coleção!\n\nConfira as novidades em: https://bcomm-shop.pages.dev/catalogo${vendedoraCodigo}${assinatura}`;
         break;
       case 'lancamento':
-        msg = `✨ Olá, ${client.nome}! Tudo bem?\n\nAqui é da ${lojaNome}. Acabaram de chegar peças exclusivas da nova coleção em tecidos nobres (linho e alfaiataria fina)${
+        msg = `${saudacao}\n\nAcabaram de chegar peças exclusivas da nova coleção em tecidos nobres (linho e alfaiataria fina)${
           client.tamanhoHabitual ? ` no seu tamanho habitual (*${client.tamanhoHabitual}*)` : ''
-        }!\n\nSeparei a curadoria especial para você ver em primeira mão antes de esgotar:\n👉 https://bcomm-shop.pages.dev/catalogo?categoria=alfaiataria\n\nSe quiser reservar alguma, é só me avisar por aqui! ✨`;
+        }!\n\nSeparei a curadoria especial para você ver em primeira mão antes de esgotar:\n👉 https://bcomm-shop.pages.dev/catalogo${vendedoraCodigo ? `${vendedoraCodigo}&` : '?'}categoria=alfaiataria\n\nSe quiser que eu reserve alguma no seu provador, é só me avisar aqui! ✨${assinatura}`;
         break;
       case 'recuperacao':
-        msg = `Olá ${client.nome}! Tudo bem? 🤍\n\nAqui é da ${lojaNome}. Vimos que você começou a escolher peças lindas no nosso site! Ficou alguma dúvida sobre o tamanho ou caimento no corpo? Posso te ajudar a garantir antes que esgote! ✨`;
+        msg = `${saudacao}\n\nVimos que você começou a escolher peças lindas no nosso site! Ficou alguma dúvida sobre o tamanho ou caimento no corpo? Posso te ajudar a garantir antes que esgote! ✨${assinatura}`;
         break;
       case 'posvenda':
-        msg = `Olá ${client.nome}! Tudo bem com você? ✨\n\nPassando para saber se as peças do seu pedido chegaram perfeitamente e se o caimento ficou lindo no corpo! Ficamos à disposição caso precise de algo e será um prazer te atender novamente! 🤍`;
+        msg = `${saudacao}\n\nPassando para saber se as peças do seu pedido chegaram perfeitamente e se o caimento ficou lindo no corpo! Ficamos à disposição caso precise de algo e será um prazer te atender novamente! 🤍${assinatura}`;
         break;
       default:
-        msg = `Olá ${client.nome}! Tudo bem? Aqui é da ${lojaNome}. Como posso te ajudar hoje? ✨`;
+        msg = `${saudacao}\n\nComo posso te ajudar hoje? Posso te apresentar nosso catálogo ou tirar dúvidas sobre qualquer peça: https://bcomm-shop.pages.dev/catalogo${vendedoraCodigo}${assinatura}`;
     }
 
     return `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`;
@@ -224,14 +250,30 @@ export default function AdminClientesPage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchClients}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer w-fit"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
-          <span>Atualizar Clientes</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {activeColab && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-2xs">
+              <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+              <span>
+                Atendendo como: <strong className="font-bold text-amber-950">{activeColab.nome}</strong>{' '}
+                {activeColab.codigo && (
+                  <span className="font-mono text-[11px] text-amber-700 bg-amber-100/70 px-1 py-0.5 rounded">
+                    cód: {activeColab.codigo}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={fetchClients}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer w-fit"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
+            <span>Atualizar Clientes</span>
+          </button>
+        </div>
       </div>
 
       {/* CARDS DE KPI CRM */}

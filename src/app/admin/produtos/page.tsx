@@ -35,7 +35,8 @@ import {
   Square,
   ShieldAlert,
   Sliders,
-  Scissors
+  Scissors,
+  Clock
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -59,6 +60,8 @@ import { uploadBrowserFileToR2, deleteFromR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
+import { ProductFittingRoomModal } from '@/components/admin/products/ProductFittingRoomModal';
+import { getReservedStockMap } from '@/lib/reservas';
 
 export default function AdminProdutosPage() {
   const { currentTenant } = useStore();
@@ -74,6 +77,11 @@ export default function AdminProdutosPage() {
     'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados' | 'destaques' | 'outlet' | 'mais_vendidos' | 'ultimas_pecas'
   >('todos');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+
+  // Estados de Reserva de Provador (30 min)
+  const [reservedStockMap, setReservedStockMap] = useState<Record<string, number>>({});
+  const [isFittingModalOpen, setIsFittingModalOpen] = useState(false);
+  const [selectedFittingProduct, setSelectedFittingProduct] = useState<AdminProductItem | null>(null);
 
   // Modal de Criação de Produto
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -193,12 +201,14 @@ export default function AdminProdutosPage() {
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData] = await Promise.all([
+      const [prodsData, catsData, reservasMap] = await Promise.all([
         getAdminProducts(tenantId),
-        getAdminCategories(tenantId)
+        getAdminCategories(tenantId),
+        getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} }))
       ]);
 
       setCategoriesList(catsData || []);
+      setReservedStockMap(reservasMap?.byProduct || {});
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
@@ -1369,6 +1379,11 @@ export default function AdminProdutosPage() {
                             ⏳ Últimas Peças
                           </span>
                         )}
+                        {reservedStockMap[product.id] > 0 && (
+                          <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase animate-pulse flex items-center gap-1">
+                            👗 {reservedStockMap[product.id]} no provador
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm font-bold text-slate-900 mt-1">
                         {product.nome}
@@ -1455,6 +1470,27 @@ export default function AdminProdutosPage() {
                       >
                         <DollarSign className="w-3.5 h-3.5 text-slate-500" />
                         <span className="hidden sm:inline">Preços</span>
+                      </button>
+
+                      {/* Botão Provador / Reserva (30 min) */}
+                      <button
+                        onClick={() => {
+                          setSelectedFittingProduct(product);
+                          setIsFittingModalOpen(true);
+                        }}
+                        title="Travar peça no provador por 30 minutos (evita venda dupla no site)"
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border ${
+                          (reservedStockMap[product.id] || 0) > 0
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 font-bold'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="hidden sm:inline">
+                          {(reservedStockMap[product.id] || 0) > 0
+                            ? `${reservedStockMap[product.id]} no provador`
+                            : 'Provador'}
+                        </span>
                       </button>
 
                       {/* Pausar / Ativar */}
@@ -2859,6 +2895,20 @@ export default function AdminProdutosPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL DE RESERVA DE PROVADOR (30 MINUTOS) */}
+      {selectedFittingProduct && (
+        <ProductFittingRoomModal
+          isOpen={isFittingModalOpen}
+          onClose={() => {
+            setIsFittingModalOpen(false);
+            setSelectedFittingProduct(null);
+          }}
+          product={selectedFittingProduct}
+          lojaId={tenantId}
+          onReservationUpdated={fetchProductsData}
+        />
       )}
     </div>
   );
