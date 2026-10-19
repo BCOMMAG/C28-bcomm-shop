@@ -219,6 +219,16 @@ export default function AdminEquipePage() {
             <span>Trilha de Auditoria</span>
           </Link>
 
+          {/* Botão Gerenciar Senha Mestra */}
+          <Link
+            href="/admin/configuracoes/"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold text-xs rounded-xl transition-colors shadow-2xs"
+            title="Gerenciar a Senha Mestra da Dona para destrave de emergência do balcão"
+          >
+            <Shield className="w-3.5 h-3.5 text-amber-600" />
+            <span>Senha Mestra</span>
+          </Link>
+
           {/* Botão Convidar Colaborador */}
           <button
             type="button"

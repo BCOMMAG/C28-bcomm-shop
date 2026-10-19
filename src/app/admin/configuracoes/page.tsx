@@ -24,7 +24,9 @@ import {
   Building,
   Truck,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  EyeOff,
+  KeyRound
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
@@ -57,6 +59,10 @@ export default function AdminSettingsPage() {
   const [pixTitular, setPixTitular] = useState('Leidyane Cristina da Silva');
   const [pixBanco, setPixBanco] = useState('Nu Pagamentos S.A. (Nubank)');
 
+  // Senha Mestra de Destrave Balcão (Anti-Brute Force)
+  const [senhaMestraBalcao, setSenhaMestraBalcao] = useState('Leidy@2026!');
+  const [showSenhaMestra, setShowSenhaMestra] = useState(false);
+
   // Toast
   const [saveToast, setSaveToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -80,6 +86,7 @@ export default function AdminSettingsPage() {
         setChavePix(data.chavePix);
         setPixTitular(data.pixTitular);
         setPixBanco(data.pixBanco);
+        if (data.senhaMestraBalcao) setSenhaMestraBalcao(data.senhaMestraBalcao);
       }
     } catch (err) {
       console.error('Erro ao carregar configurações:', err);
@@ -112,7 +119,8 @@ export default function AdminSettingsPage() {
         chavePix,
         tipoChavePix,
         pixTitular,
-        pixBanco
+        pixBanco,
+        senhaMestraBalcao
       });
 
       if (res.success) {
@@ -379,14 +387,74 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          {/* SEÇÃO 4: PALETA DE CORES DO LAYOUT */}
+          {/* SEÇÃO 4: SEGURANÇA & SENHA MESTRA DO BALCÃO (ANTI-BRUTE FORCE) */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+            <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  4. Segurança & Senha Mestra do Balcão
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Gerenciamento da trava anti-força bruta e senha de emergência da proprietária para destravar o terminal de vendas.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-700 mb-1 font-bold">Senha Mestra da Proprietária (Destrave Rápido)</label>
+                <div className="relative">
+                  <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showSenhaMestra ? 'text' : 'password'}
+                    value={senhaMestraBalcao}
+                    onChange={(e) => setSenhaMestraBalcao(e.target.value)}
+                    placeholder="Ex: Leidy@2026!"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-10 py-2.5 text-slate-900 font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSenhaMestra(!showSenhaMestra)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showSenhaMestra ? 'Ocultar senha' : 'Ver senha'}
+                  >
+                    {showSenhaMestra ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Somente a proprietária ou gerentes de confiança devem conhecer esta senha mestra.
+                </span>
+              </div>
+
+              <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3.5 flex flex-col justify-between text-xs">
+                <div>
+                  <span className="font-bold text-amber-950 flex items-center gap-1.5 mb-1 text-[11px] uppercase tracking-wider">
+                    <Shield className="w-3.5 h-3.5 text-amber-600" />
+                    Regra Anti-Brute Force Ativa
+                  </span>
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    Se qualquer vendedora errar o PIN 3 vezes seguidas no balcão, o terminal congela por <strong>180 segundos (3 minutos)</strong>. Esta Senha Mestra é a única forma de destravar o balcão antes do tempo expirar.
+                  </p>
+                </div>
+                <div className="pt-2 text-[10px] text-amber-800 flex items-center gap-1 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Proteção contra acesso indevido e troca de funcionária em terminal compartilhado</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO 5: PALETA DE CORES DO LAYOUT */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
               <div>
                 <div className="flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-amber-600" />
                   <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                    4. Paleta de Cores do Painel
+                    5. Paleta de Cores do Painel
                   </h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">

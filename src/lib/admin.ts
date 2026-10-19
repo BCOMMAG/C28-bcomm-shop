@@ -1639,6 +1639,7 @@ export interface StoreSettingsData {
   tipoChavePix: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pixTitular: string;
   pixBanco: string;
+  senhaMestraBalcao?: string;
 }
 
 export interface SaveStoreSettingsInput {
@@ -1650,6 +1651,7 @@ export interface SaveStoreSettingsInput {
   tipoChavePix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pixTitular?: string;
   pixBanco?: string;
+  senhaMestraBalcao?: string;
 }
 
 /**
@@ -1681,7 +1683,8 @@ export async function getStoreSettings(
       chavePix: fin.chave_pix || '554197347601',
       tipoChavePix: fin.tipo_chave_pix || 'telefone',
       pixTitular: fin.pix_titular || 'Leidyane Cristina da Silva',
-      pixBanco: fin.pix_banco || 'Nu Pagamentos S.A. (Nubank)'
+      pixBanco: fin.pix_banco || 'Nu Pagamentos S.A. (Nubank)',
+      senhaMestraBalcao: fin.senha_mestra_balcao || 'Leidy@2026!'
     };
   } catch (err) {
     console.error('❌ [Supabase] Erro ao buscar configurações da loja:', err);
@@ -1719,7 +1722,8 @@ export async function saveStoreGeneralSettings(
       ...(input.chavePix !== undefined ? { chave_pix: input.chavePix } : {}),
       ...(input.tipoChavePix !== undefined ? { tipo_chave_pix: input.tipoChavePix } : {}),
       ...(input.pixTitular !== undefined ? { pix_titular: input.pixTitular } : {}),
-      ...(input.pixBanco !== undefined ? { pix_banco: input.pixBanco } : {})
+      ...(input.pixBanco !== undefined ? { pix_banco: input.pixBanco } : {}),
+      ...(input.senhaMestraBalcao !== undefined ? { senha_mestra_balcao: input.senhaMestraBalcao.trim() } : {})
     };
 
     const updatePayload: Record<string, any> = {

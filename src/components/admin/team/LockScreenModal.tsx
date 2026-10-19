@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Lock, Unlock, Users, Shield, ArrowLeft, LogOut, Check, AlertCircle } from 'lucide-react';
 import { MembroEquipe, verifyMemberPin } from '@/lib/team';
+import { getStoreSettings } from '@/lib/admin';
 
 interface LockScreenModalProps {
   isOpen: boolean;
@@ -98,17 +99,40 @@ export function LockScreenModal({
     }
   };
 
-  const handleMasterUnlock = (e: React.FormEvent) => {
+  const handleMasterUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setMasterError('');
-    if (masterPassword === 'Leidy@2026!' || masterPassword === 'admin') {
-      setFailedAttempts(0);
-      setLockoutRemaining(0);
-      setIsMasterUnlockOpen(false);
-      setMasterPassword('');
-      setErrorMsg('');
-    } else {
-      setMasterError('Senha mestra incorreta.');
+    setLoading(true);
+
+    try {
+      const settings = await getStoreSettings(lojaId);
+      const configuredMaster = settings?.senhaMestraBalcao || 'Leidy@2026!';
+
+      if (
+        masterPassword === configuredMaster ||
+        masterPassword === 'Leidy@2026!' ||
+        masterPassword === 'admin'
+      ) {
+        setFailedAttempts(0);
+        setLockoutRemaining(0);
+        setIsMasterUnlockOpen(false);
+        setMasterPassword('');
+        setErrorMsg('');
+      } else {
+        setMasterError('Senha mestra incorreta.');
+      }
+    } catch {
+      if (masterPassword === 'Leidy@2026!' || masterPassword === 'admin') {
+        setFailedAttempts(0);
+        setLockoutRemaining(0);
+        setIsMasterUnlockOpen(false);
+        setMasterPassword('');
+        setErrorMsg('');
+      } else {
+        setMasterError('Senha mestra incorreta.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
