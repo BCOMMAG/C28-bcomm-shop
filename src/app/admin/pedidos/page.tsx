@@ -729,69 +729,7 @@ export default function AdminPedidosPage() {
         </div>
       )}
 
-      {/* 1. CABEÇALHO COMPACTO & ALINHADO EM UMA LINHA SÓ */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Lado Esquerdo: Voltar + Título + Badge de Contagem */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            href="/admin/"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-            title="Voltar à Visão Geral do Painel"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-slate-600" />
-            <span className="hidden md:inline">Visão Geral</span>
-          </Link>
-
-          <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
-              Central de Pedidos
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              {filteredOrders.length} {filteredOrders.length === 1 ? 'Pedido' : 'Pedidos'}
-            </span>
-          </div>
-        </div>
-
-        {/* Lado Direito: Ações Compactas (Exportar CSV + Atualizar) */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleExportOrdersCsv}
-            disabled={!canExportOrders}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-              canExportOrders
-                ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
-            }`}
-            title={
-              canExportOrders
-                ? 'Exportar pedidos filtrados para planilha CSV compatível com Excel'
-                : 'Seu perfil de acesso não possui permissão para exportar dados'
-            }
-          >
-            {canExportOrders ? (
-              <Download className="w-3.5 h-3.5 text-amber-600" />
-            ) : (
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-            )}
-            <span className="hidden sm:inline">Exportar CSV</span>
-            <span className="sm:hidden">CSV</span>
-          </button>
-
-          <button
-            onClick={fetchOrders}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-            title="Atualizar listagem de pedidos do Supabase"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. CARDS DE REFERÊNCIA OPERACIONAL NO TOPO (KPIS INTERATIVOS COM SIGILO RBAC) */}
+      {/* 1. CARDS DE REFERÊNCIA OPERACIONAL NO TOPO (KPIS INTERATIVOS COM SIGILO RBAC) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         {[
           {
@@ -1178,6 +1116,45 @@ export default function AdminPedidosPage() {
           <Gift className={`w-3.5 h-3.5 ${onlyGifts ? 'text-amber-700' : 'text-slate-400'}`} />
           <span className="hidden md:inline">Presentes VIP</span>
         </button>
+
+        <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
+
+        {/* Botão Exportar Planilha (CSV) */}
+        <button
+          onClick={handleExportOrdersCsv}
+          disabled={!canExportOrders}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+            canExportOrders
+              ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+              : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+          }`}
+          title={
+            canExportOrders
+              ? 'Exportar pedidos filtrados para planilha CSV compatível com Excel'
+              : 'Seu perfil de acesso não possui permissão para exportar dados'
+          }
+        >
+          {canExportOrders ? (
+            <Download className="w-3.5 h-3.5 text-amber-600" />
+          ) : (
+            <Lock className="w-3.5 h-3.5 text-slate-400" />
+          )}
+          <span className="hidden md:inline">Exportar CSV</span>
+          <span className="md:hidden">CSV</span>
+        </button>
+
+        {/* Botão Atualizar Pedidos */}
+        <button
+          onClick={fetchOrders}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+          title="Atualizar listagem de pedidos do Supabase"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
+          <span className="hidden md:inline">Atualizar</span>
+        </button>
+
+        <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
         {/* Alternador de Modos de Visualização (Cards, Lista e Kanban) */}
         <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 ml-auto shrink-0">

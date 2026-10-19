@@ -670,13 +670,21 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         {!isRootAdmin && (
           <div className="bg-white border-b border-slate-200/80 py-2 px-4 sm:px-6 lg:px-8">
             <div className="max-w-[1700px] mx-auto flex items-center justify-between gap-4">
-              <Link
-                href="/admin/"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-              >
-                <ArrowLeft className="w-3 h-3" />
-                <span>Voltar à Visão Geral</span>
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/admin/"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  <span>Voltar à Visão Geral</span>
+                </Link>
+
+                <div className="h-4 w-[1px] bg-slate-200" />
+
+                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight font-serif-luxury">
+                  {cleanPath === '/admin/pedidos' ? 'Central de Pedidos' : currentNav?.title || 'Painel'}
+                </h1>
+              </div>
 
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Link href="/admin/" className="hover:text-slate-900">
