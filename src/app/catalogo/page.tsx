@@ -1818,6 +1818,7 @@ function CatalogoContent() {
       <SizeGuideModal
         isOpen={isSizeGuideOpen}
         onClose={closeSizeGuide}
+        product={selectedProduct}
       />
     </div>
   );

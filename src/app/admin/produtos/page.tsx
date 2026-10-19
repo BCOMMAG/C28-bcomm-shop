@@ -36,7 +36,8 @@ import {
   ShieldAlert,
   Sliders,
   Scissors,
-  Clock
+  Clock,
+  Bell
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -61,7 +62,9 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
 import { ProductFittingRoomModal } from '@/components/admin/products/ProductFittingRoomModal';
+import { ProductWaitlistModal } from '@/components/admin/products/ProductWaitlistModal';
 import { getReservedStockMap } from '@/lib/reservas';
+import { getAviseMeSummaryMap } from '@/lib/aviseme';
 
 export default function AdminProdutosPage() {
   const { currentTenant } = useStore();
@@ -82,6 +85,11 @@ export default function AdminProdutosPage() {
   const [reservedStockMap, setReservedStockMap] = useState<Record<string, number>>({});
   const [isFittingModalOpen, setIsFittingModalOpen] = useState(false);
   const [selectedFittingProduct, setSelectedFittingProduct] = useState<AdminProductItem | null>(null);
+
+  // Estados de Fila de Espera (Avise-me Quando Chegar)
+  const [aviseMeSummary, setAviseMeSummary] = useState<Record<string, number>>({});
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [selectedWaitlistProduct, setSelectedWaitlistProduct] = useState<AdminProductItem | null>(null);
 
   // Modal de Criação de Produto
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -201,14 +209,16 @@ export default function AdminProdutosPage() {
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData, reservasMap] = await Promise.all([
+      const [prodsData, catsData, reservasMap, aviseMeMap] = await Promise.all([
         getAdminProducts(tenantId),
         getAdminCategories(tenantId),
-        getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} }))
+        getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} })),
+        getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 }))
       ]);
 
       setCategoriesList(catsData || []);
       setReservedStockMap(reservasMap?.byProduct || {});
+      setAviseMeSummary(aviseMeMap?.byProduct || {});
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
@@ -1384,6 +1394,20 @@ export default function AdminProdutosPage() {
                             👗 {reservedStockMap[product.id]} no provador
                           </span>
                         )}
+                        {(aviseMeSummary[product.id] || 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedWaitlistProduct(product);
+                              setIsWaitlistModalOpen(true);
+                            }}
+                            className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 px-2 py-0.5 rounded font-bold uppercase transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="Clientes aguardando reposição desta peça"
+                          >
+                            <Bell className="w-3 h-3 text-purple-600" />
+                            <span>{aviseMeSummary[product.id]} na fila</span>
+                          </button>
+                        )}
                       </div>
                       <h3 className="text-sm font-bold text-slate-900 mt-1">
                         {product.nome}
@@ -1492,6 +1516,23 @@ export default function AdminProdutosPage() {
                             : 'Provador'}
                         </span>
                       </button>
+
+                      {/* Botão Fila de Espera / Avise-me */}
+                      {(aviseMeSummary[product.id] || 0) > 0 && (
+                        <button
+                          onClick={() => {
+                            setSelectedWaitlistProduct(product);
+                            setIsWaitlistModalOpen(true);
+                          }}
+                          title="Ver clientes aguardando reposição desta peça e notificar no WhatsApp"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs"
+                        >
+                          <Bell className="w-3.5 h-3.5 text-purple-600" />
+                          <span className="hidden sm:inline">
+                            Fila ({aviseMeSummary[product.id]})
+                          </span>
+                        </button>
+                      )}
 
                       {/* Pausar / Ativar */}
                       <button
@@ -2908,6 +2949,20 @@ export default function AdminProdutosPage() {
           product={selectedFittingProduct}
           lojaId={tenantId}
           onReservationUpdated={fetchProductsData}
+        />
+      )}
+
+      {/* MODAL DE FILA DE ESPERA (AVISE-ME QUANDO CHEGAR) */}
+      {selectedWaitlistProduct && (
+        <ProductWaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onClose={() => {
+            setIsWaitlistModalOpen(false);
+            setSelectedWaitlistProduct(null);
+          }}
+          product={selectedWaitlistProduct}
+          lojaId={tenantId}
+          onListUpdated={fetchProductsData}
         />
       )}
     </div>

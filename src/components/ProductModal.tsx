@@ -25,11 +25,13 @@ import {
   Copy,
   MapPin,
   Clock,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { Product } from '@/types';
 import { PRODUCTS, STORE_INFO } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
+import { AviseMeModal } from '@/components/AviseMeModal';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -95,6 +97,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [addedAnimation, setAddedAnimation] = useState<boolean>(false);
   const [isVideoBuffering, setIsVideoBuffering] = useState<boolean>(true);
   const [pairedAddedId, setPairedAddedId] = useState<string | null>(null);
+  const [isAviseMeOpen, setIsAviseMeOpen] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const touchStartX = useRef<number | null>(null);
@@ -713,18 +716,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <button
                         key={idx}
                         onClick={() => {
-                          if (!available) return;
                           setSelectedSize(size);
                           setQuantity(1);
                         }}
-                        disabled={!available}
-                        title={!available ? 'Tamanho esgotado nesta cor' : `Em estoque (${stock} unidades)`}
-                        className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border ${
+                        title={!available ? 'Tamanho esgotado nesta cor - Clique para ser avisada na reposição' : `Em estoque (${stock} unidades)`}
+                        className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border cursor-pointer ${
                           !available
-                            ? 'opacity-40 line-through border-dashed border-red-300 dark:border-red-900 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 cursor-not-allowed'
+                            ? isSizeSelected
+                              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-400 ring-1 ring-rose-400 shadow-xs'
+                              : 'opacity-60 line-through border-dashed border-red-300 dark:border-red-900 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 hover:opacity-100 hover:border-rose-400'
                             : isSizeSelected
-                            ? 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] border-[#1A1918] dark:border-white shadow-xs cursor-pointer'
-                            : 'bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/30 hover:border-[#C5A059] cursor-pointer'
+                            ? 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] border-[#1A1918] dark:border-white shadow-xs'
+                            : 'bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/30 hover:border-[#C5A059]'
                         }`}
                       >
                         <span>{size}</span>
@@ -737,79 +740,92 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
               {/* Seletor de Quantidade & Ações Principais */}
               <div className="mt-5 space-y-2.5">
-                {isCurrentSelectionOutOfStock && (
-                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-2.5 text-xs text-amber-800 dark:text-amber-200">
-                    ⚠️ O tamanho <strong>{selectedSize}</strong> na cor <strong>{selectedColor}</strong> está esgotado no estoque físico. Selecione outro tamanho disponível ou outra cor.
+                {isCurrentSelectionOutOfStock ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-[#C5A059]/40 p-3.5 text-xs text-amber-950 dark:text-amber-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Bell className="w-4 h-4 text-[#C5A059]" />
+                        <span className="font-bold">
+                          Tamanho {selectedSize} {selectedColor && `(${selectedColor})`} sem estoque no momento
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
+                        Peça com alta procura! Cadastre-se na fila de espera para receber um aviso prioritário no seu WhatsApp assim que houver reposição.
+                      </p>
+                    </div>
+
+                    {/* Botão de Destaque: AVISE-ME QUANDO CHEGAR */}
+                    <button
+                      type="button"
+                      onClick={() => setIsAviseMeOpen(true)}
+                      className="w-full py-3.5 px-5 rounded-none text-xs uppercase tracking-widest font-extrabold flex items-center justify-center gap-2 bg-[#C5A059] hover:bg-[#A9833E] text-white transition-all duration-300 shadow-md cursor-pointer animate-pulse"
+                      title="Avise-me quando este tamanho for reposto"
+                    >
+                      <Bell className="w-4 h-4" />
+                      <span>AVISE-ME QUANDO CHEGAR</span>
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      {/* Contador de Quantidade */}
+                      <div className="flex items-center border border-black/25 dark:border-white/25 rounded-none bg-white dark:bg-[#252220] px-2.5 py-2.5">
+                        <button
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                          className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] px-2 min-w-[20px] text-center">
+                          {quantity}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const maxStock = Math.max(1, currentVariationStock);
+                            setQuantity(Math.min(maxStock, quantity + 1));
+                          }}
+                          disabled={quantity >= currentVariationStock}
+                          className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Botão Principal: COMPRAR AGORA (Leva direto ao checkout) */}
+                      <button
+                        onClick={handleBuyNow}
+                        className="flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer"
+                        title="Comprar esta peça agora e ir para o Checkout"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>COMPRAR AGORA</span>
+                      </button>
+                    </div>
+
+                    {/* Botão Secundário: Adicionar à Sacola */}
+                    <button
+                      onClick={handleAdd}
+                      className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border shadow-xs ${
+                        addedAnimation
+                          ? 'bg-[#25D366] text-white border-[#25D366] cursor-pointer'
+                          : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/60 cursor-pointer'
+                      }`}
+                    >
+                      {addedAnimation ? (
+                        <>
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>ADICIONADO À SACOLA!</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
+                          <span>ADICIONAR À SACOLA</span>
+                        </>
+                      )}
+                    </button>
+                  </>
                 )}
-
-                <div className="flex items-center gap-2.5">
-                  {/* Contador de Quantidade */}
-                  <div className="flex items-center border border-black/25 dark:border-white/25 rounded-none bg-white dark:bg-[#252220] px-2.5 py-2.5">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1 || isCurrentSelectionOutOfStock}
-                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
-                    >
-                      -
-                    </button>
-                    <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] px-2 min-w-[20px] text-center">
-                      {quantity}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const maxStock = Math.max(1, currentVariationStock);
-                        setQuantity(Math.min(maxStock, quantity + 1));
-                      }}
-                      disabled={quantity >= currentVariationStock || isCurrentSelectionOutOfStock}
-                      className="text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-2 cursor-pointer disabled:opacity-40"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {/* Botão Principal: COMPRAR AGORA (Leva direto ao checkout) */}
-                  <button
-                    onClick={handleBuyNow}
-                    disabled={isCurrentSelectionOutOfStock}
-                    className={`flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 ${
-                      isCurrentSelectionOutOfStock
-                        ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                        : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer'
-                    }`}
-                    title={isCurrentSelectionOutOfStock ? 'Tamanho esgotado' : 'Comprar esta peça agora e ir para o Checkout'}
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>{isCurrentSelectionOutOfStock ? 'TAMANHO ESGOTADO' : 'COMPRAR AGORA'}</span>
-                  </button>
-                </div>
-
-                {/* Botão Secundário: Adicionar à Sacola */}
-                <button
-                  onClick={handleAdd}
-                  disabled={isCurrentSelectionOutOfStock}
-                  className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border shadow-xs ${
-                    isCurrentSelectionOutOfStock
-                      ? 'bg-neutral-100 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800 text-neutral-400 cursor-not-allowed'
-                      : addedAnimation
-                      ? 'bg-[#25D366] text-white border-[#25D366] cursor-pointer'
-                      : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/60 cursor-pointer'
-                  }`}
-                >
-                  {isCurrentSelectionOutOfStock ? (
-                    <span>TAMANHO ESGOTADO</span>
-                  ) : addedAnimation ? (
-                    <>
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>ADICIONADO À SACOLA!</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
-                      <span>ADICIONAR À SACOLA</span>
-                    </>
-                  )}
-                </button>
 
                 {/* Botão Direto de WhatsApp */}
                 <a
@@ -1110,6 +1126,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         </div>
 
       </div>
+
+      {/* MODAL DE CAPTURA AVISE-ME QUANDO CHEGAR */}
+      <AviseMeModal
+        isOpen={isAviseMeOpen}
+        onClose={() => setIsAviseMeOpen(false)}
+        product={product}
+        selectedColor={selectedColor}
+        selectedSize={selectedSize}
+        lojaId={currentTenant?.id}
+      />
     </div>
   );
 };

@@ -371,6 +371,7 @@ export function BoutiqueStorefront() {
       <SizeGuideModal
         isOpen={isSizeGuideOpen}
         onClose={closeSizeGuide}
+        product={selectedProduct}
       />
     </div>
   );
