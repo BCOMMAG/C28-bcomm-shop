@@ -59,6 +59,14 @@ interface StoreContextType {
   closeCartSilently: () => void;
   openSizeGuide: () => void;
   closeSizeGuide: () => void;
+  // Funcionalidade de Embalagem para Presente
+  isGift: boolean;
+  setIsGift: (val: boolean) => void;
+  giftMessage: string;
+  setGiftMessage: (msg: string) => void;
+  giftFee: number;
+  isGiftServiceActive: boolean;
+  allowGiftMessage: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -80,6 +88,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
   const [heroBanner, setHeroBanner] = useState<AdminHeroBanner | null>(null);
+
+  // Estados de Embalagem para Presente
+  const [isGift, setIsGift] = useState<boolean>(false);
+  const [giftMessage, setGiftMessage] = useState<string>('');
+
+  // Configurações dinâmicas de presente do banco de dados
+  const { giftFee, isGiftServiceActive, allowGiftMessage } = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const fee = Number(vis?.taxa_presente ?? 12.00);
+    const active = vis?.presente_ativo !== undefined ? Boolean(vis.presente_ativo) : true;
+    const allowMsg = vis?.permitir_mensagem_presente !== undefined ? Boolean(vis.permitir_mensagem_presente) : true;
+    return { giftFee: fee, isGiftServiceActive: active, allowGiftMessage: allowMsg };
+  }, [currentTenant]);
 
   // Barra de avisos superior sincronizada com o banco
   const announcementBar = useMemo(() => {
@@ -135,9 +156,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const clearCart = () => {
     setCartItems([]);
+    setIsGift(false);
+    setGiftMessage('');
     try {
       const tenantKey = currentTenant.slug || 'default';
       localStorage.removeItem(`bcomm_cart_${tenantKey}`);
+      localStorage.removeItem(`bcomm_gift_${tenantKey}`);
+      localStorage.removeItem(`bcomm_gift_msg_${tenantKey}`);
     } catch (e) {
       console.error(e);
     }
@@ -153,6 +178,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const savedCart = localStorage.getItem(`bcomm_cart_${tenantKey}`);
       setCartItems(savedCart ? JSON.parse(savedCart) : []);
+
+      const savedGift = localStorage.getItem(`bcomm_gift_${tenantKey}`);
+      if (savedGift) setIsGift(JSON.parse(savedGift));
+
+      const savedGiftMsg = localStorage.getItem(`bcomm_gift_msg_${tenantKey}`);
+      if (savedGiftMsg) setGiftMessage(savedGiftMsg);
 
       const savedRecent = localStorage.getItem(`bcomm_recent_${tenantKey}`);
       setRecentlyViewedIds(savedRecent ? JSON.parse(savedRecent) : []);
@@ -208,16 +239,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [wishlistIds, currentTenant.slug]);
 
-  // Salvar carrinho no localStorage para a loja atual
+  // Salvar carrinho e opções de presente no localStorage para a loja atual
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const tenantKey = currentTenant.slug || 'default';
       localStorage.setItem(`bcomm_cart_${tenantKey}`, JSON.stringify(cartItems));
+      localStorage.setItem(`bcomm_gift_${tenantKey}`, JSON.stringify(isGift));
+      localStorage.setItem(`bcomm_gift_msg_${tenantKey}`, giftMessage);
     } catch (e) {
       console.error(e);
     }
-  }, [cartItems, currentTenant.slug]);
+  }, [cartItems, isGift, giftMessage, currentTenant.slug]);
 
   const addToCart = ({
     product,
@@ -462,7 +495,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeCart,
         closeCartSilently,
         openSizeGuide,
-        closeSizeGuide
+        closeSizeGuide,
+        // Funcionalidade de Embalagem para Presente
+        isGift,
+        setIsGift,
+        giftMessage,
+        setGiftMessage,
+        giftFee,
+        isGiftServiceActive,
+        allowGiftMessage
       }}
     >
       {children}

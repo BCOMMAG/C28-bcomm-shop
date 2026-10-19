@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight } from 'lucide-react';
+import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight, Gift, Sparkles, Check, Heart } from 'lucide-react';
 import { CartItem } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
@@ -27,7 +27,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onQuickAddItem
 }) => {
   const router = useRouter();
-  const { setSearchQuery, savedCep, savedAddress, setSavedAddressInfo, closeCartSilently, products } = useStore();
+  const {
+    setSearchQuery,
+    savedCep,
+    savedAddress,
+    setSavedAddressInfo,
+    closeCartSilently,
+    products,
+    isGift,
+    setIsGift,
+    giftMessage,
+    setGiftMessage,
+    giftFee,
+    isGiftServiceActive,
+    allowGiftMessage
+  } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
@@ -114,7 +128,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const drawerShippingOptions = savedAddress ? calculateShippingOptions(savedAddress.uf, subtotal) : [];
   const lowestShipping = drawerShippingOptions.length > 0 ? drawerShippingOptions[0] : null;
   const shippingCost = subtotal >= freeShippingGoal ? 0 : (lowestShipping ? lowestShipping.price : 0);
-  const finalTotal = subtotal + shippingCost;
+  const currentGiftCost = isGift ? giftFee : 0;
+  const finalTotal = subtotal + shippingCost + currentGiftCost;
 
   const generateWhatsAppOrderLink = () => {
     let message = `Olá Leidy! Gostaria de finalizar meu pedido pelo site da *Leidy Boutique*:\n\n`;
@@ -124,6 +139,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       message += `   - Tamanho: ${item.size}\n`;
       message += `   - Qtd: ${item.quantity}x (R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')})\n\n`;
     });
+    if (isGift) {
+      message += `🎁 *Embalagem para Presente:* Sim (+R$ ${giftFee.toFixed(2).replace('.', ',')})\n`;
+      if (giftMessage && giftMessage.trim()) {
+        message += `💌 *Dedicatória do Cartão:* "${giftMessage.trim()}"\n`;
+      }
+      message += `\n`;
+    }
     if (savedAddress) {
       message += `📍 *Endereço de Entrega:* ${savedAddress.bairro ? savedAddress.bairro + ', ' : ''}${savedAddress.localidade} - ${savedAddress.uf} (CEP: ${savedAddress.cep})\n`;
       if (subtotal >= freeShippingGoal) {
@@ -135,11 +157,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
     message += `💰 *Subtotal das Peças:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-    if (savedAddress && shippingCost > 0) {
-      message += `💰 *Total Previsto com Frete:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\n`;
-    } else {
-      message += `\n`;
+    if (isGift) {
+      message += `🎁 *Taxa Embalagem Especial:* R$ ${giftFee.toFixed(2).replace('.', ',')}\n`;
     }
+    if (savedAddress && shippingCost > 0) {
+      message += `🚚 *Frete:* R$ ${shippingCost.toFixed(2).replace('.', ',')}\n`;
+    }
+    message += `💰 *Total Previsto:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\n`;
     message += `Poderia me confirmar a disponibilidade e passar as opções de pagamento?`;
 
     return `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(message)}`;
@@ -417,6 +441,96 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
               )}
 
+              {/* CARD DE EMBALAGEM PARA PRESENTE (LEIDY BOUTIQUE) */}
+              {isGiftServiceActive && (
+                <div className={`p-3 rounded-none border transition-all duration-300 text-xs space-y-2.5 ${
+                  isGift
+                    ? 'bg-[#FAF8F5] dark:bg-[#252220] border-[#C5A059] shadow-xs'
+                    : 'bg-white dark:bg-[#1A1918] border-[#C5A059]/30 hover:border-[#C5A059]/60'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 transition-colors ${
+                        isGift ? 'bg-[#C5A059] text-white' : 'bg-[#FAF8F5] dark:bg-[#252220] text-[#C5A059] border border-[#C5A059]/40'
+                      }`}>
+                        <Gift className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[#1A1918] dark:text-[#FAF8F5] text-xs">
+                            É para presente?
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-none bg-[#C5A059]/15 text-[#C5A059] dark:text-[#DFBE76]">
+                            +R$ {giftFee.toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#78716C] dark:text-[#A8A29E] leading-snug mt-0.5">
+                          Caixa rígida preta fosca com laço de cetim artesanal, papel perfumado e tag dedicatória.
+                        </p>
+                      </div>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={isGift}
+                        onChange={(e) => setIsGift(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-neutral-200 dark:bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#C5A059]" />
+                    </label>
+                  </div>
+
+                  {/* Campo de Dedicatória com Atalhos Rápidos */}
+                  {isGift && allowGiftMessage && (
+                    <div className="pt-2 border-t border-[#C5A059]/20 space-y-2 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1">
+                          <Heart className="w-3 h-3 text-[#C5A059]" />
+                          Dedicatória do Cartão (Opcional):
+                        </span>
+                        <span className="text-[10px] text-[#A8A29E]">
+                          {giftMessage.length}/200
+                        </span>
+                      </div>
+
+                      <textarea
+                        rows={2}
+                        maxLength={200}
+                        value={giftMessage}
+                        onChange={(e) => setGiftMessage(e.target.value)}
+                        placeholder="Escreva uma mensagem especial para quem vai receber..."
+                        className="w-full p-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 text-[#1A1918] dark:text-[#FAF8F5] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#C5A059] rounded-none resize-none"
+                      />
+
+                      {/* Botões Rápidos de Mensagem (1-Clique) */}
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-semibold text-[#A8A29E] uppercase tracking-wider block">
+                          Ideias de Mensagens Rápidas:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            { label: '🎂 Aniversário', msg: 'Feliz Aniversário! Que seu novo ciclo seja radiante e repleto de conquistas. ✨' },
+                            { label: '❤️ Com Amor', msg: 'Com todo o meu amor e carinho para a mulher mais especial da minha vida. ❤️' },
+                            { label: '🌸 Mimo Especial', msg: 'Um mimo especial para você que merece o melhor de todos os abraços. 🌸' },
+                            { label: '🥂 Parabéns', msg: 'Parabéns pela sua conquista tão merecida! Muito orgulho de você. 🥂' }
+                          ].map((shortcut) => (
+                            <button
+                              key={shortcut.label}
+                              type="button"
+                              onClick={() => setGiftMessage(shortcut.msg)}
+                              className="text-[10px] px-2 py-0.5 rounded-none bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 hover:border-[#C5A059] text-[#78716C] dark:text-[#D6D3D1] hover:text-[#1A1918] dark:hover:text-[#FAF8F5] transition-colors cursor-pointer"
+                            >
+                              {shortcut.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Resumo do Pedido */}
               <div className="space-y-1.5 text-xs text-[#57534E] dark:text-[#D6D3D1]">
                 <div className="flex justify-between items-center">
@@ -425,6 +539,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     R$ {subtotal.toFixed(2).replace('.', ',')}
                   </span>
                 </div>
+                {isGift && (
+                  <div className="flex justify-between items-center text-[#C5A059] dark:text-[#DFBE76]">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Gift className="w-3.5 h-3.5" />
+                      Embalagem para Presente:
+                    </span>
+                    <span className="font-semibold">
+                      + R$ {giftFee.toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span>Envio / Entrega:</span>
                   <span className="text-[#C5A059] dark:text-[#DFBE76] font-medium">

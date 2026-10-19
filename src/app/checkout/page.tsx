@@ -28,7 +28,9 @@ import {
   RotateCcw,
   X,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Gift,
+  Heart
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
@@ -68,7 +70,14 @@ export default function CheckoutPage() {
     updateCartQuantity,
     removeFromCart,
     addToCart,
-    currentTenant
+    currentTenant,
+    isGift,
+    setIsGift,
+    giftMessage,
+    setGiftMessage,
+    giftFee,
+    isGiftServiceActive,
+    allowGiftMessage
   } = useStore();
 
   // Etapa ativa na trilha de finalização
@@ -207,7 +216,8 @@ export default function CheckoutPage() {
     : 0;
   const subtotalAfterCoupon = Math.max(0, rawSubtotal - couponDiscount);
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
-  const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount);
+  const currentGiftCost = isGift ? giftFee : 0;
+  const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount + currentGiftCost);
 
   // Captura de Leads Local e no Supabase (Nuvem)
   const captureLead = (phoneToSave: string, clientName: string, status: 'iniciado' | 'finalizado' = 'iniciado') => {
@@ -511,7 +521,10 @@ export default function CheckoutPage() {
       total: totalAmount,
       metodoPagamento: paymentMethod,
       observacoes: orderNotes || undefined,
-      status: 'aguardando_whatsapp'
+      status: 'aguardando_whatsapp',
+      isGift,
+      giftFee: currentGiftCost,
+      giftMessage: isGift ? giftMessage : undefined
     });
 
     // Se utilizou cupom promocional, incrementa o contador real no banco de dados
@@ -587,6 +600,13 @@ export default function CheckoutPage() {
 
     if (pixDiscount > 0) {
       msg += `🏷️ *Desconto PIX (5%):* -R$ ${pixDiscount.toFixed(2).replace('.', ',')}\n`;
+    }
+
+    if (isGift) {
+      msg += `🎁 *EMBALAGEM PARA PRESENTE VIP:* Sim (+R$ ${giftFee.toFixed(2).replace('.', ',')})\n`;
+      if (giftMessage?.trim()) {
+        msg += `💌 *Dedicatória no Cartão:* "${giftMessage.trim()}"\n`;
+      }
     }
 
     msg += `💰 *VALOR TOTAL:* R$ ${totalAmount.toFixed(2).replace('.', ',')}\n`;
@@ -1188,6 +1208,90 @@ export default function CheckoutPage() {
                       {couponSuccess && <p className="text-[11px] text-emerald-600">{couponSuccess}</p>}
                     </div>
 
+                    {/* Opção Luxuosa: É para presente? */}
+                    {isGiftServiceActive && (
+                      <div className="p-3 sm:p-4 bg-gradient-to-br from-[#FAF8F5] via-[#FFFDF9] to-[#F5EFE6] dark:from-[#201D1B] dark:via-[#1A1918] dark:to-[#171514] border border-[#C5A059]/40 shadow-xs space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-8 h-8 rounded-none bg-[#C5A059]/15 border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] shrink-0 mt-0.5">
+                              <Gift className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-serif-luxury font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5]">
+                                  É para presente?
+                                </span>
+                                <span className="text-[10px] font-bold text-[#C5A059] bg-[#C5A059]/15 px-1.5 py-0.5 uppercase tracking-wider">
+                                  {giftFee > 0 ? `+ R$ ${giftFee.toFixed(2).replace('.', ',')}` : 'Cortesia'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
+                                Caixa rígida exclusiva {currentTenant?.nome || 'Leidy Boutique'}, papel de seda perfumado, fita de cetim e cartão personalizado.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsGift(!isGift)}
+                            className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              isGift ? 'bg-[#C5A059]' : 'bg-[#E7E5E4] dark:bg-[#3E3A36]'
+                            }`}
+                            aria-pressed={isGift}
+                            title="Ativar embalagem para presente"
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                isGift ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Campo Expansível de Mensagem/Dedicatória com Atalhos */}
+                        {isGift && allowGiftMessage && (
+                          <div className="pt-2 border-t border-[#C5A059]/20 space-y-2 animate-fadeIn">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1] flex items-center gap-1">
+                                <Heart className="w-3.5 h-3.5 text-[#C5A059]" />
+                                <span>Mensagem no Cartão Especial:</span>
+                              </label>
+                              <span className="text-[10px] text-[#A8A29E]">
+                                {(giftMessage || '').length}/200
+                              </span>
+                            </div>
+
+                            {/* Atalhos Rápidos de 1-Clique */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                { label: '🎉 Aniversário', text: 'Parabéns pelo seu dia especial! Que este novo ciclo seja repleto de realizações, beleza e alegria!' },
+                                { label: '💖 Com Amor', text: 'Um mimo especial escolhido com muito carinho e amor exclusivamente para você. Você merece!' },
+                                { label: '✨ Mimo Especial', text: 'Um mimo com muito carinho para celebrar a mulher incrível e inspiradora que você é!' },
+                                { label: '👏 Parabéns', text: 'Parabéns por essa grande conquista! Estou muito feliz e orgulhosa(o) por você!' }
+                              ].map((preset, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setGiftMessage(preset.text)}
+                                  className="text-[10px] px-2 py-0.5 border border-[#C5A059]/30 bg-white/70 dark:bg-black/20 hover:border-[#C5A059] hover:bg-[#C5A059]/10 text-[#57534E] dark:text-[#D6D3D1] transition-colors rounded-none cursor-pointer"
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            <textarea
+                              value={giftMessage}
+                              onChange={(e) => setGiftMessage(e.target.value.slice(0, 200))}
+                              placeholder="Escreva sua dedicatória personalizada aqui..."
+                              rows={2}
+                              className="w-full px-3 py-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none focus:border-[#C5A059] leading-relaxed resize-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Subtotal da Sacola no Mobile */}
                     <div className="sm:hidden pt-1 flex items-center justify-between text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                       <span>Subtotal das Peças:</span>
@@ -1731,6 +1835,12 @@ export default function CheckoutPage() {
                         <p>👤 <strong>Cliente:</strong> {customerName || 'A confirmar'} ({customerPhone || 'A confirmar'})</p>
                         <p>📍 <strong>Entrega:</strong> {street ? `${street}, nº ${number || 'S/N'} (${city}/${uf})` : 'A combinar no WhatsApp'}</p>
                         <p>💳 <strong>Pagamento:</strong> {paymentMethod === 'pix' ? 'PIX com 5% de desconto' : paymentMethod === 'credit_card' ? `Cartão em ${cardInstallments}x` : 'WhatsApp'}</p>
+                        {isGift && (
+                          <p className="text-[#C5A059] font-medium">
+                            🎁 <strong>Presente:</strong> Embalagem VIP Especial (+R$ {giftFee.toFixed(2).replace('.', ',')})
+                            {giftMessage?.trim() ? ` com cartão dedicado` : ''}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1835,6 +1945,14 @@ export default function CheckoutPage() {
                                 <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
                               </div>
                             )}
+                            {isGift && (
+                              <div className="flex justify-between text-[#C5A059] dark:text-[#DFBE76] font-medium">
+                                <span className="flex items-center gap-1">
+                                  <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
+                                </span>
+                                <span>+R$ {giftFee.toFixed(2).replace('.', ',')}</span>
+                              </div>
+                            )}
                             <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-[#C5A059]/30 font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                               <span>Total Previsto:</span>
                               <span className="text-[#C5A059] dark:text-[#DFBE76]">
@@ -1930,6 +2048,15 @@ export default function CheckoutPage() {
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Desconto PIX (5%):</span>
                         <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
+
+                    {isGift && (
+                      <div className="flex justify-between text-[#C5A059] dark:text-[#DFBE76] font-medium">
+                        <span className="flex items-center gap-1">
+                          <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
+                        </span>
+                        <span>+R$ {giftFee.toFixed(2).replace('.', ',')}</span>
                       </div>
                     )}
 

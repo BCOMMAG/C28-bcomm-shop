@@ -26,7 +26,8 @@ import {
   MapPin,
   Clock,
   Sparkles,
-  Bell
+  Bell,
+  Lock
 } from 'lucide-react';
 import { Product } from '@/types';
 import { PRODUCTS, STORE_INFO } from '@/data/products';
@@ -792,37 +793,37 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         </button>
                       </div>
 
-                      {/* Botão Principal: COMPRAR AGORA (Leva direto ao checkout) */}
+                      {/* Botão Principal: ADICIONAR À SACOLA */}
                       <button
-                        onClick={handleBuyNow}
-                        className="flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer"
-                        title="Comprar esta peça agora e ir para o Checkout"
+                        onClick={handleAdd}
+                        className={`flex-1 py-3 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 cursor-pointer ${
+                          addedAnimation
+                            ? 'bg-[#25D366] text-white'
+                            : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918]'
+                        }`}
+                        title="Adicionar esta peça à sua sacola e continuar explorando a boutique"
                       >
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>COMPRAR AGORA</span>
+                        {addedAnimation ? (
+                          <>
+                            <Check className="w-4 h-4 stroke-[3]" />
+                            <span>ADICIONADO!</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingBag className="w-4 h-4" />
+                            <span>ADICIONAR À SACOLA</span>
+                          </>
+                        )}
                       </button>
                     </div>
 
-                    {/* Botão Secundário: Adicionar à Sacola */}
+                    {/* Botão Secundário: Finalizar Compra Agora */}
                     <button
-                      onClick={handleAdd}
-                      className={`w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border shadow-xs ${
-                        addedAnimation
-                          ? 'bg-[#25D366] text-white border-[#25D366] cursor-pointer'
-                          : 'bg-transparent hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5] border-[#C5A059]/60 cursor-pointer'
-                      }`}
+                      onClick={handleBuyNow}
+                      className="w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 border border-[#C5A059]/60 hover:bg-[#C5A059]/10 text-[#1A1918] dark:text-[#FAF8F5] shadow-xs cursor-pointer"
                     >
-                      {addedAnimation ? (
-                        <>
-                          <Check className="w-4 h-4 stroke-[3]" />
-                          <span>ADICIONADO À SACOLA!</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
-                          <span>ADICIONAR À SACOLA</span>
-                        </>
-                      )}
+                      <Lock className="w-3.5 h-3.5 text-[#C5A059]" />
+                      <span>FINALIZAR COMPRA AGORA</span>
                     </button>
                   </>
                 )}

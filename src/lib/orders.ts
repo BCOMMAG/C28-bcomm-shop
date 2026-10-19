@@ -49,6 +49,9 @@ export interface CreateOrderPayload {
   metodoPagamento: 'pix' | 'credit_card' | 'whatsapp';
   observacoes?: string;
   status?: 'pendente' | 'aguardando_whatsapp' | 'pago' | 'em_separacao' | 'enviado' | 'entregue' | 'cancelado';
+  isGift?: boolean;
+  giftFee?: number;
+  giftMessage?: string;
 }
 
 /**
@@ -137,7 +140,32 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
       clienteId = leadResult.clienteId;
     }
 
-    // 2. Inserir o registro na tabela 'pedidos'
+    // 2. Preparar metadados de presente e observações
+    let finalObservacoes = payload.observacoes?.trim() || '';
+    if (payload.isGift) {
+      const giftNotes = [
+        `🎁 PEDIDO PARA PRESENTE (Taxa: R$ ${(payload.giftFee || 0).toFixed(2).replace('.', ',')})`,
+        payload.giftMessage?.trim()
+          ? `💌 Dedicatória: "${payload.giftMessage.trim()}"`
+          : '💌 Dedicatória: (Nenhuma mensagem informada)'
+      ].join('\n');
+      finalObservacoes = finalObservacoes ? `${giftNotes}\n\n${finalObservacoes}` : giftNotes;
+    }
+
+    const enderecoFinal = {
+      ...payload.endereco,
+      ...(payload.isGift
+        ? {
+            presente: {
+              ativo: true,
+              taxa: payload.giftFee || 0,
+              mensagem: payload.giftMessage?.trim() || ''
+            }
+          }
+        : {})
+    };
+
+    // Inserir o registro na tabela 'pedidos'
     const { data: pedidoData, error: pedidoError } = await supabase
       .from('pedidos')
       .insert({
@@ -150,8 +178,8 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
         valor_desconto: payload.valorDesconto,
         total: payload.total,
         metodo_pagamento: payload.metodoPagamento,
-        endereco_entrega: payload.endereco,
-        observacoes: payload.observacoes || null
+        endereco_entrega: enderecoFinal,
+        observacoes: finalObservacoes || null
       })
       .select('id')
       .single();
@@ -241,6 +269,11 @@ export interface CustomerOrder {
     bairro?: string;
     cidade?: string;
     uf?: string;
+    presente?: {
+      ativo: boolean;
+      taxa: number;
+      mensagem?: string;
+    } | null;
   };
   codigo_rastreio?: string | null;
   observacoes?: string | null;
@@ -363,5 +396,51 @@ export async function getOrderByNumber(
   } catch (err: any) {
     return { success: false, pedido: null, error: err?.message };
   }
+}
+
+/**
+ * Detecta se o pedido foi solicitado como presente.
+ */
+export function isOrderGift(order: CustomerOrder): boolean {
+  if (order.endereco_entrega && (order.endereco_entrega as any)?.presente?.ativo) {
+    return true;
+  }
+  if (order.observacoes && (order.observacoes.includes('🎁') || order.observacoes.toLowerCase().includes('presente'))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Extrai detalhes da embalagem e mensagem de dedicatória do pedido.
+ */
+export function getOrderGiftDetails(order: CustomerOrder): {
+  isGift: boolean;
+  fee?: number;
+  message?: string;
+} {
+  const presenteObj = (order.endereco_entrega as any)?.presente;
+  if (presenteObj?.ativo) {
+    return {
+      isGift: true,
+      fee: presenteObj.taxa,
+      message: presenteObj.mensagem || ''
+    };
+  }
+  if (order.observacoes && (order.observacoes.includes('🎁') || order.observacoes.toLowerCase().includes('presente'))) {
+    let msg = '';
+    const match = order.observacoes.match(/Dedicat[oó]ria(?:\s+no\s+Cart[ãa]o)?:\s*(?:["“](.+?)["”]|(.+))/i);
+    if (match) {
+      msg = (match[1] || match[2] || '').trim();
+      if (msg.includes('(Nenhuma mensagem') || msg.includes('(Sem mensagem')) {
+        msg = '';
+      }
+    }
+    return {
+      isGift: true,
+      message: msg
+    };
+  }
+  return { isGift: false };
 }
 

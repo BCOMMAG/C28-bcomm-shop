@@ -29,14 +29,16 @@ import {
   Printer,
   FileText,
   CheckSquare,
-  Download
+  Download,
+  Gift,
+  Heart
 } from 'lucide-react';
 import {
   getAdminOrders,
   updateAdminOrderStatusWithStock,
   updateAdminOrderTracking
 } from '@/lib/admin';
-import { CustomerOrder } from '@/lib/orders';
+import { CustomerOrder, isOrderGift, getOrderGiftDetails } from '@/lib/orders';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
 import { useStore } from '@/context/StoreContext';
@@ -356,19 +358,29 @@ export default function AdminPedidosPage() {
             const isExpanded = expandedOrderId === order.id;
             const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
             const items = order.itens_pedido || [];
+            const giftDetails = getOrderGiftDetails(order);
 
             return (
               <div
                 key={order.id}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs hover:border-amber-400 transition-all"
+                className={`bg-white border rounded-xl overflow-hidden shadow-xs hover:border-amber-400 transition-all ${
+                  giftDetails.isGift ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
+                }`}
               >
                 {/* Linha Resumo do Pedido */}
                 <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                     <div>
-                      <span className="font-mono text-sm font-extrabold text-amber-800 tracking-wide block">
-                        #{order.numero_pedido}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-sm font-extrabold text-amber-800 tracking-wide block">
+                          #{order.numero_pedido}
+                        </span>
+                        {giftDetails.isGift && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
+                            <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente VIP
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[11px] text-slate-500 block mt-0.5">
                         {formatDate(order.created_at)}
                       </span>
@@ -601,6 +613,65 @@ export default function AdminPedidosPage() {
                             {order.codigo_rastreio ? 'Alterar Código' : '+ Adicionar Rastreio'}
                           </button>
                         </div>
+
+                        {/* Card Exclusivo: Embalagem para Presente & Dedicatória */}
+                        {giftDetails.isGift && (
+                          <div className="bg-amber-50/80 border border-amber-300 rounded-lg p-3.5 space-y-2.5 shadow-xs">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <Gift className="w-4 h-4 text-amber-700" />
+                                <span className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">
+                                  Embalagem para Presente VIP
+                                </span>
+                                {giftDetails.fee !== undefined && giftDetails.fee > 0 && (
+                                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                                    + {formatCurrency(giftDetails.fee)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {giftDetails.message && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(giftDetails.message || '');
+                                    showToast('Dedicatória copiada para a área de transferência!');
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-white px-2.5 py-1 bg-amber-200/80 hover:bg-amber-800 rounded transition-colors cursor-pointer"
+                                  title="Copiar mensagem para transcrever no cartão"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copiar Dedicatória</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {giftDetails.message ? (
+                              <div className="bg-white/90 p-2.5 rounded border border-amber-200">
+                                <span className="text-[10px] text-amber-800 font-bold uppercase block mb-1">
+                                  Mensagem do Cartão Personalizado:
+                                </span>
+                                <p className="text-xs italic text-slate-800 font-serif leading-relaxed">
+                                  &ldquo;{giftDetails.message}&rdquo;
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-amber-800 italic">
+                                A cliente solicitou a embalagem luxuosa de presente sem mensagem de dedicatória escrita.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Observações Gerais do Pedido */}
+                        {order.observacoes && !order.observacoes.startsWith('🎁') && (
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
+                            <strong className="text-slate-900 text-[10px] uppercase font-bold block">
+                              Observações do Pedido:
+                            </strong>
+                            <p className="whitespace-pre-line text-[11px]">{order.observacoes}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -952,6 +1023,33 @@ export default function AdminPedidosPage() {
                       </label>
                     </div>
                   </div>
+
+                  {/* ALERTA DE EMBALAGEM PARA PRESENTE VIP */}
+                  {isOrderGift(printModalOrder) && (
+                    <div className="border-2 border-amber-400 bg-amber-50 rounded-lg p-3.5 space-y-2">
+                      <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs uppercase">
+                        <Gift className="w-4 h-4 text-amber-700" />
+                        <span>Atenção Expedição: Pedido para Presente VIP!</span>
+                      </div>
+                      <div className="text-xs text-amber-950 space-y-1.5">
+                        <p>• Utilizar caixa rígida exclusiva da boutique com papel de seda e laço de cetim dourado.</p>
+                        {getOrderGiftDetails(printModalOrder).message ? (
+                          <div className="bg-white p-2.5 rounded border border-amber-300">
+                            <span className="text-[10px] uppercase font-bold text-amber-800 block mb-0.5">
+                              Dedicatória a ser transcrita no cartão:
+                            </span>
+                            <p className="font-serif italic text-xs text-slate-800 leading-relaxed">
+                              &ldquo;{getOrderGiftDetails(printModalOrder).message}&rdquo;
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="italic text-[11px] text-amber-800">
+                            • Incluir cartão especial em branco no envelope para a cliente preencher.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* ENDEREÇO DE ENVIO */}
                   <div className="border border-slate-200 rounded-lg p-3 text-xs space-y-1">

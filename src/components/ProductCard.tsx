@@ -52,28 +52,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onOpenDetails(product);
       return;
     }
-    if (cartCount === 0) {
-      // 1. Carrinho Vazio: Comprar Agora -> Adiciona e direciona direto para o Checkout seguro
-      addToCart({
-        product,
-        size: product.sizes[0] || 'Tamanho Único',
-        color: product.colors[0]?.name || 'Padrão',
-        quantity: 1,
-        openDrawer: false
-      });
-      router.push('/checkout/');
-    } else {
-      // 2. Já existem itens no carrinho: Adiciona silenciosamente e a barra inferior guia o fechamento
-      addToCart({
-        product,
-        size: product.sizes[0] || 'Tamanho Único',
-        color: product.colors[0]?.name || 'Padrão',
-        quantity: 1,
-        openDrawer: false
-      });
-      setIsJustAdded(true);
-      setTimeout(() => setIsJustAdded(false), 1600);
+
+    // Se a peça tiver múltiplos tamanhos (ex: P, M, G, GG), abre os detalhes para a cliente escolher seu tamanho com o Provador
+    const hasMultipleSizes =
+      product.sizes &&
+      product.sizes.length > 1 &&
+      !product.sizes.every((s) => s.toLowerCase().includes('único') || s.toLowerCase().includes('unico'));
+
+    if (hasMultipleSizes) {
+      onOpenDetails(product);
+      return;
     }
+
+    // Tamanho único ou tamanho fixo: adiciona diretamente à sacola e abre a gaveta lateral
+    addToCart({
+      product,
+      size: product.sizes[0] || 'Tamanho Único',
+      color: product.colors[0]?.name || 'Padrão',
+      quantity: 1,
+      openDrawer: true
+    });
+    setIsJustAdded(true);
+    setTimeout(() => setIsJustAdded(false), 1600);
   };
 
   return (
@@ -328,31 +328,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             >
               <span>Esgotado</span>
             </button>
-          ) : cartCount === 0 ? (
-            <button
-              onClick={handleAction}
-              className={`w-full sm:w-auto rounded-none bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs active:scale-[0.98] ${
-                isCompact
-                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
-                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
-              }`}
-              title="Comprar Agora"
-              aria-label="Comprar Agora"
-            >
-              <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
-              <span>{isCompact ? 'Comprar' : 'Comprar Agora'}</span>
-            </button>
           ) : (
             <button
               onClick={handleAction}
-              className={`w-full sm:w-auto rounded-none transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-2xs border active:scale-[0.98] ${
+              className={`w-full sm:w-auto rounded-none transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs active:scale-[0.98] ${
                 isJustAdded
-                  ? 'bg-[#25D366] text-white border-[#25D366]'
-                  : 'bg-[#FAF8F5] dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] border-[#C5A059]/40'
+                  ? 'bg-[#25D366] text-white border border-[#25D366]'
+                  : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918]'
               } ${
                 isCompact
-                  ? 'px-2 py-1.5 gap-1 text-[11px] font-medium'
-                  : 'px-2.5 sm:px-3 py-2 gap-1 text-xs font-medium'
+                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
+                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
               }`}
               title="Adicionar à Sacola"
               aria-label="Adicionar à Sacola"
@@ -364,8 +350,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </>
               ) : (
                 <>
-                  <Plus className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
-                  <span>{isCompact ? '+ Sacola' : '+ Carrinho'}</span>
+                  <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                  <span>{isCompact ? 'Adicionar' : 'Adicionar à Sacola'}</span>
                 </>
               )}
             </button>
