@@ -53,22 +53,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
 
-    // Se a peça tiver múltiplos tamanhos (ex: P, M, G, GG), abre os detalhes para a cliente escolher seu tamanho com o Provador
-    const hasMultipleSizes =
-      product.sizes &&
-      product.sizes.length > 1 &&
-      !product.sizes.every((s) => s.toLowerCase().includes('único') || s.toLowerCase().includes('unico'));
-
-    if (hasMultipleSizes) {
-      onOpenDetails(product);
-      return;
-    }
-
-    // Tamanho único ou tamanho fixo: adiciona diretamente à sacola e abre a gaveta lateral
+    // Adiciona diretamente à sacola e abre a gaveta lateral, sem abrir os detalhes do produto
     addToCart({
       product,
-      size: product.sizes[0] || 'Tamanho Único',
-      color: product.colors[0]?.name || 'Padrão',
+      size: product.sizes?.[0] || 'Tamanho Único',
+      color: product.colors?.[0]?.name || 'Padrão',
       quantity: 1,
       openDrawer: true
     });
@@ -78,9 +67,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className="group relative flex flex-col h-full bg-white dark:bg-[#1A1918] rounded-none overflow-hidden border border-[#C5A059]/20 dark:border-[#C5A059]/30 transition-all duration-300 hover:border-[#C5A059]/60 hover:shadow-xl"
+      className="group relative flex flex-col h-full bg-white dark:bg-[#1A1918] rounded-none overflow-hidden border border-[#C5A059]/20 dark:border-[#C5A059]/30 transition-all duration-300 hover:border-[#C5A059]/60 hover:shadow-xl cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onOpenDetails(product)}
     >
       {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) */}
       <div
