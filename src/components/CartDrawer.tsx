@@ -69,6 +69,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Sincroniza o input com o CEP salvo no contexto (deve sempre ser declarado no topo antes de qualquer early return)
+  useEffect(() => {
+    if (savedCep) {
+      setCepInput(formatCep(savedCep));
+    }
+  }, [savedCep]);
+
   const handleExploreCatalog = () => {
     setSearchQuery('');
     onClose();
@@ -94,13 +101,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   // Sugestão de Upsell (peça que ainda não está no carrinho)
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
   const upsellProduct = sourceProducts.find((p) => !items.some((i) => i.productId === p.id));
-
-  // Sincroniza o input com o CEP salvo no contexto
-  useEffect(() => {
-    if (savedCep) {
-      setCepInput(formatCep(savedCep));
-    }
-  }, [savedCep]);
 
   const handleCalculateDrawerCep = async () => {
     const clean = cepInput.replace(/\D/g, '');
@@ -271,7 +271,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </h4>
                         <div className="text-[11px] text-[#78716C] dark:text-[#A8A29E] mt-1 space-y-0.5">
                           <p>Cor: <span className="text-[#1A1918] dark:text-[#FAF8F5] font-medium">{item.color}</span></p>
-                          <p>Tam: <span className="text-[#1A1918] dark:text-[#FAF8F5] font-medium">{item.size.split(' ')[0]}</span></p>
+                          <p>Tam: <span className="text-[#1A1918] dark:text-[#FAF8F5] font-medium">{item.size ? item.size.split(' ')[0] : 'Único'}</span></p>
                         </div>
                       </div>
 

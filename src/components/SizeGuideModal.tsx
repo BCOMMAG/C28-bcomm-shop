@@ -39,8 +39,6 @@ export const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
   const [quadril, setQuadril] = useState<number>(98);
   const [manequimSelecionado, setManequimSelecionado] = useState<string>('40');
 
-  if (!isOpen) return null;
-
   // Cálculo do tamanho recomendado baseado nas medidas
   const recomendacao = useMemo(() => {
     let tam = 'M';
@@ -68,6 +66,8 @@ export const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
 
     return { tamanho: tam, motivo };
   }, [busto, cintura, quadril, product]);
+
+  if (!isOpen) return null;
 
   const handleApplySize = (tam: string) => {
     if (onSelectSize) {

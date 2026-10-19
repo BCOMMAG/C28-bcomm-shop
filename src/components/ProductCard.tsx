@@ -54,13 +54,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
 
-    // Adiciona diretamente à sacola e abre a gaveta lateral, sem abrir os detalhes do produto
+    // Adiciona diretamente à sacola com feedback visual instantâneo, sem abrir modal de detalhes
     addToCart({
       product,
       size: product.sizes?.[0] || 'Tamanho Único',
       color: product.colors?.[0]?.name || 'Padrão',
       quantity: 1,
-      openDrawer: true
+      openDrawer: false
     });
     setIsJustAdded(true);
     setTimeout(() => setIsJustAdded(false), 1600);
