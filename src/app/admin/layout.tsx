@@ -25,7 +25,11 @@ import {
   MessageSquare,
   Sliders,
   Check,
-  Tag
+  Tag,
+  ShieldCheck,
+  Lock,
+  Clock,
+  Ban
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -34,6 +38,8 @@ import { cn } from '@/lib/chart-utils';
 import { GlobalSearchModal } from '@/components/admin/GlobalSearchModal';
 import { getAdminPendingNotifications } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess } from '@/lib/team';
+import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,6 +50,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<MembroEquipe[]>([]);
+  const [activeMember, setActiveMember] = useState<MembroEquipe | null>(null);
+  const [isLockScreenOpen, setIsLockScreenOpen] = useState(false);
   const [pendingNotifs, setPendingNotifs] = useState<{
     count: number;
     pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }>;
@@ -115,6 +124,34 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Carrega a equipe e o colaborador ativo da sessão
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const loadTeam = async () => {
+      try {
+        const list = await getTeamMembers(DEFAULT_TENANT_ID);
+        setTeamMembers(list);
+        const savedColab = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_colaborador') : null;
+        if (savedColab) {
+          try {
+            const parsed = JSON.parse(savedColab);
+            const fresh = list.find((m) => m.id === parsed.id) || parsed;
+            setActiveMember(fresh);
+          } catch {
+            const dono = list.find((m) => m.cargo === 'dono') || null;
+            setActiveMember(dono);
+          }
+        } else {
+          const dono = list.find((m) => m.cargo === 'dono') || null;
+          setActiveMember(dono);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar equipe no layout:', err);
+      }
+    };
+    loadTeam();
+  }, [isAuthenticated]);
+
   // Se for a página de login, renderiza apenas o conteúdo sem shell
   if (isLoginPage) {
     return <>{children}</>;
@@ -146,6 +183,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     } catch {}
     localStorage.removeItem('leidy_admin_auth');
     localStorage.removeItem('leidy_admin_user');
+    localStorage.removeItem('leidy_admin_colaborador');
     router.push('/admin/login/');
   };
 
@@ -187,6 +225,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Sparkles
     },
     {
+      title: 'Equipe & Acessos',
+      href: '/admin/equipe/',
+      icon: ShieldCheck
+    },
+    {
       title: 'Loja de Módulos',
       href: '/admin/modulos/',
       icon: Layers
@@ -197,6 +240,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Settings
     }
   ];
+
+  const allowedNavItems = navItems.filter((item) => {
+    if (!activeMember || activeMember.cargo === 'dono') return true;
+    if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
+    if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
+    if (item.href === '/admin/cupons/' && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return false;
+    if (item.href === '/admin/banners/' && activeMember.cargo !== 'gerente') return false;
+    if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
+    if (item.href === '/admin/configuracoes/' && !activeMember.permissoes?.configuracoes_loja) return false;
+    if (item.href === '/admin/equipe/' && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return false;
+    return true;
+  });
+
+  const isRouteBlocked = (() => {
+    if (!activeMember || activeMember.cargo === 'dono') return false;
+    if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
+    if (cleanPath.startsWith('/admin/configuracoes') && !activeMember.permissoes?.configuracoes_loja) return true;
+    if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/equipe') && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return true;
+    return false;
+  })();
 
   const currentNav = navItems.find((item) =>
     item.exact ? pathname === item.href : pathname?.startsWith(item.href)
@@ -248,7 +313,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Menu Vertical de Navegação */}
         <div className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
-          {navItems.map((item) => {
+          {allowedNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
               ? pathname === item.href
@@ -387,7 +452,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex-1 py-4 space-y-1 overflow-y-auto">
-              {navItems.map((item) => {
+              {allowedNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.exact
                   ? pathname === item.href
@@ -554,19 +619,38 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Settings className="w-4 h-4" />
             </Link>
 
+            {/* Botão Balcão / PIN Rápido */}
+            <button
+              type="button"
+              onClick={() => setIsLockScreenOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
+              title="Bloquear painel e alternar colaboradora via PIN"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Balcão (PIN)</span>
+            </button>
+
             <div className="h-5 w-[1px] bg-slate-200" />
 
             {/* Perfil Administrador com Avatar */}
-            <div className="flex items-center gap-2.5 pl-1">
+            <div
+              onClick={() => setIsLockScreenOpen(true)}
+              className="flex items-center gap-2.5 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
+              title="Clique para alternar colaboradora com PIN"
+            >
               <div
                 className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs"
                 style={{ backgroundColor: c.sidebarBg }}
               >
-                {lojaNome.charAt(0).toUpperCase()}
+                {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
               </div>
               <div className="hidden lg:block text-left text-xs leading-tight">
-                <span className="font-bold text-slate-900 block">Administrador</span>
-                <span className="text-[10px] text-slate-500 block truncate max-w-[130px]">{lojaNome}</span>
+                <span className="font-bold text-slate-900 block truncate max-w-[130px]">
+                  {activeMember?.nome || 'Administrador'}
+                </span>
+                <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
+                  {activeMember?.cargo || 'Dono'}
+                </span>
               </div>
             </div>
 
@@ -609,7 +693,65 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* CANVAS PRINCIPAL (Aproveitamento total da tela sem bordas mortas) */}
         <main className="flex-1 w-full max-w-[1700px] mx-auto p-4 sm:p-6 lg:p-8">
-          {children}
+          {activeMember && activeMember.horario_restrito && !checkWorkingHoursAccess(activeMember).permitido ? (
+            <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+                <Clock className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold font-serif-luxury text-slate-900">
+                Acesso Bloqueado pelo Horário de Atendimento
+              </h2>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                {checkWorkingHoursAccess(activeMember).motivo ||
+                  'Em conformidade com o Art. 244 da CLT, o acesso ao painel de atendimento está pausado fora do horário contratado da colaboradora.'}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={() => setIsLockScreenOpen(true)}
+                  className="px-4 py-2.5 bg-slate-900 text-amber-400 font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  Alternar para Outra Colaboradora (PIN)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Sair do Painel
+                </button>
+              </div>
+            </div>
+          ) : isRouteBlocked ? (
+            <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
+              <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4">
+                <Ban className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold font-serif-luxury text-slate-900">
+                Módulo Exclusivo da Administração
+              </h2>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Seu perfil atual ({activeMember?.cargo.toUpperCase()}) não possui permissão para acessar esta seção restrita da boutique.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                <Link
+                  href="/admin/pedidos/"
+                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  Ir para Pedidos & WhatsApp
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setIsLockScreenOpen(true)}
+                  className="px-4 py-2.5 bg-slate-900 text-amber-400 font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  Alternar Colaboradora (PIN)
+                </button>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
 
         {/* RODAPÉ DO PAINEL */}
@@ -627,6 +769,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         lojaSlug={lojaSlug}
+      />
+
+      {/* MODAL DE BLOQUEIO DE BALCÃO & FAST USER SWITCH VIA PIN */}
+      <LockScreenModal
+        isOpen={isLockScreenOpen}
+        onClose={() => setIsLockScreenOpen(false)}
+        members={teamMembers}
+        lojaId={DEFAULT_TENANT_ID}
+        onUserSwitched={(m) => {
+          setActiveMember(m);
+        }}
+        onFullLogout={handleLogout}
       />
     </div>
   );
