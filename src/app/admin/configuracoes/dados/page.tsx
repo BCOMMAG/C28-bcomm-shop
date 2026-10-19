@@ -16,6 +16,7 @@ import {
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getAdminClients } from '@/lib/admin';
 
 export default function DataExportSettingsPage() {
   const { currentTenant } = useStore();
@@ -170,15 +171,7 @@ export default function DataExportSettingsPage() {
   const handleExportCustomers = async () => {
     setIsExportingCustomers(true);
     try {
-      const supabase = getSupabaseBrowserClient();
-
-      const { data: clientes, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('loja_id', tenantId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const clientes = await getAdminClients(tenantId);
 
       if (!clientes || clientes.length === 0) {
         showToast('Nenhum cliente cadastrado no momento.', 'error');
@@ -190,7 +183,9 @@ export default function DataExportSettingsPage() {
         'Telefone WhatsApp',
         'Email',
         'Cidade',
-        'Estado',
+        'Total Pedidos',
+        'Total Gasto LTV (R$)',
+        'Ticket Medio (R$)',
         'Data Cadastro'
       ];
 
@@ -199,7 +194,9 @@ export default function DataExportSettingsPage() {
         `"${c.telefone || ''}"`,
         `"${c.email || ''}"`,
         `"${c.cidade || ''}"`,
-        `"${c.estado || ''}"`,
+        `"${c.total_pedidos ?? 0}"`,
+        `"${Number(c.total_gasto || 0).toFixed(2).replace('.', ',')}"`,
+        `"${Number(c.ticket_medio || 0).toFixed(2).replace('.', ',')}"`,
         `"${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : ''}"`
       ]);
 
@@ -207,6 +204,7 @@ export default function DataExportSettingsPage() {
       downloadCsv(csvContent, `base_clientes_crm_${new Date().toISOString().slice(0, 10)}.csv`);
       showToast(`Base com ${clientes.length} clientes exportada com sucesso!`);
     } catch (err: any) {
+      console.error('Erro ao exportar clientes:', err);
       showToast(err?.message || 'Falha ao exportar clientes.', 'error');
     } finally {
       setIsExportingCustomers(false);
