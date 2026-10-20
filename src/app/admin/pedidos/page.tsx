@@ -109,6 +109,9 @@ export default function AdminPedidosPage() {
   // Estados de Expansão (Modo Cards)
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
+  // Modal de Detalhes Completos do Pedido (utilizado no Kanban e em qualquer modo)
+  const [detailsModalOrder, setDetailsModalOrder] = useState<CustomerOrder | null>(null);
+
   // Modais Individuais
   const [statusModalOrder, setStatusModalOrder] = useState<CustomerOrder | null>(null);
   const [selectedNewStatus, setSelectedNewStatus] = useState<CustomerOrder['status']>('pendente');
@@ -1299,16 +1302,22 @@ export default function AdminPedidosPage() {
                   isSelected ? 'ring-2 ring-amber-500 border-amber-500' : giftDetails.isGift ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
                 }`}
               >
-                {/* Linha Resumo do Card */}
-                <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Linha Resumo do Card (Clicável para expandir/recolher detalhes) */}
+                <div
+                  onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                  className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors select-none group"
+                  title={isExpanded ? 'Clique para recolher detalhes' : 'Clique para ver detalhes do pedido'}
+                >
                   <div className="flex items-center gap-3 flex-wrap">
                     {/* Checkbox de Seleção em Massa */}
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleSelectOrder(order.id)}
-                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectOrder(order.id)}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                    </div>
 
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -1362,8 +1371,8 @@ export default function AdminPedidosPage() {
                     <div>{getStatusBadge(order.status)}</div>
                   </div>
 
-                  {/* Ações Rápidas do Card */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Ações Rápidas do Card (Cliques não acionam expansão) */}
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {/* Botão de WhatsApp com Snippets Rápidos */}
                     {cleanPhone && (
                       <div className="relative">
@@ -1669,10 +1678,14 @@ export default function AdminPedidosPage() {
                         />
                       </td>
 
-                      {/* Pedido */}
-                      <td className="p-3 whitespace-nowrap">
+                      {/* Pedido (Clicável para ver detalhes) */}
+                      <td
+                        className="p-3 whitespace-nowrap cursor-pointer hover:bg-amber-50/70 transition-colors"
+                        onClick={() => setDetailsModalOrder(order)}
+                        title="Clique para abrir os detalhes completos deste pedido"
+                      >
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-amber-900">
+                          <span className="font-mono font-bold text-amber-900 hover:underline">
                             #{order.numero_pedido}
                           </span>
                           {giftDetails.isGift && (
@@ -1802,6 +1815,14 @@ export default function AdminPedidosPage() {
                       <td className="p-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
                           <button
+                            onClick={() => setDetailsModalOrder(order)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                            title="Ver detalhes completos do pedido"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
                             onClick={() => {
                               setPrintModalOrder(order);
                               setPrintType('declaracao');
@@ -1881,13 +1902,15 @@ export default function AdminPedidosPage() {
                       return (
                         <div
                           key={order.id}
-                          className={`bg-white border rounded-xl p-3 shadow-2xs space-y-2 hover:border-amber-400 transition-all ${
+                          onClick={() => setDetailsModalOrder(order)}
+                          className={`bg-white border rounded-xl p-3 shadow-2xs space-y-2 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer select-none group ${
                             giftDetails.isGift ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
                           }`}
+                          title="Clique para abrir os detalhes completos deste pedido"
                         >
                           {/* Topo do mini-card */}
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-mono text-xs font-extrabold text-amber-800">
+                            <span className="font-mono text-xs font-extrabold text-amber-800 group-hover:text-amber-950 transition-colors">
                               #{order.numero_pedido}
                             </span>
                             {giftDetails.isGift && (
@@ -1912,8 +1935,11 @@ export default function AdminPedidosPage() {
                             </div>
                           </div>
 
-                          {/* Ações do Mini Card */}
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
+                          {/* Ações do Mini Card (Cliques não abrem o modal duplicado) */}
+                          <div
+                            className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {cleanPhone ? (
                               <a
                                 href={`https://wa.me/55${cleanPhone}`}
@@ -2474,6 +2500,223 @@ export default function AdminPedidosPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE DETALHES COMPLETOS DO PEDIDO (PIPELINES EM VERTICAL / KANBAN / LISTA) */}
+      {detailsModalOrder && (() => {
+        const dItems = detailsModalOrder.itens_pedido || [];
+        const dGift = getOrderGiftDetails(detailsModalOrder);
+        const dPhone = (detailsModalOrder.cliente_telefone || '').replace(/\D/g, '');
+        const dSla = getOrderSlaAlert(detailsModalOrder);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8 animate-in fade-in zoom-in-95 duration-150">
+              {/* Header do Modal de Detalhes */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-base font-extrabold text-amber-900">
+                      #{detailsModalOrder.numero_pedido}
+                    </span>
+                    {getStatusBadge(detailsModalOrder.status)}
+                    {dGift.isGift && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                        <Gift className="w-3 h-3 text-amber-700" /> Presente VIP
+                      </span>
+                    )}
+                    {dSla && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        dSla.severity === 'danger' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        <Clock className="w-2.5 h-2.5" /> {dSla.label}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-500 mt-1 block">
+                    Data do Pedido: {formatDate(detailsModalOrder.created_at)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setDetailsModalOrder(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
+                  title="Fechar detalhes"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Informações do Cliente & Logística */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Cliente */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Cliente</span>
+                  <p className="font-bold text-slate-900 text-sm">{detailsModalOrder.cliente_nome || 'Cliente VIP'}</p>
+                  <p className="text-slate-600 font-mono">{detailsModalOrder.cliente_telefone || '-'}</p>
+                  {dPhone && (
+                    <a
+                      href={`https://wa.me/55${dPhone}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline pt-1"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Conversar no WhatsApp</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Endereço de Entrega */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Endereço de Envio</span>
+                  <p className="font-semibold text-slate-800">
+                    {detailsModalOrder.endereco_entrega?.logradouro}, {detailsModalOrder.endereco_entrega?.numero}
+                    {detailsModalOrder.endereco_entrega?.complemento ? ` (${detailsModalOrder.endereco_entrega.complemento})` : ''}
+                  </p>
+                  <p className="text-slate-500 text-[11px]">
+                    {detailsModalOrder.endereco_entrega?.bairro} &bull; {detailsModalOrder.endereco_entrega?.cidade} - {detailsModalOrder.endereco_entrega?.uf || 'BR'}
+                  </p>
+                  <p className="font-mono text-slate-500 text-[11px]">
+                    CEP: {detailsModalOrder.endereco_entrega?.cep}
+                  </p>
+                </div>
+              </div>
+
+              {/* Box de Rastreamento */}
+              <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Código de Rastreamento Correios</span>
+                  <span className="font-mono font-bold text-slate-900 text-sm">
+                    {detailsModalOrder.codigo_rastreio || 'Ainda não informado'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setTrackingModalOrder(detailsModalOrder);
+                    setTrackingInput(detailsModalOrder.codigo_rastreio || '');
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
+                >
+                  {detailsModalOrder.codigo_rastreio ? 'Alterar Rastreio' : '+ Adicionar Rastreio'}
+                </button>
+              </div>
+
+              {/* Box Exclusivo de Presente VIP (se houver) */}
+              {dGift.isGift && (
+                <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-3.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-extrabold text-amber-900">
+                      <Gift className="w-4 h-4 text-amber-700" />
+                      <span>Embalagem para Presente VIP</span>
+                      {dGift.fee !== undefined && dGift.fee > 0 && (
+                        <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                          + {formatCurrency(dGift.fee)}
+                        </span>
+                      )}
+                    </div>
+                    {dGift.message && (
+                      <button
+                        onClick={() => copyToClipboard(dGift.message || '', 'Dedicatória copiada!')}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-white px-2 py-0.5 bg-amber-200/80 hover:bg-amber-800 rounded transition-colors cursor-pointer"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Copiar Dedicatória</span>
+                      </button>
+                    )}
+                  </div>
+                  {dGift.message ? (
+                    <div className="bg-white p-2.5 rounded-lg border border-amber-200">
+                      <span className="text-[10px] text-amber-800 font-bold uppercase block mb-0.5">Dedicatória:</span>
+                      <p className="italic font-serif text-slate-800 leading-relaxed">&ldquo;{dGift.message}&rdquo;</p>
+                    </div>
+                  ) : (
+                    <p className="text-amber-800 italic text-[11px]">Embalagem nobre sem mensagem de dedicatória escrita.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Lista de Peças Compradas */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Peças no Pedido ({dItems.length})
+                </span>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {dItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                      <div className="relative w-12 h-14 bg-white rounded-lg overflow-hidden shrink-0 border border-slate-200">
+                        {item.imagem_url ? (
+                          <Image src={item.imagem_url} alt={item.nome_produto} fill sizes="48px" className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">Peça</div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-bold text-slate-900 block truncate">{item.nome_produto}</span>
+                        <span className="text-[11px] text-slate-500 block">
+                          Tam: <strong className="text-slate-700">{item.tamanho}</strong> &bull; Cor: <strong className="text-slate-700">{item.cor}</strong> &bull; Qtd: <strong className="text-slate-700">{item.quantidade}x</strong>
+                        </span>
+                      </div>
+                      <span className="font-extrabold text-slate-900 font-mono">
+                        {formatCurrency(item.preco_unitario * item.quantidade)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total do Pedido */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-slate-500 block">Forma de Pagamento:</span>
+                  <span className="font-bold text-slate-900 uppercase">
+                    {detailsModalOrder.metodo_pagamento === 'pix' ? 'PIX Instantâneo' : 'Cartão de Crédito'}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block">Valor Total:</span>
+                  <span className="text-lg font-black text-slate-900 font-mono">
+                    {formatCurrency(Number(detailsModalOrder.total || 0))}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ações no Rodapé do Modal */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setPrintModalOrder(detailsModalOrder);
+                      setPrintType('declaracao');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Expedição / Impressão</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStatusModalOrder(detailsModalOrder);
+                      setSelectedNewStatus(detailsModalOrder.status);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Alterar Status</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setDetailsModalOrder(null)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer ml-auto"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
