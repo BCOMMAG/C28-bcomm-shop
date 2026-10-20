@@ -427,7 +427,7 @@ export function CustomerVIPDashboard() {
   }, [customerName]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5] dark:bg-[#121110] text-[#1A1918] dark:text-[#FAF8F5] transition-colors duration-300">
+    <div className="min-h-screen flex flex-col relative z-10 bg-[#FAF8F5] dark:bg-[#121110] text-[#1A1918] dark:text-[#FAF8F5] transition-colors duration-300">
       {/* Header Fixo / Subpágina */}
       <Header
         cartCount={cartCount}
