@@ -15,6 +15,8 @@ import { cn, formatBRL } from '@/lib/chart-utils';
 export interface BarChartDataPoint {
   /** Rótulo no eixo X (ex: "Seg", "Ter", "01/10") */
   label: string;
+  /** Data formatada completa para tooltip (ex: "17/10/2026") */
+  dateStr?: string;
   /** Valor principal da barra primária (ex: Receita Bruta) */
   primaryValue: number;
   /** Valor secundário para barra de custo ou comparação (opcional) */
@@ -182,9 +184,14 @@ export const BarChart: React.FC<BarChartProps> = ({
                   const item = payload[0]?.payload as BarChartDataPoint;
                   return (
                     <div className="bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-xs min-w-[160px]">
-                      <span className="font-bold text-slate-900 block pb-1 border-b border-slate-100 mb-2">
-                        {item.label}
-                      </span>
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-2">
+                        <span className="font-bold text-slate-900">
+                          {item.dateStr || item.label}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase">
+                          Venda
+                        </span>
+                      </div>
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between text-slate-700">
                           <span className="flex items-center gap-1.5">

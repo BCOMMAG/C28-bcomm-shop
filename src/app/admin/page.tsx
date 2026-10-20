@@ -33,7 +33,7 @@ import { DeltaBadge } from '@/components/admin/ui/delta-badge';
 import { BarChart } from '@/components/admin/ui/bar-chart';
 import { useStore } from '@/context/StoreContext';
 
-export type FilterPeriodKey = 'hoje' | '7d' | '30d' | 'mes_atual';
+export type FilterPeriodKey = 'hoje' | 'ontem' | '7d' | '30d' | 'mes_atual' | '90d';
 
 /**
  * Miniatura do produto com fallback seguro para imagem ausente ou corrompida.
@@ -87,6 +87,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriodKey>('30d');
   const [showZeroVendasModal, setShowZeroVendasModal] = useState(false);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<CustomerOrder | null>(null);
 
   const lojaNome = currentTenant?.nome || 'sua loja';
   const lojaId = currentTenant?.id;
@@ -114,9 +115,11 @@ export default function AdminDashboardPage() {
   // Rótulo textual oficial do período ativo na tela
   const periodLabelMap: Record<FilterPeriodKey, string> = {
     hoje: 'Hoje',
+    ontem: 'Ontem',
     '7d': 'Últimos 7 dias',
     '30d': 'Últimos 30 dias',
-    mes_atual: 'Mês atual'
+    mes_atual: 'Mês atual',
+    '90d': 'Últimos 90 dias'
   };
 
   // Helper do WhatsApp
@@ -195,6 +198,11 @@ export default function AdminDashboardPage() {
           const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
           return orderDate >= start;
         }
+        case 'ontem': {
+          const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+          const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+          return orderDate >= start && orderDate <= end;
+        }
         case '7d': {
           const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
           return orderDate >= start;
@@ -205,6 +213,10 @@ export default function AdminDashboardPage() {
         }
         case 'mes_atual': {
           const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+          return orderDate >= start;
+        }
+        case '90d': {
+          const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90, 0, 0, 0, 0);
           return orderDate >= start;
         }
         default:
@@ -393,20 +405,13 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6 pb-6">
       {/* =========================================================================
-          CABEÇALHO DA VISÃO GERAL (Título + Rótulo do Período + Seletor de Período)
+          CABEÇALHO DA VISÃO GERAL (Título + Seletor de Período + Atualizar)
       ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-              Visão Geral
-            </h1>
-            {/* Rótulo obrigatório do período selecionado visível na página */}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 shadow-2xs">
-              <Calendar className="w-3.5 h-3.5 text-amber-700" />
-              <span>Período: {periodLabelMap[selectedPeriod]}</span>
-            </span>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
+            Visão Geral
+          </h1>
         </div>
 
         {/* Seletor de Período e Botão Atualizar */}
@@ -418,9 +423,11 @@ export default function AdminDashboardPage() {
               className="appearance-none bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl pl-3 pr-8 py-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs cursor-pointer"
             >
               <option value="hoje">Hoje</option>
+              <option value="ontem">Ontem</option>
               <option value="7d">7 dias</option>
               <option value="30d">30 dias</option>
               <option value="mes_atual">Mês atual</option>
+              <option value="90d">90 dias</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
           </div>
@@ -441,9 +448,9 @@ export default function AdminDashboardPage() {
           PRIMEIRA LINHA: 5 CARDS NO DESKTOP COM ALTURA E LARGURA PADRONIZADAS
       ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
-        {/* Card 1: Faturamento Bruto */}
+        {/* Card 1: Faturamento */}
         <KpiCard
-          title="Faturamento Bruto"
+          title="Faturamento"
           value={formatBRL(faturamentoBruto)}
           icon={<DollarSign className="w-4 h-4 text-slate-700" />}
           deltaLabel={quantidadePedidosValidos > 0 ? `${quantidadePedidosValidos} pedidos` : undefined}
@@ -677,36 +684,53 @@ export default function AdminDashboardPage() {
                         Zero Vendas ({produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? 'item sem saída' : 'itens sem saída'})
                       </span>
                       <span className="text-[10px] text-amber-700 block truncate">
-                        {produtosZeroVendas.slice(0, 2).map((p) => p.nome).join(', ')}
-                        {produtosZeroVendas.length > 2 ? ` e mais ${produtosZeroVendas.length - 2}` : ''}
+                        Peças no estoque sem movimentação no período
                       </span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowZeroVendasModal(true)}
-                    className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2 py-1 rounded-lg shrink-0 transition-colors cursor-pointer"
-                    title="Ver lista de produtos sem vendas"
+                    className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer"
+                    title="Ver lista completa de produtos sem vendas"
                   >
-                    Ver lista
+                    Ver todos ({produtosZeroVendas.length})
                   </button>
                 </div>
               )}
 
-              {/* Lista dos itens que tiveram menor saída */}
-              {itensMenosVendidos.length === 0 && produtosZeroVendas.length === 0 ? (
-                /* Sem nenhum produto cadastrado ou nenhuma movimentação */
+              {/* Se há produtos com zero vendas, exibe eles na lista para o lojista ver o que está sem saída! */}
+              {produtosZeroVendas.length > 0 ? (
+                <div className="space-y-2.5">
+                  {produtosZeroVendas.slice(0, 3).map((prod) => (
+                    <div
+                      key={prod.id}
+                      className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
+                    >
+                      <ProductThumbnail src={prod.foto_principal} alt={prod.nome} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-bold text-slate-900 text-xs block truncate" title={prod.nome}>
+                          {prod.nome}
+                        </span>
+                        <div className="flex items-center justify-between mt-0.5 text-[11px] text-slate-500">
+                          <span className="font-semibold text-rose-600">
+                            0 unidades vendidas
+                          </span>
+                          <span className="font-medium text-slate-500 text-[10px]">
+                            Estoque: {prod.estoque_total ?? 0} un &bull; {formatBRL(prod.preco || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : itensMenosVendidos.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">
                   Nenhum item registrado no período selecionado.
                 </div>
-              ) : itensMenosVendidos.length === 0 ? (
-                /* Existem produtos no catálogo, mas nenhum teve vendas */
-                <div className="py-8 text-center text-slate-400 text-xs">
-                  Nenhum produto teve vendas registradas no período selecionado.
-                </div>
               ) : (
                 <div className="space-y-2.5">
-                  {itensMenosVendidos.slice(0, produtosZeroVendas.length > 0 ? 3 : 4).map((item, idx) => (
+                  {itensMenosVendidos.slice(0, 4).map((item, idx) => (
                     <div
                       key={item.produtoId || idx}
                       className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
@@ -796,10 +820,11 @@ export default function AdminDashboardPage() {
                   return (
                     <tr
                       key={order.id || order.numero_pedido}
-                      className="hover:bg-slate-50/60 transition-colors"
+                      className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                      onClick={() => setSelectedOrderForDetails(order)}
                     >
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-slate-900 block">
+                        <span className="font-mono font-bold text-slate-900 block group-hover:text-amber-800 transition-colors">
                           {order.numero_pedido}
                         </span>
                         <span className="text-[10px] text-slate-400 block font-sans">
@@ -848,7 +873,7 @@ export default function AdminDashboardPage() {
                       <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
 
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                           {waLink && (
                             <a
                               href={waLink}
@@ -862,13 +887,13 @@ export default function AdminDashboardPage() {
                             </a>
                           )}
 
-                          <Link
-                            href="/admin/pedidos/"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForDetails(order)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
                           >
-                            <span>Gerenciar</span>
-                            <ArrowRight className="w-3 h-3 text-slate-500" />
-                          </Link>
+                            <span>Detalhes</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -937,12 +962,13 @@ export default function AdminDashboardPage() {
                           <span>WhatsApp</span>
                         </a>
                       )}
-                      <Link
-                        href="/admin/pedidos/"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800"
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderForDetails(order)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 cursor-pointer"
                       >
-                        <span>Gerenciar</span>
-                      </Link>
+                        <span>Detalhes</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1010,6 +1036,152 @@ export default function AdminDashboardPage() {
                 type="button"
                 onClick={() => setShowZeroVendasModal(false)}
                 className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: DETALHES DO PEDIDO INLINE NA VISÃO GERAL
+      ========================================================================= */}
+      {selectedOrderForDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Cabeçalho do Modal */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-bold text-slate-900 font-mono">
+                    {selectedOrderForDetails.numero_pedido}
+                  </h3>
+                  {getStatusBadge(selectedOrderForDetails.status)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Realizado em {selectedOrderForDetails.created_at ? new Date(selectedOrderForDetails.created_at).toLocaleString('pt-BR') : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrderForDetails(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Conteúdo com Scroll */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1 divide-y divide-slate-100">
+              {/* Cliente & Contato */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Cliente & Contato
+                </span>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {selectedOrderForDetails.cliente_nome || 'Cliente'}
+                    </p>
+                    <p className="text-xs text-slate-600 font-mono">
+                      {selectedOrderForDetails.cliente_telefone || 'Sem telefone'}
+                      {selectedOrderForDetails.clientes_loja?.email && ` • ${selectedOrderForDetails.clientes_loja.email}`}
+                    </p>
+                  </div>
+                  {getWhatsAppUrl(selectedOrderForDetails) && (
+                    <a
+                      href={getWhatsAppUrl(selectedOrderForDetails)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 shrink-0"
+                    >
+                      <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Endereço de Entrega */}
+              <div className="pt-3 space-y-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Endereço de Entrega
+                </span>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  {selectedOrderForDetails.endereco_entrega ? (
+                    <>
+                      {selectedOrderForDetails.endereco_entrega.logradouro}, {selectedOrderForDetails.endereco_entrega.numero}
+                      {selectedOrderForDetails.endereco_entrega.complemento && ` (${selectedOrderForDetails.endereco_entrega.complemento})`}
+                      <br />
+                      {selectedOrderForDetails.endereco_entrega.bairro} &bull; {selectedOrderForDetails.endereco_entrega.cidade} - {selectedOrderForDetails.endereco_entrega.uf || 'BR'}
+                      <br />
+                      CEP: {selectedOrderForDetails.endereco_entrega.cep}
+                    </>
+                  ) : (
+                    'Endereço não informado'
+                  )}
+                </p>
+              </div>
+
+              {/* Itens do Pedido */}
+              <div className="pt-3 space-y-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Itens do Pedido ({selectedOrderForDetails.itens_pedido?.length || 0})
+                </span>
+                <div className="space-y-2">
+                  {(selectedOrderForDetails.itens_pedido || []).map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <ProductThumbnail src={item.imagem_url} alt={item.nome_produto} size="sm" />
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-slate-900 block truncate" title={item.nome_produto}>
+                            {item.nome_produto}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Tamanho: {item.tamanho || 'U'} &bull; Cor: {item.cor || 'Padrão'} &bull; Qtd: {item.quantidade || 1}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-bold text-xs text-slate-900 font-mono shrink-0">
+                        {formatBRL(Number(item.preco_unitario || 0) * Number(item.quantidade || 1))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Totais */}
+              <div className="pt-3 space-y-1.5 text-xs text-slate-600">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-mono">{formatBRL(Number(selectedOrderForDetails.subtotal || selectedOrderForDetails.total || 0))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Frete:</span>
+                  <span className="font-mono">{Number(selectedOrderForDetails.valor_frete || 0) > 0 ? formatBRL(Number(selectedOrderForDetails.valor_frete)) : 'Grátis'}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-slate-100 text-sm font-extrabold text-slate-900">
+                  <span>Total do Pedido:</span>
+                  <span className="font-mono text-base">{formatBRL(Number(selectedOrderForDetails.total || 0))}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <Link
+                href="/admin/pedidos/"
+                className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1.5"
+                onClick={() => setSelectedOrderForDetails(null)}
+              >
+                <span>Central de Pedidos</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedOrderForDetails(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
                 Fechar
               </button>
