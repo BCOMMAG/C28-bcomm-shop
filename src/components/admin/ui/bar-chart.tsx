@@ -36,6 +36,8 @@ export interface BarChartProps {
   primaryColor?: string;
   /** Altura do contêiner do gráfico em pixels */
   height?: number;
+  /** Quando verdadeiro, não renderiza moldura externa, sombra ou borda dupla (ideal para uso dentro de cards) */
+  embedded?: boolean;
   /** Classes CSS adicionais */
   className?: string;
 }
@@ -48,6 +50,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   secondaryLabel = 'Custo dos Produtos (CMV)',
   primaryColor = '#0F172A',
   height = 240,
+  embedded = false,
   className
 }) => {
   // Previne mismatch de hidratação no export estático da Cloudflare Pages
@@ -62,7 +65,14 @@ export const BarChart: React.FC<BarChartProps> = ({
   const isSingleDay = hasData && data.length === 1;
 
   return (
-    <div className={cn('bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between', className)}>
+    <div
+      className={cn(
+        embedded
+          ? 'w-full flex flex-col justify-between'
+          : 'bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between',
+        className
+      )}
+    >
       {/* Cabeçalho do Gráfico & Legenda */}
       {(title || subtitle) && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -99,7 +109,7 @@ export const BarChart: React.FC<BarChartProps> = ({
       )}
 
       {/* Área do Gráfico */}
-      <div className="w-full relative min-h-[240px]" style={{ height: `${height}px`, minHeight: `${height}px` }}>
+      <div className="w-full relative" style={{ height: `${height}px`, minHeight: `${height}px` }}>
         {!isMounted ? (
           <div className="w-full h-full bg-slate-50 rounded-xl animate-pulse" />
         ) : !hasData ? (

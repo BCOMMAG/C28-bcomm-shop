@@ -18,7 +18,8 @@ import {
   Calendar,
   ChevronDown,
   BarChart3,
-  HelpCircle
+  HelpCircle,
+  X
 } from 'lucide-react';
 import {
   getAdminOrders,
@@ -85,6 +86,7 @@ export default function AdminDashboardPage() {
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriodKey>('30d');
+  const [showZeroVendasModal, setShowZeroVendasModal] = useState(false);
 
   const lojaNome = currentTenant?.nome || 'sua loja';
   const lojaId = currentTenant?.id;
@@ -356,10 +358,34 @@ export default function AdminDashboardPage() {
     return [...itensAgrupadosNoPeriodo].sort((a, b) => b.quantidade - a.quantidade);
   }, [itensAgrupadosNoPeriodo]);
 
-  // Ranking ordenado do menos vendido para o mais vendido
+  // Ranking ordenado do menos vendido para o mais vendido (apenas itens com pelo menos 1 venda)
   const itensMenosVendidos = useMemo(() => {
     return [...itensAgrupadosNoPeriodo].sort((a, b) => a.quantidade - b.quantidade);
   }, [itensAgrupadosNoPeriodo]);
+
+  // Produtos ativos do catálogo geral
+  const produtosAtivos = useMemo(() => {
+    return products.filter((p) => p.ativo !== false);
+  }, [products]);
+
+  // Conjunto de identificadores de produtos que tiveram vendas no período
+  const produtosComVendasIds = useMemo(() => {
+    const set = new Set<string>();
+    itensAgrupadosNoPeriodo.forEach((item) => {
+      if (item.produtoId) set.add(item.produtoId);
+      if (item.nome) set.add(item.nome.toLowerCase().trim());
+    });
+    return set;
+  }, [itensAgrupadosNoPeriodo]);
+
+  // Produtos do catálogo com ZERO vendas no período selecionado
+  const produtosZeroVendas = useMemo(() => {
+    return produtosAtivos.filter((p) => {
+      const idMatch = p.id && produtosComVendasIds.has(p.id);
+      const nameMatch = p.nome && produtosComVendasIds.has(p.nome.toLowerCase().trim());
+      return !idMatch && !nameMatch;
+    });
+  }, [produtosAtivos, produtosComVendasIds]);
 
   const temMaisDeUmItemDistinto = itensAgrupadosNoPeriodo.length > 1;
   const temExatamenteUmItemDistinto = itensAgrupadosNoPeriodo.length === 1;
@@ -381,9 +407,6 @@ export default function AdminDashboardPage() {
               <span>Período: {periodLabelMap[selectedPeriod]}</span>
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Métricas de desempenho e vendas em tempo real de {lojaNome}.
-          </p>
         </div>
 
         {/* Seletor de Período e Botão Atualizar */}
@@ -415,9 +438,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* =========================================================================
-          PRIMEIRA LINHA: 5 CARDS NO DESKTOP / 2 COLUNAS OU EMPILHADOS NO CELULAR
+          PRIMEIRA LINHA: 5 CARDS NO DESKTOP COM ALTURA E LARGURA PADRONIZADAS
       ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
         {/* Card 1: Faturamento Bruto */}
         <KpiCard
           title="Faturamento Bruto"
@@ -425,7 +448,8 @@ export default function AdminDashboardPage() {
           icon={<DollarSign className="w-4 h-4 text-slate-700" />}
           deltaLabel={quantidadePedidosValidos > 0 ? `${quantidadePedidosValidos} pedidos` : undefined}
           deltaType="neutral"
-          footerText="Soma dos pedidos válidos do período"
+          footerText="Ver faturamento detalhado"
+          actionText="Ver finanças"
           href="/admin/financas/"
           loading={loading}
         />
@@ -447,9 +471,10 @@ export default function AdminDashboardPage() {
           deltaType={!isCustoCompleto ? 'warning' : 'neutral'}
           footerText={
             !isCustoCompleto
-              ? `${itensSemCustoCount} ${itensSemCustoCount === 1 ? 'item vendido sem preço de custo' : 'itens vendidos sem preço de custo'}`
-              : 'Qtd vendida × preço de custo'
+              ? `${itensSemCustoCount} ${itensSemCustoCount === 1 ? 'item sem preço de custo' : 'itens sem preço de custo'}`
+              : 'Qtd × preço de custo'
           }
+          actionText="Ver catálogo"
           href="/admin/produtos/"
           loading={loading}
         />
@@ -473,9 +498,10 @@ export default function AdminDashboardPage() {
           }
           footerText={
             isCustoCompleto
-              ? 'Faturamento menos custo dos itens'
-              : 'Requer custo completo dos itens'
+              ? 'Faturamento menos custos'
+              : 'Aguardando custo dos itens'
           }
+          actionText="Ver finanças"
           href="/admin/financas/"
           loading={loading}
         />
@@ -493,9 +519,10 @@ export default function AdminDashboardPage() {
           deltaType={pedidosPendentesPeriodo > 0 ? 'warning' : 'neutral'}
           footerText={
             pedidosPendentesPeriodo > 0
-              ? 'Aguardando confirmação'
-              : 'Pedidos válidos no período'
+              ? `${pedidosPendentesPeriodo} aguardando confirmação`
+              : 'Pedidos válidos do período'
           }
+          actionText="Ver pedidos"
           href="/admin/pedidos/"
           loading={loading}
         />
@@ -507,28 +534,24 @@ export default function AdminDashboardPage() {
           icon={<BarChart3 className="w-4 h-4 text-slate-700" />}
           deltaLabel="Média Real"
           deltaType="neutral"
-          footerText="Faturamento ÷ pedidos válidos"
+          footerText="Média por pedido válido"
+          actionText="Ver finanças"
           href="/admin/financas/"
           loading={loading}
         />
       </div>
 
       {/* =========================================================================
-          SEGUNDA LINHA: 3 BLOCOS LADO A LADO NO DESKTOP / EMPILHADOS NO CELULAR
+          SEGUNDA LINHA: 3 BLOCOS COM ALTURA PERFEITAMENTE NIVELADA (min-h-[420px])
       ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
         {/* Bloco 1: Histórico de Vendas */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full min-h-[420px]">
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                  Histórico de Vendas
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Receita por dia em ordem crescente ({periodLabelMap[selectedPeriod]})
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                Histórico de Vendas
+              </h3>
               <span className="text-xs font-bold text-slate-700 font-sans">
                 {formatBRL(faturamentoBruto)}
               </span>
@@ -538,10 +561,10 @@ export default function AdminDashboardPage() {
               {vendasPorDia.length === 0 ? (
                 /* Estado Vazio */
                 <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhuma venda registrada no período selecionado ({periodLabelMap[selectedPeriod]}).
+                  Nenhuma venda registrada no período selecionado.
                 </div>
               ) : vendasPorDia.length === 1 ? (
-                /* "Com um único dia, não desenhe uma série falsa; mostre o valor e a data." */
+                /* Com um único dia, não desenhe uma série falsa; mostre o valor e a data */
                 <div className="py-6 px-4 bg-slate-50/70 border border-slate-200/80 rounded-xl text-center space-y-2">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                     Data da Venda: {vendasPorDia[0].dateStr}
@@ -550,21 +573,20 @@ export default function AdminDashboardPage() {
                     {formatBRL(vendasPorDia[0].primaryValue)}
                   </span>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                    <span>Receita registrada em 1 única data no período</span>
+                    <span>Receita registrada em 1 única data</span>
                   </div>
                   <p className="text-[11px] text-slate-400 max-w-xs mx-auto pt-1">
                     O gráfico comparativo em barras é exibido automaticamente a partir de 2 datas com vendas.
                   </p>
                 </div>
               ) : (
-                /* Mais de um dia: gráfico em barras estritamente crescente */
+                /* Gráfico de barras direto sem bordas internas redundantes */
                 <BarChart
                   data={vendasPorDia}
-                  title="Receita por Dia"
-                  subtitle="A soma das barras equivale ao faturamento bruto"
                   primaryLabel="Receita Diária"
                   primaryColor="#0F172A"
                   height={220}
+                  embedded={true}
                 />
               )}
             </div>
@@ -577,17 +599,12 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Bloco 2: Itens Mais Vendidos */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full min-h-[420px]">
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                  Itens Mais Vendidos
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Ranking por unidades vendidas ({periodLabelMap[selectedPeriod]})
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                Itens Mais Vendidos
+              </h3>
               <DeltaBadge label="Top Saída" type="neutral" showIcon={false} />
             </div>
 
@@ -595,7 +612,7 @@ export default function AdminDashboardPage() {
               {itensMaisVendidos.length === 0 ? (
                 /* Sem venda, mostre estado vazio */
                 <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhum item vendido no período selecionado ({periodLabelMap[selectedPeriod]}).
+                  Nenhum item vendido no período selecionado.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -637,44 +654,59 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Bloco 3: Itens Menos Vendidos */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        {/* Bloco 3: Itens Menos Vendidos (com Destaque para Produtos Zero Vendas) */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full min-h-[420px]">
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                  Itens Menos Vendidos
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Menor saída entre os itens vendidos ({periodLabelMap[selectedPeriod]})
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                Itens Menos Vendidos
+              </h3>
               <DeltaBadge label="Menor Saída" type="neutral" showIcon={false} />
             </div>
 
-            <div className="mt-4">
-              {itensAgrupadosNoPeriodo.length === 0 ? (
-                /* Sem venda, mostre estado vazio */
-                <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhum item vendido no período selecionado ({periodLabelMap[selectedPeriod]}).
-                </div>
-              ) : temExatamenteUmItemDistinto ? (
-                /* "Se só um item vendeu, não repita o mesmo item nas duas listas; avise que não há comparação." */
-                <div className="py-8 px-4 bg-slate-50/70 border border-slate-200/80 rounded-xl text-center space-y-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center mx-auto">
-                    <HelpCircle className="w-4 h-4" />
+            <div className="mt-4 space-y-3">
+              {/* Linha de Destaque para Produtos com Zero Vendas no período */}
+              {produtosZeroVendas.length > 0 && (
+                <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-800 flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-amber-950 block truncate">
+                        Zero Vendas ({produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? 'item sem saída' : 'itens sem saída'})
+                      </span>
+                      <span className="text-[10px] text-amber-700 block truncate">
+                        {produtosZeroVendas.slice(0, 2).map((p) => p.nome).join(', ')}
+                        {produtosZeroVendas.length > 2 ? ` e mais ${produtosZeroVendas.length - 2}` : ''}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-slate-800 block">
-                    Sem comparação de menor saída
-                  </span>
-                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                    Apenas 1 produto foi vendido no período selecionado. A comparação de menor saída requer pelo menos 2 produtos distintos vendidos.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowZeroVendasModal(true)}
+                    className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2 py-1 rounded-lg shrink-0 transition-colors cursor-pointer"
+                    title="Ver lista de produtos sem vendas"
+                  >
+                    Ver lista
+                  </button>
+                </div>
+              )}
+
+              {/* Lista dos itens que tiveram menor saída */}
+              {itensMenosVendidos.length === 0 && produtosZeroVendas.length === 0 ? (
+                /* Sem nenhum produto cadastrado ou nenhuma movimentação */
+                <div className="py-12 text-center text-slate-400 text-xs">
+                  Nenhum item registrado no período selecionado.
+                </div>
+              ) : itensMenosVendidos.length === 0 ? (
+                /* Existem produtos no catálogo, mas nenhum teve vendas */
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  Nenhum produto teve vendas registradas no período selecionado.
                 </div>
               ) : (
-                /* Dois ou mais itens distintos: exibe os de menor saída */
-                <div className="space-y-3">
-                  {itensMenosVendidos.slice(0, 4).map((item, idx) => (
+                <div className="space-y-2.5">
+                  {itensMenosVendidos.slice(0, produtosZeroVendas.length > 0 ? 3 : 4).map((item, idx) => (
                     <div
                       key={item.produtoId || idx}
                       className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
@@ -708,23 +740,24 @@ export default function AdminDashboardPage() {
               <span>Gerenciar Estoque</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
+            <span>
+              {produtosZeroVendas.length > 0
+                ? `${produtosZeroVendas.length} sem saída`
+                : `${itensMenosVendidos.length} com vendas`}
+            </span>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
           LISTAGEM DE PEDIDOS DO PERÍODO
-          "pedidos recentes só continuam se já existirem e também respeitarem o filtro."
       ========================================================================= */}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-              Pedidos do Período ({periodLabelMap[selectedPeriod]})
+              Pedidos Recentes
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pedidos realizados no checkout dentro do período selecionado
-            </p>
           </div>
           <Link
             href="/admin/pedidos/"
@@ -918,6 +951,72 @@ export default function AdminDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL: PRODUTOS COM ZERO VENDAS NO PERÍODO
+      ========================================================================= */}
+      {showZeroVendasModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Produtos com Zero Vendas
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? 'produto sem nenhuma venda' : 'produtos sem nenhuma venda'} no período ({periodLabelMap[selectedPeriod]})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowZeroVendasModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-2.5 flex-1 divide-y divide-slate-100">
+              {produtosZeroVendas.map((p) => (
+                <div key={p.id} className="pt-2.5 first:pt-0 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ProductThumbnail src={p.foto_principal} alt={p.nome} size="sm" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-900 block truncate" title={p.nome}>
+                        {p.nome}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Estoque: {p.estoque_total ?? 0} un &bull; Preço: {formatBRL(p.preco || 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                    0 vendas
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <Link
+                href="/admin/produtos/"
+                className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1.5"
+                onClick={() => setShowZeroVendasModal(false)}
+              >
+                <span>Ir para Cadastro de Produtos</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowZeroVendasModal(false)}
+                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
