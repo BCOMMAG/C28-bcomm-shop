@@ -147,7 +147,7 @@ export function PlatformPortal() {
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-zinc-500">Link Demonstração:</span>
-                    <span className="font-mono text-[#DFBE76]">/?loja=leidy-boutique</span>
+                    <span className="font-mono text-[#DFBE76]">/leidyboutique/</span>
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <span className="text-zinc-500">Status:</span>
@@ -158,7 +158,7 @@ export function PlatformPortal() {
 
               <div className="flex flex-col gap-2 pt-4 border-t border-white/10">
                 <Link
-                  href="/?loja=leidy-boutique"
+                  href="/leidyboutique/"
                   className="w-full py-2.5 px-4 bg-[#C5A059] hover:bg-[#DFBE76] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <span>Abrir Loja Leidy Boutique</span>
@@ -202,7 +202,7 @@ export function PlatformPortal() {
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-zinc-500">Link Apresentação:</span>
-                    <span className="font-mono text-[#38BDF8]">/?loja=aura-privee</span>
+                    <span className="font-mono text-[#38BDF8]">/auraprivee/</span>
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <span className="text-zinc-500">Ativação:</span>
@@ -213,7 +213,7 @@ export function PlatformPortal() {
 
               <div className="flex flex-col gap-2 pt-4 border-t border-white/10">
                 <Link
-                  href="/?loja=aura-privee"
+                  href="/auraprivee/"
                   className="w-full py-2.5 px-4 bg-white/10 hover:bg-[#38BDF8] hover:text-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <span>Ver Demonstração da Loja</span>

@@ -328,7 +328,7 @@ export default function SuperAdminDashboardPage() {
                           Painel
                         </Link>
                         <Link
-                          href={`/?loja=${store.slug}`}
+                          href={store.dominio_proprio ? `https://${store.dominio_proprio}` : `/${store.slug}/`}
                           target="_blank"
                           className="text-[11px] text-[#38BDF8] hover:underline flex items-center gap-1"
                         >

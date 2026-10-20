@@ -8,6 +8,7 @@ import { CartItem } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
 import { fetchAddressByCep, calculateShippingOptions, formatCep } from '@/utils/shipping';
+import { getStoreCheckoutUrl } from '@/lib/routes';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -40,7 +41,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setGiftMessage,
     giftFee,
     isGiftServiceActive,
-    allowGiftMessage
+    allowGiftMessage,
+    currentTenant
   } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
@@ -132,7 +134,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const finalTotal = subtotal + shippingCost + currentGiftCost;
 
   const generateWhatsAppOrderLink = () => {
-    let message = `Olá Leidy! Gostaria de finalizar meu pedido pelo site da *Leidy Boutique*:\n\n`;
+    const storeName = currentTenant?.nome || 'Leidy Boutique';
+    const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
+    let message = `Olá! Gostaria de finalizar meu pedido pelo site da *${storeName}*:\n\n`;
     items.forEach((item, index) => {
       message += `🛍️ *${index + 1}. ${item.name}*\n`;
       message += `   - Cor: ${item.color}\n`;
@@ -166,7 +170,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `💰 *Total Previsto:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\n`;
     message += `Poderia me confirmar a disponibilidade e passar as opções de pagamento?`;
 
-    return `https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(message)}`;
   };
 
   return (
@@ -574,16 +578,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="p-2.5 sm:p-3 rounded-none bg-[#FAF8F5] dark:bg-[#252220] border border-[#C5A059]/30 text-[11px] text-[#57534E] dark:text-[#D6D3D1] leading-relaxed flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#25D366] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Atendimento VIP:</strong> Suas peças serão reservadas e a Leidy entrará em contato para confirmar detalhes e pagamento.
+                  <strong>Atendimento VIP:</strong> Suas peças serão reservadas e nossa consultora entrará em contato para confirmar detalhes e pagamento.
                 </span>
               </div>
 
-              {/* Botão Principal: FINALIZAR COMPRA (Leva com segurança para /checkout/) */}
+              {/* Botão Principal: FINALIZAR COMPRA (Leva com segurança para o checkout da loja) */}
               <button
                 type="button"
                 onClick={() => {
                   closeCartSilently();
-                  router.push('/checkout/');
+                  router.push(getStoreCheckoutUrl(currentTenant?.slug));
                 }}
                 className="w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all duration-300 shadow-md active:scale-95 group cursor-pointer"
               >

@@ -288,6 +288,7 @@ export interface CustomerOrder {
   } | null;
   itens_pedido: Array<{
     id: string;
+    produto_id?: string | null;
     nome_produto: string;
     cor: string;
     tamanho: string;

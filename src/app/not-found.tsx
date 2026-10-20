@@ -2,32 +2,45 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { BoutiqueStorefront } from '@/components/BoutiqueStorefront';
+import { CustomerVIPDashboard } from '@/components/CustomerVIPDashboard';
+import { WishlistManager } from '@/components/WishlistManager';
 
 export default function NotFound() {
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [spaMode, setSpaMode] = useState<'store' | 'cliente' | 'favoritos' | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
-    const knownStaticRoutes = ['admin', 'super-admin', 'catalogo', 'checkout', 'favoritos', 'minha-conta'];
+    const knownStaticRoutes = ['admin', 'super-admin', 'catalogo', 'checkout'];
 
-    // Se o pathname não tiver ponto (não é arquivo .png, .js, .ico, etc) e não for uma rota estática do sistema
-    if (pathname && !pathname.includes('.') && !knownStaticRoutes.includes(pathname.split('/')[0])) {
-      setIsRedirecting(true);
-      // Redireciona de forma suave para a loja correspondente na raiz
-      window.location.replace(`/?loja=${encodeURIComponent(pathname)}`);
+    // Se a rota for um subcaminho limpo de tenant (ex: /nova-loja, /nova-loja/cliente, /nova-loja/cliente/favoritos)
+    if (pathname && !pathname.includes('.')) {
+      const segments = pathname.split('/');
+      const firstSegment = segments[0];
+
+      if (!knownStaticRoutes.includes(firstSegment)) {
+        if (segments.includes('favoritos')) {
+          setSpaMode('favoritos');
+        } else if (segments.includes('cliente')) {
+          setSpaMode('cliente');
+        } else {
+          setSpaMode('store');
+        }
+      }
     }
   }, []);
 
-  if (isRedirecting) {
-    return (
-      <div className="min-h-screen bg-[#0C0E14] text-[#FAF8F5] flex flex-col items-center justify-center p-4">
-        <div className="w-10 h-10 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium text-zinc-300">Carregando vitrine da loja...</p>
-      </div>
-    );
+  if (spaMode === 'favoritos') {
+    return <WishlistManager />;
+  }
+  if (spaMode === 'cliente') {
+    return <CustomerVIPDashboard />;
+  }
+  if (spaMode === 'store') {
+    return <BoutiqueStorefront />;
   }
 
   return (
@@ -40,7 +53,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#C5A059] text-black font-bold text-xs uppercase tracking-wider"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#C5A059] text-black font-bold text-xs uppercase tracking-wider cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Voltar ao Início</span>

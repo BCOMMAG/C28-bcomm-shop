@@ -21,6 +21,13 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO } from '@/data/products';
+import {
+  getStoreHomeUrl,
+  getStoreCustomerUrl,
+  getStoreWishlistUrl,
+  getStoreCatalogUrl,
+  normalizeTenantSlug
+} from '@/lib/routes';
 
 export interface SubOption {
   label: string;
@@ -147,7 +154,8 @@ export const Header: React.FC<HeaderProps> = ({
     isSideDrawerOpen,
     openSideDrawer: openSideDrawerContext,
     closeSideDrawer: closeSideDrawerContext,
-    announcementBar
+    announcementBar,
+    currentTenant
   } = useStore();
 
   const [headerSearchInput, setHeaderSearchInput] = useState(searchQuery || '');
@@ -224,11 +232,12 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [isSideDrawerOpen]);
 
-  // Regra 1: O menu superior tem que ser transparente na home até o usuário rolar a página
-  const isHome = pathname === '/';
+  // O menu superior é transparente na home da loja até o usuário rolar a página
+  const tenantSlug = normalizeTenantSlug(currentTenant?.slug);
+  const isHome = pathname === '/' || pathname === `/${tenantSlug}` || pathname === `/${tenantSlug}/`;
   const isTransparent = isHome && !isScrolled && !isSubpage;
 
-  // Executa busca textual no catálogo
+  // Executa busca textual no catálogo preservando o tenant
   const executeHeaderSearch = (textToSearch?: string) => {
     const term = (textToSearch !== undefined ? textToSearch : headerSearchInput).trim();
     if (!term) return;
@@ -236,10 +245,11 @@ export const Header: React.FC<HeaderProps> = ({
     setDesktopSearchOpen(false);
     setMobileSearchOpen(false);
     closeSideDrawerContext();
-    router.push(`/catalogo?q=${encodeURIComponent(term)}`);
+    const catalogBase = getStoreCatalogUrl(currentTenant?.slug);
+    router.push(`${catalogBase}?q=${encodeURIComponent(term)}`);
   };
 
-  // Navegação direta das opções de peças do menu
+  // Navegação direta das opções de peças do menu preservando o tenant
   const handleNavClick = (item: {
     type: string;
     value: string;
@@ -275,7 +285,8 @@ export const Header: React.FC<HeaderProps> = ({
     }
 
     const query = params.toString();
-    const targetUrl = query ? `/catalogo?${query}` : '/catalogo';
+    const catalogBase = getStoreCatalogUrl(currentTenant?.slug);
+    const targetUrl = query ? `${catalogBase}?${query}` : catalogBase;
     router.push(targetUrl);
   };
 
@@ -325,14 +336,14 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 2. LOGO NO DESKTOP: Posicionada um pouco mais para a direita (entre a opção Menu e as opções do centro) */}
             <div className="hidden lg:flex items-center shrink-0 ml-4 xl:ml-8 2xl:ml-12 mr-6 xl:mr-10 2xl:mr-14 z-20">
               <Link
-                href="/"
+                href={getStoreHomeUrl(currentTenant?.slug)}
                 className="flex items-center cursor-pointer transition-transform duration-300 hover:scale-105 shrink-0"
-                title="Leidy Boutique - Início"
+                title={`${currentTenant?.nome || 'Início'} - Início`}
               >
                 <div className="relative w-36 sm:w-44 lg:w-48 xl:w-52 h-10 sm:h-12 lg:h-14 flex items-center shrink-0">
                   <Image
                     src="/images/Logo sem fundo.png"
-                    alt="Leidy Boutique"
+                    alt={currentTenant?.nome || 'Leidy Boutique'}
                     fill
                     className="object-contain object-left"
                     priority
@@ -343,11 +354,15 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* 3. LOGO NO MOBILE: Exatamente no meio da tela (Regra 3) */}
             <div className="lg:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-auto">
-              <Link href="/" className="flex items-center justify-center" title="Leidy Boutique">
+              <Link
+                href={getStoreHomeUrl(currentTenant?.slug)}
+                className="flex items-center justify-center"
+                title={currentTenant?.nome || 'Leidy Boutique'}
+              >
                 <div className="relative w-28 sm:w-36 h-8 sm:h-10 flex items-center justify-center">
                   <Image
                     src="/images/Logo sem fundo.png"
-                    alt="Leidy Boutique"
+                    alt={currentTenant?.nome || 'Leidy Boutique'}
                     fill
                     className="object-contain"
                     priority
@@ -557,7 +572,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Minha Conta & Rastreamento (Exibido em Mobile e Desktop) */}
               <Link
-                href="/minha-conta"
+                href={getStoreCustomerUrl(currentTenant?.slug)}
                 className={`relative p-1.5 sm:p-2 transition-colors cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
@@ -571,7 +586,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Favoritos (Exibido em Mobile e Desktop) */}
               <Link
-                href="/favoritos"
+                href={getStoreWishlistUrl(currentTenant?.slug)}
                 className={`relative p-1.5 sm:p-2 transition-colors cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
@@ -764,7 +779,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Rodapé da Gaveta: Meus Pedidos, Meus Favoritos, WhatsApp VIP e Modo Escuro */}
               <div className="p-4 sm:p-5 border-t border-[#C5A059]/20 bg-white dark:bg-[#1E1C1A] space-y-2.5 shrink-0">
                 <Link
-                  href="/minha-conta"
+                  href={getStoreCustomerUrl(currentTenant?.slug)}
                   onClick={closeSideDrawerContext}
                   className="flex items-center justify-between text-xs sm:text-sm font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] py-1"
                 >
@@ -778,7 +793,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </Link>
 
                 <Link
-                  href="/favoritos"
+                  href={getStoreWishlistUrl(currentTenant?.slug)}
                   onClick={closeSideDrawerContext}
                   className="flex items-center justify-between text-xs sm:text-sm font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] py-1"
                 >
@@ -792,8 +807,8 @@ export const Header: React.FC<HeaderProps> = ({
                 </Link>
 
                 <a
-                  href={`https://wa.me/${STORE_INFO.whatsapp}?text=${encodeURIComponent(
-                    'Olá Leidy! Gostaria de um atendimento personalizado na boutique.'
+                  href={`https://wa.me/${currentTenant?.whatsapp || STORE_INFO.whatsapp}?text=${encodeURIComponent(
+                    `Olá! Gostaria de um atendimento personalizado na ${currentTenant?.nome || 'boutique'}.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

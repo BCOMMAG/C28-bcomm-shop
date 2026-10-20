@@ -287,7 +287,7 @@ export default function SuperAdminLojasPage() {
                       </Link>
 
                       <Link
-                        href={`/?loja=${store.slug}`}
+                        href={store.dominio_proprio ? `https://${store.dominio_proprio}` : `/${store.slug}/`}
                         target="_blank"
                         className="p-2 text-slate-400 hover:text-[#38BDF8] transition-colors"
                         title="Ver vitrine pública"

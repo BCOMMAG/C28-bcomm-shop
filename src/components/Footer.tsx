@@ -5,8 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, MessageCircle, ShieldCheck, Play, Lock } from 'lucide-react';
 import { STORE_INFO } from '@/data/products';
+import { useStore } from '@/context/StoreContext';
+import { getStoreCatalogUrl } from '@/lib/routes';
 
 export const Footer: React.FC = () => {
+  const { currentTenant } = useStore();
+  const storeName = currentTenant?.nome || 'Leidy Boutique';
+  const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
+  const catalogUrl = getStoreCatalogUrl(currentTenant?.slug);
   return (
     <footer className="bg-[#1A1918]/90 backdrop-blur-md text-[#FAF8F5] border-t border-[#C5A059]/30 pt-16 pb-24 sm:pb-16 relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -30,16 +36,16 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <span className="font-serif-luxury text-lg tracking-wider block font-bold text-[#FAF8F5]">
-                  Leidy Boutique
+                  {storeName}
                 </span>
                 <span className="text-[10px] tracking-widest text-[#DFBE76] uppercase">
-                  Moda Feminina de Luxo
+                  {currentTenant?.configuracoes_visuais?.tagline || 'Moda Feminina de Luxo'}
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-[#A8A29E] leading-relaxed">
-              Curadoria refinada de peças femininas que unem caimento impecável, tecidos nobres e a certeza do provador em vídeo antes de você escolher.
+              Curadoria refinada de peças femininas que unem caimento impecável, tecidos nobres e atendimento exclusivo para você.
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -55,7 +61,7 @@ export const Footer: React.FC = () => {
                 </svg>
               </a>
               <a
-                href={`https://wa.me/${STORE_INFO.whatsapp}`}
+                href={`https://wa.me/${storeWhatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-8 h-8 rounded-none bg-white/10 hover:bg-[#25D366] flex items-center justify-center transition-colors text-white"
@@ -124,7 +130,7 @@ export const Footer: React.FC = () => {
         {/* Rodapé Inferior com Copyright, Área do Lojista e Crédito BCOMM */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[#78716C] gap-4">
           <div className="flex items-center gap-4">
-            <p>© {new Date().getFullYear()} Leidy Boutique. Todos os direitos reservados.</p>
+            <p>© {new Date().getFullYear()} {storeName}. Todos os direitos reservados.</p>
             <span className="hidden sm:inline text-white/10">•</span>
             <Link
               href="/admin"

@@ -539,7 +539,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Botão Abrir Vitrine */}
             <Link
-              href={`/?loja=${lojaSlug}`}
+              href={currentTenant?.dominio_proprio ? `https://${currentTenant.dominio_proprio}` : `/${lojaSlug}/`}
               target="_blank"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all shadow-2xs shrink-0"
               title="Abre a vitrine pública da loja em nova aba"

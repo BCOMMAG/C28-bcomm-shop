@@ -8,6 +8,7 @@ import { ViaCepResponse } from '@/utils/shipping';
 import { Loja } from '@/types/database';
 import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
+import { normalizeTenantSlug } from '@/lib/routes';
 
 interface StoreContextType {
   currentTenant: Loja;
@@ -110,7 +111,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { text, active };
   }, [currentTenant]);
 
-  // Carrega produtos dinâmicos e hero banner do Supabase na inicialização com suporte a ?loja=slug
+  // Carrega produtos dinâmicos e hero banner do Supabase na inicialização com suporte a rotas limpas /:slug/ e ?loja=slug
   const refreshProducts = async () => {
     setIsLoadingProducts(true);
     try {
@@ -118,8 +119,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         const slugParam = urlParams.get('loja');
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        const firstSegment = pathSegments[0];
+        const knownRoutes = ['admin', 'super-admin', 'catalogo', 'checkout', 'favoritos', 'minha-conta', 'cliente'];
+
         if (slugParam) {
           tenant = await getTenantBySlug(slugParam);
+          // Transição suave para a rota limpa sem query param feio
+          try {
+            const canonicalSlug = normalizeTenantSlug(slugParam);
+            const cleanPath = window.location.pathname === '/' 
+              ? `/${canonicalSlug}/` 
+              : window.location.pathname;
+            window.history.replaceState({}, '', cleanPath);
+          } catch (e) {
+            console.warn('Erro ao atualizar URL limpa:', e);
+          }
+        } else if (firstSegment && !knownRoutes.includes(firstSegment)) {
+          tenant = await getTenantBySlug(firstSegment);
         } else {
           tenant = await getTenantByHost(window.location.hostname);
         }
@@ -159,7 +176,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsGift(false);
     setGiftMessage('');
     try {
-      const tenantKey = currentTenant.slug || 'default';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
       localStorage.removeItem(`bcomm_cart_${tenantKey}`);
       localStorage.removeItem(`bcomm_gift_${tenantKey}`);
       localStorage.removeItem(`bcomm_gift_msg_${tenantKey}`);
@@ -172,7 +189,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = currentTenant.slug || 'default';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
       const savedWishlist = localStorage.getItem(`bcomm_wishlist_${tenantKey}`);
       setWishlistIds(savedWishlist ? JSON.parse(savedWishlist) : []);
 
@@ -232,7 +249,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = currentTenant.slug || 'default';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
       localStorage.setItem(`bcomm_wishlist_${tenantKey}`, JSON.stringify(wishlistIds));
     } catch (e) {
       console.error(e);
@@ -243,7 +260,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = currentTenant.slug || 'default';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
       localStorage.setItem(`bcomm_cart_${tenantKey}`, JSON.stringify(cartItems));
       localStorage.setItem(`bcomm_gift_${tenantKey}`, JSON.stringify(isGift));
       localStorage.setItem(`bcomm_gift_msg_${tenantKey}`, giftMessage);

@@ -43,6 +43,7 @@ import {
   ShippingOption,
   ViaCepResponse
 } from '@/utils/shipping';
+import { normalizeTenantSlug } from '@/lib/routes';
 
 export type CheckoutStep = 'sacola' | 'endereco' | 'dados' | 'pagamento';
 
@@ -152,19 +153,39 @@ export default function CheckoutPage() {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
   };
 
-  // Carrega dados salvos do cliente
+  // Carrega dados salvos do cliente (Sincronização Bidirecional com a Central VIP da Cliente)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const savedPhone = localStorage.getItem('leidy_customer_phone');
-        const savedName = localStorage.getItem('leidy_customer_name');
+        const tenantKey = normalizeTenantSlug(currentTenant?.slug);
+        const savedPhone =
+          localStorage.getItem(`bcomm_customer_${tenantKey}_phone`) ||
+          localStorage.getItem('leidy_customer_phone');
+        const savedName =
+          localStorage.getItem(`bcomm_customer_${tenantKey}_name`) ||
+          localStorage.getItem('leidy_customer_name');
+        const savedEmail = localStorage.getItem(`bcomm_customer_${tenantKey}_email`);
+        const savedAddrRaw = localStorage.getItem(`bcomm_customer_${tenantKey}_address`);
+
         if (savedPhone && !customerPhone) setCustomerPhone(formatPhone(savedPhone));
         if (savedName && !customerName) setCustomerName(savedName);
+        if (savedEmail && !customerEmail) setCustomerEmail(savedEmail);
+
+        if (savedAddrRaw) {
+          const addr = JSON.parse(savedAddrRaw);
+          if (addr.cep && !cepInput) setCepInput(formatCep(addr.cep));
+          if (addr.logradouro && !street) setStreet(addr.logradouro);
+          if (addr.numero && !number) setNumber(addr.numero);
+          if (addr.complemento && !complement) setComplement(addr.complemento);
+          if (addr.bairro && !neighborhood) setNeighborhood(addr.bairro);
+          if (addr.cidade && !city) setCity(addr.cidade);
+          if (addr.uf && !uf) setUf(addr.uf);
+        }
       } catch (e) {
-        console.warn('Erro ao carregar dados salvos do cliente:', e);
+        console.warn('Erro ao carregar dados salvos do cliente no checkout:', e);
       }
     }
-  }, []);
+  }, [currentTenant?.slug]);
 
   // Sincroniza dados salvos de CEP/Endereço caso venham do StoreContext
   useEffect(() => {
@@ -219,17 +240,28 @@ export default function CheckoutPage() {
   const currentGiftCost = isGift ? giftFee : 0;
   const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount + currentGiftCost);
 
-  // Captura de Leads Local e no Supabase (Nuvem)
+  // Captura de Leads Local e no Supabase (Nuvem) com Sincronização da Loja
   const captureLead = (phoneToSave: string, clientName: string, status: 'iniciado' | 'finalizado' = 'iniciado') => {
     if (typeof window === 'undefined') return;
     try {
       const cleanPhone = (phoneToSave || customerPhone).replace(/\D/g, '');
-      if (cleanPhone) localStorage.setItem('leidy_customer_phone', cleanPhone);
-      if (clientName) localStorage.setItem('leidy_customer_name', clientName);
+      const tenantKey = normalizeTenantSlug(currentTenant?.slug);
+      if (cleanPhone) {
+        localStorage.setItem(`bcomm_customer_${tenantKey}_phone`, cleanPhone);
+        localStorage.setItem('leidy_customer_phone', cleanPhone);
+      }
+      if (clientName) {
+        localStorage.setItem(`bcomm_customer_${tenantKey}_name`, clientName);
+        localStorage.setItem('leidy_customer_name', clientName);
+      }
+      if (customerEmail) {
+        localStorage.setItem(`bcomm_customer_${tenantKey}_email`, customerEmail);
+      }
 
       if (cleanPhone.length >= 10) {
         // Envia assincronamente para o Supabase (tabela clientes_loja com RLS)
         saveCustomerLead({
+          lojaId: currentTenant?.id,
           nome: clientName || customerName,
           telefone: cleanPhone,
           email: customerEmail || undefined,

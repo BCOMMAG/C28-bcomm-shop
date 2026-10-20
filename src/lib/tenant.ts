@@ -166,10 +166,10 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
     console.warn(`Erro ao resolver tenant para o slug ${cleanSlug}:`, error);
   }
 
-  if (cleanSlug === 'leidy-boutique') {
+  if (cleanSlug === 'leidy-boutique' || cleanSlug === 'leidyboutique') {
     return DEFAULT_LEIDY_TENANT;
   }
-  if (cleanSlug === 'aura-privee') {
+  if (cleanSlug === 'aura-privee' || cleanSlug === 'auraprivee') {
     return DEFAULT_AURA_PRIVEE_TENANT;
   }
 

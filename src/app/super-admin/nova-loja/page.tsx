@@ -113,14 +113,20 @@ export default function SuperAdminNovaLojaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg space-y-2 text-xs">
               <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[10px]">
-                Vitrine Pública da Loja
+                Links Canônicos da Loja (URLs Limpas)
               </span>
-              <p className="font-mono text-white text-sm">
-                Slug: /{createdLoja.slug}
+              <p className="font-mono text-white text-xs">
+                Vitrine: <a href={`/${createdLoja.slug}/`} target="_blank" className="text-[#38BDF8] hover:underline">/{createdLoja.slug}/</a>
+              </p>
+              <p className="font-mono text-white text-xs">
+                Central da Cliente: <a href={`/${createdLoja.slug}/cliente/`} target="_blank" className="text-[#38BDF8] hover:underline">/{createdLoja.slug}/cliente/</a>
+              </p>
+              <p className="font-mono text-white text-xs">
+                Favoritos: <a href={`/${createdLoja.slug}/cliente/favoritos/`} target="_blank" className="text-[#38BDF8] hover:underline">/{createdLoja.slug}/cliente/favoritos/</a>
               </p>
               {createdLoja.dominio_proprio && (
-                <p className="font-mono text-[#38BDF8] text-xs">
-                  Domínio: {createdLoja.dominio_proprio}
+                <p className="font-mono text-emerald-400 text-xs">
+                  Domínio Próprio: {createdLoja.dominio_proprio}
                 </p>
               )}
             </div>

@@ -36,18 +36,20 @@
   - Reconhecimento automático pelo número de WhatsApp.
   - Área da cliente (`/minha-conta`) com histórico de pedidos, status em tempo real e rastreamento Correios.
 
-- [x] **FASE 5 (MARCO ATUAL): Blindagem Operacional, Ferramentas de Expedição & Promoções**
-  - [x] **Expedição em 1 Clique:** Gerador e impressor de Declaração de Conteúdo Oficial dos Correios e Romaneio de Separação (Packing List) com checklist de embalagem de luxo.
-  - [x] **Central de Snippets WhatsApp:** 4 templates prontos de 1 clique (Atendimento Geral, Chave Pix & Reserva, Código de Rastreio e Pós-Venda Carinhoso).
-  - [x] **Recuperação de Carrinhos Abandonados:** Segmentação de leads com 0 compras e botão direto de WhatsApp com mensagem amigável.
-  - [x] **Central de Cupons & Promoções (`/admin/cupons/`):** Gestão de descontos fixos e percentuais, limites de uso, pedido mínimo e validação dinâmica no checkout da vitrine.
-  - [x] **Vitrine & Banners Hero Sincronizados:** Suporte completo no admin para vídeos/fotos 16:9 (Desktop) e 9:16 (Celular) com upload R2, textos e CTA dinâmicos, e Barra Superior de Avisos (Top Announcement Bar) sincronizada ao vivo com a vitrine.
-  - [x] **CRM & Dossiê VIP da Cliente (`/admin/clientes/`):** Cálculo automático de LTV, segmentação por tags (VIP Gold, Recorrente, Compradora, Lead), modal de dossiê completo com histórico de itens comprados, preferências de tamanho habitual e gravação de anotações internas privadas no Supabase.
-  - [x] **Configurações Gerais, Chave Pix & Frete Grátis (`/admin/configuracoes/`):** Gestão centralizada dos dados de atendimento da boutique (WhatsApp e E-mail), Chave PIX oficial e dados bancários sincronizados dinamicamente com o checkout e com os snippets de mensagens, regra de Frete Grátis em reais calculada no carrinho/checkout ao vivo, e seletor com 6 paletas de cores gravado no Supabase.
-  - [x] **Trava Dinâmica de Estoque na Vitrine (Provador & PDP):** Bloqueio instantâneo na vitrine de tamanhos com estoque zerado na grade de cor/tamanho, botão riscado e desabilitado com selo "Esgotado", limitação do seletor de quantidade ao estoque real da variação e badge "Esgotado" nos cards quando o produto zera totalmente no estoque físico.
-  - [x] **Gestão Ágil de Grade & Clonagem de Peças em 1 Clique (`/admin/produtos/`):**
-    - Ajuste imediato de estoque por variação de cor e tamanho com botões `+` e `-` na grade expandida, com sincronização automática do estoque consolidado do produto pai (`produtos.estoque_total`).
-    - Botão "Duplicar Peça" (Item 1.3.3 do catálogo) que clona a peça, fotos, descrições, tecidos e grade completa de variações gerando um slug exclusivo e preservando dados originais.
+- [x] **FASE 5: Blindagem Operacional, Ferramentas de Expedição & Promoções**
+  - Expedição em 1 clique (Declaração de Conteúdo Correios e Romaneio).
+  - Central de Snippets WhatsApp e recuperação de carrinhos abandonados.
+  - Central de Cupons & Promoções (`/admin/cupons/`).
+  - CRM & Dossiê VIP da Cliente (`/admin/clientes/`).
+  - Trava Dinâmica de Estoque e Duplicação de Peças.
+
+- [x] **FASE 6 (MARCO ATUAL): Roteamento Canônico White-Label, Central VIP da Cliente e Central de Favoritos Avançada (Outubro/2026)**
+  - [x] **Roteamento Canônico Multi-Tenant:** Padrão oficial de rotas limpas `/:loja/`, `/:loja/cliente/`, `/:loja/cliente/favoritos/`, `/:loja/catalogo/` e `/:loja/checkout/`, eliminando query strings provisórias (`?loja=...`) e mantendo compatibilidade com domínios próprios (`dominio.com.br`).
+  - [x] **Central VIP da Cliente (`CustomerVIPDashboard`):** 5 abas completas (Pedidos com timeline visual de 5 etapas, Dados Cadastrais com Aniversário para mimos, Endereço ViaCEP com autofill bidirecional no checkout, Cupons Ativos com cópia em 1 clique e Concierge WhatsApp). Botão "Comprar Novamente" para recompra imediata.
+  - [x] **Central de Desejos & Favoritos (`WishlistManager`):** Somatório de subtotal e parcelamento em tempo real, mini seletor inline de tamanho e cor nos cards, integração com `AviseMeModal` para peças esgotadas, link de presentes compartilhável (`?itens=...`) e vitrine de descoberta para lista vazia.
+  - [x] **Navegação Global Blindada:** Logo do Header (desktop e mobile), menus dropdown, gaveta lateral (drawer), breadcrumbs e rodapé atualizados para conduzir à Home da própria boutique, garantindo que o cliente nunca caia no portal BCOMM por engano.
+  - [x] **Padronização Universal para Novas Lojas:** Atualização dos links no Super Admin (`/super-admin/nova-loja` e `/super-admin/lojas`) e Admin (`/admin`), com SPA Fallback inteligente em Cloudflare Pages (`not-found.tsx`) para novas lojas criadas no banco.
+  - [x] **Sincronização da Documentação Técnica:** Atualização canônica de `docs/ARCHITECTURE.md` e `docs/STATE.md`.
     - Filtro rápido de estoque e status: "Todas as Peças", "⚠️ Reposição Urgente (≤ 2 un)", "⛔ Esgotados", "✅ Ativas na Vitrine" e "⏸️ Pausadas".
   - [x] **Busca Universal Spotlight (`Ctrl + K`) & Notificações Operacionais (Item F19 do Catálogo):**
     - Modal de Spotlight acessível via atalho global de teclado (`Ctrl + K` / `Cmd + K`) e pelo campo de busca da barra superior (desktop e mobile).

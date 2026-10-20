@@ -330,7 +330,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                   {
                     title: 'Abrir Vitrine Pública',
                     desc: 'Visualizar loja aberta ao vivo',
-                    href: `/?loja=${lojaSlug}`,
+                    href: lojaSlug ? `/${lojaSlug}/` : '/',
                     external: true,
                     icon: Store,
                     color: 'text-amber-800 bg-amber-100/60 border-amber-300'

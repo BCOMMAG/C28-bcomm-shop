@@ -86,4 +86,35 @@ O `middleware.ts` do Next.js intercepta todas as requisições:
 4. Renderiza a vitrine correspondente. Se o domínio não existir, exibe página amigável de "Loja não encontrada".
 
 ---
+
+## 5. 🌐 PADRONIZAÇÃO CANÔNICA DE URLS & ROTEAMENTO WHITE-LABEL (OUTUBRO/2026)
+
+Para garantir máxima credibilidade comercial e uma experiência de compra sofisticada, a plataforma adota o **Padrão Canônico de URLs Limpas**:
+
+1. **Estrutura de Rotas Limpas em Demonstrações & Subdomínios:**
+   - **Vitrine:** `/:loja/` (ex: `/leidyboutique/`, `/auraprivee/`)
+   - **Central VIP da Cliente:** `/:loja/cliente/`
+   - **Favoritos & Lista de Desejos:** `/:loja/cliente/favoritos/`
+   - **Catálogo de Peças:** `/:loja/catalogo/`
+   - **Checkout Seguro:** `/:loja/checkout/`
+   - Elimina completamente parâmetros técnicos provisórios (`?loja=...`).
+
+2. **Estrutura de Rotas em Domínios Próprios (`dominio.com.br`):**
+   - **Vitrine:** `/`
+   - **Central VIP da Cliente:** `/cliente/`
+   - **Favoritos & Lista de Desejos:** `/cliente/favoritos/`
+   - **Catálogo de Peças:** `/catalogo/`
+   - **Checkout Seguro:** `/checkout/`
+
+3. **Herança Universal em Novas Lojas (Single Codebase):**
+   - Qualquer nova loja provisionada via Super Admin (`/super-admin/nova-loja`) herda instantaneamente a Central VIP de 5 abas, o gerenciador de desejos com seletor inline, o cálculo de subtotal e a navegação blindada no Header e Footer.
+
+4. **Isolamento de Storage por Loja & Sincronização Bidirecional:**
+   - O `localStorage` da cliente utiliza chaves unificadas com o slug canônico (`bcomm_customer_${slug}_*`, `bcomm_cart_${slug}`, `bcomm_wishlist_${slug}`).
+   - Endereço e perfil cadastrados na Central da Cliente sincronizam em 1 clique com os campos do Checkout (`/checkout`), eliminando redigitação.
+
+5. **Fallback SPA Universal em Cloudflare Pages:**
+   - O componente `not-found.tsx` atua como roteador cliente para novas lojas criadas em tempo de execução no banco, mantendo a URL limpa intacta na barra de navegação sem flashes nem redirecionamentos.
+
+---
 *Este documento é a referência canônica para qualquer decisão de código ou infraestrutura deste projeto.*
