@@ -37,6 +37,7 @@ export interface AdminProductItem {
   foto_principal?: string | null;
   categoria_id?: string | null;
   categoria_nome?: string;
+  subcategoria?: string | null;
   midias?: Array<{
     id: string;
     url: string;
@@ -62,6 +63,7 @@ export interface UpdateProductInput {
   nome?: string;
   slug?: string;
   categoria_id?: string | null;
+  subcategoria?: string | null;
   descricao?: string | null;
   preco?: number;
   preco_promocional?: number | null;
@@ -100,6 +102,7 @@ export interface CreateProductInput {
   nome: string;
   slug?: string;
   categoria_id?: string | null;
+  subcategoria?: string | null;
   nova_categoria_nome?: string;
   descricao?: string;
   preco: number;
@@ -546,6 +549,49 @@ export async function updateAdminOrderTracking(
   }
 }
 
+export interface AdminCategoryFull {
+  id: string;
+  loja_id: string;
+  nome: string;
+  slug: string;
+  display_order: number;
+  subcategorias: string[];
+  total_produtos: number;
+}
+
+export interface NavMenuSubOption {
+  id: string;
+  label: string;
+  type: 'status' | 'category' | 'subcategory' | 'link' | 'fabric';
+  value: string;
+  extraCategory?: string;
+  extraFabric?: string;
+  customUrl?: string;
+}
+
+export interface NavMenuItem {
+  id: string;
+  label: string;
+  type: 'status' | 'category' | 'subcategory' | 'link' | 'fabric';
+  value: string;
+  extraCategory?: string;
+  extraFabric?: string;
+  customUrl?: string;
+  isSpecial?: boolean;
+  badge?: {
+    text: string;
+    colorBg?: string;
+    colorText?: string;
+  };
+  subOptions?: NavMenuSubOption[];
+}
+
+export interface StoreNavMenuConfig {
+  linha_1: NavMenuItem[];
+  linha_2: NavMenuItem[];
+  gaveta_mobile: NavMenuItem[];
+}
+
 /**
  * Consulta a lista completa de categorias da loja.
  */
@@ -563,6 +609,468 @@ export async function getAdminCategories(
     return data || [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Consulta categorias com subcategorias e contagem de produtos vinculados.
+ */
+export async function getAdminCategoriesFull(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<AdminCategoryFull[]> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const [catsRes, prodsRes, lojaRes] = await Promise.all([
+      supabase
+        .from('categorias')
+        .select('*')
+        .eq('loja_id', lojaId)
+        .order('display_order', { ascending: true }),
+      supabase
+        .from('produtos')
+        .select('categoria_id, subcategoria')
+        .eq('loja_id', lojaId),
+      supabase
+        .from('lojas')
+        .select('configuracoes_visuais')
+        .eq('id', lojaId)
+        .single()
+    ]);
+
+    const rawCats = catsRes.data || [];
+    const prods = prodsRes.data || [];
+    const visuais = (lojaRes.data as any)?.configuracoes_visuais || {};
+    const subcatsMap: Record<string, string[]> = visuais.subcategorias_por_categoria || {};
+
+    const prodsCountByCat: Record<string, number> = {};
+    prods.forEach((p) => {
+      if (p.categoria_id) {
+        prodsCountByCat[p.categoria_id] = (prodsCountByCat[p.categoria_id] || 0) + 1;
+      }
+    });
+
+    return rawCats.map((c) => ({
+      id: c.id,
+      loja_id: c.loja_id,
+      nome: c.nome,
+      slug: c.slug,
+      display_order: Number(c.display_order ?? 0),
+      subcategorias: Array.isArray(subcatsMap[c.id]) ? subcatsMap[c.id] : [],
+      total_produtos: prodsCountByCat[c.id] || 0
+    }));
+  } catch (err) {
+    console.error('❌ [Admin] Falha ao carregar categorias completas:', err);
+    return [];
+  }
+}
+
+/**
+ * Cria ou atualiza uma categoria e suas subcategorias vinculadas.
+ */
+export async function saveAdminCategory(
+  lojaId: string = DEFAULT_TENANT_ID,
+  payload: {
+    id?: string;
+    nome: string;
+    slug?: string;
+    display_order?: number;
+    subcategorias?: string[];
+  }
+): Promise<{ success: boolean; data?: AdminCategoryFull; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const nomeLimpo = payload.nome.trim();
+    if (!nomeLimpo) {
+      return { success: false, error: 'O nome da categoria é obrigatório.' };
+    }
+
+    const slug = (
+      payload.slug?.trim() ||
+      nomeLimpo
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '')
+    );
+
+    let savedId = payload.id;
+
+    if (savedId) {
+      const { error: upErr } = await supabase
+        .from('categorias')
+        .update({
+          nome: nomeLimpo,
+          slug,
+          ...(payload.display_order !== undefined ? { display_order: payload.display_order } : {})
+        })
+        .eq('id', savedId)
+        .eq('loja_id', lojaId);
+
+      if (upErr) throw upErr;
+    } else {
+      let order = payload.display_order;
+      if (order === undefined) {
+        const { data: lastCats } = await supabase
+          .from('categorias')
+          .select('display_order')
+          .eq('loja_id', lojaId)
+          .order('display_order', { ascending: false })
+          .limit(1);
+        order = ((lastCats?.[0]?.display_order ?? 0) as number) + 10;
+      }
+
+      const { data: insData, error: insErr } = await supabase
+        .from('categorias')
+        .insert({
+          loja_id: lojaId,
+          nome: nomeLimpo,
+          slug,
+          display_order: order
+        })
+        .select()
+        .single();
+
+      if (insErr) throw insErr;
+      savedId = insData.id;
+    }
+
+    // Atualiza o mapa de subcategorias no JSONB da loja
+    if (savedId && payload.subcategorias !== undefined) {
+      const { data: loja } = await supabase
+        .from('lojas')
+        .select('configuracoes_visuais')
+        .eq('id', lojaId)
+        .single();
+
+      const visuais = (loja as any)?.configuracoes_visuais || {};
+      const currentSubMap = { ...(visuais.subcategorias_por_categoria || {}) };
+      currentSubMap[savedId] = Array.from(new Set(payload.subcategorias.map((s) => s.trim()).filter(Boolean)));
+
+      await supabase
+        .from('lojas')
+        .update({
+          configuracoes_visuais: {
+            ...visuais,
+            subcategorias_por_categoria: currentSubMap
+          }
+        })
+        .eq('id', lojaId);
+    }
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:categories_updated'));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return {
+      success: true,
+      data: {
+        id: savedId!,
+        loja_id: lojaId,
+        nome: nomeLimpo,
+        slug,
+        display_order: payload.display_order ?? 0,
+        subcategorias: payload.subcategorias || [],
+        total_produtos: 0
+      }
+    };
+  } catch (err: any) {
+    console.error('❌ [Admin] Falha ao salvar categoria:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar categoria.' };
+  }
+}
+
+/**
+ * Remove uma categoria da loja e limpa suas subcategorias.
+ */
+export async function deleteAdminCategory(
+  catId: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { error: delErr } = await supabase
+      .from('categorias')
+      .delete()
+      .eq('id', catId)
+      .eq('loja_id', lojaId);
+
+    if (delErr) throw delErr;
+
+    // Remove do JSONB de subcategorias
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    if (visuais.subcategorias_por_categoria && visuais.subcategorias_por_categoria[catId]) {
+      const updatedMap = { ...visuais.subcategorias_por_categoria };
+      delete updatedMap[catId];
+      await supabase
+        .from('lojas')
+        .update({
+          configuracoes_visuais: {
+            ...visuais,
+            subcategorias_por_categoria: updatedMap
+          }
+        })
+        .eq('id', lojaId);
+    }
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:categories_updated'));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Admin] Falha ao excluir categoria:', err);
+    return { success: false, error: err?.message || 'Falha ao excluir categoria.' };
+  }
+}
+
+/**
+ * Reordena categorias no banco de dados.
+ */
+export async function reorderAdminCategories(
+  lojaId: string = DEFAULT_TENANT_ID,
+  orderedIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    await Promise.all(
+      orderedIds.map((id, index) =>
+        supabase
+          .from('categorias')
+          .update({ display_order: (index + 1) * 10 })
+          .eq('id', id)
+          .eq('loja_id', lojaId)
+      )
+    );
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:categories_updated'));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Admin] Falha ao reordenar categorias:', err);
+    return { success: false, error: err?.message || 'Falha ao reordenar categorias.' };
+  }
+}
+
+/**
+ * Estrutura padrão de fábrica dos Menus da Boutique.
+ */
+export function getDefaultStoreNavMenuConfig(): StoreNavMenuConfig {
+  return {
+    linha_1: [
+      {
+        id: 'nav-l1-1',
+        label: 'Lançamento 2026',
+        type: 'status',
+        value: 'Lançamento',
+        badge: { text: 'NOVO', colorBg: 'bg-[#C5A059]', colorText: 'text-white' },
+        subOptions: [
+          { id: 'sub-l1-1-1', label: 'Ver Todos os Lançamentos', type: 'status', value: 'Lançamento' },
+          { id: 'sub-l1-1-2', label: 'Calças', type: 'status', value: 'Lançamento', extraCategory: 'Calças' },
+          { id: 'sub-l1-1-3', label: 'Vestidos & Macacões', type: 'status', value: 'Lançamento', extraCategory: 'Vestidos & Macacões' },
+          { id: 'sub-l1-1-4', label: 'Casacos & Jaquetas', type: 'status', value: 'Lançamento', extraCategory: 'Casacos & Jaquetas' },
+          { id: 'sub-l1-1-5', label: 'Blazers & Alfaiataria', type: 'status', value: 'Lançamento', extraCategory: 'Blazers & Alfaiataria' },
+          { id: 'sub-l1-1-6', label: 'Conjuntos Exclusivos', type: 'status', value: 'Lançamento', extraCategory: 'Conjuntos Exclusivos' }
+        ]
+      },
+      {
+        id: 'nav-l1-2',
+        label: 'Acessórios',
+        type: 'category',
+        value: 'Acessórios',
+        subOptions: [
+          { id: 'sub-l1-2-1', label: 'Ver Todos os Acessórios', type: 'category', value: 'Acessórios' },
+          { id: 'sub-l1-2-2', label: 'Bolsas & Carteiras', type: 'category', value: 'Bolsas & Carteiras' },
+          { id: 'sub-l1-2-3', label: 'Cintos', type: 'category', value: 'Cintos' },
+          { id: 'sub-l1-2-4', label: 'Colares & Joias', type: 'category', value: 'Colares & Joias' },
+          { id: 'sub-l1-2-5', label: 'Lenços', type: 'category', value: 'Lenços' },
+          { id: 'sub-l1-2-6', label: 'Óculos de Sol', type: 'category', value: 'Óculos de Sol' }
+        ]
+      },
+      {
+        id: 'nav-l1-3',
+        label: 'Tricots',
+        type: 'category',
+        value: 'Tricots',
+        subOptions: [
+          { id: 'sub-l1-3-1', label: 'Ver Todos os Tricots', type: 'category', value: 'Tricots' },
+          { id: 'sub-l1-3-2', label: 'Casacos em Tricot Biamar', type: 'category', value: 'Casacos & Jaquetas', extraFabric: 'Tricot Biamar' },
+          { id: 'sub-l1-3-3', label: 'Blusas em Tricot Especial', type: 'category', value: 'Blusas & Tops', extraFabric: 'Tricot Biamar' }
+        ]
+      },
+      {
+        id: 'nav-l1-4',
+        label: 'Linho Nobre',
+        type: 'fabric',
+        value: 'Linho Puro',
+        subOptions: [
+          { id: 'sub-l1-4-1', label: 'Ver Todas as Peças em Linho', type: 'fabric', value: 'Linho Puro' },
+          { id: 'sub-l1-4-2', label: 'Conjuntos em Linho', type: 'category', value: 'Conjuntos Exclusivos', extraFabric: 'Linho Puro' },
+          { id: 'sub-l1-4-3', label: 'Alfaiataria em Linho', type: 'category', value: 'Blazers & Alfaiataria', extraFabric: 'Linho Puro' }
+        ]
+      },
+      { id: 'nav-l1-5', label: 'Blusas', type: 'category', value: 'Blusas' },
+      { id: 'nav-l1-6', label: 'Calças', type: 'category', value: 'Calças' }
+    ],
+    linha_2: [
+      { id: 'nav-l2-1', label: 'Alfaiataria', type: 'category', value: 'Alfaiataria' },
+      { id: 'nav-l2-2', label: 'Vestidos', type: 'category', value: 'Vestidos' },
+      { id: 'nav-l2-3', label: 'Jaquetas E Casacos', type: 'category', value: 'Jaquetas E Casacos' },
+      { id: 'nav-l2-4', label: 'Shorts E Saias', type: 'category', value: 'Shorts E Saias' },
+      { id: 'nav-l2-5', label: 'Vestidos E Macacões', type: 'category', value: 'Vestidos E Macacões' },
+      { id: 'nav-l2-6', label: 'BAZAR', type: 'status', value: 'OUTLET', isSpecial: true, badge: { text: 'OFF', colorBg: 'bg-rose-500', colorText: 'text-white' } },
+      { id: 'nav-l2-7', label: 'Últimas Peças', type: 'status', value: 'Últimas Peças', isSpecial: true }
+    ],
+    gaveta_mobile: [
+      {
+        id: 'drw-1',
+        label: 'Lançamento 2026',
+        type: 'status',
+        value: 'Lançamento',
+        badge: { text: 'NOVO', colorBg: 'bg-[#C5A059]', colorText: 'text-white' },
+        subOptions: [
+          { id: 'sub-drw-1-1', label: 'Ver Todos os Lançamentos', type: 'status', value: 'Lançamento' },
+          { id: 'sub-drw-1-2', label: 'Calças', type: 'status', value: 'Lançamento', extraCategory: 'Calças' },
+          { id: 'sub-drw-1-3', label: 'Vestidos & Macacões', type: 'status', value: 'Lançamento', extraCategory: 'Vestidos & Macacões' },
+          { id: 'sub-drw-1-4', label: 'Casacos & Jaquetas', type: 'status', value: 'Lançamento', extraCategory: 'Casacos & Jaquetas' },
+          { id: 'sub-drw-1-5', label: 'Blazers & Alfaiataria', type: 'status', value: 'Lançamento', extraCategory: 'Blazers & Alfaiataria' },
+          { id: 'sub-drw-1-6', label: 'Conjuntos Exclusivos', type: 'status', value: 'Lançamento', extraCategory: 'Conjuntos Exclusivos' }
+        ]
+      },
+      {
+        id: 'drw-2',
+        label: 'Acessórios',
+        type: 'category',
+        value: 'Acessórios',
+        subOptions: [
+          { id: 'sub-drw-2-1', label: 'Ver Todos os Acessórios', type: 'category', value: 'Acessórios' },
+          { id: 'sub-drw-2-2', label: 'Bolsas & Carteiras', type: 'category', value: 'Bolsas & Carteiras' },
+          { id: 'sub-drw-2-3', label: 'Cintos', type: 'category', value: 'Cintos' },
+          { id: 'sub-drw-2-4', label: 'Colares & Joias', type: 'category', value: 'Colares & Joias' },
+          { id: 'sub-drw-2-5', label: 'Lenços', type: 'category', value: 'Lenços' },
+          { id: 'sub-drw-2-6', label: 'Óculos de Sol', type: 'category', value: 'Óculos de Sol' }
+        ]
+      },
+      {
+        id: 'drw-3',
+        label: 'Tricots',
+        type: 'category',
+        value: 'Tricots',
+        subOptions: [
+          { id: 'sub-drw-3-1', label: 'Ver Todos os Tricots', type: 'category', value: 'Tricots' },
+          { id: 'sub-drw-3-2', label: 'Casacos em Tricot Biamar', type: 'category', value: 'Casacos & Jaquetas', extraFabric: 'Tricot Biamar' },
+          { id: 'sub-drw-3-3', label: 'Blusas em Tricot Especial', type: 'category', value: 'Blusas & Tops', extraFabric: 'Tricot Biamar' }
+        ]
+      },
+      {
+        id: 'drw-4',
+        label: 'Linho Nobre',
+        type: 'fabric',
+        value: 'Linho Puro',
+        subOptions: [
+          { id: 'sub-drw-4-1', label: 'Ver Todas as Peças em Linho', type: 'fabric', value: 'Linho Puro' },
+          { id: 'sub-drw-4-2', label: 'Conjuntos em Linho', type: 'category', value: 'Conjuntos Exclusivos', extraFabric: 'Linho Puro' },
+          { id: 'sub-drw-4-3', label: 'Alfaiataria em Linho', type: 'category', value: 'Blazers & Alfaiataria', extraFabric: 'Linho Puro' }
+        ]
+      },
+      { id: 'drw-5', label: 'Blusas', type: 'category', value: 'Blusas' },
+      { id: 'drw-6', label: 'Calças', type: 'category', value: 'Calças' },
+      { id: 'drw-7', label: 'Alfaiataria', type: 'category', value: 'Alfaiataria' },
+      { id: 'drw-8', label: 'Vestidos', type: 'category', value: 'Vestidos' },
+      { id: 'drw-9', label: 'Jaquetas E Casacos', type: 'category', value: 'Jaquetas E Casacos' },
+      { id: 'drw-10', label: 'Shorts E Saias', type: 'category', value: 'Shorts E Saias' },
+      { id: 'drw-11', label: 'Vestidos E Macacões', type: 'category', value: 'Vestidos E Macacões' },
+      { id: 'drw-12', label: 'BAZAR', type: 'status', value: 'OUTLET', isSpecial: true, badge: { text: 'OFF', colorBg: 'bg-rose-500', colorText: 'text-white' } },
+      { id: 'drw-13', label: 'Últimas Peças', type: 'status', value: 'Últimas Peças', isSpecial: true }
+    ]
+  };
+}
+
+/**
+ * Consulta a configuração completa de menus da loja no Supabase.
+ */
+export async function getStoreNavMenuConfig(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<StoreNavMenuConfig> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja, error } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (error || !loja) return getDefaultStoreNavMenuConfig();
+
+    const vis = (loja as any)?.configuracoes_visuais || {};
+    if (vis.menu_navegacao && Array.isArray(vis.menu_navegacao.linha_1)) {
+      return {
+        linha_1: vis.menu_navegacao.linha_1,
+        linha_2: Array.isArray(vis.menu_navegacao.linha_2) ? vis.menu_navegacao.linha_2 : [],
+        gaveta_mobile: Array.isArray(vis.menu_navegacao.gaveta_mobile) ? vis.menu_navegacao.gaveta_mobile : []
+      };
+    }
+
+    return getDefaultStoreNavMenuConfig();
+  } catch (err) {
+    console.error('❌ [Admin] Falha ao consultar menu da loja:', err);
+    return getDefaultStoreNavMenuConfig();
+  }
+}
+
+/**
+ * Salva a configuração de menus da loja no Supabase.
+ */
+export async function saveStoreNavMenuConfig(
+  lojaId: string = DEFAULT_TENANT_ID,
+  config: StoreNavMenuConfig
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentVis = (loja as any)?.configuracoes_visuais || {};
+    const updatedVis = {
+      ...currentVis,
+      menu_navegacao: config
+    };
+
+    const { error: upErr } = await supabase
+      .from('lojas')
+      .update({ configuracoes_visuais: updatedVis })
+      .eq('id', lojaId);
+
+    if (upErr) throw upErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:menu_updated', { detail: config }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Admin] Falha ao salvar menu da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar menu.' };
   }
 }
 
@@ -594,6 +1102,7 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
         ativo,
         foto_principal,
         categoria_id,
+        subcategoria,
         paired_with_slug,
         detalhes,
         categorias (nome),
@@ -625,6 +1134,7 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       foto_principal: p.foto_principal,
       categoria_id: p.categoria_id,
       categoria_nome: p.categorias?.nome || 'Geral',
+      subcategoria: p.subcategoria || null,
       paired_with_slug: p.paired_with_slug || null,
       detalhes: Array.isArray(p.detalhes) ? p.detalhes : null,
       midias: (p.midias_produto || []).map((m: any) => ({
@@ -696,6 +1206,7 @@ export async function createAdminProduct(
       .insert({
         loja_id: lojaId,
         categoria_id: catId || null,
+        subcategoria: input.subcategoria || null,
         nome: input.nome.trim(),
         slug: slug,
         descricao: input.descricao || null,
@@ -851,6 +1362,7 @@ export async function updateAdminProductFull(
     if (input.nome !== undefined) updateFields.nome = input.nome.trim();
     if (input.slug !== undefined) updateFields.slug = input.slug.trim().toLowerCase();
     if (input.categoria_id !== undefined) updateFields.categoria_id = input.categoria_id;
+    if (input.subcategoria !== undefined) updateFields.subcategoria = input.subcategoria;
     if (input.descricao !== undefined) updateFields.descricao = input.descricao;
     if (input.preco !== undefined) updateFields.preco = Number(input.preco);
     if (input.preco_promocional !== undefined) updateFields.preco_promocional = input.preco_promocional;

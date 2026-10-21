@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -33,18 +33,27 @@ import {
 } from '@/lib/routes';
 
 export interface SubOption {
+  id?: string;
   label: string;
-  type: 'status' | 'category' | 'fabric';
+  type: string;
   value: string;
   extraCategory?: string;
   extraFabric?: string;
+  customUrl?: string;
 }
 
 export interface NavItem {
+  id?: string;
   label: string;
-  type: 'status' | 'category' | 'fabric';
+  type: string;
   value: string;
   isSpecial?: boolean;
+  customUrl?: string;
+  badge?: {
+    text: string;
+    colorBg?: string;
+    colorText?: string;
+  };
   subOptions?: SubOption[];
 }
 
@@ -252,12 +261,33 @@ export const Header: React.FC<HeaderProps> = ({
     router.push(`${catalogBase}?q=${encodeURIComponent(term)}`);
   };
 
+  // Menus dinâmicos da loja com fallback para as constantes oficiais da boutique
+  const { menuRow1, menuRow2, sideDrawerItems } = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const menuNav = vis?.menu_navegacao;
+    if (menuNav && Array.isArray(menuNav.linha_1) && menuNav.linha_1.length > 0) {
+      return {
+        menuRow1: menuNav.linha_1 as NavItem[],
+        menuRow2: (Array.isArray(menuNav.linha_2) ? menuNav.linha_2 : MENU_ROW_2) as NavItem[],
+        sideDrawerItems: (Array.isArray(menuNav.gaveta_mobile) && menuNav.gaveta_mobile.length > 0
+          ? menuNav.gaveta_mobile
+          : [...menuNav.linha_1, ...(menuNav.linha_2 || [])]) as NavItem[]
+      };
+    }
+    return {
+      menuRow1: MENU_ROW_1,
+      menuRow2: MENU_ROW_2,
+      sideDrawerItems: SIDE_DRAWER_ITEMS
+    };
+  }, [currentTenant]);
+
   // Navegação direta das opções de peças do menu preservando o tenant
   const handleNavClick = (item: {
-    type: string;
-    value: string;
+    type?: string;
+    value?: string;
     extraCategory?: string;
     extraFabric?: string;
+    customUrl?: string;
   }) => {
     closeSideDrawerContext();
     setMobileSearchOpen(false);
@@ -268,20 +298,30 @@ export const Header: React.FC<HeaderProps> = ({
     }
     setActiveDesktopDropdown(null);
 
+    // Se tiver URL customizada (ex: link externo ou rota interna)
+    if (item.customUrl) {
+      if (item.customUrl.startsWith('http://') || item.customUrl.startsWith('https://')) {
+        window.open(item.customUrl, '_blank');
+      } else {
+        router.push(item.customUrl);
+      }
+      return;
+    }
+
     const params = new URLSearchParams();
 
     if (item.type === 'status') {
-      params.set('status', item.value);
+      params.set('status', item.value || '');
       if (item.extraCategory) {
         params.set('categoria', item.extraCategory);
       }
-    } else if (item.type === 'category') {
-      params.set('categoria', item.value);
+    } else if (item.type === 'category' || item.type === 'subcategory') {
+      params.set('categoria', item.value || '');
       if (item.extraFabric) {
         params.set('tecido', item.extraFabric);
       }
     } else if (item.type === 'fabric') {
-      params.set('tecido', item.value);
+      params.set('tecido', item.value || '');
       if (item.extraCategory) {
         params.set('categoria', item.extraCategory);
       }
@@ -408,13 +448,13 @@ export const Header: React.FC<HeaderProps> = ({
                   isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[#1A1918] dark:text-[#FAF8F5]'
                 }`}
               >
-                {MENU_ROW_1.map((item) => {
+                {menuRow1.map((item: NavItem) => {
                   const hasSub = Boolean(item.subOptions && item.subOptions.length > 0);
                   const isDropdownActive = activeDesktopDropdown === item.label;
 
                   return (
                     <div
-                      key={item.label}
+                      key={item.id || item.label}
                       className={`relative ${isDropdownActive ? 'z-50' : 'z-20'}`}
                       onMouseEnter={() => hasSub && handleDropdownMouseEnter(item.label)}
                       onMouseLeave={() => hasSub && handleDropdownMouseLeave()}
@@ -422,13 +462,22 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={() => handleNavClick(item)}
-                        className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-0.5 ${
+                        className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
                           isTransparent
                             ? 'hover:text-[#DFBE76]'
                             : 'hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
                         }`}
                       >
                         <span>{item.label}</span>
+                        {item.badge && (
+                          <span
+                            className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
+                              item.badge.colorBg || 'bg-[#C5A059]'
+                            } ${item.badge.colorText || 'text-white'}`}
+                          >
+                            {item.badge.text}
+                          </span>
+                        )}
                         {hasSub && <ChevronDown className="w-3 h-3 opacity-70 ml-0.5" />}
                       </button>
 
@@ -445,9 +494,9 @@ export const Header: React.FC<HeaderProps> = ({
                             <span className="text-[10px] uppercase tracking-widest text-[#C5A059] font-bold block px-2 py-1 border-b border-[#C5A059]/15">
                               {item.label}
                             </span>
-                            {item.subOptions!.map((sub) => (
+                            {item.subOptions!.map((sub: SubOption) => (
                               <button
-                                key={sub.label}
+                                key={sub.id || sub.label}
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -472,12 +521,12 @@ export const Header: React.FC<HeaderProps> = ({
                   isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[#1A1918] dark:text-[#FAF8F5]'
                 }`}
               >
-                {MENU_ROW_2.map((item) => (
+                {menuRow2.map((item: NavItem) => (
                   <button
-                    key={item.label}
+                    key={item.id || item.label}
                     type="button"
                     onClick={() => handleNavClick(item)}
-                    className={`whitespace-nowrap transition-colors cursor-pointer py-1 ${
+                    className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
                       item.isSpecial
                         ? item.label === 'BAZAR'
                           ? 'font-bold text-[#C5A059] dark:text-[#DFBE76] hover:text-[#1A1918] dark:hover:text-white'
@@ -487,7 +536,16 @@ export const Header: React.FC<HeaderProps> = ({
                         : 'hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
                     }`}
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span
+                        className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
+                          item.badge.colorBg || 'bg-[#C5A059]'
+                        } ${item.badge.colorText || 'text-white'}`}
+                      >
+                        {item.badge.text}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -745,12 +803,12 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Lista Vertical de Peças e Coleções com Acordeão Interativo para Subopções (Regra 2) */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-1 custom-scrollbar">
-                {SIDE_DRAWER_ITEMS.map((item) => {
+                {sideDrawerItems.map((item: NavItem) => {
                   const hasSub = Boolean(item.subOptions && item.subOptions.length > 0);
                   const isExpanded = expandedDrawerItem === item.label;
 
                   return (
-                    <div key={item.label} className="border-b border-[#C5A059]/10 last:border-0 pb-1">
+                    <div key={item.id || item.label} className="border-b border-[#C5A059]/10 last:border-0 pb-1">
                       <div className="flex items-center justify-between">
                         <button
                           type="button"
@@ -763,17 +821,28 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           className="w-full flex items-center justify-between py-2.5 sm:py-3 px-2 text-left hover:bg-black/5 dark:hover:bg-white/5 rounded-none transition-colors group cursor-pointer"
                         >
-                          <span
-                            className={`text-sm sm:text-base ${
-                              item.isSpecial
-                                ? item.label === 'BAZAR'
-                                  ? 'font-bold text-[#C5A059] dark:text-[#DFBE76]'
-                                  : 'font-semibold text-rose-600 dark:text-rose-400'
-                                : 'font-semibold text-[#2D1B20] dark:text-[#FAF8F5] group-hover:text-[#C5A059] dark:group-hover:text-[#DFBE76]'
-                            }`}
-                          >
-                            {item.label}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-sm sm:text-base ${
+                                item.isSpecial
+                                  ? item.label === 'BAZAR'
+                                    ? 'font-bold text-[#C5A059] dark:text-[#DFBE76]'
+                                    : 'font-semibold text-rose-600 dark:text-rose-400'
+                                  : 'font-semibold text-[#2D1B20] dark:text-[#FAF8F5] group-hover:text-[#C5A059] dark:group-hover:text-[#DFBE76]'
+                              }`}
+                            >
+                              {item.label}
+                            </span>
+                            {item.badge && (
+                              <span
+                                className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none ${
+                                  item.badge.colorBg || 'bg-[#C5A059]'
+                                } ${item.badge.colorText || 'text-white'}`}
+                              >
+                                {item.badge.text}
+                              </span>
+                            )}
+                          </div>
                           {hasSub && (
                             <ChevronRight
                               className={`w-4 h-4 text-[#78716C] dark:text-[#A8A29E] transition-transform duration-200 ${
@@ -787,9 +856,9 @@ export const Header: React.FC<HeaderProps> = ({
                       {/* Subopções exibidas ao clicar no item (ex: Blusas, Calças, Vestidos etc.) */}
                       {hasSub && isExpanded && (
                         <div className="pl-4 pr-2 pb-2 pt-1 space-y-1 bg-black/5 dark:bg-white/5 border-l-2 border-[#C5A059] animate-fadeIn">
-                          {item.subOptions!.map((sub) => (
+                          {item.subOptions!.map((sub: SubOption) => (
                             <button
-                              key={sub.label}
+                              key={sub.id || sub.label}
                               type="button"
                               onClick={() => handleNavClick(sub)}
                               className="w-full text-left py-2 px-2.5 text-xs sm:text-sm font-medium text-[#57534E] dark:text-[#D6D3D1] hover:text-[#C5A059] dark:hover:text-[#DFBE76] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-between cursor-pointer"

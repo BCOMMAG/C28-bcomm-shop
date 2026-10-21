@@ -47,6 +47,7 @@ import {
   createAdminProduct,
   deleteAdminProduct,
   getAdminCategories,
+  getAdminCategoriesFull,
   checkProductOrdersCount,
   updateAdminProductFull,
   bulkToggleProductActive,
@@ -54,6 +55,7 @@ import {
   bulkUpdateCategory,
   bulkArchiveProducts,
   AdminProductItem,
+  AdminCategoryFull,
   CreateProductInput,
   UpdateProductInput
 } from '@/lib/admin';
@@ -72,7 +74,7 @@ export default function AdminProdutosPage() {
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
 
   const [products, setProducts] = useState<AdminProductItem[]>([]);
-  const [categoriesList, setCategoriesList] = useState<Array<{ id: string; nome: string; slug: string }>>([]);
+  const [categoriesList, setCategoriesList] = useState<AdminCategoryFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
@@ -101,6 +103,7 @@ export default function AdminProdutosPage() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductSlug, setNewProductSlug] = useState('');
   const [newProductCatId, setNewProductCatId] = useState('');
+  const [newProductSubcat, setNewProductSubcat] = useState('');
   const [newCustomCatName, setNewCustomCatName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductPromoPrice, setNewProductPromoPrice] = useState('');
@@ -167,6 +170,7 @@ export default function AdminProdutosPage() {
   const [editFullName, setEditFullName] = useState('');
   const [editFullSlug, setEditFullSlug] = useState('');
   const [editFullCatId, setEditFullCatId] = useState('');
+  const [editFullSubcat, setEditFullSubcat] = useState('');
   const [editFullDesc, setEditFullDesc] = useState('');
   const [editFullFabric, setEditFullFabric] = useState('');
   const [editFullModeling, setEditFullModeling] = useState('');
@@ -211,7 +215,7 @@ export default function AdminProdutosPage() {
     try {
       const [prodsData, catsData, reservasMap, aviseMeMap] = await Promise.all([
         getAdminProducts(tenantId),
-        getAdminCategories(tenantId),
+        getAdminCategoriesFull(tenantId),
         getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} })),
         getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 }))
       ]);
@@ -350,6 +354,7 @@ export default function AdminProdutosPage() {
     setEditFullName(product.nome);
     setEditFullSlug(product.slug);
     setEditFullCatId(product.categoria_id || '');
+    setEditFullSubcat(product.subcategoria || '');
     setEditFullDesc(product.descricao || '');
     setEditFullFabric(product.tecido || '');
     setEditFullModeling(product.modelagem || '');
@@ -437,6 +442,7 @@ export default function AdminProdutosPage() {
         nome: editFullName.trim(),
         slug: editFullSlug.trim().toLowerCase() || editingFullProduct.slug,
         categoria_id: editFullCatId || null,
+        subcategoria: editFullSubcat.trim() || null,
         descricao: editFullDesc,
         preco: editFullPrice,
         preco_promocional: parsedPromo,
@@ -467,6 +473,7 @@ export default function AdminProdutosPage() {
               nome: editFullName.trim(),
               slug: payload.slug || p.slug,
               categoria_id: editFullCatId || null,
+        subcategoria: editFullSubcat.trim() || null,
               categoria_nome: catObj ? catObj.nome : p.categoria_nome,
               descricao: editFullDesc,
               preco: editFullPrice,
@@ -1022,6 +1029,7 @@ export default function AdminProdutosPage() {
         preco_promocional: promoNum,
         preco_custo: custoNum,
         categoria_id: newProductCatId || undefined,
+        subcategoria: newProductSubcat.trim() || undefined,
         nova_categoria_nome: newCustomCatName.trim() || undefined,
         tecido: newProductFabric.trim(),
         modelagem: newProductModeling.trim(),
@@ -1703,7 +1711,10 @@ export default function AdminProdutosPage() {
                     <label className="block text-slate-700 mb-1 font-bold">Categoria</label>
                     <select
                       value={newProductCatId}
-                      onChange={(e) => setNewProductCatId(e.target.value)}
+                      onChange={(e) => {
+                        setNewProductCatId(e.target.value);
+                        setNewProductSubcat('');
+                      }}
                       className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     >
                       <option value="">Selecione uma categoria...</option>
@@ -1713,6 +1724,36 @@ export default function AdminProdutosPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold">Subcategoria</label>
+                    {(() => {
+                      const selCat = categoriesList.find((c) => c.id === newProductCatId);
+                      const availableSubs = selCat?.subcategorias || [];
+                      return availableSubs.length > 0 ? (
+                        <select
+                          value={newProductSubcat}
+                          onChange={(e) => setNewProductSubcat(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="">Selecione ou deixe em branco...</option>
+                          {availableSubs.map((sub) => (
+                            <option key={sub} value={sub}>
+                              {sub}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Ex: Blazers, Cenoura, Tricots..."
+                          value={newProductSubcat}
+                          onChange={(e) => setNewProductSubcat(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      );
+                    })()}
                   </div>
 
                   <div>
@@ -2363,12 +2404,15 @@ export default function AdminProdutosPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-slate-700 mb-1 font-bold">Categoria</label>
                       <select
                         value={editFullCatId}
-                        onChange={(e) => setEditFullCatId(e.target.value)}
+                        onChange={(e) => {
+                          setEditFullCatId(e.target.value);
+                          setEditFullSubcat('');
+                        }}
                         className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
                       >
                         <option value="">Selecione uma categoria...</option>
@@ -2378,6 +2422,36 @@ export default function AdminProdutosPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">Subcategoria</label>
+                      {(() => {
+                        const selCat = categoriesList.find((c) => c.id === editFullCatId);
+                        const availableSubs = selCat?.subcategorias || [];
+                        return availableSubs.length > 0 ? (
+                          <select
+                            value={editFullSubcat}
+                            onChange={(e) => setEditFullSubcat(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+                          >
+                            <option value="">Selecione ou deixe em branco...</option>
+                            {availableSubs.map((sub) => (
+                              <option key={sub} value={sub}>
+                                {sub}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder="Ex: Blazers, Cenoura..."
+                            value={editFullSubcat}
+                            onChange={(e) => setEditFullSubcat(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                          />
+                        );
+                      })()}
                     </div>
 
                     <div>

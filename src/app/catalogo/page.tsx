@@ -146,6 +146,17 @@ function CatalogoContent() {
     { label: 'Dourado Champagne', value: 'Dourado Champagne', hex: '#DFBE76' }
   ];
 
+  // Identificação dinâmica de categorias ou subcategorias extras cadastradas no banco
+  const dynamicExtraCategories = useMemo(() => {
+    const allKnown = new Set([...CATEGORIES_ROUPAS, ...CATEGORIES_ACESSORIOS]);
+    const extras = new Set<string>();
+    products.forEach((p) => {
+      if (p.category && !allKnown.has(p.category)) extras.add(p.category);
+      if (p.subcategory && !allKnown.has(p.subcategory)) extras.add(p.subcategory);
+    });
+    return Array.from(extras).sort();
+  }, [products]);
+
   // Alternadores de Seleção Múltipla para o Rascunho de Filtros
   const toggleDraftCategory = (cat: string) => {
     setDraftFilters((prev) => ({
@@ -736,6 +747,38 @@ function CatalogoContent() {
                 </button>
               );
             })}
+
+            {dynamicExtraCategories.length > 0 && (
+              <>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
+                  Outras Categorias & Subs
+                </p>
+                {dynamicExtraCategories.map((cat) => {
+                  const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
+                  const isSelected = draftFilters.categories.includes(cat);
+                  return (
+                    <button
+                      type="button"
+                      key={cat}
+                      onClick={() => toggleDraftCategory(cat)}
+                      className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
+                          : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </span>
+                        <span className="truncate">{cat}</span>
+                      </div>
+                      <span className="text-[10px] opacity-70 shrink-0">({count})</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
       </div>

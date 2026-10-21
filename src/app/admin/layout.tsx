@@ -31,7 +31,8 @@ import {
   Clock,
   Ban,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  FolderTree
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -228,6 +229,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Package
     },
     {
+      title: 'Categorias & Subs',
+      href: '/admin/categorias/',
+      icon: FolderTree
+    },
+    {
       title: 'Finanças',
       href: '/admin/financas/',
       icon: DollarSign
@@ -246,6 +252,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       title: 'Vitrine & Banners',
       href: '/admin/banners/',
       icon: Sparkles
+    },
+    {
+      title: 'Menus da Vitrine',
+      href: '/admin/menu/',
+      icon: Sliders
     },
     {
       title: 'Equipe & Acessos',
@@ -270,6 +281,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
     if (item.href === '/admin/cupons/' && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return false;
     if (item.href === '/admin/banners/' && activeMember.cargo !== 'gerente') return false;
+    if (item.href === '/admin/menu/' && activeMember.cargo !== 'gerente') return false;
+    if (item.href === '/admin/categorias/' && activeMember.cargo === 'estoquista') return false;
     if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
     if (item.href === '/admin/configuracoes/' && !activeMember.permissoes?.configuracoes_loja) return false;
     if (item.href === '/admin/equipe/' && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return false;
@@ -282,6 +295,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (cleanPath.startsWith('/admin/configuracoes') && !activeMember.permissoes?.configuracoes_loja) return true;
     if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/menu') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/categorias') && activeMember.cargo === 'estoquista') return true;
     if (cleanPath.startsWith('/admin/equipe') && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return true;
     return false;
   })();
