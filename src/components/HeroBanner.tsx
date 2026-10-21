@@ -44,7 +44,13 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
       const targetId = ctaLink.replace('#', '');
       const el = document.getElementById(targetId);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const headerOffset = isMobile ? 104 : 90;
+        const elementTop = el.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo({
+          top: elementTop - headerOffset,
+          behavior: 'smooth'
+        });
         return;
       }
       if (onExploreClick) {

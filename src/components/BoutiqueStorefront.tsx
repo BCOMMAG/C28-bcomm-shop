@@ -70,21 +70,30 @@ export function BoutiqueStorefront() {
 
   const handleCategorySelection = (category: string) => {
     setActiveCategory(category);
-    if (category === 'Lançamentos') {
-      document.getElementById('lancamentos')?.scrollIntoView({ behavior: 'smooth' });
+    if (category === 'Todos') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (category === 'Mais Vendidos') {
-      document.getElementById('mais-vendidos')?.scrollIntoView({ behavior: 'smooth' });
+      scrollToSection('mais-vendidos');
     } else if (category === 'OUTLET') {
-      document.getElementById('outlet')?.scrollIntoView({ behavior: 'smooth' });
+      scrollToSection('outlet');
     } else if (category === 'Últimas Peças') {
-      document.getElementById('ultimas-pecas')?.scrollIntoView({ behavior: 'smooth' });
+      scrollToSection('ultimas-pecas');
     } else {
-      document.getElementById('lancamentos')?.scrollIntoView({ behavior: 'smooth' });
+      scrollToSection('lancamentos');
     }
   };
 
   const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    // Header fixo no mobile mede ~94px com anúncio ativo; Desktop mede ~86px
+    const headerOffset = isMobile ? 104 : 90;
+    const elementTop = el.getBoundingClientRect().top + window.pageYOffset;
+    window.scrollTo({
+      top: elementTop - headerOffset,
+      behavior: 'smooth'
+    });
   };
 
   return (
@@ -98,17 +107,16 @@ export function BoutiqueStorefront() {
         activeCategory={activeCategory}
       />
 
-      <main className="flex-1">
+      <main className={`flex-1 ${cartCount > 0 ? 'pb-24 sm:pb-16' : 'pb-10'}`}>
         {/* Banner Hero com Vídeo Oficial */}
         <HeroBanner
           onExploreClick={() => {
-            const el = document.getElementById('lancamentos');
-            el?.scrollIntoView({ behavior: 'smooth' });
+            scrollToSection('lancamentos');
           }}
         />
 
         {/* 1. SEÇÃO: LANÇAMENTOS */}
-        <section id="lancamentos" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+        <section id="lancamentos" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
               <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
@@ -163,7 +171,7 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 2. SEÇÃO: MAIS VENDIDOS */}
-        <section id="mais-vendidos" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+        <section id="mais-vendidos" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
               <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
@@ -217,7 +225,7 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 3. SEÇÃO: OUTLET */}
-        <section id="outlet" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+        <section id="outlet" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
               <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
@@ -272,7 +280,7 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 4. SEÇÃO: ÚLTIMAS PEÇAS */}
-        <section id="ultimas-pecas" className="pt-3 pb-8 sm:py-16 lg:pt-10 lg:pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-[86px]">
+        <section id="ultimas-pecas" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
               <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">

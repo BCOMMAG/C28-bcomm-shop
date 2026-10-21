@@ -28,7 +28,9 @@ import {
   Heart,
   Save,
   Check,
-  ShieldCheck
+  ShieldCheck,
+  Camera,
+  Trash2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -85,6 +87,7 @@ export function CustomerVIPDashboard() {
   const [customerBirthday, setCustomerBirthday] = useState('');
   const [customerSize, setCustomerSize] = useState('M');
   const [customerShoeSize, setCustomerShoeSize] = useState('37');
+  const [customerAvatar, setCustomerAvatar] = useState('');
 
   // Estados de Endereço de Entrega
   const [cep, setCep] = useState('');
@@ -132,12 +135,16 @@ export function CustomerVIPDashboard() {
       const savedBirthday = localStorage.getItem(`bcomm_customer_${tenantSlug}_birthday`);
       const savedSize = localStorage.getItem(`bcomm_customer_${tenantSlug}_size`);
       const savedShoe = localStorage.getItem(`bcomm_customer_${tenantSlug}_shoesize`);
+      const savedAvatar =
+        localStorage.getItem(`bcomm_customer_${tenantSlug}_avatar`) ||
+        localStorage.getItem('leidy_customer_avatar');
 
       if (savedName) setCustomerName(savedName);
       if (savedEmail) setCustomerEmail(savedEmail);
       if (savedBirthday) setCustomerBirthday(savedBirthday);
       if (savedSize) setCustomerSize(savedSize);
       if (savedShoe) setCustomerShoeSize(savedShoe);
+      if (savedAvatar) setCustomerAvatar(savedAvatar);
 
       // Carrega Endereço Salvo
       const savedAddrRaw = localStorage.getItem(`bcomm_customer_${tenantSlug}_address`);
@@ -295,6 +302,64 @@ export function CustomerVIPDashboard() {
     }
   };
 
+  // Gerenciamento de Foto / Avatar da Cliente
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        // Redimensionar para no máximo 300x300 em canvas para alta performance
+        const canvas = document.createElement('canvas');
+        const maxDim = 300;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          setCustomerAvatar(compressed);
+          try {
+            localStorage.setItem(`bcomm_customer_${tenantSlug}_avatar`, compressed);
+            localStorage.setItem('leidy_customer_avatar', compressed);
+          } catch (storageErr) {
+            console.warn('Erro ao salvar avatar no localStorage:', storageErr);
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setCustomerAvatar('');
+    try {
+      localStorage.removeItem(`bcomm_customer_${tenantSlug}_avatar`);
+      localStorage.removeItem('leidy_customer_avatar');
+    } catch {}
+  };
+
   // Copiar código de rastreio ou cupom
   const handleCopy = (text: string, type: 'code' | 'coupon') => {
     navigator.clipboard.writeText(text);
@@ -441,8 +506,24 @@ export function CustomerVIPDashboard() {
         {/* BANNER VIP DE BOAS-VINDAS */}
         <div className="mb-8 p-6 sm:p-8 bg-white dark:bg-[#1A1918] border border-[#C5A059]/35 shadow-md flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-            <div className="w-16 h-16 sm:w-18 sm:h-18 bg-[#C5A059] text-white font-serif-luxury text-xl sm:text-2xl font-bold flex items-center justify-center rounded-none shadow-md shrink-0">
-              {initials}
+            {/* Medalhão Circular de Persona VIP */}
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#C5A059]/50 p-1 bg-gradient-to-br from-[#FAF8F5] via-[#F3EFEA] to-[#E9E4DC] dark:from-[#201D1B] dark:via-[#1A1816] dark:to-[#121110] shadow-md flex items-center justify-center shrink-0 group">
+              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white/60 dark:bg-black/40">
+                {customerAvatar ? (
+                  <img
+                    src={customerAvatar}
+                    alt={customerName || 'Cliente VIP'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-[#C5A059] group-hover:scale-105 transition-transform duration-300">
+                    <User className="w-8 h-8 sm:w-10 sm:h-10 text-[#C5A059] stroke-[1.5]" />
+                  </div>
+                )}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 bg-[#C5A059] text-white text-[8px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider shadow-xs border border-white dark:border-[#1A1918]">
+                VIP
+              </span>
             </div>
             <div>
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
@@ -1020,6 +1101,58 @@ export function CustomerVIPDashboard() {
                     <p className="text-xs text-[#78716C] dark:text-[#D6D3D1] mt-0.5 leading-relaxed">
                       Clientes que cadastram sua data de aniversário recebem presentes especiais, mimos e cupons com desconto VIP na semana do seu aniversário!
                     </p>
+                  </div>
+                </div>
+
+                {/* Seção de Foto de Perfil & Avatar VIP */}
+                <div className="p-4 sm:p-5 bg-gradient-to-r from-[#FAF8F5] to-white dark:from-[#1E1C1A] dark:to-[#171513] border border-[#C5A059]/30 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-[#C5A059]/60 p-1 bg-white dark:bg-[#141312] shadow-md flex items-center justify-center shrink-0">
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[#FAF8F5] dark:bg-black/30">
+                      {customerAvatar ? (
+                        <img
+                          src={customerAvatar}
+                          alt="Foto da Cliente"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-10 h-10 sm:w-12 sm:h-12 text-[#C5A059] stroke-[1.5]" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                        Foto de Perfil & Persona da Cliente
+                      </h3>
+                      <p className="text-[11px] sm:text-xs text-[#78716C] dark:text-[#A8A29E] mt-0.5">
+                        Adicione sua foto para personalizar seu provador virtual e atendimento VIP, ou mantenha o ícone clássico da boutique.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C5A059] hover:bg-[#B38F48] text-white text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer shadow-xs">
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>{customerAvatar ? 'Trocar Foto' : 'Adicionar Foto'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarFileChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {customerAvatar && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remover Foto</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
