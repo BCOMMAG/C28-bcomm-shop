@@ -308,8 +308,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const c = paletteConfig.colors;
 
+  const vis = currentTenant?.configuracoes_visuais as any;
+  const adminCustom = vis?.admin_custom;
+  const adminLogoSrc = vis?.logo_dark_url || vis?.logo_url || '/images/Logo sem fundo.png';
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
+    <div
+      className="min-h-screen text-slate-800 flex font-sans antialiased selection:bg-amber-100 selection:text-amber-900 transition-colors"
+      style={{
+        backgroundColor: adminCustom?.pageBgLight || '#F8FAFC',
+        fontFamily: adminCustom?.fontFamily || undefined
+      }}
+    >
       {/* =========================================================================
           1. SIDEBAR LATERAL FIXA NO DESKTOP (Minimizável com Tooltips)
       ========================================================================= */}
@@ -319,8 +329,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           isSidebarCollapsed ? "w-20" : "w-64"
         )}
         style={{
-          backgroundColor: c.sidebarBg,
-          borderColor: c.sidebarBorder
+          backgroundColor: adminCustom?.sidebarBg || c.sidebarBg,
+          borderColor: c.sidebarBorder,
+          fontFamily: adminCustom?.sidebarFontFamily || undefined
         }}
       >
         {/* Topo da Sidebar: Marca, Identidade & Botão Minimizar */}
@@ -336,7 +347,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link href="/admin/" className="group relative" title={lojaNome}>
                 <div className="relative h-10 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
                   <Image
-                    src="/images/Logo sem fundo.png"
+                    src={adminLogoSrc}
                     alt={lojaNome}
                     width={2752}
                     height={1536}
@@ -358,7 +369,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link href="/admin/" className="flex items-center gap-3 group min-w-0">
                 <div className="relative h-9 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
                   <Image
-                    src="/images/Logo sem fundo.png"
+                    src={adminLogoSrc}
                     alt={lojaNome}
                     width={2752}
                     height={1536}

@@ -307,6 +307,27 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [currentTenant, isTransparent, theme]);
 
+  // Tipografia e cores personalizadas do Menu Superior
+  const { menuNavStyle, menuLinkColor } = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const tipo = vis?.tipografia_menu;
+    const isDark = theme === 'dark';
+
+    const fontFamily = tipo?.fontFamily || undefined;
+    const fontSize = tipo?.fontSize || undefined;
+
+    const color = isTransparent
+      ? 'inherit'
+      : isDark
+      ? tipo?.corTextoDark || '#FAF8F5'
+      : tipo?.corTextoLight || '#1A1918';
+
+    return {
+      menuNavStyle: { fontFamily, fontSize },
+      menuLinkColor: color
+    };
+  }, [currentTenant, isTransparent, theme]);
+
   // Executa busca textual no catálogo preservando o tenant
   const executeHeaderSearch = (textToSearch?: string) => {
     const term = (textToSearch !== undefined ? textToSearch : headerSearchInput).trim();
@@ -496,7 +517,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* 4. CENTRO (DESKTOP): Links de Navegação em 2 Linhas com Dropdown de Subopções */}
-            <nav className="hidden lg:flex flex-col justify-center items-center gap-1 px-2 xl:px-4 flex-1 min-w-0">
+            <nav
+              style={menuNavStyle}
+              className="hidden lg:flex flex-col justify-center items-center gap-1 px-2 xl:px-4 flex-1 min-w-0"
+            >
               {/* Linha 1 com z-30 para sobrepor perfeitamente a Linha 2 */}
               <div
                 className={`relative z-30 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[11px] xl:text-xs 2xl:text-[13px] font-medium tracking-normal ${
@@ -857,7 +881,10 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Lista Vertical de Peças e Coleções com Acordeão Interativo para Subopções (Regra 2) */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-1 custom-scrollbar">
+              <div
+                style={menuNavStyle}
+                className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-1 custom-scrollbar"
+              >
                 {sideDrawerItems.map((item: NavItem) => {
                   const hasSub = Boolean(item.subOptions && item.subOptions.length > 0);
                   const isExpanded = expandedDrawerItem === item.label;

@@ -13,6 +13,7 @@ import { RecentlyViewedSection } from '@/components/RecentlyViewedSection';
 import { Footer } from '@/components/Footer';
 import { useStore } from '@/context/StoreContext';
 import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
+import { SecoesVitrineConfig } from '@/lib/admin';
 
 export function BoutiqueStorefront() {
   const [activeCategory, setActiveCategory] = useState<string>('Todos os Modelos');
@@ -37,8 +38,42 @@ export function BoutiqueStorefront() {
     closeSizeGuide,
     isCartOpen,
     products,
-    currentTenant
+    currentTenant,
+    theme
   } = useStore();
+
+  const secoesConfig = currentTenant?.configuracoes_visuais?.secoes_vitrine as SecoesVitrineConfig | undefined;
+
+  const getSectionStyle = (sectionKey: 'lancamentos' | 'maisVendidos' | 'outlet' | 'ultimasPecas') => {
+    const isDark = theme === 'dark';
+    const isIndependente = Boolean(secoesConfig?.modoIndependente);
+    const sec = isIndependente ? secoesConfig?.[sectionKey] : secoesConfig?.global;
+
+    const bg = isDark
+      ? (sec?.bgDark || undefined)
+      : (sec?.bgLight || undefined);
+
+    const tituloCor = isDark
+      ? (sec?.tituloCorDark || '#FFFFFF')
+      : (sec?.tituloCorLight || '#FFFFFF');
+
+    const tituloFont = sec?.tituloFont || 'Playfair Display';
+
+    const subtituloCor = isDark
+      ? (sec?.subtituloCorDark || 'rgba(255,255,255,0.85)')
+      : (sec?.subtituloCorLight || 'rgba(255,255,255,0.85)');
+
+    return {
+      containerStyle: bg ? { backgroundColor: bg } : undefined,
+      tituloStyle: { color: tituloCor, fontFamily: tituloFont },
+      subtituloStyle: { color: subtituloCor }
+    };
+  };
+
+  const lancamentosStyle = getSectionStyle('lancamentos');
+  const maisVendidosStyle = getSectionStyle('maisVendidos');
+  const outletStyle = getSectionStyle('outlet');
+  const ultimasPecasStyle = getSectionStyle('ultimasPecas');
 
   // Produtos organizados para cada vitrine temática da Home (reativos aos produtos dinâmicos do Supabase)
   const newReleasesProducts = useMemo(
@@ -116,14 +151,24 @@ export function BoutiqueStorefront() {
         />
 
         {/* 1. SEÇÃO: LANÇAMENTOS */}
-        <section id="lancamentos" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
+        <section
+          id="lancamentos"
+          style={lancamentosStyle.containerStyle}
+          className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
+        >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
+              <h2
+                style={lancamentosStyle.tituloStyle}
+                className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
+              >
                 Lançamentos Exclusivos
               </h2>
             </div>
-            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+            <p
+              style={lancamentosStyle.subtituloStyle}
+              className="text-xs max-w-sm hidden sm:block"
+            >
               As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.
             </p>
           </div>
@@ -171,14 +216,24 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 2. SEÇÃO: MAIS VENDIDOS */}
-        <section id="mais-vendidos" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
+        <section
+          id="mais-vendidos"
+          style={maisVendidosStyle.containerStyle}
+          className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
+        >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
+              <h2
+                style={maisVendidosStyle.tituloStyle}
+                className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
+              >
                 Mais Vendidos
               </h2>
             </div>
-            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+            <p
+              style={maisVendidosStyle.subtituloStyle}
+              className="text-xs max-w-sm hidden sm:block"
+            >
               As peças com maior procura na nossa boutique, reconhecidas pelo caimento impecável e acabamento nobre.
             </p>
           </div>
@@ -225,14 +280,24 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 3. SEÇÃO: OUTLET */}
-        <section id="outlet" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
+        <section
+          id="outlet"
+          style={outletStyle.containerStyle}
+          className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
+        >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
+              <h2
+                style={outletStyle.tituloStyle}
+                className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
+              >
                 OUTLET & Peças Selecionadas
               </h2>
             </div>
-            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+            <p
+              style={outletStyle.subtituloStyle}
+              className="text-xs max-w-sm hidden sm:block"
+            >
               Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.
             </p>
           </div>
@@ -280,14 +345,24 @@ export function BoutiqueStorefront() {
         </section>
 
         {/* 4. SEÇÃO: ÚLTIMAS PEÇAS */}
-        <section id="ultimas-pecas" className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px]">
+        <section
+          id="ultimas-pecas"
+          style={ultimasPecasStyle.containerStyle}
+          className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
+        >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
             <div>
-              <h2 className="font-serif-luxury text-xl sm:text-3xl lg:text-4xl text-white font-medium drop-shadow-sm">
+              <h2
+                style={ultimasPecasStyle.tituloStyle}
+                className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
+              >
                 Últimas Peças
               </h2>
             </div>
-            <p className="text-xs text-white/85 max-w-sm hidden sm:block">
+            <p
+              style={ultimasPecasStyle.subtituloStyle}
+              className="text-xs max-w-sm hidden sm:block"
+            >
               Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.
             </p>
           </div>

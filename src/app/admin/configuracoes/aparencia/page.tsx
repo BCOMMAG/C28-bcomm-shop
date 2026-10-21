@@ -22,7 +22,13 @@ import {
   Layout,
   Sun,
   Moon,
-  Trash2
+  Trash2,
+  MousePointer,
+  Columns,
+  ToggleLeft,
+  ToggleRight,
+  Box,
+  CheckSquare
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
@@ -32,7 +38,11 @@ import {
   getStoreSettings,
   saveStoreGeneralSettings,
   PlanoFundoMenuConfig,
-  PlanoFundoSiteConfig
+  PlanoFundoSiteConfig,
+  TipografiaMenuConfig,
+  SecoesVitrineConfig,
+  SecaoEstiloConfig,
+  AdminCustomThemeConfig
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 
@@ -72,6 +82,74 @@ export default function AppearanceSettingsPage() {
   const [menuBgLight, setMenuBgLight] = useState('#FAF8F5');
   const [menuBgDark, setMenuBgDark] = useState('#141312');
 
+  // BLOCO 5: Tipografia & Cores do Menu da Vitrine
+  const [menuFontFamily, setMenuFontFamily] = useState('Montserrat');
+  const [menuFontSize, setMenuFontSize] = useState('12px');
+  const [menuCorTextoLight, setMenuCorTextoLight] = useState('#1A1918');
+  const [menuCorTextoDark, setMenuCorTextoDark] = useState('#FAF8F5');
+  const [menuCorHoverLight, setMenuCorHoverLight] = useState('#C5A059');
+  const [menuCorHoverDark, setMenuCorHoverDark] = useState('#DFBE76');
+
+  // BLOCO 6: Tipografias e Cores por Seção da Vitrine
+  const [secoesModoIndependente, setSecoesModoIndependente] = useState(false);
+  const [secaoGlobalFont, setSecaoGlobalFont] = useState('Playfair Display');
+  const [secaoGlobalBgLight, setSecaoGlobalBgLight] = useState('');
+  const [secaoGlobalBgDark, setSecaoGlobalBgDark] = useState('');
+  const [secaoGlobalTituloLight, setSecaoGlobalTituloLight] = useState('#FFFFFF');
+  const [secaoGlobalTituloDark, setSecaoGlobalTituloDark] = useState('#FFFFFF');
+  const [secaoGlobalSubtituloLight, setSecaoGlobalSubtituloLight] = useState('#FAF8F5');
+  const [secaoGlobalSubtituloDark, setSecaoGlobalSubtituloDark] = useState('#FAF8F5');
+
+  // Seção Lançamentos
+  const [secaoLancamentosAtivo, setSecaoLancamentosAtivo] = useState(false);
+  const [secaoLancamentosFont, setSecaoLancamentosFont] = useState('Playfair Display');
+  const [secaoLancamentosBgLight, setSecaoLancamentosBgLight] = useState('');
+  const [secaoLancamentosBgDark, setSecaoLancamentosBgDark] = useState('');
+  const [secaoLancamentosTituloLight, setSecaoLancamentosTituloLight] = useState('#FFFFFF');
+  const [secaoLancamentosTituloDark, setSecaoLancamentosTituloDark] = useState('#FFFFFF');
+  const [secaoLancamentosSubtituloLight, setSecaoLancamentosSubtituloLight] = useState('#FAF8F5');
+  const [secaoLancamentosSubtituloDark, setSecaoLancamentosSubtituloDark] = useState('#FAF8F5');
+
+  // Seção Mais Vendidos
+  const [secaoMaisVendidosAtivo, setSecaoMaisVendidosAtivo] = useState(false);
+  const [secaoMaisVendidosFont, setSecaoMaisVendidosFont] = useState('Playfair Display');
+  const [secaoMaisVendidosBgLight, setSecaoMaisVendidosBgLight] = useState('');
+  const [secaoMaisVendidosBgDark, setSecaoMaisVendidosBgDark] = useState('');
+  const [secaoMaisVendidosTituloLight, setSecaoMaisVendidosTituloLight] = useState('#FFFFFF');
+  const [secaoMaisVendidosTituloDark, setSecaoMaisVendidosTituloDark] = useState('#FFFFFF');
+  const [secaoMaisVendidosSubtituloLight, setSecaoMaisVendidosSubtituloLight] = useState('#FAF8F5');
+  const [secaoMaisVendidosSubtituloDark, setSecaoMaisVendidosSubtituloDark] = useState('#FAF8F5');
+
+  // Seção OUTLET
+  const [secaoOutletAtivo, setSecaoOutletAtivo] = useState(false);
+  const [secaoOutletFont, setSecaoOutletFont] = useState('Playfair Display');
+  const [secaoOutletBgLight, setSecaoOutletBgLight] = useState('');
+  const [secaoOutletBgDark, setSecaoOutletBgDark] = useState('');
+  const [secaoOutletTituloLight, setSecaoOutletTituloLight] = useState('#FFFFFF');
+  const [secaoOutletTituloDark, setSecaoOutletTituloDark] = useState('#FFFFFF');
+  const [secaoOutletSubtituloLight, setSecaoOutletSubtituloLight] = useState('#FAF8F5');
+  const [secaoOutletSubtituloDark, setSecaoOutletSubtituloDark] = useState('#FAF8F5');
+
+  // Seção Últimas Peças
+  const [secaoUltimasPecasAtivo, setSecaoUltimasPecasAtivo] = useState(false);
+  const [secaoUltimasPecasFont, setSecaoUltimasPecasFont] = useState('Playfair Display');
+  const [secaoUltimasPecasBgLight, setSecaoUltimasPecasBgLight] = useState('');
+  const [secaoUltimasPecasBgDark, setSecaoUltimasPecasBgDark] = useState('');
+  const [secaoUltimasPecasTituloLight, setSecaoUltimasPecasTituloLight] = useState('#FFFFFF');
+  const [secaoUltimasPecasTituloDark, setSecaoUltimasPecasTituloDark] = useState('#FFFFFF');
+  const [secaoUltimasPecasSubtituloLight, setSecaoUltimasPecasSubtituloLight] = useState('#FAF8F5');
+  const [secaoUltimasPecasSubtituloDark, setSecaoUltimasPecasSubtituloDark] = useState('#FAF8F5');
+
+  // BLOCO 7: Customização do Painel Administrativo
+  const [adminPageBgLight, setAdminPageBgLight] = useState('#F8FAFC');
+  const [adminPageBgDark, setAdminPageBgDark] = useState('#0B132B');
+  const [adminFontFamily, setAdminFontFamily] = useState('Inter');
+  const [adminSidebarBg, setAdminSidebarBg] = useState('#0B132B');
+  const [adminSidebarText, setAdminSidebarText] = useState('#94A3B8');
+  const [adminButtonBg, setAdminButtonBg] = useState('#0F172A');
+  const [adminButtonText, setAdminButtonText] = useState('#F59E0B');
+  const [adminButtonRadius, setAdminButtonRadius] = useState<'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full'>('rounded-xl');
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -105,6 +183,79 @@ export default function AppearanceSettingsPage() {
             setMenuBgTipo(data.planoFundoMenu.tipo || 'transparente');
             setMenuBgLight(data.planoFundoMenu.bg_light || '#FAF8F5');
             setMenuBgDark(data.planoFundoMenu.bg_dark || '#141312');
+          }
+
+          if (data.tipografiaMenu) {
+            setMenuFontFamily(data.tipografiaMenu.fontFamily || 'Montserrat');
+            setMenuFontSize(data.tipografiaMenu.fontSize || '12px');
+            setMenuCorTextoLight(data.tipografiaMenu.corTextoLight || '#1A1918');
+            setMenuCorTextoDark(data.tipografiaMenu.corTextoDark || '#FAF8F5');
+            setMenuCorHoverLight(data.tipografiaMenu.corHoverLight || '#C5A059');
+            setMenuCorHoverDark(data.tipografiaMenu.corHoverDark || '#DFBE76');
+          }
+
+          if (data.secoesVitrine) {
+            setSecoesModoIndependente(Boolean(data.secoesVitrine.modoIndependente));
+            if (data.secoesVitrine.global) {
+              setSecaoGlobalFont(data.secoesVitrine.global.tituloFont || 'Playfair Display');
+              setSecaoGlobalBgLight(data.secoesVitrine.global.bgLight || '');
+              setSecaoGlobalBgDark(data.secoesVitrine.global.bgDark || '');
+              setSecaoGlobalTituloLight(data.secoesVitrine.global.tituloCorLight || '#FFFFFF');
+              setSecaoGlobalTituloDark(data.secoesVitrine.global.tituloCorDark || '#FFFFFF');
+              setSecaoGlobalSubtituloLight(data.secoesVitrine.global.subtituloCorLight || '#FAF8F5');
+              setSecaoGlobalSubtituloDark(data.secoesVitrine.global.subtituloCorDark || '#FAF8F5');
+            }
+            if (data.secoesVitrine.lancamentos) {
+              setSecaoLancamentosAtivo(Boolean(data.secoesVitrine.lancamentos.ativo));
+              setSecaoLancamentosFont(data.secoesVitrine.lancamentos.tituloFont || 'Playfair Display');
+              setSecaoLancamentosBgLight(data.secoesVitrine.lancamentos.bgLight || '');
+              setSecaoLancamentosBgDark(data.secoesVitrine.lancamentos.bgDark || '');
+              setSecaoLancamentosTituloLight(data.secoesVitrine.lancamentos.tituloCorLight || '#FFFFFF');
+              setSecaoLancamentosTituloDark(data.secoesVitrine.lancamentos.tituloCorDark || '#FFFFFF');
+              setSecaoLancamentosSubtituloLight(data.secoesVitrine.lancamentos.subtituloCorLight || '#FAF8F5');
+              setSecaoLancamentosSubtituloDark(data.secoesVitrine.lancamentos.subtituloCorDark || '#FAF8F5');
+            }
+            if (data.secoesVitrine.maisVendidos) {
+              setSecaoMaisVendidosAtivo(Boolean(data.secoesVitrine.maisVendidos.ativo));
+              setSecaoMaisVendidosFont(data.secoesVitrine.maisVendidos.tituloFont || 'Playfair Display');
+              setSecaoMaisVendidosBgLight(data.secoesVitrine.maisVendidos.bgLight || '');
+              setSecaoMaisVendidosBgDark(data.secoesVitrine.maisVendidos.bgDark || '');
+              setSecaoMaisVendidosTituloLight(data.secoesVitrine.maisVendidos.tituloCorLight || '#FFFFFF');
+              setSecaoMaisVendidosTituloDark(data.secoesVitrine.maisVendidos.tituloCorDark || '#FFFFFF');
+              setSecaoMaisVendidosSubtituloLight(data.secoesVitrine.maisVendidos.subtituloCorLight || '#FAF8F5');
+              setSecaoMaisVendidosSubtituloDark(data.secoesVitrine.maisVendidos.subtituloCorDark || '#FAF8F5');
+            }
+            if (data.secoesVitrine.outlet) {
+              setSecaoOutletAtivo(Boolean(data.secoesVitrine.outlet.ativo));
+              setSecaoOutletFont(data.secoesVitrine.outlet.tituloFont || 'Playfair Display');
+              setSecaoOutletBgLight(data.secoesVitrine.outlet.bgLight || '');
+              setSecaoOutletBgDark(data.secoesVitrine.outlet.bgDark || '');
+              setSecaoOutletTituloLight(data.secoesVitrine.outlet.tituloCorLight || '#FFFFFF');
+              setSecaoOutletTituloDark(data.secoesVitrine.outlet.tituloCorDark || '#FFFFFF');
+              setSecaoOutletSubtituloLight(data.secoesVitrine.outlet.subtituloCorLight || '#FAF8F5');
+              setSecaoOutletSubtituloDark(data.secoesVitrine.outlet.subtituloCorDark || '#FAF8F5');
+            }
+            if (data.secoesVitrine.ultimasPecas) {
+              setSecaoUltimasPecasAtivo(Boolean(data.secoesVitrine.ultimasPecas.ativo));
+              setSecaoUltimasPecasFont(data.secoesVitrine.ultimasPecas.tituloFont || 'Playfair Display');
+              setSecaoUltimasPecasBgLight(data.secoesVitrine.ultimasPecas.bgLight || '');
+              setSecaoUltimasPecasBgDark(data.secoesVitrine.ultimasPecas.bgDark || '');
+              setSecaoUltimasPecasTituloLight(data.secoesVitrine.ultimasPecas.tituloCorLight || '#FFFFFF');
+              setSecaoUltimasPecasTituloDark(data.secoesVitrine.ultimasPecas.tituloCorDark || '#FFFFFF');
+              setSecaoUltimasPecasSubtituloLight(data.secoesVitrine.ultimasPecas.subtituloCorLight || '#FAF8F5');
+              setSecaoUltimasPecasSubtituloDark(data.secoesVitrine.ultimasPecas.subtituloCorDark || '#FAF8F5');
+            }
+          }
+
+          if (data.adminCustom) {
+            setAdminPageBgLight(data.adminCustom.pageBgLight || '#F8FAFC');
+            setAdminPageBgDark(data.adminCustom.pageBgDark || '#0B132B');
+            setAdminFontFamily(data.adminCustom.fontFamily || 'Inter');
+            setAdminSidebarBg(data.adminCustom.sidebarBg || '#0B132B');
+            setAdminSidebarText(data.adminCustom.sidebarText || '#94A3B8');
+            setAdminButtonBg(data.adminCustom.buttonBg || '#0F172A');
+            setAdminButtonText(data.adminCustom.buttonText || '#F59E0B');
+            setAdminButtonRadius(data.adminCustom.buttonRadius || 'rounded-xl');
           }
         }
       } catch (err) {
@@ -184,6 +335,80 @@ export default function AppearanceSettingsPage() {
         bg_dark: menuBgDark
       };
 
+      const tipografiaMenu: TipografiaMenuConfig = {
+        fontFamily: menuFontFamily,
+        fontSize: menuFontSize,
+        corTextoLight: menuCorTextoLight,
+        corTextoDark: menuCorTextoDark,
+        corHoverLight: menuCorHoverLight,
+        corHoverDark: menuCorHoverDark
+      };
+
+      const secoesVitrine: SecoesVitrineConfig = {
+        modoIndependente: secoesModoIndependente,
+        global: {
+          ativo: true,
+          tituloFont: secaoGlobalFont,
+          bgLight: secaoGlobalBgLight || undefined,
+          bgDark: secaoGlobalBgDark || undefined,
+          tituloCorLight: secaoGlobalTituloLight,
+          tituloCorDark: secaoGlobalTituloDark,
+          subtituloCorLight: secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoGlobalSubtituloDark
+        },
+        lancamentos: {
+          ativo: secaoLancamentosAtivo,
+          tituloFont: secaoLancamentosFont,
+          bgLight: secaoLancamentosBgLight || undefined,
+          bgDark: secaoLancamentosBgDark || undefined,
+          tituloCorLight: secaoLancamentosTituloLight,
+          tituloCorDark: secaoLancamentosTituloDark,
+          subtituloCorLight: secaoLancamentosSubtituloLight,
+          subtituloCorDark: secaoLancamentosSubtituloDark
+        },
+        maisVendidos: {
+          ativo: secaoMaisVendidosAtivo,
+          tituloFont: secaoMaisVendidosFont,
+          bgLight: secaoMaisVendidosBgLight || undefined,
+          bgDark: secaoMaisVendidosBgDark || undefined,
+          tituloCorLight: secaoMaisVendidosTituloLight,
+          tituloCorDark: secaoMaisVendidosTituloDark,
+          subtituloCorLight: secaoMaisVendidosSubtituloLight,
+          subtituloCorDark: secaoMaisVendidosSubtituloDark
+        },
+        outlet: {
+          ativo: secaoOutletAtivo,
+          tituloFont: secaoOutletFont,
+          bgLight: secaoOutletBgLight || undefined,
+          bgDark: secaoOutletBgDark || undefined,
+          tituloCorLight: secaoOutletTituloLight,
+          tituloCorDark: secaoOutletTituloDark,
+          subtituloCorLight: secaoOutletSubtituloLight,
+          subtituloCorDark: secaoOutletSubtituloDark
+        },
+        ultimasPecas: {
+          ativo: secaoUltimasPecasAtivo,
+          tituloFont: secaoUltimasPecasFont,
+          bgLight: secaoUltimasPecasBgLight || undefined,
+          bgDark: secaoUltimasPecasBgDark || undefined,
+          tituloCorLight: secaoUltimasPecasTituloLight,
+          tituloCorDark: secaoUltimasPecasTituloDark,
+          subtituloCorLight: secaoUltimasPecasSubtituloLight,
+          subtituloCorDark: secaoUltimasPecasSubtituloDark
+        }
+      };
+
+      const adminCustom: AdminCustomThemeConfig = {
+        pageBgLight: adminPageBgLight,
+        pageBgDark: adminPageBgDark,
+        fontFamily: adminFontFamily,
+        sidebarBg: adminSidebarBg,
+        sidebarText: adminSidebarText,
+        buttonBg: adminButtonBg,
+        buttonText: adminButtonText,
+        buttonRadius: adminButtonRadius
+      };
+
       const res = await saveStoreGeneralSettings(tenantId, {
         logoUrl: logoUrl.trim(),
         logoDarkUrl: logoDarkUrl.trim(),
@@ -191,7 +416,10 @@ export default function AppearanceSettingsPage() {
         ogImageUrl: ogImageUrl.trim(),
         slogan: slogan.trim(),
         planoFundoSite,
-        planoFundoMenu
+        planoFundoMenu,
+        tipografiaMenu,
+        secoesVitrine,
+        adminCustom
       });
 
       if (res.success) {
@@ -839,6 +1067,715 @@ export default function AppearanceSettingsPage() {
         </div>
       </div>
 
+      {/* BLOCO 5: TIPOGRAFIA & CORES DO MENU DA VITRINE */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+            <Type className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              5. Tipografia & Cores Usadas no Menu Superior
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Personalize a fonte tipográfica, tamanho e cores dos links do cabeçalho da vitrine para modo claro e escuro.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          {/* Família Tipográfica */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Fonte Tipográfica do Menu</span>
+            <select
+              value={menuFontFamily}
+              onChange={(e) => setMenuFontFamily(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
+            >
+              <option value="Montserrat">Montserrat (Moderno & Legível)</option>
+              <option value="Playfair Display">Playfair Display (Alta Costura & Serifado)</option>
+              <option value="Cinzel">Cinzel (Luxo & Joalheria)</option>
+              <option value="Cormorant Garamond">Cormorant Garamond (Clássico Refinado)</option>
+              <option value="Inter">Inter (Clean & Minimalista)</option>
+              <option value="Poppins">Poppins (Geométrico Contemporâneo)</option>
+            </select>
+            <span className="text-[10px] text-slate-400 block">
+              Aplica-se à Linha 1, Linha 2 e à Gaveta Lateral Mobile.
+            </span>
+          </div>
+
+          {/* Tamanho da Fonte */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Tamanho da Fonte</span>
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              {['11px', '12px', '13px'].map((sz) => (
+                <button
+                  key={sz}
+                  type="button"
+                  onClick={() => setMenuFontSize(sz)}
+                  className={cn(
+                    'py-2 rounded-lg border text-xs font-bold text-center transition-all cursor-pointer',
+                    menuFontSize === sz
+                      ? 'bg-slate-900 text-amber-400 border-slate-900 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  )}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400 block">
+              12px é o padrão ouro de elegância e equilíbrio visual.
+            </span>
+          </div>
+
+          {/* Cor de Destaque no Hover */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Cor de Destaque no Hover</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={menuCorHoverLight}
+                onChange={(e) => setMenuCorHoverLight(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
+              />
+              <input
+                type="text"
+                value={menuCorHoverLight}
+                onChange={(e) => setMenuCorHoverLight(e.target.value)}
+                className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
+              />
+            </div>
+            <span className="text-[10px] text-slate-400 block">
+              Cor do link ao passar o mouse ou quando ativo.
+            </span>
+          </div>
+        </div>
+
+        {/* Cores de Texto do Menu Modo Claro e Escuro */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              Cor dos Links (Modo Claro)
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={menuCorTextoLight}
+                onChange={(e) => setMenuCorTextoLight(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
+              />
+              <input
+                type="text"
+                value={menuCorTextoLight}
+                onChange={(e) => setMenuCorTextoLight(e.target.value)}
+                className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
+              />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Moon className="w-3.5 h-3.5 text-indigo-500" />
+              Cor dos Links (Modo Escuro / Hero)
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={menuCorTextoDark}
+                onChange={(e) => setMenuCorTextoDark(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
+              />
+              <input
+                type="text"
+                value={menuCorTextoDark}
+                onChange={(e) => setMenuCorTextoDark(e.target.value)}
+                className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Prévia Interativa do Menu */}
+        <div className="p-4 rounded-xl border border-slate-200 bg-slate-900 text-white space-y-2">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+            Prévia em Tempo Real dos Links do Menu
+          </span>
+          <div
+            className="flex items-center gap-6 py-2 overflow-x-auto"
+            style={{ fontFamily: menuFontFamily, fontSize: menuFontSize }}
+          >
+            <span style={{ color: menuCorHoverLight }} className="font-semibold cursor-pointer">
+              Lançamentos 2026
+            </span>
+            <span style={{ color: menuCorTextoDark }} className="opacity-90 hover:opacity-100 cursor-pointer">
+              Alfaiataria
+            </span>
+            <span style={{ color: menuCorTextoDark }} className="opacity-90 hover:opacity-100 cursor-pointer">
+              Tricots Nobres
+            </span>
+            <span style={{ color: menuCorTextoDark }} className="opacity-90 hover:opacity-100 cursor-pointer">
+              Linho Puro
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C5A059] text-black uppercase">
+              BAZAR OFF
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* BLOCO 6: TIPOGRAFIAS E CORES POR SEÇÃO DA VITRINE */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center font-bold">
+              <Columns className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                6. Tipografias & Cores Usadas no Site por Seção
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Configure se todas as seções compartilham o mesmo estilo ou se cada uma terá plano de fundo, fonte e cores exclusivas.
+              </p>
+            </div>
+          </div>
+
+          {/* Toggle de Modo Unificado vs Independente */}
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setSecoesModoIndependente(false)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                !secoesModoIndependente
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Tudo Igual (Unificado)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSecoesModoIndependente(true)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                secoesModoIndependente
+                  ? 'bg-slate-900 text-amber-400 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Diferente por Seção
+            </button>
+          </div>
+        </div>
+
+        {/* Configuração Global / Padrão */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-900">
+              {!secoesModoIndependente
+                ? 'Estilo Padrão (Aplicado a Todas as Seções da Home)'
+                : 'Estilo Padrão (Fallback Geral)'}
+            </span>
+            <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
+              Global
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Fonte dos Títulos</label>
+              <select
+                value={secaoGlobalFont}
+                onChange={(e) => setSecaoGlobalFont(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+              >
+                <option value="Playfair Display">Playfair Display (Serifada Luxo)</option>
+                <option value="Montserrat">Montserrat (Contemporânea)</option>
+                <option value="Cinzel">Cinzel (Clássica Romana)</option>
+                <option value="Cormorant Garamond">Cormorant Garamond (Elegante)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Cor do Título (Claro)</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={secaoGlobalTituloLight}
+                  onChange={(e) => setSecaoGlobalTituloLight(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                />
+                <input
+                  type="text"
+                  value={secaoGlobalTituloLight}
+                  onChange={(e) => setSecaoGlobalTituloLight(e.target.value)}
+                  className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Cor do Título (Escuro)</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={secaoGlobalTituloDark}
+                  onChange={(e) => setSecaoGlobalTituloDark(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                />
+                <input
+                  type="text"
+                  value={secaoGlobalTituloDark}
+                  onChange={(e) => setSecaoGlobalTituloDark(e.target.value)}
+                  className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção (Opcional)</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={secaoGlobalBgDark || '#121110'}
+                  onChange={(e) => setSecaoGlobalBgDark(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSecaoGlobalBgLight('');
+                    setSecaoGlobalBgDark('');
+                  }}
+                  className="text-[10px] text-slate-500 underline cursor-pointer"
+                >
+                  Transparente
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Customização Granular por Seção (se modo independente estiver ativo) */}
+        {secoesModoIndependente && (
+          <div className="space-y-4 pt-1">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Personalização Individual das Seções da Home
+            </h3>
+
+            {/* 1. Lançamentos Exclusivos */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sec-lanc"
+                    checked={secaoLancamentosAtivo}
+                    onChange={(e) => setSecaoLancamentosAtivo(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="sec-lanc" className="font-bold text-slate-900 cursor-pointer">
+                    1. Seção Lançamentos Exclusivos (#lancamentos)
+                  </label>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {secaoLancamentosAtivo ? 'Customizado' : 'Herdando padrão global'}
+                </span>
+              </div>
+
+              {secaoLancamentosAtivo && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                    <select
+                      value={secaoLancamentosFont}
+                      onChange={(e) => setSecaoLancamentosFont(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    >
+                      <option value="Playfair Display">Playfair Display</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Cinzel">Cinzel</option>
+                      <option value="Cormorant Garamond">Cormorant Garamond</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoLancamentosTituloDark}
+                        onChange={(e) => setSecaoLancamentosTituloDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <input
+                        type="text"
+                        value={secaoLancamentosTituloDark}
+                        onChange={(e) => setSecaoLancamentosTituloDark(e.target.value)}
+                        className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoLancamentosBgDark || '#141312'}
+                        onChange={(e) => setSecaoLancamentosBgDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSecaoLancamentosBgDark('')}
+                        className="text-[10px] text-slate-500 underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Mais Vendidos */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sec-mv"
+                    checked={secaoMaisVendidosAtivo}
+                    onChange={(e) => setSecaoMaisVendidosAtivo(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="sec-mv" className="font-bold text-slate-900 cursor-pointer">
+                    2. Seção Mais Vendidos (#mais-vendidos)
+                  </label>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {secaoMaisVendidosAtivo ? 'Customizado' : 'Herdando padrão global'}
+                </span>
+              </div>
+
+              {secaoMaisVendidosAtivo && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                    <select
+                      value={secaoMaisVendidosFont}
+                      onChange={(e) => setSecaoMaisVendidosFont(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    >
+                      <option value="Playfair Display">Playfair Display</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Cinzel">Cinzel</option>
+                      <option value="Cormorant Garamond">Cormorant Garamond</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoMaisVendidosTituloDark}
+                        onChange={(e) => setSecaoMaisVendidosTituloDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <input
+                        type="text"
+                        value={secaoMaisVendidosTituloDark}
+                        onChange={(e) => setSecaoMaisVendidosTituloDark(e.target.value)}
+                        className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoMaisVendidosBgDark || '#141312'}
+                        onChange={(e) => setSecaoMaisVendidosBgDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSecaoMaisVendidosBgDark('')}
+                        className="text-[10px] text-slate-500 underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. OUTLET */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sec-outlet"
+                    checked={secaoOutletAtivo}
+                    onChange={(e) => setSecaoOutletAtivo(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="sec-outlet" className="font-bold text-slate-900 cursor-pointer">
+                    3. Seção OUTLET & BAZAR (#outlet)
+                  </label>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {secaoOutletAtivo ? 'Customizado' : 'Herdando padrão global'}
+                </span>
+              </div>
+
+              {secaoOutletAtivo && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                    <select
+                      value={secaoOutletFont}
+                      onChange={(e) => setSecaoOutletFont(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    >
+                      <option value="Playfair Display">Playfair Display</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Cinzel">Cinzel</option>
+                      <option value="Cormorant Garamond">Cormorant Garamond</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoOutletTituloDark}
+                        onChange={(e) => setSecaoOutletTituloDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <input
+                        type="text"
+                        value={secaoOutletTituloDark}
+                        onChange={(e) => setSecaoOutletTituloDark(e.target.value)}
+                        className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoOutletBgDark || '#141312'}
+                        onChange={(e) => setSecaoOutletBgDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSecaoOutletBgDark('')}
+                        className="text-[10px] text-slate-500 underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Últimas Peças */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sec-up"
+                    checked={secaoUltimasPecasAtivo}
+                    onChange={(e) => setSecaoUltimasPecasAtivo(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="sec-up" className="font-bold text-slate-900 cursor-pointer">
+                    4. Seção Últimas Peças (#ultimas-pecas)
+                  </label>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {secaoUltimasPecasAtivo ? 'Customizado' : 'Herdando padrão global'}
+                </span>
+              </div>
+
+              {secaoUltimasPecasAtivo && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                    <select
+                      value={secaoUltimasPecasFont}
+                      onChange={(e) => setSecaoUltimasPecasFont(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    >
+                      <option value="Playfair Display">Playfair Display</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Cinzel">Cinzel</option>
+                      <option value="Cormorant Garamond">Cormorant Garamond</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoUltimasPecasTituloDark}
+                        onChange={(e) => setSecaoUltimasPecasTituloDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <input
+                        type="text"
+                        value={secaoUltimasPecasTituloDark}
+                        onChange={(e) => setSecaoUltimasPecasTituloDark(e.target.value)}
+                        className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={secaoUltimasPecasBgDark || '#141312'}
+                        onChange={(e) => setSecaoUltimasPecasBgDark(e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSecaoUltimasPecasBgDark('')}
+                        className="text-[10px] text-slate-500 underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* BLOCO 7: CUSTOMIZAÇÃO DO PAINEL ADMINISTRATIVO (PÁGINAS, FONTES, BOTÕES E SIDEBAR) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center font-bold">
+            <Sliders className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              7. Customização Avançada do Painel Administrativo
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Controle o plano de fundo das páginas, tipografia do sistema, formato dos botões e cores da barra lateral.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          {/* Fundo das Páginas Admin */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Plano de Fundo das Páginas</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={adminPageBgLight}
+                onChange={(e) => setAdminPageBgLight(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
+              />
+              <input
+                type="text"
+                value={adminPageBgLight}
+                onChange={(e) => setAdminPageBgLight(e.target.value)}
+                className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
+              />
+            </div>
+            <span className="text-[10px] text-slate-400 block">
+              Fundo do corpo do dashboard admin.
+            </span>
+          </div>
+
+          {/* Tipografia do Admin */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Tipografia do Painel Admin</span>
+            <select
+              value={adminFontFamily}
+              onChange={(e) => setAdminFontFamily(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
+            >
+              <option value="Inter">Inter (Padrão Executivo)</option>
+              <option value="Montserrat">Montserrat (Geométrico)</option>
+              <option value="Plus Jakarta Sans">Plus Jakarta Sans (Modern Tech)</option>
+              <option value="Poppins">Poppins (Arredondado)</option>
+            </select>
+            <span className="text-[10px] text-slate-400 block">
+              Fonte de títulos, tabelas e cards do admin.
+            </span>
+          </div>
+
+          {/* Formato dos Botões Padrão */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Formato dos Botões</span>
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              {[
+                { label: 'Quadrado', val: 'rounded-none' },
+                { label: 'Médio', val: 'rounded-lg' },
+                { label: 'Suave', val: 'rounded-xl' },
+                { label: 'Pílula', val: 'rounded-full' }
+              ].map((r) => (
+                <button
+                  key={r.val}
+                  type="button"
+                  onClick={() => setAdminButtonRadius(r.val as any)}
+                  className={cn(
+                    'py-1.5 px-2 rounded-md border text-[11px] font-bold text-center transition-all cursor-pointer',
+                    adminButtonRadius === r.val
+                      ? 'bg-slate-900 text-amber-400 border-slate-900 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400 block">
+              Curvatura dos botões de ação e modais.
+            </span>
+          </div>
+
+          {/* Fundo do Menu Admin (Sidebar) */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <span className="font-bold text-slate-800 block">Cor Fundo do Menu Admin</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={adminSidebarBg}
+                onChange={(e) => setAdminSidebarBg(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
+              />
+              <input
+                type="text"
+                value={adminSidebarBg}
+                onChange={(e) => setAdminSidebarBg(e.target.value)}
+                className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
+              />
+            </div>
+            <span className="text-[10px] text-slate-400 block">
+              Cor customizada da barra lateral esquerda.
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* BLOCO 4: PALETAS DO PAINEL ADMINISTRATIVO */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
@@ -973,7 +1910,7 @@ export default function AppearanceSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? 'Salvando...' : 'Salvar Identidade Visual & Planos de Fundo'}</span>
+          <span>{isSaving ? 'Salvando...' : 'Salvar Identidade Visual, Tipografias & Seções'}</span>
         </button>
       </div>
     </form>

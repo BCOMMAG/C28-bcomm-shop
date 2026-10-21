@@ -2329,6 +2329,10 @@ export interface StoreSettingsData {
   slogan?: string;
   planoFundoMenu?: PlanoFundoMenuConfig;
   planoFundoSite?: PlanoFundoSiteConfig;
+  tipografiaMenu?: TipografiaMenuConfig;
+  secoesVitrine?: SecoesVitrineConfig;
+  coresGlobais?: CoresModoClaroEscuro;
+  adminCustom?: AdminCustomThemeConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -2358,6 +2362,55 @@ export interface PlanoFundoSiteConfig {
   imagem_url?: string;
   video_url?: string;
   overlay_opacidade?: number;
+}
+
+export interface TipografiaMenuConfig {
+  fontFamily: string;
+  fontSize?: string;
+  corTextoLight?: string;
+  corTextoDark?: string;
+  corHoverLight?: string;
+  corHoverDark?: string;
+}
+
+export interface SecaoEstiloConfig {
+  ativo: boolean;
+  bgLight?: string;
+  bgDark?: string;
+  tituloFont?: string;
+  tituloCorLight?: string;
+  tituloCorDark?: string;
+  subtituloCorLight?: string;
+  subtituloCorDark?: string;
+}
+
+export interface SecoesVitrineConfig {
+  modoIndependente: boolean;
+  global: SecaoEstiloConfig;
+  lancamentos?: SecaoEstiloConfig;
+  maisVendidos?: SecaoEstiloConfig;
+  outlet?: SecaoEstiloConfig;
+  ultimasPecas?: SecaoEstiloConfig;
+}
+
+export interface CoresModoClaroEscuro {
+  primaryLight?: string;
+  primaryDark?: string;
+  textLight?: string;
+  textDark?: string;
+  accentGold?: string;
+}
+
+export interface AdminCustomThemeConfig {
+  pageBgLight?: string;
+  pageBgDark?: string;
+  fontFamily?: string;
+  sidebarBg?: string;
+  sidebarText?: string;
+  sidebarFontFamily?: string;
+  buttonBg?: string;
+  buttonText?: string;
+  buttonRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full';
 }
 
 export interface SaveStoreSettingsInput {
@@ -2426,6 +2479,10 @@ export interface SaveStoreSettingsInput {
   slogan?: string;
   planoFundoMenu?: PlanoFundoMenuConfig;
   planoFundoSite?: PlanoFundoSiteConfig;
+  tipografiaMenu?: TipografiaMenuConfig;
+  secoesVitrine?: SecoesVitrineConfig;
+  coresGlobais?: CoresModoClaroEscuro;
+  adminCustom?: AdminCustomThemeConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -2536,6 +2593,40 @@ export async function getStoreSettings(
         bg_dark: '#121110',
         overlay_opacidade: 40
       },
+      tipografiaMenu: vis.tipografia_menu || {
+        fontFamily: 'Montserrat',
+        fontSize: '12px',
+        corTextoLight: '#1A1918',
+        corTextoDark: '#FAF8F5',
+        corHoverLight: '#C5A059',
+        corHoverDark: '#DFBE76'
+      },
+      secoesVitrine: vis.secoes_vitrine || {
+        modoIndependente: false,
+        global: {
+          ativo: true,
+          tituloFont: 'Playfair Display',
+          tituloCorLight: '#FFFFFF',
+          tituloCorDark: '#FFFFFF',
+          subtituloCorLight: '#FAF8F5',
+          subtituloCorDark: '#FAF8F5'
+        }
+      },
+      coresGlobais: vis.cores_globais || {
+        primaryLight: '#FAF8F5',
+        primaryDark: '#121110',
+        textLight: '#1A1918',
+        textDark: '#FAF8F5',
+        accentGold: '#C5A059'
+      },
+      adminCustom: vis.admin_custom || {
+        pageBgLight: '#F8FAFC',
+        pageBgDark: '#0B132B',
+        fontFamily: 'Inter',
+        sidebarBg: '#0B132B',
+        sidebarText: '#94A3B8',
+        buttonRadius: 'rounded-xl'
+      },
 
       // Marketing & SEO
       metaPixelId: vis.meta_pixel_id || '',
@@ -2628,6 +2719,10 @@ export async function saveStoreGeneralSettings(
       ...(input.slogan !== undefined ? { slogan: input.slogan.trim() } : {}),
       ...(input.planoFundoMenu !== undefined ? { plano_fundo_menu: input.planoFundoMenu } : {}),
       ...(input.planoFundoSite !== undefined ? { plano_fundo_site: input.planoFundoSite } : {}),
+      ...(input.tipografiaMenu !== undefined ? { tipografia_menu: input.tipografiaMenu } : {}),
+      ...(input.secoesVitrine !== undefined ? { secoes_vitrine: input.secoesVitrine } : {}),
+      ...(input.coresGlobais !== undefined ? { cores_globais: input.coresGlobais } : {}),
+      ...(input.adminCustom !== undefined ? { admin_custom: input.adminCustom } : {}),
 
       // Marketing & SEO
       ...(input.metaPixelId !== undefined ? { meta_pixel_id: input.metaPixelId.trim() } : {}),
