@@ -13,6 +13,7 @@ import { normalizeTenantSlug } from '@/lib/routes';
 interface StoreContextType {
   currentTenant: Loja;
   heroBanner: AdminHeroBanner | null;
+  heroBanners: AdminHeroBanner[];
   announcementBar: {
     text: string;
     active: boolean;
@@ -93,6 +94,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
   const [heroBanner, setHeroBanner] = useState<AdminHeroBanner | null>(null);
+  const [heroBanners, setHeroBanners] = useState<AdminHeroBanner[]>([]);
 
   // Estados de Embalagem para Presente
   const [isGift, setIsGift] = useState<boolean>(false);
@@ -155,8 +157,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setProducts(dynamicProds);
       }
       if (heroBanners && heroBanners.length > 0) {
-        const active = heroBanners.find((b) => b.ativo) || heroBanners[0];
-        setHeroBanner(active);
+        const activeList = heroBanners.filter((b) => b.ativo);
+        const resolvedList = activeList.length > 0 ? activeList : [heroBanners[0]];
+        setHeroBanners(resolvedList);
+        setHeroBanner(resolvedList[0]);
       }
     } catch (err) {
       console.error('Falha ao carregar produtos e banners dinâmicos:', err);
@@ -168,14 +172,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     refreshProducts();
 
-    const handleTenantUpdated = () => {
+    const handleUpdate = () => {
       refreshProducts();
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('bcomm:tenant_updated', handleTenantUpdated);
+      window.addEventListener('bcomm:tenant_updated', handleUpdate);
+      window.addEventListener('bcomm:banners_updated', handleUpdate);
       return () => {
-        window.removeEventListener('bcomm:tenant_updated', handleTenantUpdated);
+        window.removeEventListener('bcomm:tenant_updated', handleUpdate);
+        window.removeEventListener('bcomm:banners_updated', handleUpdate);
       };
     }
   }, []);
@@ -430,6 +436,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         currentTenant,
         heroBanner,
+        heroBanners,
         announcementBar,
         products,
         isLoadingProducts,

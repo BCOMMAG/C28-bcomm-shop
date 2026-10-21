@@ -198,6 +198,7 @@ export interface AdminHeroBanner {
   tipo_midia: 'video' | 'image';
   desktop_media_url: string;
   mobile_media_url: string;
+  display_order?: number;
   ativo: boolean;
 }
 
@@ -1528,6 +1529,7 @@ export async function getAdminHeroBanners(
       tipo_midia: b.tipo_midia || 'video',
       desktop_media_url: b.desktop_media_url,
       mobile_media_url: b.mobile_media_url,
+      display_order: Number(b.display_order ?? 0),
       ativo: Boolean(b.ativo)
     }));
   } catch (err) {
@@ -1557,34 +1559,136 @@ export async function saveAdminHeroBanner(
           tipo_midia: banner.tipo_midia,
           desktop_media_url: banner.desktop_media_url,
           mobile_media_url: banner.mobile_media_url,
+          display_order: banner.display_order !== undefined ? banner.display_order : 0,
           ativo: banner.ativo !== undefined ? banner.ativo : true
         })
         .eq('id', banner.id);
 
       if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bcomm:banners_updated'));
+      }
+
       return { success: true, id: banner.id };
     } else {
+      // Obter contagem de banners para definir display_order sequencial
+      const { data: existing } = await supabase
+        .from('hero_banners')
+        .select('display_order')
+        .eq('loja_id', lojaId)
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = (existing?.[0]?.display_order ?? -1) + 1;
+
       const { data, error } = await supabase
         .from('hero_banners')
         .insert({
           loja_id: lojaId,
-          titulo: banner.titulo || 'Coleção Elegance & Alfaiataria',
+          titulo: banner.titulo || 'Nova Coleção',
           subtitulo: banner.subtitulo || 'Curadoria Exclusiva em Moda Feminina',
           cta_texto: banner.cta_texto || 'Conhecer Coleção',
           cta_link: banner.cta_link || '#lancamentos',
           tipo_midia: banner.tipo_midia || 'video',
           desktop_media_url: banner.desktop_media_url || '/video/header_video.mp4',
           mobile_media_url: banner.mobile_media_url || '/video/header_video.mp4',
-          ativo: true
+          display_order: banner.display_order !== undefined ? banner.display_order : nextOrder,
+          ativo: banner.ativo !== undefined ? banner.ativo : true
         })
         .select('id')
         .single();
 
       if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bcomm:banners_updated'));
+      }
+
       return { success: true, id: data?.id };
     }
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao salvar hero banner:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Exclui um Hero Banner cadastrado.
+ */
+export async function deleteAdminHeroBanner(
+  bannerId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { error } = await supabase
+      .from('hero_banners')
+      .delete()
+      .eq('id', bannerId);
+
+    if (error) throw error;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:banners_updated'));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao excluir banner:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Ativa ou pausa um Hero Banner na vitrine.
+ */
+export async function toggleAdminHeroBannerStatus(
+  bannerId: string,
+  ativo: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { error } = await supabase
+      .from('hero_banners')
+      .update({ ativo })
+      .eq('id', bannerId);
+
+    if (error) throw error;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:banners_updated'));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao alternar status do banner:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Reordena múltiplos Hero Banners na sequência de exibição.
+ */
+export async function reorderAdminHeroBanners(
+  orderedItems: Array<{ id: string; display_order: number }>
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    for (const item of orderedItems) {
+      const { error } = await supabase
+        .from('hero_banners')
+        .update({ display_order: item.display_order })
+        .eq('id', item.id);
+      if (error) throw error;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:banners_updated'));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao reordenar banners:', err);
     return { success: false, error: err?.message };
   }
 }
