@@ -2,15 +2,30 @@
 // 🏛️ DEFINIÇÃO DE TIPOS DO BANCO DE DADOS (SUPABASE POSTGRESQL MULTI-TENANT)
 // ==============================================================================
 
+export interface BarraAvisoEstilo {
+  modo: 'unificado' | 'independente';
+  bg_light: string;
+  text_light: string;
+  bg_dark: string;
+  text_dark: string;
+  font_family: string;
+  icone?: 'sparkles' | 'truck' | 'gift' | 'heart' | 'tag' | 'none';
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
   cor_fundo: string;
   logo_url: string;
+  logo_dark_url?: string;
+  favicon_url?: string;
+  og_image_url?: string;
   tagline: string;
   frete_gratis_valor: number;
   barra_aviso?: string;
   barra_aviso_ativa?: boolean;
+  barra_aviso_estilo?: BarraAvisoEstilo;
+  [key: string]: any;
 }
 
 export interface LojaModulosAtivos {

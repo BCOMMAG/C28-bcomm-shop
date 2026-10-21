@@ -5,7 +5,7 @@ import { Product, CartItem } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
-import { Loja } from '@/types/database';
+import { Loja, BarraAvisoEstilo } from '@/types/database';
 import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug } from '@/lib/routes';
@@ -13,7 +13,11 @@ import { normalizeTenantSlug } from '@/lib/routes';
 interface StoreContextType {
   currentTenant: Loja;
   heroBanner: AdminHeroBanner | null;
-  announcementBar: { text: string; active: boolean };
+  announcementBar: {
+    text: string;
+    active: boolean;
+    estilo?: BarraAvisoEstilo;
+  };
   products: Product[];
   isLoadingProducts: boolean;
   refreshProducts: () => Promise<void>;
@@ -108,7 +112,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const vis = currentTenant?.configuracoes_visuais as any;
     const text = vis?.barra_aviso || 'Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp';
     const active = vis?.barra_aviso_ativa !== undefined ? Boolean(vis.barra_aviso_ativa) : true;
-    return { text, active };
+    const estilo: BarraAvisoEstilo | undefined = vis?.barra_aviso_estilo;
+    return { text, active, estilo };
   }, [currentTenant]);
 
   // Carrega produtos dinâmicos e hero banner do Supabase na inicialização com suporte a rotas limpas /:slug/ e ?loja=slug
@@ -162,6 +167,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     refreshProducts();
+
+    const handleTenantUpdated = () => {
+      refreshProducts();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('bcomm:tenant_updated', handleTenantUpdated);
+      return () => {
+        window.removeEventListener('bcomm:tenant_updated', handleTenantUpdated);
+      };
+    }
   }, []);
 
   const getProductById = (id: string) => {

@@ -4,6 +4,27 @@ import { Loja } from '@/types/database';
 const tenantCache = new Map<string, { loja: Loja; expiresAt: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 1 minuto de cache
 
+/**
+ * Limpa o cache de tenants em memória para refletir alterações imediatas do painel admin
+ */
+export function clearTenantCache(): void {
+  tenantCache.clear();
+}
+
+/**
+ * Normaliza qualquer variação de slug para o slug canônico cadastrado no banco Supabase
+ */
+export function getCanonicalDbSlug(slug?: string | null): string {
+  const clean = (slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+  if (clean === 'leidyboutique' || clean === 'leidy-boutique' || clean === '') {
+    return 'leidy-boutique';
+  }
+  if (clean === 'auraprivee' || clean === 'aura-privee') {
+    return 'aura-privee';
+  }
+  return clean;
+}
+
 // Configuração padrão da Leidy Boutique (Tenant #1 Oficial)
 export const DEFAULT_LEIDY_TENANT: Loja = {
   id: 'e8b7f890-4e3a-4a89-9c56-8e1234567890',
@@ -132,12 +153,13 @@ export async function getTenantByHost(host: string): Promise<Loja> {
 }
 
 /**
- * Resolve a loja pelo slug único (ex: 'aura-privee' via ?loja=aura-privee)
+ * Resolve a loja pelo slug único (ex: 'leidyboutique', 'leidy-boutique', 'aura-privee')
  */
 export async function getTenantBySlug(slug: string): Promise<Loja> {
   const cleanSlug = (slug || '').trim().toLowerCase() || 'leidy-boutique';
+  const dbSlug = getCanonicalDbSlug(cleanSlug);
 
-  const cached = tenantCache.get(`slug:${cleanSlug}`);
+  const cached = tenantCache.get(`slug:${dbSlug}`) || tenantCache.get(`slug:${cleanSlug}`);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.loja;
   }
@@ -147,7 +169,8 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (supabaseUrl && supabaseKey) {
-      const res = await fetch(`${supabaseUrl}/rest/v1/lojas?slug=eq.${encodeURIComponent(cleanSlug)}&ativo=eq.true&select=*`, {
+      // Consulta pelo slug canônico do banco
+      const res = await fetch(`${supabaseUrl}/rest/v1/lojas?slug=eq.${encodeURIComponent(dbSlug)}&ativo=eq.true&select=*`, {
         headers: {
           apikey: supabaseKey,
           Authorization: `Bearer ${supabaseKey}`,
@@ -157,19 +180,21 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
       if (res.ok) {
         const data: Loja[] = await res.json();
         if (data && data.length > 0) {
-          tenantCache.set(`slug:${cleanSlug}`, { loja: data[0], expiresAt: Date.now() + CACHE_TTL_MS });
-          return data[0];
+          const tenantFound = data[0];
+          tenantCache.set(`slug:${dbSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
+          tenantCache.set(`slug:${cleanSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
+          return tenantFound;
         }
       }
     }
   } catch (error) {
-    console.warn(`Erro ao resolver tenant para o slug ${cleanSlug}:`, error);
+    console.warn(`Erro ao resolver tenant para o slug ${cleanSlug} (dbSlug: ${dbSlug}):`, error);
   }
 
-  if (cleanSlug === 'leidy-boutique' || cleanSlug === 'leidyboutique') {
+  if (dbSlug === 'leidy-boutique') {
     return DEFAULT_LEIDY_TENANT;
   }
-  if (cleanSlug === 'aura-privee' || cleanSlug === 'auraprivee') {
+  if (dbSlug === 'aura-privee') {
     return DEFAULT_AURA_PRIVEE_TENANT;
   }
 
@@ -192,7 +217,9 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
       cor_fundo: '#FAF8F5',
       logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
       tagline: 'Boutique & Moda Feminina Exclusiva',
-      frete_gratis_valor: 350.00
+      frete_gratis_valor: 350.00,
+      barra_aviso: 'Atendimento VIP & Peças Exclusivas',
+      barra_aviso_ativa: true
     },
     modulos_ativos: {
       frete_automatico: true,

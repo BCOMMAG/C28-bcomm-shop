@@ -17,7 +17,10 @@ import {
   ChevronDown,
   MessageCircle,
   User,
-  Sparkles
+  Sparkles,
+  Truck,
+  Gift,
+  Tag
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { STORE_INFO } from '@/data/products';
@@ -304,12 +307,38 @@ export const Header: React.FC<HeaderProps> = ({
         }`}
       >
         {/* BARRA SUPERIOR DE AVISOS DINÂMICA (ANNOUNCEMENT BAR) */}
-        {announcementBar?.active && (
-          <div className="bg-[#1A1918]/95 backdrop-blur-md text-[#DFBE76] border-b border-[#DFBE76]/25 py-1.5 px-3 text-center text-[10px] sm:text-xs font-medium tracking-wide flex items-center justify-center gap-1.5 transition-all">
-            <Sparkles className="w-3 h-3 text-[#DFBE76] shrink-0 animate-pulse" />
-            <span className="truncate max-w-[90vw]">{announcementBar.text}</span>
-          </div>
-        )}
+        {announcementBar?.active && (() => {
+          const estilo = announcementBar?.estilo;
+          const isDark = theme === 'dark';
+          const modo = estilo?.modo || 'unificado';
+          const bgColor = (modo === 'independente' && isDark)
+            ? (estilo?.bg_dark || '#1A1918')
+            : (estilo?.bg_light || '#1A1918');
+          const textColor = (modo === 'independente' && isDark)
+            ? (estilo?.text_dark || '#DFBE76')
+            : (estilo?.text_light || '#DFBE76');
+          const fontFamily = estilo?.font_family || undefined;
+          const icone = estilo?.icone || 'sparkles';
+
+          return (
+            <div
+              className="py-1.5 px-3 text-center text-[10px] sm:text-xs font-medium tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-2xs backdrop-blur-md"
+              style={{
+                backgroundColor: bgColor,
+                color: textColor,
+                borderBottom: `1px solid ${textColor}25`,
+                fontFamily
+              }}
+            >
+              {icone === 'sparkles' && <Sparkles className="w-3 h-3 shrink-0 animate-pulse" style={{ color: textColor }} />}
+              {icone === 'truck' && <Truck className="w-3 h-3 shrink-0" style={{ color: textColor }} />}
+              {icone === 'gift' && <Gift className="w-3 h-3 shrink-0" style={{ color: textColor }} />}
+              {icone === 'heart' && <Heart className="w-3 h-3 shrink-0" style={{ color: textColor }} />}
+              {icone === 'tag' && <Tag className="w-3 h-3 shrink-0" style={{ color: textColor }} />}
+              <span className="truncate max-w-[90vw]">{announcementBar.text}</span>
+            </div>
+          );
+        })()}
 
         <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-10">
           <div className="relative flex items-center justify-between h-16 sm:h-20 lg:h-[86px] transition-all duration-300">

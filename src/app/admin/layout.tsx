@@ -29,7 +29,9 @@ import {
   ShieldCheck,
   Lock,
   Clock,
-  Ban
+  Ban,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -57,6 +59,27 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     count: number;
     pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }>;
   }>({ count: 0, pedidos: [] });
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('bcomm_admin_sidebar_collapsed');
+      if (saved !== null) {
+        setIsSidebarCollapsed(saved === 'true');
+      }
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('bcomm_admin_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const lojaNome = currentTenant?.nome || 'Painel da Loja';
   const lojaSlug = currentTenant?.slug || '';
@@ -273,46 +296,94 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
       {/* =========================================================================
-          1. SIDEBAR LATERAL FIXA NO DESKTOP (Inspirada no Layout de Referência)
+          1. SIDEBAR LATERAL FIXA NO DESKTOP (Minimizável com Tooltips)
       ========================================================================= */}
       <aside
-        className="hidden md:flex flex-col fixed inset-y-0 left-0 w-64 z-40 transition-colors duration-200 border-r select-none print:hidden"
+        className={cn(
+          "hidden md:flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 border-r select-none print:hidden",
+          isSidebarCollapsed ? "w-20" : "w-64"
+        )}
         style={{
           backgroundColor: c.sidebarBg,
           borderColor: c.sidebarBorder
         }}
       >
-        {/* Topo da Sidebar: Marca e Identidade */}
-        <div className="p-5 pb-4 border-b" style={{ borderColor: c.sidebarBorder }}>
-          <Link href="/admin/" className="flex items-center gap-3 group">
-            <div className="relative h-9 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
-              <Image
-                src="/images/Logo sem fundo.png"
-                alt={lojaNome}
-                width={2752}
-                height={1536}
-                style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
-              />
-            </div>
-            <div className="min-w-0">
-              <span
-                className="font-serif-luxury text-base font-bold tracking-tight block truncate group-hover:opacity-90 transition-opacity"
-                style={{ color: c.sidebarTextActive }}
+        {/* Topo da Sidebar: Marca, Identidade & Botão Minimizar */}
+        <div
+          className={cn(
+            "border-b transition-all duration-300 flex items-center",
+            isSidebarCollapsed ? "p-3 flex-col gap-2.5 justify-center" : "p-5 pb-4 justify-between"
+          )}
+          style={{ borderColor: c.sidebarBorder }}
+        >
+          {isSidebarCollapsed ? (
+            <div className="flex flex-col items-center gap-2.5">
+              <Link href="/admin/" className="group relative" title={lojaNome}>
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
+                  <Image
+                    src="/images/Logo sem fundo.png"
+                    alt={lojaNome}
+                    width={2752}
+                    height={1536}
+                    style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Expandir Menu Lateral (w-64)"
               >
-                {lojaNome}
-              </span>
-              <span
-                className="text-[9px] uppercase tracking-widest font-bold block"
-                style={{ color: c.sidebarMuted }}
-              >
-                PAINEL ADMINISTRATIVO
-              </span>
+                <PanelLeftOpen className="w-4 h-4" style={{ color: c.sidebarTextActive }} />
+              </button>
             </div>
-          </Link>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <Link href="/admin/" className="flex items-center gap-3 group min-w-0">
+                <div className="relative h-9 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-white/10 rounded-xl p-1 shadow-xs border border-white/10">
+                  <Image
+                    src="/images/Logo sem fundo.png"
+                    alt={lojaNome}
+                    width={2752}
+                    height={1536}
+                    style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className="font-serif-luxury text-base font-bold tracking-tight block truncate group-hover:opacity-90 transition-opacity"
+                    style={{ color: c.sidebarTextActive }}
+                  >
+                    {lojaNome}
+                  </span>
+                  <span
+                    className="text-[9px] uppercase tracking-widest font-bold block"
+                    style={{ color: c.sidebarMuted }}
+                  >
+                    PAINEL ADMINISTRATIVO
+                  </span>
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0 ml-1"
+                title="Minimizar Menu Lateral para Ganho de Espaço"
+              >
+                <PanelLeftClose className="w-4 h-4" style={{ color: c.sidebarMuted }} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Menu Vertical de Navegação */}
-        <div className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
+        <div
+          className={cn(
+            "flex-1 py-4 overflow-y-auto space-y-1 overflow-x-hidden",
+            isSidebarCollapsed ? "px-2" : "px-3"
+          )}
+        >
           {allowedNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
@@ -324,77 +395,133 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group relative',
+                  'flex items-center rounded-xl text-xs font-semibold transition-all group relative',
+                  isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5',
                   isActive ? 'shadow-xs font-bold' : 'hover:opacity-100'
                 )}
                 style={{
                   backgroundColor: isActive ? c.sidebarActive : 'transparent',
                   color: isActive ? c.sidebarTextActive : c.sidebarText,
-                  borderLeft: isActive ? `3px solid ${c.sidebarActiveBorder}` : '3px solid transparent'
+                  borderLeft: isSidebarCollapsed
+                    ? undefined
+                    : isActive ? `3px solid ${c.sidebarActiveBorder}` : '3px solid transparent'
                 }}
               >
                 <Icon
-                  className="w-4 h-4 shrink-0 transition-transform group-hover:scale-105"
+                  className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110"
                   style={{
                     color: isActive ? c.accent : c.sidebarMuted
                   }}
                 />
-                <span className="truncate flex-1">{item.title}</span>
-                {isActive && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: c.accent }}
-                  />
+
+                {!isSidebarCollapsed && (
+                  <>
+                    <span className="truncate flex-1">{item.title}</span>
+                    {isActive && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: c.accent }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* Tooltip Flutuante no Modo Minimizado */}
+                {isSidebarCollapsed && (
+                  <div
+                    className="fixed left-20 ml-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 shadow-2xl flex items-center gap-1.5 border"
+                    style={{
+                      backgroundColor: '#1A1918',
+                      color: '#FFFFFF',
+                      borderColor: 'rgba(255, 255, 255, 0.15)'
+                    }}
+                  >
+                    <span>{item.title}</span>
+                    {isActive && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: c.accent }}
+                      />
+                    )}
+                  </div>
                 )}
               </Link>
             );
           })}
         </div>
 
-        {/* Rodapé da Sidebar: Card de Suporte / Ajuda */}
-        <div className="p-4 border-t" style={{ borderColor: c.sidebarBorder }}>
-          <div
-            className="p-3.5 rounded-2xl border transition-all"
-            style={{
-              backgroundColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
-              borderColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+        {/* Rodapé da Sidebar: Suporte / Ajuda */}
+        <div className="p-3 border-t" style={{ borderColor: c.sidebarBorder }}>
+          {isSidebarCollapsed ? (
+            <div className="flex justify-center group relative">
+              <a
+                href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 shadow-2xs"
                 style={{
                   backgroundColor: c.accentSoft,
                   color: c.accent
                 }}
+                title="Suporte VIP via WhatsApp"
               >
                 <MessageSquare className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <span
-                  className="text-xs font-bold block truncate"
-                  style={{ color: c.sidebarTextActive }}
-                >
-                  Precisa de Ajuda?
-                </span>
-                <span
-                  className="text-[10px] block truncate"
-                  style={{ color: c.sidebarMuted }}
-                >
-                  Fale com a nossa equipe
-                </span>
+              </a>
+              <div
+                className="fixed left-20 ml-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 z-50 shadow-2xl border"
+                style={{
+                  backgroundColor: '#1A1918',
+                  color: '#FFFFFF',
+                  borderColor: 'rgba(255, 255, 255, 0.15)'
+                }}
+              >
+                Suporte VIP via WhatsApp
               </div>
             </div>
-            <a
-              href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 block text-center py-1.5 px-3 rounded-lg text-[11px] font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
-              style={{ backgroundColor: c.accent }}
+          ) : (
+            <div
+              className="p-3.5 rounded-2xl border transition-all"
+              style={{
+                backgroundColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
+                borderColor: paletteConfig.isDarkSidebar ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'
+              }}
             >
-              Iniciar Chat
-            </a>
-          </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+                  style={{
+                    backgroundColor: c.accentSoft,
+                    color: c.accent
+                  }}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className="text-xs font-bold block truncate"
+                    style={{ color: c.sidebarTextActive }}
+                  >
+                    Precisa de Ajuda?
+                  </span>
+                  <span
+                    className="text-[10px] block truncate"
+                    style={{ color: c.sidebarMuted }}
+                  >
+                    Fale com a nossa equipe
+                  </span>
+                </div>
+              </div>
+              <a
+                href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 block text-center py-1.5 px-3 rounded-lg text-[11px] font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
+                style={{ backgroundColor: c.accent }}
+              >
+                Iniciar Chat
+              </a>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -494,9 +621,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* =========================================================================
-          3. ÁREA PRINCIPAL (Compensada no Desktop com md:pl-64)
+          3. ÁREA PRINCIPAL (Compensada no Desktop com md:pl-64 ou md:pl-20)
       ========================================================================= */}
-      <div className="flex-1 flex flex-col md:pl-64 print:pl-0 min-w-0">
+      <div
+        className={cn(
+          "flex-1 flex flex-col print:pl-0 min-w-0 transition-all duration-300",
+          isSidebarCollapsed ? "md:pl-20" : "md:pl-64"
+        )}
+      >
         {/* TOPBAR FIXO DO APLICATIVO */}
         <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs print:hidden">
           {/* LADO ESQUERDO: HAMBÚRGUER MOBILE + BARRA DE BUSCA UNIVERSAL */}

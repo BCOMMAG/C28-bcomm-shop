@@ -1,6 +1,8 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
+import { BarraAvisoEstilo } from '@/types/database';
+import { clearTenantCache } from '@/lib/tenant';
 
 export interface DashboardStats {
   faturamentoTotal: number;
@@ -1588,12 +1590,13 @@ export async function saveAdminHeroBanner(
 }
 
 /**
- * Salva ou atualiza a barra de avisos superior da loja no Supabase.
+ * Salva ou atualiza a barra de avisos superior da loja no Supabase com suporte a estilo visual completo.
  */
 export async function saveStoreAnnouncementBar(
   lojaId: string = DEFAULT_TENANT_ID,
   barraAviso: string,
-  barraAvisoAtiva: boolean = true
+  barraAvisoAtiva: boolean = true,
+  barraAvisoEstilo?: BarraAvisoEstilo
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseBrowserClient();
 
@@ -1610,7 +1613,8 @@ export async function saveStoreAnnouncementBar(
     const updatedVisuais = {
       ...currentVisuais,
       barra_aviso: barraAviso,
-      barra_aviso_ativa: barraAvisoAtiva
+      barra_aviso_ativa: barraAvisoAtiva,
+      ...(barraAvisoEstilo ? { barra_aviso_estilo: barraAvisoEstilo } : {})
     };
 
     const { error: updateErr } = await supabase
@@ -1622,6 +1626,19 @@ export async function saveStoreAnnouncementBar(
       .eq('id', lojaId);
 
     if (updateErr) throw updateErr;
+
+    // Limpa o cache de tenants em memória para refletir na hora
+    clearTenantCache();
+
+    // Dispara evento global no navegador caso em ambiente cliente
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('bcomm:tenant_updated', {
+          detail: { lojaId, barra_aviso_ativa: barraAvisoAtiva }
+        })
+      );
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao salvar barra de avisos:', err);
