@@ -250,6 +250,55 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [currentTenant.id, currentTenant.slug]);
 
+  // Sincronização reativa de Favicon da Aba, OG Image e Metatags Sociais
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const vis = currentTenant?.configuracoes_visuais as any;
+    if (!vis) return;
+
+    // 1. Atualizar Favicon se houver URL personalizada no Cloudflare R2
+    if (vis.favicon_url) {
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+      if (existingIcons.length > 0) {
+        existingIcons.forEach((el) => {
+          el.href = vis.favicon_url;
+        });
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = vis.favicon_url;
+        document.head.appendChild(link);
+      }
+    }
+
+    // 2. Atualizar OG Image se houver URL personalizada
+    if (vis.og_image_url) {
+      let ogMeta = document.querySelector<HTMLMetaElement>("meta[property='og:image']");
+      if (!ogMeta) {
+        ogMeta = document.createElement('meta');
+        ogMeta.setAttribute('property', 'og:image');
+        document.head.appendChild(ogMeta);
+      }
+      ogMeta.content = vis.og_image_url;
+
+      let twitterMeta = document.querySelector<HTMLMetaElement>("meta[name='twitter:image']");
+      if (!twitterMeta) {
+        twitterMeta = document.createElement('meta');
+        twitterMeta.setAttribute('name', 'twitter:image');
+        document.head.appendChild(twitterMeta);
+      }
+      twitterMeta.content = vis.og_image_url;
+    }
+
+    // 3. Atualizar Slogan / Descrição
+    if (vis.slogan) {
+      let ogDesc = document.querySelector<HTMLMetaElement>("meta[property='og:description']");
+      if (ogDesc) ogDesc.content = vis.slogan;
+      let desc = document.querySelector<HTMLMetaElement>("meta[name='description']");
+      if (desc) desc.content = vis.slogan;
+    }
+  }, [currentTenant]);
+
   const toggleTheme = () => {
     setTheme((prev) => {
       const nextTheme = prev === 'light' ? 'dark' : 'light';

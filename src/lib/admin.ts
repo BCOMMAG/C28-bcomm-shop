@@ -2327,6 +2327,8 @@ export interface StoreSettingsData {
   logoDarkUrl?: string;
   faviconUrl?: string;
   slogan?: string;
+  planoFundoMenu?: PlanoFundoMenuConfig;
+  planoFundoSite?: PlanoFundoSiteConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -2339,6 +2341,23 @@ export interface StoreSettingsData {
   somNovaVendaAtivo: boolean;
   alertaEstoqueMinimo: number;
   notificarListaEsperaEmail: boolean;
+}
+
+export interface PlanoFundoMenuConfig {
+  tipo: 'transparente' | 'blur' | 'solido';
+  bg_light?: string;
+  bg_dark?: string;
+  borda_cor_light?: string;
+  borda_cor_dark?: string;
+}
+
+export interface PlanoFundoSiteConfig {
+  tipo: 'solido' | 'imagem' | 'video';
+  bg_light?: string;
+  bg_dark?: string;
+  imagem_url?: string;
+  video_url?: string;
+  overlay_opacidade?: number;
 }
 
 export interface SaveStoreSettingsInput {
@@ -2405,6 +2424,8 @@ export interface SaveStoreSettingsInput {
   logoDarkUrl?: string;
   faviconUrl?: string;
   slogan?: string;
+  planoFundoMenu?: PlanoFundoMenuConfig;
+  planoFundoSite?: PlanoFundoSiteConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -2504,6 +2525,17 @@ export async function getStoreSettings(
       logoDarkUrl: vis.logo_dark_url || '',
       faviconUrl: vis.favicon_url || '',
       slogan: vis.slogan || 'Moda Feminina Autêntica & Elegância Diária',
+      planoFundoMenu: vis.plano_fundo_menu || {
+        tipo: 'transparente',
+        bg_light: '#FAF8F5',
+        bg_dark: '#141312'
+      },
+      planoFundoSite: vis.plano_fundo_site || {
+        tipo: 'solido',
+        bg_light: '#FAF8F5',
+        bg_dark: '#121110',
+        overlay_opacidade: 40
+      },
 
       // Marketing & SEO
       metaPixelId: vis.meta_pixel_id || '',
@@ -2594,6 +2626,8 @@ export async function saveStoreGeneralSettings(
       ...(input.logoDarkUrl !== undefined ? { logo_dark_url: input.logoDarkUrl.trim() } : {}),
       ...(input.faviconUrl !== undefined ? { favicon_url: input.faviconUrl.trim() } : {}),
       ...(input.slogan !== undefined ? { slogan: input.slogan.trim() } : {}),
+      ...(input.planoFundoMenu !== undefined ? { plano_fundo_menu: input.planoFundoMenu } : {}),
+      ...(input.planoFundoSite !== undefined ? { plano_fundo_site: input.planoFundoSite } : {}),
 
       // Marketing & SEO
       ...(input.metaPixelId !== undefined ? { meta_pixel_id: input.metaPixelId.trim() } : {}),

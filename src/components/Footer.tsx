@@ -13,6 +13,9 @@ export const Footer: React.FC = () => {
   const storeName = currentTenant?.nome || 'Leidy Boutique';
   const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
   const catalogUrl = getStoreCatalogUrl(currentTenant?.slug);
+  const vis = currentTenant?.configuracoes_visuais as any;
+  const footerLogoSrc = vis?.logo_dark_url || vis?.logo_url || '/images/Logo sem fundo.png';
+  const slogan = vis?.slogan || vis?.tagline || 'Moda Feminina de Luxo';
   return (
     <footer className="bg-[#1A1918]/90 backdrop-blur-md text-[#FAF8F5] border-t border-[#C5A059]/30 pt-16 pb-24 sm:pb-16 relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,8 +30,8 @@ export const Footer: React.FC = () => {
                 style={{ height: '48px', maxWidth: '100%' }}
               >
                 <Image
-                  src="/images/Logo sem fundo.png"
-                  alt="Leidy Boutique"
+                  src={footerLogoSrc}
+                  alt={storeName}
                   width={2752}
                   height={1536}
                   style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
@@ -39,7 +42,7 @@ export const Footer: React.FC = () => {
                   {storeName}
                 </span>
                 <span className="text-[10px] tracking-widest text-[#DFBE76] uppercase">
-                  {currentTenant?.configuracoes_visuais?.tagline || 'Moda Feminina de Luxo'}
+                  {slogan}
                 </span>
               </div>
             </div>

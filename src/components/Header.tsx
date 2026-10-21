@@ -249,6 +249,64 @@ export const Header: React.FC<HeaderProps> = ({
   const isHome = pathname === '/' || pathname === `/${tenantSlug}` || pathname === `/${tenantSlug}/`;
   const isTransparent = isHome && !isScrolled && !isSubpage;
 
+  // Logo dinâmico da loja (com alternância inteligente para light/dark mode)
+  const currentLogoSrc = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    if (isTransparent || theme === 'dark') {
+      return vis?.logo_dark_url || vis?.logo_url || '/images/Logo sem fundo.png';
+    }
+    return vis?.logo_url || vis?.logo_dark_url || '/images/Logo sem fundo.png';
+  }, [currentTenant, isTransparent, theme]);
+
+  // Estilo customizado do plano de fundo do menu superior
+  const headerContainerStyle = useMemo(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const planoMenu = vis?.plano_fundo_menu;
+    const tipo = planoMenu?.tipo || 'transparente';
+    const isDark = theme === 'dark';
+
+    // Se estiver em modo transparente e na home sem scroll:
+    if (tipo === 'transparente' && isTransparent) {
+      return {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        boxShadow: 'none'
+      };
+    }
+
+    // Se o tipo for 'solido':
+    if (tipo === 'solido') {
+      const bgColor = isDark
+        ? (planoMenu?.bg_dark || '#141312')
+        : (planoMenu?.bg_light || '#FAF8F5');
+      return {
+        backgroundColor: bgColor,
+        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(197, 160, 89, 0.25)',
+        backdropFilter: 'none'
+      };
+    }
+
+    // Se o tipo for 'blur' ou transparente rolado:
+    const bgColor = isDark
+      ? (planoMenu?.bg_dark || '#141312')
+      : (planoMenu?.bg_light || '#FAF8F5');
+
+    const hex = bgColor.replace('#', '');
+    let rgba = isDark ? 'rgba(20, 19, 18, 0.95)' : 'rgba(250, 248, 245, 0.95)';
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      rgba = `rgba(${r}, ${g}, ${b}, 0.94)`;
+    }
+
+    return {
+      backgroundColor: rgba,
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(197, 160, 89, 0.25)',
+      backdropFilter: 'blur(16px)'
+    };
+  }, [currentTenant, isTransparent, theme]);
+
   // Executa busca textual no catálogo preservando o tenant
   const executeHeaderSearch = (textToSearch?: string) => {
     const term = (textToSearch !== undefined ? textToSearch : headerSearchInput).trim();
@@ -340,11 +398,8 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          isTransparent
-            ? 'bg-transparent border-b border-transparent shadow-none'
-            : 'bg-[#FAF8F5]/98 dark:bg-[#141312]/98 backdrop-blur-md border-b border-[#C5A059]/25 shadow-xs'
-        }`}
+        style={headerContainerStyle}
+        className="fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b shadow-xs"
       >
         {/* BARRA SUPERIOR DE AVISOS DINÂMICA (ANNOUNCEMENT BAR) */}
         {announcementBar?.active && (() => {
@@ -411,7 +466,7 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <div className="relative w-36 sm:w-44 lg:w-48 xl:w-52 h-10 sm:h-12 lg:h-14 flex items-center shrink-0">
                   <Image
-                    src="/images/Logo sem fundo.png"
+                    src={currentLogoSrc}
                     alt={currentTenant?.nome || 'Leidy Boutique'}
                     fill
                     className="object-contain object-left"
@@ -430,7 +485,7 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <div className="relative w-28 sm:w-36 h-8 sm:h-10 flex items-center justify-center">
                   <Image
-                    src="/images/Logo sem fundo.png"
+                    src={currentLogoSrc}
                     alt={currentTenant?.nome || 'Leidy Boutique'}
                     fill
                     className="object-contain"

@@ -80,8 +80,8 @@ export default function RootLayout({
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className={`${montserrat.className} ${playfair.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative`}>
-        <BackgroundVideo />
         <StoreProvider>
+          <BackgroundVideo />
           {children}
           <BottomCartBar />
         </StoreProvider>
