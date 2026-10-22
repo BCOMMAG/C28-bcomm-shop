@@ -1249,19 +1249,6 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
-      {/* 1. CABEÇALHO DISCRETO DE CATÁLOGO */}
-      <div className="flex items-center justify-between gap-2 pb-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Gestão de Catálogo & Estoque
-          </span>
-          <span className="text-xs text-slate-300">•</span>
-          <span className="text-xs font-semibold text-slate-400 font-mono">
-            {products.length} peças cadastradas
-          </span>
-        </div>
-      </div>
-
       {/* 2. CARDS DE MÉTRICAS OPERACIONAIS ESTILO PEDIDOS (INTERATIVOS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
