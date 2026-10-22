@@ -320,6 +320,33 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         fontFamily: adminCustom?.fontFamily || undefined
       }}
     >
+      {/* Estilos dinâmicos customizados do painel administrativo */}
+      {adminCustom && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            ${adminCustom.buttonBg ? `
+              button[type="submit"], .btn-admin-primary {
+                background-color: ${adminCustom.buttonBg} !important;
+              }
+            ` : ''}
+            ${adminCustom.buttonText ? `
+              button[type="submit"], .btn-admin-primary {
+                color: ${adminCustom.buttonText} !important;
+              }
+            ` : ''}
+            ${adminCustom.buttonRadius ? `
+              button[type="submit"], .btn-admin-primary {
+                border-radius: ${
+                  adminCustom.buttonRadius === 'rounded-none' ? '0px' :
+                  adminCustom.buttonRadius === 'rounded-lg' ? '0.5rem' :
+                  adminCustom.buttonRadius === 'rounded-xl' ? '0.75rem' :
+                  adminCustom.buttonRadius === 'rounded-full' ? '9999px' : '0.75rem'
+                } !important;
+              }
+            ` : ''}
+          `
+        }} />
+      )}
       {/* =========================================================================
           1. SIDEBAR LATERAL FIXA NO DESKTOP (Minimizável com Tooltips)
       ========================================================================= */}
@@ -427,7 +454,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 )}
                 style={{
                   backgroundColor: isActive ? c.sidebarActive : 'transparent',
-                  color: isActive ? c.sidebarTextActive : c.sidebarText,
+                  color: isActive ? c.sidebarTextActive : (adminCustom?.sidebarText || c.sidebarText),
                   borderLeft: isSidebarCollapsed
                     ? undefined
                     : isActive ? `3px solid ${c.sidebarActiveBorder}` : '3px solid transparent'
@@ -436,7 +463,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 <Icon
                   className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110"
                   style={{
-                    color: isActive ? c.accent : c.sidebarMuted
+                    color: isActive ? c.accent : (adminCustom?.sidebarText || c.sidebarMuted)
                   }}
                 />
 

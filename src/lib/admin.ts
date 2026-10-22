@@ -2766,6 +2766,19 @@ export async function saveStoreGeneralSettings(
       .eq('id', lojaId);
 
     if (updErr) throw updErr;
+
+    // Limpa o cache de tenants em memória para refletir imediatamente na vitrine
+    clearTenantCache();
+
+    // Dispara evento global no navegador para reatividade instantânea
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('bcomm:tenant_updated', {
+          detail: { lojaId }
+        })
+      );
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao salvar configurações da loja:', err);
