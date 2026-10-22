@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -37,7 +37,12 @@ import {
   Sliders,
   Scissors,
   Clock,
-  Bell
+  Bell,
+  LayoutGrid,
+  List,
+  Kanban,
+  SlidersHorizontal,
+  Check
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -68,6 +73,9 @@ import { ProductWaitlistModal } from '@/components/admin/products/ProductWaitlis
 import { getReservedStockMap } from '@/lib/reservas';
 import { getAviseMeSummaryMap } from '@/lib/aviseme';
 
+type ViewMode = 'cards' | 'lista' | 'kanban';
+type SortOrder = 'recentes' | 'menor_estoque' | 'maior_estoque' | 'maior_preco' | 'menor_preco' | 'nome';
+
 export default function AdminProdutosPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
@@ -82,6 +90,15 @@ export default function AdminProdutosPage() {
     'todos' | 'criticos' | 'esgotados' | 'ativos' | 'pausados' | 'destaques' | 'outlet' | 'mais_vendidos' | 'ultimas_pecas'
   >('todos');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+
+  // Modos de Visualização & Ordenação
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('recentes');
+
+  // Popover de Filtros Avançados
+  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+  const filterPopoverRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Estados de Reserva de Provador (30 min)
   const [reservedStockMap, setReservedStockMap] = useState<Record<string, number>>({});
@@ -279,6 +296,54 @@ export default function AdminProdutosPage() {
   useEffect(() => {
     fetchProductsData();
   }, [tenantId]);
+
+  // Recupera modo de visualização salvo no LocalStorage
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem('leidy_admin_produtos_view_mode') as ViewMode | null;
+      if (savedMode && ['cards', 'lista', 'kanban'].includes(savedMode)) {
+        setViewMode(savedMode);
+      }
+    } catch {
+      // Ignora erro de storage
+    }
+  }, []);
+
+  const handleChangeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('leidy_admin_produtos_view_mode', mode);
+    } catch {
+      // Ignora erro de storage
+    }
+  };
+
+  // Fecha o Popover ao clicar fora e escuta atalho "/" para busca rápida
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target as Node)) {
+        setIsFilterPopoverOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key === '/' &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -1113,6 +1178,57 @@ export default function AdminProdutosPage() {
   const totalPausados = products.filter((p) => !p.ativo).length;
   const estoqueTotalPecas = products.reduce((acc, p) => acc + (p.estoque_total || 0), 0);
 
+  const valorTotalCatalogo = useMemo(() => {
+    return products.reduce((acc, p) => acc + (p.preco * (p.estoque_total || 0)), 0);
+  }, [products]);
+
+  const pecasCriticasCount = useMemo(() => {
+    return products.filter((p) => (p.estoque_total || 0) <= 2).length;
+  }, [products]);
+
+  const taxaAtivas = useMemo(() => {
+    if (products.length === 0) return 0;
+    return Math.round((totalAtivos / products.length) * 100);
+  }, [products.length, totalAtivos]);
+
+  // Contagem de filtros ativos
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategory !== 'todas') count++;
+    if (stockFilter !== 'todos') count++;
+    if (searchTerm.trim() !== '') count++;
+    if (sortOrder !== 'recentes') count++;
+    return count;
+  }, [selectedCategory, stockFilter, searchTerm, sortOrder]);
+
+  const handleClearAllFilters = () => {
+    setSelectedCategory('todas');
+    setStockFilter('todos');
+    setSearchTerm('');
+    setSortOrder('recentes');
+  };
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (sortOrder === 'menor_estoque') {
+        return (a.estoque_total || 0) - (b.estoque_total || 0);
+      }
+      if (sortOrder === 'maior_estoque') {
+        return (b.estoque_total || 0) - (a.estoque_total || 0);
+      }
+      if (sortOrder === 'maior_preco') {
+        return (b.preco || 0) - (a.preco || 0);
+      }
+      if (sortOrder === 'menor_preco') {
+        return (a.preco || 0) - (b.preco || 0);
+      }
+      if (sortOrder === 'nome') {
+        return a.nome.localeCompare(b.nome);
+      }
+      return 0; // recentes / padrão
+    });
+  }, [filteredProducts, sortOrder]);
+
   return (
     <div className="space-y-6">
       {/* TOAST */}
@@ -1133,44 +1249,42 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
-      {/* CABEÇALHO DA PÁGINA */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
-              Catálogo de Peças de Luxo
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              Cloudflare R2 Ativo
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Cadastre peças novas com fotos e vídeos de provador no R2, controle grade de cor e tamanho e acompanhe a margem de lucro real.
-          </p>
+      {/* 1. CABEÇALHO COMPACTO E AÇÕES PRIMÁRIAS ALINHADAS */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Gestão de Catálogo & Estoque
+          </span>
+          <span className="text-xs text-slate-300">•</span>
+          <span className="text-xs font-semibold text-slate-400 font-mono">
+            {products.length} peças cadastradas
+          </span>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             onClick={handleExportCatalogCSV}
             title="Exportar planilha completa do catálogo com estoque e CMV"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-amber-600" />
-            <span>Exportar CSV</span>
+            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="sm:hidden">CSV</span>
           </button>
 
           <button
             onClick={fetchProductsData}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            title="Atualizar catálogo de produtos"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
-            <span>Atualizar</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Cadastrar Nova Peça</span>
@@ -1178,129 +1292,413 @@ export default function AdminProdutosPage() {
         </div>
       </div>
 
-      {/* CARDS DE RESUMO DO CATÁLOGO */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total de Peças</span>
-          <span className="text-2xl font-extrabold text-slate-900 font-serif-luxury mt-1 block">
-            {products.length}
-          </span>
-        </div>
-        <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-xs">
-          <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider block">Ativas na Vitrine</span>
-          <span className="text-2xl font-extrabold text-emerald-800 font-serif-luxury mt-1 block">
-            {totalAtivos}
-          </span>
-        </div>
-        <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-xs">
-          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider block">Pausadas</span>
-          <span className="text-2xl font-extrabold text-amber-800 font-serif-luxury mt-1 block">
-            {totalPausados}
-          </span>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Estoque em Grade</span>
-          <span className="text-2xl font-extrabold text-slate-900 font-serif-luxury mt-1 block">
-            {estoqueTotalPecas} un
-          </span>
-        </div>
+      {/* 2. CARDS DE MÉTRICAS OPERACIONAIS ESTILO PEDIDOS (INTERATIVOS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {[
+          {
+            id: 'todos',
+            label: 'Total de Peças',
+            icon: Package,
+            value: products.length,
+            unit: 'modelos',
+            subValue: formatCurrency(valorTotalCatalogo),
+            subLabel: 'em estoque',
+            bgLight: 'bg-slate-50/70',
+            border: 'border-slate-200',
+            activeBorder: 'ring-2 ring-slate-700 border-slate-700',
+            iconColor: 'text-slate-600',
+            isSelected: stockFilter === 'todos' && selectedCategory === 'todas',
+            action: () => {
+              setStockFilter('todos');
+              setSelectedCategory('todas');
+            }
+          },
+          {
+            id: 'ativos',
+            label: 'Ativas na Vitrine',
+            icon: CheckCircle2,
+            value: totalAtivos,
+            unit: 'peças',
+            subValue: `${taxaAtivas}%`,
+            subLabel: 'do catálogo',
+            bgLight: 'bg-emerald-50/70',
+            border: 'border-emerald-200',
+            activeBorder: 'ring-2 ring-emerald-500 border-emerald-500',
+            iconColor: 'text-emerald-600',
+            isSelected: stockFilter === 'ativos',
+            action: () => setStockFilter(stockFilter === 'ativos' ? 'todos' : 'ativos')
+          },
+          {
+            id: 'pausados',
+            label: 'Pausadas',
+            icon: EyeOff,
+            value: totalPausados,
+            unit: 'peças',
+            subValue: totalPausados > 0 ? 'Fora da vitrine' : 'Nenhuma',
+            subLabel: '',
+            bgLight: 'bg-amber-50/70',
+            border: 'border-amber-200',
+            activeBorder: 'ring-2 ring-amber-500 border-amber-500',
+            iconColor: 'text-amber-600',
+            isSelected: stockFilter === 'pausados',
+            action: () => setStockFilter(stockFilter === 'pausados' ? 'todos' : 'pausados')
+          },
+          {
+            id: 'grade',
+            label: 'Estoque em Grade',
+            icon: Layers,
+            value: estoqueTotalPecas,
+            unit: 'un',
+            subValue: pecasCriticasCount > 0 ? `${pecasCriticasCount} críticas (≤ 2)` : 'Normal',
+            subLabel: '',
+            bgLight: 'bg-indigo-50/70',
+            border: 'border-indigo-200',
+            activeBorder: 'ring-2 ring-indigo-500 border-indigo-500',
+            iconColor: 'text-indigo-600',
+            isSelected: stockFilter === 'criticos',
+            action: () => setStockFilter(stockFilter === 'criticos' ? 'todos' : 'criticos')
+          }
+        ].map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <button
+              key={kpi.id}
+              onClick={kpi.action}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs relative ${
+                kpi.bgLight
+              } ${kpi.isSelected ? kpi.activeBorder : `${kpi.border} hover:border-slate-400`}`}
+              title={`Filtrar por ${kpi.label}`}
+            >
+              {kpi.isSelected && (
+                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+              )}
+              <div className="flex items-center justify-between gap-1 mb-1.5">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  {kpi.label}
+                </span>
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${kpi.iconColor}`} />
+              </div>
+
+              <div className="flex items-baseline justify-between gap-1">
+                <span className="text-lg font-black text-slate-900 font-mono">
+                  {kpi.value} <span className="text-[10px] font-semibold text-slate-500 lowercase">{kpi.unit}</span>
+                </span>
+                <span className="text-[11px] font-bold text-slate-600 truncate">
+                  {kpi.subValue} {kpi.subLabel && <span className="text-[10px] font-normal text-slate-500">{kpi.subLabel}</span>}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* FILTROS E BUSCA */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar peça por nome, categoria ou referência..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
-          />
-        </div>
+      {/* 3. TOOLBAR COMPACTA EM LINHA ÚNICA (ESTILO PEDIDOS) */}
+      <div className="space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs flex flex-wrap items-center gap-2">
+          {/* Campo de Busca Rápida */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar peça por nome, categoria ou referência... (Tecle /)"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-8 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all placeholder:text-slate-400"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-        {/* Abas de Categorias */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {categoriesFilter.map((cat) => (
+          {/* Botão Popover de Filtros Avançados */}
+          <div className="relative" ref={filterPopoverRef}>
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+              onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                activeFiltersCount > 0
+                  ? 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
-              {cat === 'todas' ? 'Todas as Coleções' : cat}
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filtros</span>
+              {activeFiltersCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white text-amber-700 text-[10px] font-black flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+              <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
-          ))}
+
+            {/* Menu Popover Deslizante */}
+            {isFilterPopoverOpen && (
+              <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+                    Filtrar Catálogo
+                  </span>
+                  <button
+                    onClick={handleClearAllFilters}
+                    className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                  >
+                    Limpar Todos
+                  </button>
+                </div>
+
+                {/* Filtro por Categoria */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                    Coleção / Categoria
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs p-2 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  >
+                    {categoriesFilter.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat === 'todas' ? 'Todas as Coleções' : cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Comercial / Grade */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                    Status Comercial / Grade
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    {[
+                      { id: 'todos', label: 'Todas as Peças' },
+                      { id: 'criticos', label: '⚠️ Reposição (≤ 2)' },
+                      { id: 'destaques', label: '🌟 Destaques' },
+                      { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
+                      { id: 'outlet', label: '🏷️ Outlet' },
+                      { id: 'ultimas_pecas', label: '⏳ Últimas Peças' },
+                      { id: 'esgotados', label: '⛔ Esgotados' },
+                      { id: 'ativos', label: '✅ Ativas Vitrine' },
+                      { id: 'pausados', label: '⏸️ Pausadas' }
+                    ].map((st) => {
+                      const checked = stockFilter === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setStockFilter(st.id as any)}
+                          className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-[11px] text-left cursor-pointer transition-colors ${
+                            checked
+                              ? 'bg-amber-50 border-amber-400 font-bold text-amber-950'
+                              : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div
+                            className={`w-3 h-3 rounded border flex items-center justify-center shrink-0 ${
+                              checked ? 'bg-amber-600 border-amber-600 text-white' : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {checked && <Check className="w-2 h-2 stroke-[3]" />}
+                          </div>
+                          <span className="truncate">{st.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Ordenação Comercial */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                    Ordenar Catálogo
+                  </label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs p-2 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="recentes">Padrão / Mais Recentes</option>
+                    <option value="menor_estoque">Menor Estoque (Críticos Primeiro)</option>
+                    <option value="maior_estoque">Maior Estoque</option>
+                    <option value="maior_preco">Maior Preço de Venda</option>
+                    <option value="menor_preco">Menor Preço de Venda</option>
+                    <option value="nome">Nome da Peça (A-Z)</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    {sortedProducts.length} peça(s) encontrada(s)
+                  </span>
+                  <button
+                    onClick={() => setIsFilterPopoverOpen(false)}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer"
+                  >
+                    Ver Resultados
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
+
+          {/* Alternador de Modos de Visualização (Cards, Lista e Kanban) */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 ml-auto shrink-0">
+            <button
+              onClick={() => handleChangeViewMode('cards')}
+              className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'cards'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Modo Cards Detalhados"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleChangeViewMode('lista')}
+              className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'lista'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Modo Tabela / Lista Compacta"
+            >
+              <List className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleChangeViewMode('kanban')}
+              className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'kanban'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Modo Colunas Verticais / Kanban Operacional"
+            >
+              <Kanban className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Abas de Estoque & Status */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 pt-2.5">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <Filter className="w-3 h-3" /> Status / Grade:
-          </span>
-          {[
-            { id: 'todos', label: 'Todas as Peças' },
-            { id: 'criticos', label: '⚠️ Reposição Urgente (≤ 2 un)' },
-            { id: 'destaques', label: '🌟 Destaques' },
-            { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
-            { id: 'outlet', label: '🏷️ Outlet' },
-            { id: 'ultimas_pecas', label: '⏳ Últimas Peças' },
-            { id: 'esgotados', label: '⛔ Esgotados' },
-            { id: 'ativos', label: '✅ Ativas na Vitrine' },
-            { id: 'pausados', label: '⏸️ Pausadas' }
-          ].map((tab) => (
+        {/* Chips de Filtros Ativos */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap text-[11px] px-1 animate-in fade-in duration-150">
+            <span className="text-slate-400 font-bold uppercase text-[10px]">Filtros ativos:</span>
+
+            {selectedCategory !== 'todas' && (
+              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
+                Coleção: {selectedCategory}
+                <button
+                  onClick={() => setSelectedCategory('todas')}
+                  className="hover:text-amber-950 cursor-pointer ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {stockFilter !== 'todos' && (
+              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
+                Status: {stockFilter}
+                <button
+                  onClick={() => setStockFilter('todos')}
+                  className="hover:text-amber-950 cursor-pointer ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {searchTerm.trim() !== '' && (
+              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full font-bold">
+                Busca: “{searchTerm}”
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="hover:text-slate-950 cursor-pointer ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {sortOrder !== 'recentes' && (
+              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full font-bold">
+                Ordem: {sortOrder}
+                <button
+                  onClick={() => setSortOrder('recentes')}
+                  className="hover:text-slate-950 cursor-pointer ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
             <button
-              key={tab.id}
-              onClick={() => setStockFilter(tab.id as any)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                stockFilter === tab.id
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-2xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
-              }`}
+              onClick={handleClearAllFilters}
+              className="text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer ml-1"
             >
-              {tab.label}
+              Limpar todos
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* LISTAGEM DE PRODUTOS */}
+      {/* LISTAGEM DE PRODUTOS NOS 3 MODOS */}
       {loading ? (
         <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl">
           <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
           <span>Carregando catálogo de peças...</span>
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : sortedProducts.length === 0 ? (
         <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl space-y-3">
           <Package className="w-10 h-10 text-slate-300 mx-auto" />
           <p className="text-sm font-bold text-slate-800">Nenhuma peça encontrada</p>
-          <p className="text-xs">Tente ajustar o termo digitado ou a coleção selecionada.</p>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm mx-auto inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Cadastrar Nova Peça</span>
-          </button>
+          <p className="text-xs">Tente ajustar o termo digitado ou os filtros aplicados.</p>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={handleClearAllFilters}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Limpar Filtros
+              </button>
+            )}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Cadastrar Nova Peça</span>
+            </button>
+          </div>
         </div>
-      ) : (
+      ) : viewMode === 'cards' ? (
+        /* ======================================================== */
+        /* MODO 1: CARDS DETALHADOS (COM GRADE EXPANSÍVEL)          */
+        /* ======================================================== */
         <div className="space-y-4">
-          {/* Barra de Seleção em Massa */}
+          {/* Barra de Seleção em Massa no Topo da Lista */}
           <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
             <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
               <input
                 type="checkbox"
-                checked={filteredProducts.length > 0 && selectedProductIds.size === filteredProducts.length}
-                onChange={() => handleSelectAllFiltered(filteredProducts.map((p) => p.id))}
+                checked={sortedProducts.length > 0 && selectedProductIds.size === sortedProducts.length}
+                onChange={() => handleSelectAllFiltered(sortedProducts.map((p) => p.id))}
                 className="accent-amber-600 rounded cursor-pointer"
               />
               <span>
                 {selectedProductIds.size === 0
-                  ? `Selecionar todas as ${filteredProducts.length} peças filtradas`
-                  : `${selectedProductIds.size} de ${filteredProducts.length} peças selecionadas para ação em lote`}
+                  ? `Selecionar todas as ${sortedProducts.length} peças filtradas`
+                  : `${selectedProductIds.size} de ${sortedProducts.length} peças selecionadas`}
               </span>
             </label>
 
@@ -1314,7 +1712,7 @@ export default function AdminProdutosPage() {
             )}
           </div>
 
-          {filteredProducts.map((product) => {
+          {sortedProducts.map((product) => {
             const isExpanded = expandedProductId === product.id;
             const hasPromo = product.preco_promocional && product.preco_promocional > 0;
             const custo = product.preco_custo || product.preco * 0.4;
@@ -1661,6 +2059,443 @@ export default function AdminProdutosPage() {
               </div>
             );
           })}
+        </div>
+      ) : viewMode === 'lista' ? (
+        /* ======================================================== */
+        /* MODO 2: LISTA / TABELA COMPACTA (ALTA DENSIDADE)          */
+        /* ======================================================== */
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                  <th className="p-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={sortedProducts.length > 0 && selectedProductIds.size === sortedProducts.length}
+                      onChange={() => handleSelectAllFiltered(sortedProducts.map((p) => p.id))}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                  </th>
+                  <th className="p-3 w-14">Foto</th>
+                  <th className="p-3">Peça / Coleção</th>
+                  <th className="p-3">Preço Venda</th>
+                  <th className="p-3">Custo / Margem</th>
+                  <th className="p-3">Estoque</th>
+                  <th className="p-3 text-center">Status Vitrine</th>
+                  <th className="p-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedProducts.map((product) => {
+                  const isSelected = selectedProductIds.has(product.id);
+                  const hasPromo = product.preco_promocional && product.preco_promocional > 0;
+                  const custo = product.preco_custo || product.preco * 0.4;
+                  const margemBruta = product.preco > 0 ? ((product.preco - custo) / product.preco) * 100 : 0;
+
+                  return (
+                    <tr
+                      key={product.id}
+                      className={`hover:bg-slate-50/80 transition-colors ${
+                        isSelected ? 'bg-amber-50/50' : !product.ativo ? 'bg-slate-50/40 opacity-75' : ''
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectProduct(product.id)}
+                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Foto miniatura */}
+                      <td className="p-3">
+                        <div className="relative w-10 h-12 bg-slate-100 rounded-md overflow-hidden border border-slate-200 shrink-0 shadow-2xs">
+                          {product.foto_principal ? (
+                            <Image
+                              src={product.foto_principal}
+                              alt={product.nome}
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">
+                              -
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Nome & Coleção */}
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className="font-bold text-slate-900 block hover:text-amber-700 transition-colors cursor-pointer"
+                            onClick={() => handleOpenFullEdit(product)}
+                            title="Clique para abrir o dossiê da peça"
+                          >
+                            {product.nome}
+                          </span>
+                          {product.destaque && (
+                            <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-bold uppercase">
+                              🌟 Destaque
+                            </span>
+                          )}
+                          {product.mais_vendido && (
+                            <span className="text-[9px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold uppercase">
+                              🔥 Mais Vendido
+                            </span>
+                          )}
+                          {product.outlet && (
+                            <span className="text-[9px] bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.2 rounded font-bold uppercase">
+                              🏷️ Outlet
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                          <span className="font-semibold text-amber-800">{product.categoria_nome || 'Geral'}</span>
+                          <span>•</span>
+                          <span className="font-mono text-slate-400">/{product.slug}</span>
+                        </div>
+                      </td>
+
+                      {/* Preço de Venda */}
+                      <td className="p-3 whitespace-nowrap">
+                        {hasPromo ? (
+                          <div>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs block">
+                              {formatCurrency(product.preco_promocional!)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 line-through font-mono block">
+                              {formatCurrency(product.preco)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-extrabold text-slate-900 font-mono text-xs block">
+                            {formatCurrency(product.preco)}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* CMV e Margem */}
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="text-slate-600 font-mono text-[11px] block">
+                          {formatCurrency(custo)}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold block ${
+                            margemBruta >= 50
+                              ? 'text-emerald-700'
+                              : margemBruta >= 30
+                              ? 'text-amber-700'
+                              : 'text-rose-700'
+                          }`}
+                        >
+                          Margem: {margemBruta.toFixed(1)}%
+                        </span>
+                      </td>
+
+                      {/* Estoque Total & Grade */}
+                      <td className="p-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`font-mono text-xs font-black px-2 py-0.5 rounded-full ${
+                              product.estoque_total > 5
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : product.estoque_total > 0
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                : 'bg-rose-50 text-rose-800 border border-rose-200'
+                            }`}
+                          >
+                            {product.estoque_total} un
+                          </span>
+                          {product.variacoes && product.variacoes.length > 0 && (
+                            <span className="text-[10px] text-slate-400" title={`${product.variacoes.length} variações na grade`}>
+                              ({product.variacoes.length} vars)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status com Toggle Direto */}
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                            product.ativo
+                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}
+                          title={product.ativo ? 'Clique para pausar da vitrine' : 'Clique para ativar na vitrine'}
+                        >
+                          {product.ativo ? (
+                            <>
+                              <Eye className="w-3 h-3 text-emerald-600" />
+                              <span>Ativa</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3 h-3 text-rose-600" />
+                              <span>Pausada</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+
+                      {/* Ações */}
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEdit(product)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                            title="Edição rápida de preço e estoque"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenFullEdit(product)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-amber-800 transition-colors cursor-pointer"
+                            title="Abrir dossiê completo da peça"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleDuplicateProduct(product)}
+                            disabled={duplicatingId === product.id}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
+                            title="Duplicar peça em 1 clique"
+                          >
+                            <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenDeleteModal(product)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="Excluir ou arquivar peça"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* ======================================================== */
+        /* MODO 3: KANBAN OPERACIONAL (COLUNAS VERTICAIS)           */
+        /* ======================================================== */
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-x-auto pb-4">
+          {[
+            {
+              id: 'ativas',
+              label: 'Ativas na Vitrine',
+              filter: (p: AdminProductItem) => p.ativo,
+              color: 'border-emerald-400 bg-emerald-50/40 text-emerald-900',
+              badgeColor: 'bg-emerald-100 text-emerald-800'
+            },
+            {
+              id: 'pausadas',
+              label: 'Pausadas / Rascunhos',
+              filter: (p: AdminProductItem) => !p.ativo,
+              color: 'border-amber-400 bg-amber-50/40 text-amber-900',
+              badgeColor: 'bg-amber-100 text-amber-800'
+            },
+            {
+              id: 'criticas',
+              label: 'Estoque Crítico / Esgotadas',
+              filter: (p: AdminProductItem) => (p.estoque_total || 0) <= 2,
+              color: 'border-rose-400 bg-rose-50/40 text-rose-900',
+              badgeColor: 'bg-rose-100 text-rose-800'
+            }
+          ].map((col) => {
+            const colProducts = sortedProducts.filter(col.filter);
+            const colValor = colProducts.reduce((acc, p) => acc + (p.preco * (p.estoque_total || 0)), 0);
+
+            return (
+              <div
+                key={col.id}
+                className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[500px] shadow-2xs"
+              >
+                {/* Cabeçalho da Coluna */}
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      {col.label}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono block">
+                      {formatCurrency(colValor)} em estoque
+                    </span>
+                  </div>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-full ${col.badgeColor}`}>
+                    {colProducts.length}
+                  </span>
+                </div>
+
+                {/* Cards Verticais na Coluna */}
+                <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 max-h-[70vh]">
+                  {colProducts.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 bg-white/60 rounded-xl border border-dashed border-slate-200">
+                      Nenhuma peça neste status
+                    </div>
+                  ) : (
+                    colProducts.map((product) => {
+                      const custo = product.preco_custo || product.preco * 0.4;
+                      const margemBruta = product.preco > 0 ? ((product.preco - custo) / product.preco) * 100 : 0;
+
+                      return (
+                        <div
+                          key={product.id}
+                          className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs hover:shadow-sm hover:border-amber-400 transition-all space-y-2.5"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className="relative w-12 h-16 bg-slate-100 rounded-md overflow-hidden shrink-0 border border-slate-200">
+                              {product.foto_principal ? (
+                                <Image
+                                  src={product.foto_principal}
+                                  alt={product.nome}
+                                  fill
+                                  sizes="48px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">
+                                  -
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block truncate">
+                                {product.categoria_nome || 'Geral'}
+                              </span>
+                              <h4 className="text-xs font-bold text-slate-900 truncate" title={product.nome}>
+                                {product.nome}
+                              </h4>
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-xs font-black text-slate-900 font-mono">
+                                  {formatCurrency(product.preco_promocional || product.preco)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
+                            <span
+                              className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                product.estoque_total > 5
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : product.estoque_total > 0
+                                  ? 'bg-amber-50 text-amber-800'
+                                  : 'bg-rose-50 text-rose-800'
+                              }`}
+                            >
+                              {product.estoque_total} un em grade
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleToggleActive(product)}
+                                className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                title={product.ativo ? 'Pausar da vitrine' : 'Ativar na vitrine'}
+                              >
+                                {product.ativo ? 'Pausar' : 'Ativar'}
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(product)}
+                                className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Edição rápida"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 4. BARRA FLUTUANTE DE AÇÕES EM MASSA (SURGE QUANDO HÁ ITENS SELECIONADOS) */}
+      {selectedProductIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[95vw] overflow-x-auto">
+          <div className="flex items-center gap-2 pr-2 border-r border-slate-700 shrink-0">
+            <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center">
+              {selectedProductIds.size}
+            </span>
+            <span className="text-xs font-bold text-slate-200 whitespace-nowrap">
+              peça(s)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => handleBulkToggle(true)}
+              disabled={isBulkActionRunning}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Eye className="w-3 h-3" />
+              <span>Ativar</span>
+            </button>
+
+            <button
+              onClick={() => handleBulkToggle(false)}
+              disabled={isBulkActionRunning}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <EyeOff className="w-3 h-3 text-slate-400" />
+              <span>Pausar</span>
+            </button>
+
+            <button
+              onClick={() => setShowBulkDiscountModal(true)}
+              disabled={isBulkActionRunning}
+              className="px-2.5 py-1 rounded-lg bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <DollarSign className="w-3 h-3" />
+              <span>Desconto %</span>
+            </button>
+
+            <button
+              onClick={() => setShowBulkCategoryModal(true)}
+              disabled={isBulkActionRunning}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Tag className="w-3 h-3 text-slate-400" />
+              <span className="hidden sm:inline">Mover Categoria</span>
+              <span className="sm:hidden">Categoria</span>
+            </button>
+
+            <button
+              onClick={handleBulkArchiveAction}
+              disabled={isBulkActionRunning}
+              className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Arquivar</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedProductIds(new Set())}
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ml-1"
+              title="Cancelar seleção"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
