@@ -369,7 +369,7 @@ export async function updateAdminOrderStatusWithStock(
     // 1. Busca status atual e itens do pedido
     const { data: order, error: orderErr } = await supabase
       .from('pedidos')
-      .select('status, itens_pedido (*)')
+      .select('status, cliente_telefone, itens_pedido (*)')
       .eq('id', orderId)
       .single();
 
@@ -384,6 +384,17 @@ export async function updateAdminOrderStatusWithStock(
 
     if (isNowPaid && wasPending) {
       console.log('📉 [Estoque] Baixando estoque para pedido confirmado:', orderId);
+      // Converte reservas provisórias ativas da cliente em venda
+      if (order.cliente_telefone) {
+        try {
+          await supabase
+            .from('reservas_estoque')
+            .update({ status: 'convertida_venda' })
+            .eq('loja_id', lojaId)
+            .eq('cliente_telefone', order.cliente_telefone)
+            .eq('status', 'ativa');
+        } catch {}
+      }
       for (const item of itens) {
         let prodId = item.produto_id;
         if (!prodId && item.nome_produto) {
@@ -440,6 +451,20 @@ export async function updateAdminOrderStatusWithStock(
     // Se mudou para CANCELADO (e antes era pago ou em separação) -> Devolve estoque!
     const isNowCanceled = newStatus === 'cancelado';
     const wasPaidOrProcessing = previousStatus === 'pago' || previousStatus === 'em_separacao' || previousStatus === 'enviado';
+
+    if (isNowCanceled) {
+      // Libera reservas provisórias associadas à cliente
+      if (order.cliente_telefone) {
+        try {
+          await supabase
+            .from('reservas_estoque')
+            .update({ status: 'liberada' })
+            .eq('loja_id', lojaId)
+            .eq('cliente_telefone', order.cliente_telefone)
+            .eq('status', 'ativa');
+        } catch {}
+      }
+    }
 
     if (isNowCanceled && wasPaidOrProcessing) {
       console.log('📈 [Estoque] Devolvendo estoque para pedido cancelado:', orderId);
@@ -507,6 +532,36 @@ export async function updateAdminOrderStatusWithStock(
     return { success: true };
   } catch (err: any) {
     console.error('❌ [Supabase] Falha ao atualizar status do pedido com estoque:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Libera manualmente a reserva provisória de um pedido (ex: cliente desistiu no WhatsApp).
+ */
+export async function releaseOrderReservation(
+  orderId: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: order } = await supabase
+      .from('pedidos')
+      .select('cliente_telefone')
+      .eq('id', orderId)
+      .single();
+
+    if (order?.cliente_telefone) {
+      await supabase
+        .from('reservas_estoque')
+        .update({ status: 'liberada' })
+        .eq('loja_id', lojaId)
+        .eq('cliente_telefone', order.cliente_telefone)
+        .eq('status', 'ativa');
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Falha ao liberar reserva do pedido:', err);
     return { success: false, error: err?.message };
   }
 }
@@ -2321,6 +2376,8 @@ export interface StoreSettingsData {
   taxaPresente: number;
   permitirMensagemPresente: boolean;
   pedidoMinimoValor: number;
+  reservaEstoqueAtiva: boolean;
+  tempoReservaMinutos: number;
 
   // Marca & Identidade Visual
   logoUrl?: string;
@@ -2471,6 +2528,8 @@ export interface SaveStoreSettingsInput {
   taxaPresente?: number;
   permitirMensagemPresente?: boolean;
   pedidoMinimoValor?: number;
+  reservaEstoqueAtiva?: boolean;
+  tempoReservaMinutos?: number;
 
   // Marca & Identidade Visual
   logoUrl?: string;
@@ -2576,6 +2635,8 @@ export async function getStoreSettings(
       taxaPresente: Number(vis.taxa_presente ?? 12.00),
       permitirMensagemPresente: vis.permitir_mensagem_presente ?? true,
       pedidoMinimoValor: Number(vis.pedido_minimo_valor ?? 0),
+      reservaEstoqueAtiva: vis.reserva_estoque_ativa ?? true,
+      tempoReservaMinutos: Number(vis.tempo_reserva_minutos ?? 20),
 
       // Marca & Identidade Visual
       logoUrl: vis.logo_url || '',
@@ -2711,6 +2772,8 @@ export async function saveStoreGeneralSettings(
       ...(input.taxaPresente !== undefined ? { taxa_presente: Number(input.taxaPresente) } : {}),
       ...(input.permitirMensagemPresente !== undefined ? { permitir_mensagem_presente: Boolean(input.permitirMensagemPresente) } : {}),
       ...(input.pedidoMinimoValor !== undefined ? { pedido_minimo_valor: Number(input.pedidoMinimoValor) } : {}),
+      ...(input.reservaEstoqueAtiva !== undefined ? { reserva_estoque_ativa: Boolean(input.reservaEstoqueAtiva) } : {}),
+      ...(input.tempoReservaMinutos !== undefined ? { tempo_reserva_minutos: Number(input.tempoReservaMinutos) } : {}),
 
       // Marca
       ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl.trim() } : {}),

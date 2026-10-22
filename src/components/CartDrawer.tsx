@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight, Gift, Sparkles, Check, Heart } from 'lucide-react';
+import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight, Gift, Sparkles, Check, Heart, AlertTriangle, Loader2 } from 'lucide-react';
 import { CartItem } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
 import { fetchAddressByCep, calculateShippingOptions, formatCep } from '@/utils/shipping';
 import { getStoreCheckoutUrl } from '@/lib/routes';
+import { validateLiveCartStock } from '@/lib/orders';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -42,12 +43,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     giftFee,
     isGiftServiceActive,
     allowGiftMessage,
-    currentTenant
+    currentTenant,
+    getItemStock
   } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
+  const [isValidatingWhatsApp, setIsValidatingWhatsApp] = useState(false);
+  const [stockWarning, setStockWarning] = useState<string | null>(null);
 
   // Trava a rolagem da página quando a sacola está aberta
   useEffect(() => {
@@ -173,6 +177,55 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(message)}`;
   };
 
+  const handleWhatsAppInquiry = async () => {
+    if (items.length === 0) return;
+    setIsValidatingWhatsApp(true);
+    setStockWarning(null);
+    try {
+      const check = await validateLiveCartStock(items, currentTenant?.id);
+      if (!check.isValid) {
+        const outList: string[] = [];
+        const reducedList: string[] = [];
+
+        check.divergences.forEach((div) => {
+          if (div.esgotado || div.disponivel <= 0) {
+            outList.push(`${div.name} (${div.color} - ${div.size})`);
+            onRemoveItem(div.itemId);
+          } else {
+            reducedList.push(`${div.name} (${div.color} - ${div.size}) para ${div.disponivel} un.`);
+            const delta = div.disponivel - div.solicitado;
+            onUpdateQuantity(div.itemId, delta);
+          }
+        });
+
+        let warning = 'Atenção: Houve atualização de estoque enquanto você navegava: ';
+        if (outList.length > 0) {
+          warning += `Esgotado: ${outList.join(', ')}. `;
+        }
+        if (reducedList.length > 0) {
+          warning += `Disponibilidade reduzida: ${reducedList.join(', ')}. `;
+        }
+        warning += 'Sua sacola foi ajustada automaticamente.';
+        setStockWarning(warning);
+        setIsValidatingWhatsApp(false);
+        return;
+      }
+
+      const url = generateWhatsAppOrderLink();
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+    } catch (err) {
+      console.warn('Falha na validação prévia de WhatsApp no drawer, prosseguindo com fallback:', err);
+      const url = generateWhatsAppOrderLink();
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+    } finally {
+      setIsValidatingWhatsApp(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
       {/* Backdrop com desfoque */}
@@ -280,24 +333,47 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between mt-2 gap-2">
-                        {/* Seletor de Quantidade */}
-                        <div className="flex items-center border border-[#C5A059]/30 rounded-none bg-[#FAF8F5] dark:bg-[#252220] px-2 py-0.5 shrink-0">
-                          <button
-                            onClick={() => onUpdateQuantity(item.id, -1)}
-                            className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-1 cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] px-2">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => onUpdateQuantity(item.id, 1)}
-                            className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-1 cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
+                        {/* Seletor de Quantidade com Trava de Teto */}
+                        {(() => {
+                          const itemStock = item.maxStock ?? getItemStock(item.productId, item.size, item.color);
+                          const isMaxReached = item.quantity >= itemStock;
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center border border-[#C5A059]/30 rounded-none bg-[#FAF8F5] dark:bg-[#252220] px-2 py-0.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateQuantity(item.id, -1)}
+                                  className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] px-1 cursor-pointer"
+                                  title="Diminuir quantidade"
+                                >
+                                  -
+                                </button>
+                                <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] px-2 min-w-[16px] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateQuantity(item.id, 1)}
+                                  disabled={isMaxReached}
+                                  className={`text-xs font-bold px-1 transition-colors ${
+                                    isMaxReached
+                                      ? 'opacity-30 cursor-not-allowed text-stone-400'
+                                      : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] cursor-pointer'
+                                  }`}
+                                  title={isMaxReached ? 'Limite máximo de estoque atingido' : 'Adicionar mais 1 unidade'}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {itemStock === 1 && (
+                                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                                  Última un.
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Preço */}
                         <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] whitespace-nowrap">
@@ -574,6 +650,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
               </div>
 
+              {/* Alerta de Divergência de Estoque */}
+              {stockWarning && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2 animate-fadeIn">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium">{stockWarning}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStockWarning(null)}
+                    className="text-amber-700 hover:text-amber-950 dark:text-amber-300 ml-1 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Banner de Transparência do Processo */}
               <div className="p-2.5 sm:p-3 rounded-none bg-[#FAF8F5] dark:bg-[#252220] border border-[#C5A059]/30 text-[11px] text-[#57534E] dark:text-[#D6D3D1] leading-relaxed flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#25D366] shrink-0 mt-0.5" />
@@ -599,20 +692,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {/* Botão Secundário: Dúvidas / Falar no WhatsApp sem quebrar tela */}
               <button
                 type="button"
-                onClick={() => {
-                  const url = generateWhatsAppOrderLink();
-                  if (typeof window !== 'undefined') {
-                    try {
-                      window.open(url, '_blank');
-                    } catch {
-                      // Fallback seguro
-                    }
-                  }
-                }}
-                className="w-full py-2.5 sm:py-3 px-6 rounded-none text-xs uppercase tracking-wider font-semibold flex items-center justify-center gap-2 border border-[#25D366]/40 bg-[#25D366]/5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#25D366] hover:text-white transition-all duration-300 shadow-2xs active:scale-95 group cursor-pointer"
+                disabled={isValidatingWhatsApp}
+                onClick={handleWhatsAppInquiry}
+                className="w-full py-2.5 sm:py-3 px-6 rounded-none text-xs uppercase tracking-wider font-semibold flex items-center justify-center gap-2 border border-[#25D366]/40 bg-[#25D366]/5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#25D366] hover:text-white transition-all duration-300 shadow-2xs active:scale-95 group cursor-pointer disabled:opacity-50"
               >
-                <MessageCircle className="w-4 h-4 text-[#25D366] group-hover:text-white transition-colors" />
-                <span>Tirar Dúvidas no WhatsApp</span>
+                {isValidatingWhatsApp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-[#25D366] animate-spin" />
+                    <span>Verificando Estoque...</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4 text-[#25D366] group-hover:text-white transition-colors" />
+                    <span>Tirar Dúvidas no WhatsApp</span>
+                  </>
+                )}
               </button>
 
               {/* Botão Continuar Comprando */}

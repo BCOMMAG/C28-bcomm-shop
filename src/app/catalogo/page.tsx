@@ -64,6 +64,26 @@ function CatalogoContent() {
     products
   } = useStore();
 
+  const handleSafeQuickAdd = (p: Product) => {
+    let targetSize = p.sizes?.[0] || 'Tamanho Único';
+    let targetColor = p.colors?.[0]?.name || 'Padrão';
+
+    if (p.variations && p.variations.length > 0) {
+      const availableVar = p.variations.find((v) => v.stock > 0);
+      if (availableVar) {
+        targetSize = availableVar.size;
+        targetColor = availableVar.color;
+      }
+    }
+
+    addToCart({
+      product: p,
+      size: targetSize,
+      color: targetColor,
+      quantity: 1
+    });
+  };
+
   // Parâmetros de URL iniciais
   const urlCategory = searchParams.get('categoria') || '';
   const urlStatus = searchParams.get('status') || '';
@@ -1722,14 +1742,7 @@ function CatalogoContent() {
                       key={product.id}
                       product={product}
                       onOpenDetails={openProduct}
-                      onQuickAdd={(p) => {
-                        addToCart({
-                          product: p,
-                          size: p.sizes[0],
-                          color: p.colors[0].name,
-                          quantity: 1
-                        });
-                      }}
+                      onQuickAdd={handleSafeQuickAdd}
                       isWishlisted={wishlistIds.includes(product.id)}
                       onToggleWishlist={toggleWishlist}
                       isOutletSection={product.isOutlet}
@@ -1767,14 +1780,7 @@ function CatalogoContent() {
       {/* Vistos Recentemente no Catálogo */}
       <RecentlyViewedSection
         onOpenDetails={openProduct}
-        onQuickAdd={(p) => {
-          addToCart({
-            product: p,
-            size: p.sizes[0],
-            color: p.colors[0].name,
-            quantity: 1
-          });
-        }}
+        onQuickAdd={handleSafeQuickAdd}
         isWishlisted={(id) => wishlistIds.includes(id)}
         onToggleWishlist={toggleWishlist}
       />

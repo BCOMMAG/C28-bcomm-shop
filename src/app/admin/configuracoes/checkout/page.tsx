@@ -13,7 +13,10 @@ import {
   RefreshCw,
   Sparkles,
   Calendar,
-  CreditCard
+  CreditCard,
+  Clock,
+  ShieldCheck,
+  Timer
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -37,6 +40,10 @@ export default function CheckoutSettingsPage() {
   // Pedido Mínimo
   const [pedidoMinimoValor, setPedidoMinimoValor] = useState(0);
 
+  // Reserva Provisória de Estoque (WhatsApp & Balcão)
+  const [reservaEstoqueAtiva, setReservaEstoqueAtiva] = useState(true);
+  const [tempoReservaMinutos, setTempoReservaMinutos] = useState(20);
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -55,6 +62,8 @@ export default function CheckoutSettingsPage() {
           if (data.taxaPresente !== undefined) setTaxaPresente(data.taxaPresente);
           if (data.permitirMensagemPresente !== undefined) setPermitirMensagemPresente(data.permitirMensagemPresente);
           if (data.pedidoMinimoValor !== undefined) setPedidoMinimoValor(data.pedidoMinimoValor);
+          if (data.reservaEstoqueAtiva !== undefined) setReservaEstoqueAtiva(data.reservaEstoqueAtiva);
+          if (data.tempoReservaMinutos !== undefined) setTempoReservaMinutos(data.tempoReservaMinutos);
         }
       } catch (err) {
         console.error('Erro ao buscar dados de checkout:', err);
@@ -75,7 +84,9 @@ export default function CheckoutSettingsPage() {
         presenteAtivo,
         taxaPresente: Number(taxaPresente),
         permitirMensagemPresente,
-        pedidoMinimoValor: Number(pedidoMinimoValor)
+        pedidoMinimoValor: Number(pedidoMinimoValor),
+        reservaEstoqueAtiva,
+        tempoReservaMinutos: Number(tempoReservaMinutos)
       });
 
       if (res.success) {
@@ -268,6 +279,99 @@ export default function CheckoutSettingsPage() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* BLOCO 3: RESERVA TEMPORÁRIA DE ESTOQUE (WHATSAPP & ANTI-VENDA DUPLA) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                3. Reserva Temporária de Estoque & Proteção Anti-Venda Dupla
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Retém a peça no banco de dados enquanto o cliente finaliza o pedido via WhatsApp, evitando que outro comprador leve a mesma peça.
+              </p>
+            </div>
+          </div>
+
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={reservaEstoqueAtiva}
+              onChange={(e) => setReservaEstoqueAtiva(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
+          </label>
+        </div>
+
+        {reservaEstoqueAtiva ? (
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-700 mb-1.5 font-bold">
+                Tempo de Retenção da Peça na Reserva (Minutos)
+              </label>
+
+              {/* Botões Rápidos de Minutos */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[10, 15, 20, 30, 45, 60].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setTempoReservaMinutos(mins)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      tempoReservaMinutos === mins
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {mins} min
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-w-xs relative">
+                <input
+                  type="number"
+                  min="5"
+                  max="1440"
+                  value={tempoReservaMinutos}
+                  onChange={(e) => setTempoReservaMinutos(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-xs">
+                  minutos
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Recomendado: 15 a 30 minutos. Se o cliente não efetuar o pagamento dentro desse prazo, a reserva expira automaticamente e a peça volta à vitrine.
+              </span>
+            </div>
+
+            {/* Banner de Prévia da Mensagem do WhatsApp */}
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-900 font-bold">
+                <Timer className="w-4 h-4 text-amber-600" />
+                <span>Gatilho de Urgência Real no WhatsApp do Cliente</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed font-mono bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
+                &quot;⏱️ *Reserva Provisória:* Suas peças estão reservadas por <strong>{tempoReservaMinutos} minutos</strong> para a conclusão do seu atendimento!&quot;
+              </p>
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Enquanto a reserva estiver ativa, o sistema bloqueia tentativas de outros compradores na vitrine.</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+            A reserva temporária está desativada. As peças não serão retidas provisoriamente ao direcionar clientes para o WhatsApp.
+          </div>
+        )}
       </div>
 
       {/* BOTÃO SALVAR */}

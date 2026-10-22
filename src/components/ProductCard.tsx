@@ -54,11 +54,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
 
+    // Procura o primeiro tamanho e cor com estoque real disponível
+    let targetSize = product.sizes?.[0] || 'Tamanho Único';
+    let targetColor = product.colors?.[0]?.name || 'Padrão';
+
+    if (product.variations && product.variations.length > 0) {
+      const availableVar = product.variations.find((v) => v.stock > 0);
+      if (availableVar) {
+        targetSize = availableVar.size;
+        targetColor = availableVar.color;
+      }
+    }
+
     // Adiciona diretamente à sacola com feedback visual instantâneo, sem abrir modal de detalhes
     addToCart({
       product,
-      size: product.sizes?.[0] || 'Tamanho Único',
-      color: product.colors?.[0]?.name || 'Padrão',
+      size: targetSize,
+      color: targetColor,
       quantity: 1,
       openDrawer: false
     });

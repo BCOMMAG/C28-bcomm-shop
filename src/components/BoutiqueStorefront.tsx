@@ -14,6 +14,7 @@ import { Footer } from '@/components/Footer';
 import { useStore } from '@/context/StoreContext';
 import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
 import { SecoesVitrineConfig } from '@/lib/admin';
+import { Product } from '@/types';
 
 export function BoutiqueStorefront() {
   const [activeCategory, setActiveCategory] = useState<string>('Todos os Modelos');
@@ -41,6 +42,26 @@ export function BoutiqueStorefront() {
     currentTenant,
     theme
   } = useStore();
+
+  const handleSafeQuickAdd = (p: Product) => {
+    let targetSize = p.sizes?.[0] || 'Tamanho Único';
+    let targetColor = p.colors?.[0]?.name || 'Padrão';
+
+    if (p.variations && p.variations.length > 0) {
+      const availableVar = p.variations.find((v: any) => v.stock > 0);
+      if (availableVar) {
+        targetSize = availableVar.size;
+        targetColor = availableVar.color;
+      }
+    }
+
+    addToCart({
+      product: p,
+      size: targetSize,
+      color: targetColor,
+      quantity: 1
+    });
+  };
 
   const secoesConfig = currentTenant?.configuracoes_visuais?.secoes_vitrine as SecoesVitrineConfig | undefined;
 
@@ -178,14 +199,7 @@ export function BoutiqueStorefront() {
             products={newReleasesProducts}
             isNewReleasesSection={true}
             onOpenDetails={openProduct}
-            onQuickAdd={(p) => {
-              addToCart({
-                product: p,
-                size: p.sizes[0],
-                color: p.colors[0].name,
-                quantity: 1
-              });
-            }}
+            onQuickAdd={handleSafeQuickAdd}
             isWishlisted={(id) => wishlistIds.includes(id)}
             onToggleWishlist={toggleWishlist}
           />
@@ -242,14 +256,7 @@ export function BoutiqueStorefront() {
           <ProductLoopCarousel
             products={bestSellerProducts}
             onOpenDetails={openProduct}
-            onQuickAdd={(p) => {
-              addToCart({
-                product: p,
-                size: p.sizes[0],
-                color: p.colors[0].name,
-                quantity: 1
-              });
-            }}
+            onQuickAdd={handleSafeQuickAdd}
             isWishlisted={(id) => wishlistIds.includes(id)}
             onToggleWishlist={toggleWishlist}
           />
@@ -307,14 +314,7 @@ export function BoutiqueStorefront() {
             products={outletProducts}
             isOutletSection={true}
             onOpenDetails={openProduct}
-            onQuickAdd={(p) => {
-              addToCart({
-                product: p,
-                size: p.sizes[0],
-                color: p.colors[0].name,
-                quantity: 1
-              });
-            }}
+            onQuickAdd={handleSafeQuickAdd}
             isWishlisted={(id) => wishlistIds.includes(id)}
             onToggleWishlist={toggleWishlist}
           />
@@ -372,14 +372,7 @@ export function BoutiqueStorefront() {
             products={lastPiecesProducts}
             isLastPiecesSection={true}
             onOpenDetails={openProduct}
-            onQuickAdd={(p) => {
-              addToCart({
-                product: p,
-                size: p.sizes[0],
-                color: p.colors[0].name,
-                quantity: 1
-              });
-            }}
+            onQuickAdd={handleSafeQuickAdd}
             isWishlisted={(id) => wishlistIds.includes(id)}
             onToggleWishlist={toggleWishlist}
           />
@@ -412,14 +405,7 @@ export function BoutiqueStorefront() {
         {/* 5. SEÇÃO: VISTOS RECENTEMENTE (Histórico Pessoal do Cliente) */}
         <RecentlyViewedSection
           onOpenDetails={openProduct}
-          onQuickAdd={(p) => {
-            addToCart({
-              product: p,
-              size: p.sizes[0],
-              color: p.colors[0].name,
-              quantity: 1
-            });
-          }}
+          onQuickAdd={handleSafeQuickAdd}
           isWishlisted={(id) => wishlistIds.includes(id)}
           onToggleWishlist={toggleWishlist}
         />

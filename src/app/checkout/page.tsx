@@ -30,12 +30,15 @@ import {
   Clock,
   ArrowRight,
   Gift,
-  Heart
+  Heart,
+  RefreshCw
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
+import { Product } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
-import { saveCustomerLead, createOrderInDatabase } from '@/lib/orders';
+import { saveCustomerLead, createOrderInDatabase, validateLiveCartStock, CartStockDivergenceItem } from '@/lib/orders';
 import { validateCouponInDatabase, incrementCouponUsage } from '@/lib/coupons';
+import { AviseMeModal } from '@/components/AviseMeModal';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -78,7 +81,8 @@ export default function CheckoutPage() {
     setGiftMessage,
     giftFee,
     isGiftServiceActive,
-    allowGiftMessage
+    allowGiftMessage,
+    getProductById
   } = useStore();
 
   // Etapa ativa na trilha de finalização
@@ -132,6 +136,14 @@ export default function CheckoutPage() {
   const [copiedOrder, setCopiedOrder] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showPendingModal, setShowPendingModal] = useState(false);
+
+  // Estados de Validação Atômica de Estoque Vivo & Divergências
+  const [isValidatingStock, setIsValidatingStock] = useState(false);
+  const [stockDivergenceModal, setStockDivergenceModal] = useState<{
+    isOpen: boolean;
+    divergences: CartStockDivergenceItem[];
+  }>({ isOpen: false, divergences: [] });
+  const [aviseMeData, setAviseMeData] = useState<{ product: Product; color: string; size: string } | null>(null);
 
   const PIX_KEY = currentTenant?.configuracoes_financeiras?.chave_pix || '554197347601';
   const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
@@ -507,7 +519,36 @@ export default function CheckoutPage() {
   };
 
   // Envio efetivo do pedido para o WhatsApp (seja preenchido ou direto)
-  const proceedToWhatsApp = (isDirectWithoutFilling = false) => {
+  const proceedToWhatsApp = async (isDirectWithoutFilling = false) => {
+    setIsValidatingStock(true);
+    try {
+      const validation = await validateLiveCartStock(cartItems, currentTenant?.id);
+      if (!validation.isValid && validation.divergences.length > 0) {
+        // Interrompe o envio para o WhatsApp!
+        // Ajusta automaticamente a sacola da cliente
+        validation.divergences.forEach((div) => {
+          if (div.disponivel <= 0) {
+            removeFromCart(div.itemId);
+          } else {
+            const delta = div.disponivel - div.solicitado;
+            updateCartQuantity(div.itemId, delta);
+          }
+        });
+
+        setStockDivergenceModal({
+          isOpen: true,
+          divergences: validation.divergences
+        });
+        setShowPendingModal(false);
+        setIsValidatingStock(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('Erro ao validar estoque vivo:', e);
+    } finally {
+      setIsValidatingStock(false);
+    }
+
     setConfirmedSteps((prev) => ({ ...prev, pagamento: true }));
     if (customerPhone) {
       captureLead(customerPhone, customerName || 'Cliente WhatsApp', 'finalizado');
@@ -520,7 +561,11 @@ export default function CheckoutPage() {
     setShowPendingModal(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Salva o pedido e os itens oficialmente no banco de dados Supabase
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const tempoReservaMinutos = Number(vis?.tempo_reserva_minutos ?? 20);
+    const reservaAtiva = vis?.reserva_estoque_ativa !== false;
+
+    // Salva o pedido e os itens oficialmente no banco de dados Supabase com reserva temporária
     createOrderInDatabase({
       numeroPedido: newOrderId,
       cliente: {
@@ -556,7 +601,9 @@ export default function CheckoutPage() {
       status: 'aguardando_whatsapp',
       isGift,
       giftFee: currentGiftCost,
-      giftMessage: isGift ? giftMessage : undefined
+      giftMessage: isGift ? giftMessage : undefined,
+      tempoReservaMinutos,
+      reservaAtiva
     });
 
     // Se utilizou cupom promocional, incrementa o contador real no banco de dados
@@ -642,6 +689,13 @@ export default function CheckoutPage() {
     }
 
     msg += `💰 *VALOR TOTAL:* R$ ${totalAmount.toFixed(2).replace('.', ',')}\n`;
+
+    const vis = currentTenant?.configuracoes_visuais as any;
+    const tempoReservaMinutos = Number(vis?.tempo_reserva_minutos ?? 20);
+    const reservaAtiva = vis?.reserva_estoque_ativa !== false;
+    if (reservaAtiva && tempoReservaMinutos > 0) {
+      msg += `⏱️ *Reserva Provisória:* Suas peças estão reservadas por *${tempoReservaMinutos} minutos* para confirmação do atendimento!\n`;
+    }
     if (orderNotes) {
       msg += `\n📝 *Observações:* ${orderNotes}\n`;
     }
@@ -2252,6 +2306,119 @@ export default function CheckoutPage() {
 
           </div>
         </div>
+      )}
+
+      {/* OVERLAY DE CARREGAMENTO ENQUANTO VALIDA ESTOQUE ATÔMICO */}
+      {isValidatingStock && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1A1918] p-6 rounded-none border border-[#C5A059]/40 shadow-2xl flex flex-col items-center gap-3 text-center">
+            <RefreshCw className="w-8 h-8 text-[#C5A059] animate-spin" />
+            <h4 className="text-sm font-serif-luxury font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+              Verificando Disponibilidade em Tempo Real...
+            </h4>
+            <p className="text-xs text-[#78716C] dark:text-[#A8A29E] max-w-xs leading-relaxed">
+              Confirmando estoque físico e retendo suas peças para o atendimento VIP.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE DIVERGÊNCIA DE ESTOQUE VIVO (ANTI-VENDA DUPLA) */}
+      {stockDivergenceModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1A1918] w-full max-w-lg rounded-none border border-rose-300 dark:border-rose-900 shadow-2xl p-6 sm:p-7 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-none bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif-luxury text-base sm:text-lg font-bold text-[#1A1918] dark:text-[#FAF8F5]">
+                  Estoque Atualizado Durante sua Compra
+                </h3>
+                <p className="text-xs text-[#78716C] dark:text-[#A8A29E] mt-1 leading-relaxed">
+                  Uma ou mais peças selecionadas acabaram de ser vendidas para outra cliente ou tiveram o estoque ajustado no sistema. Sua sacola foi atualizada automaticamente:
+                </p>
+              </div>
+            </div>
+
+            {/* Lista de Peças Afetadas */}
+            <div className="divide-y divide-[#C5A059]/15 border border-[#C5A059]/20 bg-[#FAF8F5] dark:bg-[#201D1B] max-h-60 overflow-y-auto">
+              {stockDivergenceModal.divergences.map((div, i) => (
+                <div key={i} className="p-3 text-xs flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-[#1A1918] dark:text-[#FAF8F5] truncate">{div.name}</p>
+                    <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E]">
+                      Cor: {div.color} | Tam: {div.size}
+                    </p>
+                    <span className={`inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 ${
+                      div.esgotado
+                        ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                        : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                    }`}>
+                      {div.esgotado
+                        ? 'Acabou de Esgotar'
+                        : `Ajustado de ${div.solicitado} para ${div.disponivel} un`}
+                    </span>
+                  </div>
+
+                  {div.esgotado && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const prod = getProductById(div.productId) || {
+                          id: div.productId,
+                          name: div.name,
+                          price: 0,
+                          image: '',
+                          description: '',
+                          sizes: [div.size],
+                          colors: [div.color],
+                          totalStock: 0,
+                          variations: []
+                        };
+                        setAviseMeData({ product: prod as Product, color: div.color, size: div.size });
+                      }}
+                      className="px-2.5 py-1.5 text-[10px] uppercase font-bold tracking-wider bg-[#C5A059] text-white hover:bg-[#A9833E] rounded-none shrink-0 cursor-pointer"
+                    >
+                      Avise-me
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Ações */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStockDivergenceModal({ isOpen: false, divergences: [] })}
+                className="flex-1 py-3 px-4 bg-[#1A1918] dark:bg-[#C5A059] text-white text-xs uppercase tracking-widest font-bold hover:bg-[#C5A059] transition-all cursor-pointer text-center"
+              >
+                {cartItems.length > 0 ? 'Continuar com os Itens Disponíveis' : 'Entendido'}
+              </button>
+              {cartItems.length === 0 && (
+                <Link
+                  href="/catalogo"
+                  className="py-3 px-4 bg-white dark:bg-[#252220] border border-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-xs uppercase tracking-widest font-bold hover:bg-[#FAF8F5] transition-all text-center cursor-pointer"
+                >
+                  Explorar Catálogo
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Avise-me se a cliente quiser entrar na lista de espera */}
+      {aviseMeData && (
+        <AviseMeModal
+          isOpen={true}
+          onClose={() => setAviseMeData(null)}
+          product={aviseMeData.product}
+          selectedColor={aviseMeData.color}
+          selectedSize={aviseMeData.size}
+          lojaId={currentTenant?.id}
+        />
       )}
 
     </div>

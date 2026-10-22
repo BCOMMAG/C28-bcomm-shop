@@ -30,6 +30,23 @@ export const PRODUCTS: Product[] = [
       { name: 'Marrom Caramelo', hex: '#8B5A2B', imageSrc: '/products/01-casaco-tricot/marrom.jpg' },
       { name: 'Branco Off-White', hex: '#FAF9F6', imageSrc: '/products/01-casaco-tricot/branco.jpg' }
     ],
+    totalStock: 9,
+    variations: [
+          {
+                id: "ef8d62b9-177c-4a11-95d9-998251c26f2b",
+                color: "Marrom Caramelo",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "01-casaco-tricot-marrom-caramelo-tamanho-unico"
+          },
+          {
+                id: "9d0cf6e6-a035-46ac-82d5-24d6dc357acf",
+                color: "Branco Off-White",
+                size: "Tamanho Único",
+                stock: 4,
+                sku: "01-casaco-tricot-branco-off-white-tamanho-unico"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -81,6 +98,30 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Rosa Quartz', hex: '#E8A598', imageSrc: '/products/02-blusa-tricot-rosa/rosa.jpg' }
     ],
+    totalStock: 14,
+    variations: [
+          {
+                id: "edc865dc-5111-4586-a290-df64419a5b13",
+                color: "Rosa Quartz",
+                size: "P",
+                stock: 5,
+                sku: "02-blusa-tricot-rosa-rosa-quartz-p"
+          },
+          {
+                id: "928c4362-347a-4bda-a926-c6106d0bcc17",
+                color: "Rosa Quartz",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "02-blusa-tricot-rosa-rosa-quartz-tamanho-unico"
+          },
+          {
+                id: "ddd58c89-cdba-405b-a544-64acaea855c9",
+                color: "Rosa Quartz",
+                size: "M",
+                stock: 4,
+                sku: "02-blusa-tricot-rosa-rosa-quartz-m"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -125,6 +166,30 @@ export const PRODUCTS: Product[] = [
     sizes: ['P', 'M', 'G'],
     colors: [
       { name: 'Prata Acetinado', hex: '#D1D5DB', imageSrc: '/products/03-conjunto-cetim/prata.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "5a3ce2b8-8472-4b6d-8873-6b0241c65b67",
+                color: "Prata Acetinado",
+                size: "P",
+                stock: 5,
+                sku: "03-conjunto-cetim-prata-acetinado-p"
+          },
+          {
+                id: "08322cd2-b57c-4b0b-aa23-12c90482f2cb",
+                color: "Prata Acetinado",
+                size: "M",
+                stock: 5,
+                sku: "03-conjunto-cetim-prata-acetinado-m"
+          },
+          {
+                id: "200e70b7-534d-4f1d-b8d9-d05120a6b7a8",
+                color: "Prata Acetinado",
+                size: "G",
+                stock: 5,
+                sku: "03-conjunto-cetim-prata-acetinado-g"
+          }
     ],
     media: [
       {
@@ -171,6 +236,30 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Bege Areia Nobre', hex: '#E2D3B8', imageSrc: '/products/04-conjunto-alfaiataria-bege/bege.jpg' }
     ],
+    totalStock: 14,
+    variations: [
+          {
+                id: "5fd4a60d-2609-4a97-a2a7-6ed8905bb2b3",
+                color: "Bege Areia Nobre",
+                size: "P",
+                stock: 5,
+                sku: "04-conjunto-alfaiataria-bege-bege-areia-nobre-p"
+          },
+          {
+                id: "262fdcd8-d42d-4e6a-964c-681a2f4e81f5",
+                color: "Bege Areia Nobre",
+                size: "M",
+                stock: 5,
+                sku: "04-conjunto-alfaiataria-bege-bege-areia-nobre-m"
+          },
+          {
+                id: "7483139a-38a4-4523-bccc-1e59dc335c27",
+                color: "Bege Areia Nobre",
+                size: "G",
+                stock: 4,
+                sku: "04-conjunto-alfaiataria-bege-bege-areia-nobre-g"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -213,6 +302,37 @@ export const PRODUCTS: Product[] = [
     sizes: ['PP', 'P', 'M', 'G'],
     colors: [
       { name: 'Branco Off-White', hex: '#FAF9F6', imageSrc: '/products/01-casaco-tricot/branco.jpg' }
+    ],
+    totalStock: 19,
+    variations: [
+          {
+                id: "ca728e50-e51f-4f25-a1bf-216dba8f1451",
+                color: "Branco Off-White",
+                size: "PP",
+                stock: 5,
+                sku: "05-blazer-alfaiataria-offwhite-branco-off-white-pp"
+          },
+          {
+                id: "ce15e04d-8511-41f7-880a-2981b7f25e4d",
+                color: "Branco Off-White",
+                size: "P",
+                stock: 5,
+                sku: "05-blazer-alfaiataria-offwhite-branco-off-white-p"
+          },
+          {
+                id: "f0350264-e6df-41e9-a943-84b1eaa3025b",
+                color: "Branco Off-White",
+                size: "G",
+                stock: 5,
+                sku: "05-blazer-alfaiataria-offwhite-branco-off-white-g"
+          },
+          {
+                id: "7ce4a941-7393-48c6-8477-5bcd8b8b570a",
+                color: "Branco Off-White",
+                size: "M",
+                stock: 4,
+                sku: "05-blazer-alfaiataria-offwhite-branco-off-white-m"
+          }
     ],
     media: [
       {
@@ -257,6 +377,37 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Bege Areia Nobre', hex: '#E2D3B8', imageSrc: '/products/04-conjunto-alfaiataria-bege/bege.jpg' }
     ],
+    totalStock: 19,
+    variations: [
+          {
+                id: "cbfcb10c-f03a-4d77-ab73-83115227dac2",
+                color: "Bege Areia Nobre",
+                size: "P",
+                stock: 5,
+                sku: "06-calca-pantalona-areia-bege-areia-nobre-p"
+          },
+          {
+                id: "c3d9f221-b967-47f4-b548-066414fa3cbe",
+                color: "Bege Areia Nobre",
+                size: "G",
+                stock: 5,
+                sku: "06-calca-pantalona-areia-bege-areia-nobre-g"
+          },
+          {
+                id: "e087b7a2-5fe9-4f11-817f-4ec98333428c",
+                color: "Bege Areia Nobre",
+                size: "GG",
+                stock: 5,
+                sku: "06-calca-pantalona-areia-bege-areia-nobre-gg"
+          },
+          {
+                id: "b1ede5ed-ae80-4820-ab36-b88b869b8bb2",
+                color: "Bege Areia Nobre",
+                size: "M",
+                stock: 4,
+                sku: "06-calca-pantalona-areia-bege-areia-nobre-m"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -297,6 +448,51 @@ export const PRODUCTS: Product[] = [
       { name: 'Dourado Champagne', hex: '#DFBE76', imageSrc: '/products/03-conjunto-cetim/prata.jpg' },
       { name: 'Prata Acetinado', hex: '#D1D5DB', imageSrc: '/products/03-conjunto-cetim/prata.jpg' }
     ],
+    totalStock: 29,
+    variations: [
+          {
+                id: "d28ea64f-a8c4-4c5f-ac69-383b9e5f8b82",
+                color: "Dourado Champagne",
+                size: "M",
+                stock: 5,
+                sku: "07-vestido-midi-seda-dourado-champagne-m"
+          },
+          {
+                id: "a9cefe02-7f2a-48fb-ab7b-2d1bb5c4c054",
+                color: "Dourado Champagne",
+                size: "G",
+                stock: 5,
+                sku: "07-vestido-midi-seda-dourado-champagne-g"
+          },
+          {
+                id: "27a520c1-97d3-41f8-b31a-e6bdc43e2b48",
+                color: "Prata Acetinado",
+                size: "P",
+                stock: 5,
+                sku: "07-vestido-midi-seda-prata-acetinado-p"
+          },
+          {
+                id: "d5c38daa-e36d-43f7-b3b4-6e7a5ec34d88",
+                color: "Prata Acetinado",
+                size: "M",
+                stock: 5,
+                sku: "07-vestido-midi-seda-prata-acetinado-m"
+          },
+          {
+                id: "7cf44eaa-16de-4cee-91f4-671e27a9c042",
+                color: "Prata Acetinado",
+                size: "G",
+                stock: 5,
+                sku: "07-vestido-midi-seda-prata-acetinado-g"
+          },
+          {
+                id: "c24092dd-b59a-4c56-906a-dee0c8e7f323",
+                color: "Dourado Champagne",
+                size: "P",
+                stock: 4,
+                sku: "07-vestido-midi-seda-dourado-champagne-p"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -335,6 +531,65 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Branco Off-White', hex: '#FAF9F6', imageSrc: '/products/01-casaco-tricot/branco.jpg' },
       { name: 'Marrom Caramelo', hex: '#8B5A2B', imageSrc: '/products/01-casaco-tricot/marrom.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "f2da20f9-550e-441e-a95f-1efbc0f6bfb7",
+                color: "Branco Off-White",
+                size: "PP",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-branco-off-white-pp"
+          },
+          {
+                id: "5756eb95-c5f2-4c49-9654-aeeb1d156a34",
+                color: "Branco Off-White",
+                size: "P",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-branco-off-white-p"
+          },
+          {
+                id: "89ec2b7a-e9e2-40e8-9c3c-661d7c1a3326",
+                color: "Branco Off-White",
+                size: "M",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-branco-off-white-m"
+          },
+          {
+                id: "c592dae1-8f0a-4bdf-96f4-d4712f5466f4",
+                color: "Branco Off-White",
+                size: "G",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-branco-off-white-g"
+          },
+          {
+                id: "6e19da2a-5fc3-47c7-a721-976d8693341e",
+                color: "Marrom Caramelo",
+                size: "PP",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-marrom-caramelo-pp"
+          },
+          {
+                id: "bd7d8f07-de9a-4ec9-82f1-0d0277ff6d3a",
+                color: "Marrom Caramelo",
+                size: "P",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-marrom-caramelo-p"
+          },
+          {
+                id: "c15d4731-04ba-4f9e-b324-4936e9695dc4",
+                color: "Marrom Caramelo",
+                size: "M",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-marrom-caramelo-m"
+          },
+          {
+                id: "c8e7dda0-c186-47f8-8e47-cfc43ac2e4d5",
+                color: "Marrom Caramelo",
+                size: "G",
+                stock: 5,
+                sku: "08-camisa-seda-botoes-marrom-caramelo-g"
+          }
     ],
     media: [
       {
@@ -379,6 +634,51 @@ export const PRODUCTS: Product[] = [
       { name: 'Marrom Caramelo', hex: '#8B5A2B', imageSrc: '/products/01-casaco-tricot/marrom.jpg' },
       { name: 'Rosa Quartz', hex: '#E8A598', imageSrc: '/products/02-blusa-tricot-rosa/rosa.jpg' }
     ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "55510832-13d4-44d7-a885-b56d5152ee6e",
+                color: "Marrom Caramelo",
+                size: "P",
+                stock: 5,
+                sku: "09-saia-midi-plissada-marrom-caramelo-p"
+          },
+          {
+                id: "f797a8f2-b05e-4c89-bf96-5ec0501f65b0",
+                color: "Marrom Caramelo",
+                size: "M",
+                stock: 5,
+                sku: "09-saia-midi-plissada-marrom-caramelo-m"
+          },
+          {
+                id: "1a92aa0e-b708-49c7-b6a4-36201d4d5d87",
+                color: "Marrom Caramelo",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "09-saia-midi-plissada-marrom-caramelo-tamanho-unico"
+          },
+          {
+                id: "a3746684-a34e-4702-902d-9f83f9ac820a",
+                color: "Rosa Quartz",
+                size: "P",
+                stock: 5,
+                sku: "09-saia-midi-plissada-rosa-quartz-p"
+          },
+          {
+                id: "382ab7df-0cec-4006-a535-fb5b33ab88fd",
+                color: "Rosa Quartz",
+                size: "M",
+                stock: 5,
+                sku: "09-saia-midi-plissada-rosa-quartz-m"
+          },
+          {
+                id: "2e91b6f0-d278-4c95-850b-2c3d5cfc824a",
+                color: "Rosa Quartz",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "09-saia-midi-plissada-rosa-quartz-tamanho-unico"
+          }
+    ],
     media: [
       {
         type: 'video',
@@ -418,6 +718,37 @@ export const PRODUCTS: Product[] = [
     sizes: ['36', '38', '40', '42'],
     colors: [
       { name: 'Bege Areia Nobre', hex: '#E2D3B8', imageSrc: '/products/04-conjunto-alfaiataria-bege/bege.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "521f1cd7-3521-4355-9831-c86db22cee65",
+                color: "Bege Areia Nobre",
+                size: "36",
+                stock: 5,
+                sku: "10-bermuda-alfaiataria-chic-bege-areia-nobre-36"
+          },
+          {
+                id: "e17e0909-0595-4696-9bd9-313fb76b0e1e",
+                color: "Bege Areia Nobre",
+                size: "38",
+                stock: 5,
+                sku: "10-bermuda-alfaiataria-chic-bege-areia-nobre-38"
+          },
+          {
+                id: "bee21015-504c-43da-a7f9-36c1c23cdbdd",
+                color: "Bege Areia Nobre",
+                size: "40",
+                stock: 5,
+                sku: "10-bermuda-alfaiataria-chic-bege-areia-nobre-40"
+          },
+          {
+                id: "82c154d7-c805-41f6-ab76-ecc86a9fbca4",
+                color: "Bege Areia Nobre",
+                size: "42",
+                stock: 5,
+                sku: "10-bermuda-alfaiataria-chic-bege-areia-nobre-42"
+          }
     ],
     media: [
       {
@@ -459,6 +790,23 @@ export const PRODUCTS: Product[] = [
       { name: 'Marrom Caramelo', hex: '#8B5A2B', imageSrc: '/products/01-casaco-tricot/marrom.jpg' },
       { name: 'Preto Clássico', hex: '#1A1918', imageSrc: '/products/01-casaco-tricot/marrom.jpg' }
     ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "663890a7-f31f-449a-9ae7-5aa89d37ddde",
+                color: "Marrom Caramelo",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "11-cinto-couro-fivela-dourada-marrom-caramelo-tamanho-unico"
+          },
+          {
+                id: "18cb61c6-e4a2-43ac-824d-662d1a90775d",
+                color: "Preto Clássico",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "11-cinto-couro-fivela-dourada-preto-classico-tamanho-unico"
+          }
+    ],
     media: [
       {
         type: 'image',
@@ -492,6 +840,16 @@ export const PRODUCTS: Product[] = [
     sizes: ['Tamanho Único'],
     colors: [
       { name: 'Dourado Champagne', hex: '#DFBE76', imageSrc: '/products/04-conjunto-alfaiataria-bege/bege.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "eb766939-4039-4d5a-a4ef-3b2c11a96913",
+                color: "Dourado Champagne",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "12-colar-elo-dourado-dourado-champagne-tamanho-unico"
+          }
     ],
     media: [
       {
@@ -527,6 +885,23 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Prata Acetinado', hex: '#D1D5DB', imageSrc: '/products/03-conjunto-cetim/prata.jpg' },
       { name: 'Branco Off-White', hex: '#FAF9F6', imageSrc: '/products/01-casaco-tricot/branco.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "6c4cea7f-23a6-4e3c-9d02-c406843fa8e5",
+                color: "Prata Acetinado",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "13-bolsa-clutch-acetinada-prata-acetinado-tamanho-unico"
+          },
+          {
+                id: "9e231ee1-8d1c-479d-918d-065f0dee763b",
+                color: "Branco Off-White",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "13-bolsa-clutch-acetinada-branco-off-white-tamanho-unico"
+          }
     ],
     media: [
       {
@@ -565,6 +940,16 @@ export const PRODUCTS: Product[] = [
     colors: [
       { name: 'Rosa Quartz', hex: '#E8A598', imageSrc: '/products/02-blusa-tricot-rosa/rosa.jpg' }
     ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "af3a14c2-0728-42fa-8206-50106c15f79a",
+                color: "Rosa Quartz",
+                size: "Tamanho Único",
+                stock: 5,
+                sku: "14-lenco-seda-estampado-rosa-quartz-tamanho-unico"
+          }
+    ],
     media: [
       {
         type: 'image',
@@ -601,6 +986,30 @@ export const PRODUCTS: Product[] = [
     sizes: ['P', 'M', 'G'],
     colors: [
       { name: 'Bege Areia Nobre', hex: '#E2D3B8', imageSrc: '/products/04-conjunto-alfaiataria-bege/bege.jpg' }
+    ],
+    totalStock: 15,
+    variations: [
+          {
+                id: "606f38e3-2ba9-4974-a006-b08ddad24e51",
+                color: "Bege Areia Nobre",
+                size: "P",
+                stock: 5,
+                sku: "15-colete-alfaiataria-botoes-bege-areia-nobre-p"
+          },
+          {
+                id: "3ad1165b-e31f-4bd2-a37c-49811cf08c6c",
+                color: "Bege Areia Nobre",
+                size: "M",
+                stock: 5,
+                sku: "15-colete-alfaiataria-botoes-bege-areia-nobre-m"
+          },
+          {
+                id: "8bf41499-5941-4391-9d1a-fb5b0a07a051",
+                color: "Bege Areia Nobre",
+                size: "G",
+                stock: 5,
+                sku: "15-colete-alfaiataria-botoes-bege-areia-nobre-g"
+          }
     ],
     media: [
       {
@@ -643,6 +1052,23 @@ export const PRODUCTS: Product[] = [
     sizes: ['M', 'G'],
     colors: [
       { name: 'Marrom Caramelo', hex: '#8B5A2B', imageSrc: '/products/01-casaco-tricot/marrom.jpg' }
+    ],
+    totalStock: 2,
+    variations: [
+          {
+                id: "a54ed007-b02f-4286-aeb4-edfc287eb037",
+                color: "Marrom Caramelo",
+                size: "M",
+                stock: 1,
+                sku: "16-sobretudo-la-premium-marrom-caramelo-m"
+          },
+          {
+                id: "56e23b04-6506-4a3f-b2ad-4300d6272b1c",
+                color: "Marrom Caramelo",
+                size: "G",
+                stock: 1,
+                sku: "16-sobretudo-la-premium-marrom-caramelo-g"
+          }
     ],
     media: [
       {

@@ -35,25 +35,38 @@ export function mapDbProductToProduct(dbProd: any): Product {
 
   if (Array.isArray(dbProd.variacoes_produto)) {
     dbProd.variacoes_produto.forEach((v: any) => {
+      const cor = (v.cor_nome || '').trim();
+      const tam = (v.tamanho || '').trim();
       const stock = Number(v.estoque ?? 0);
       variations.push({
         id: v.id,
-        color: v.cor_nome || '',
-        size: v.tamanho || '',
+        color: cor,
+        size: tam,
         stock,
         sku: v.sku || undefined,
         price: v.preco ? Number(v.preco) : undefined
       });
-      if (v.tamanho) sizesSet.add(v.tamanho);
-      if (v.cor_nome && !colorsMap.has(v.cor_nome)) {
-        colorsMap.set(v.cor_nome, {
-          name: v.cor_nome,
+      if (tam) sizesSet.add(tam);
+      if (cor && !colorsMap.has(cor)) {
+        colorsMap.set(cor, {
+          name: cor,
           hex: v.cor_hex || '#000000',
           imageSrc: v.imagem_url || undefined
         });
       }
     });
   }
+
+  // Ordenação padronizada e lógica de tamanhos de moda
+  const standardSizeOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'Tamanho Único', '34', '36', '38', '40', '42', '44', '46'];
+  const sortedSizes = Array.from(sizesSet).sort((a, b) => {
+    const idxA = standardSizeOrder.indexOf(a);
+    const idxB = standardSizeOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
 
   // Ordenação das Mídias (Fotos e Vídeos)
   const mediaList: ProductMedia[] = [];
@@ -97,7 +110,7 @@ export function mapDbProductToProduct(dbProd: any): Product {
     status: Array.isArray(dbProd.status_badges) ? dbProd.status_badges : [],
     description: dbProd.descricao || '',
     details: Array.isArray(dbProd.detalhes) ? dbProd.detalhes : [],
-    sizes: sizesSet.size > 0 ? Array.from(sizesSet) : ['Tamanho Único'],
+    sizes: sortedSizes.length > 0 ? sortedSizes : ['Tamanho Único'],
     colors: Array.from(colorsMap.values()),
     variations,
     totalStock: Number(dbProd.estoque_total ?? variations.reduce((acc, v) => acc + v.stock, 0)),

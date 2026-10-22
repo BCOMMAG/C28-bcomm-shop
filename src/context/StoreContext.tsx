@@ -9,6 +9,7 @@ import { Loja, BarraAvisoEstilo } from '@/types/database';
 import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug } from '@/lib/routes';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface StoreContextType {
   currentTenant: Loja;
@@ -42,6 +43,7 @@ interface StoreContextType {
   savedCep: string;
   savedAddress: ViaCepResponse | null;
   setSavedAddressInfo: (cep: string, address: ViaCepResponse | null) => void;
+  getItemStock: (productId: string, size: string, color: string) => number;
   addToCart: (params: {
     product: Product;
     size: string;
@@ -208,6 +210,58 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // Sincronização em Tempo Real (Supabase Realtime WebSocket + Revalidação ao focar aba)
+  useEffect(() => {
+    if (!currentTenant?.id) return;
+
+    const supabase = getSupabaseBrowserClient();
+    const channelName = `store-stock-sync-${currentTenant.id}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'variacoes_produto'
+        },
+        () => {
+          refreshProducts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'produtos',
+          filter: `loja_id=eq.${currentTenant.id}`
+        },
+        () => {
+          refreshProducts();
+        }
+      )
+      .subscribe();
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshProducts();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [currentTenant?.id]);
+
   const getProductById = (id: string) => {
     return products.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id);
   };
@@ -362,6 +416,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cartItems, isGift, giftMessage, currentTenant.slug]);
 
+  // Consulta do estoque máximo de uma variante específica
+  const getItemStock = (productId: string, size: string, color: string): number => {
+    const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+    if (!prod) return 99;
+    if (prod.variations && prod.variations.length > 0) {
+      const v = prod.variations.find(
+        (item) =>
+          item.color.trim().toLowerCase() === (color || '').trim().toLowerCase() &&
+          item.size.trim().toLowerCase() === (size || '').trim().toLowerCase()
+      );
+      if (v !== undefined) return v.stock;
+    }
+    if (prod.totalStock !== undefined) return prod.totalStock;
+    return prod.remainingPieces ?? 10;
+  };
+
+  // Revalidação Silenciosa da Sacola quando o catálogo/estoque é carregado ou atualizado
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    setCartItems((prev) => {
+      let changed = false;
+      const updated = prev
+        .map((item) => {
+          const availableStock = getItemStock(item.productId, item.size, item.color);
+          if (availableStock <= 0) {
+            changed = true;
+            return null; // Peça esgotou
+          }
+          if (item.quantity > availableStock) {
+            changed = true;
+            return { ...item, quantity: availableStock, maxStock: availableStock };
+          }
+          if (item.maxStock !== availableStock) {
+            changed = true;
+            return { ...item, maxStock: availableStock };
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
+
+      return changed ? updated : prev;
+    });
+  }, [products]);
+
   const addToCart = ({
     product,
     size,
@@ -376,13 +474,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     openDrawer?: boolean;
   }) => {
     const itemKey = `${product.id}-${size}-${color}`;
+    const maxStock = getItemStock(product.id, size, color);
+    if (maxStock <= 0) {
+      return;
+    }
+
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === itemKey);
       if (existing) {
+        const currentQty = existing.quantity;
+        const finalQty = Math.min(maxStock, currentQty + quantity);
         return prev.map((i) =>
-          i.id === itemKey ? { ...i, quantity: i.quantity + quantity } : i
+          i.id === itemKey ? { ...i, quantity: finalQty, maxStock } : i
         );
       }
+      const initialQty = Math.min(maxStock, quantity);
       return [
         ...prev,
         {
@@ -393,7 +499,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           image: product.thumbnail,
           size,
           color,
-          quantity
+          quantity: initialQty,
+          maxStock
         }
       ];
     });
@@ -407,8 +514,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       prev
         .map((item) => {
           if (item.id === id) {
+            const maxStock = getItemStock(item.productId, item.size, item.color);
             const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            if (newQty <= 0) return null;
+            const clampedQty = Math.min(maxStock, newQty);
+            return { ...item, quantity: clampedQty, maxStock };
           }
           return item;
         })
@@ -532,6 +642,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         savedCep,
         savedAddress,
         setSavedAddressInfo,
+        getItemStock,
         addToCart,
         updateCartQuantity,
         removeFromCart,

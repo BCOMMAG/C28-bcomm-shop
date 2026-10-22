@@ -1,5 +1,6 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { CartItem } from '@/types';
 
 export interface CustomerLeadPayload {
   lojaId?: string;
@@ -52,6 +53,8 @@ export interface CreateOrderPayload {
   isGift?: boolean;
   giftFee?: number;
   giftMessage?: string;
+  tempoReservaMinutos?: number;
+  reservaAtiva?: boolean;
 }
 
 /**
@@ -103,6 +106,147 @@ export async function saveCustomerLead(payload: CustomerLeadPayload): Promise<{
   } catch (err: any) {
     console.warn('⚠️ [Supabase] Falha de rede ao capturar lead:', err?.message || err);
     return { success: false, error: err?.message };
+  }
+}
+
+export interface CartStockDivergenceItem {
+  itemId: string;
+  productId: string;
+  name: string;
+  size: string;
+  color: string;
+  solicitado: number;
+  disponivel: number;
+  esgotado: boolean;
+}
+
+export interface CartStockValidationResult {
+  isValid: boolean;
+  divergences: CartStockDivergenceItem[];
+}
+
+/**
+ * Validação Atômica em Tempo Real (Live Stock Guard)
+ * Consulta o estoque físico no banco de dados e desconta reservas ativas vigentes
+ * antes de permitir o direcionamento da cliente ao WhatsApp.
+ */
+export async function validateLiveCartStock(
+  items: CartItem[],
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<CartStockValidationResult> {
+  if (!items || items.length === 0) {
+    return { isValid: true, divergences: [] };
+  }
+
+  try {
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Busca todos os produtos do banco da loja
+    const { data: dbProducts, error: prodErr } = await supabase
+      .from('produtos')
+      .select(`
+        id,
+        slug,
+        nome,
+        ativo,
+        variacoes_produto (*)
+      `)
+      .eq('loja_id', lojaId);
+
+    if (prodErr || !dbProducts || dbProducts.length === 0) {
+      console.warn('⚠️ [validateLiveCartStock] Falha ao consultar produtos vivos:', prodErr?.message);
+      return { isValid: true, divergences: [] };
+    }
+
+    // 2. Busca reservas ativas vigentes da loja
+    const nowIso = new Date().toISOString();
+    const { data: activeRes } = await supabase
+      .from('reservas_estoque')
+      .select('produto_id, variacao_id, cor, tamanho, quantidade')
+      .eq('loja_id', lojaId)
+      .eq('status', 'ativa')
+      .gt('expira_em', nowIso);
+
+    const divergences: CartStockDivergenceItem[] = [];
+
+    const prodBySlug = new Map<string, any>();
+    const prodById = new Map<string, any>();
+    dbProducts.forEach((p) => {
+      if (p.slug) prodBySlug.set(p.slug.toLowerCase(), p);
+      if (p.id) prodById.set(p.id, p);
+    });
+
+    for (const item of items) {
+      const p = prodById.get(item.productId) || prodBySlug.get(item.productId.toLowerCase());
+
+      if (!p || !p.ativo) {
+        divergences.push({
+          itemId: item.id,
+          productId: item.productId,
+          name: item.name,
+          size: item.size,
+          color: item.color,
+          solicitado: item.quantity,
+          disponivel: 0,
+          esgotado: true
+        });
+        continue;
+      }
+
+      // Procurar a variação correspondente
+      const variations = p.variacoes_produto || [];
+      const v = variations.find(
+        (varItem: any) =>
+          (varItem.tamanho || '').trim().toLowerCase() === (item.size || '').trim().toLowerCase() &&
+          (varItem.cor_nome || '').trim().toLowerCase() === (item.color || '').trim().toLowerCase()
+      );
+
+      let estoqueFisico = 0;
+      if (v) {
+        estoqueFisico = Number(v.estoque ?? 0);
+      } else if (variations.length === 0) {
+        estoqueFisico = Number(p.estoque_total ?? 0);
+      }
+
+      // Descontar reservas ativas vigentes
+      let reservedQty = 0;
+      if (activeRes && activeRes.length > 0) {
+        activeRes.forEach((res: any) => {
+          const matchVar = v && res.variacao_id ? res.variacao_id === v.id : false;
+          const matchAttr =
+            res.produto_id === p.id &&
+            (res.tamanho || '').trim().toLowerCase() === (item.size || '').trim().toLowerCase() &&
+            (res.cor || '').trim().toLowerCase() === (item.color || '').trim().toLowerCase();
+
+          if (matchVar || matchAttr) {
+            reservedQty += Number(res.quantidade || 1);
+          }
+        });
+      }
+
+      const disponivel = Math.max(0, estoqueFisico - reservedQty);
+
+      if (disponivel < item.quantity) {
+        divergences.push({
+          itemId: item.id,
+          productId: item.productId,
+          name: item.name,
+          size: item.size,
+          color: item.color,
+          solicitado: item.quantity,
+          disponivel,
+          esgotado: disponivel <= 0
+        });
+      }
+    }
+
+    return {
+      isValid: divergences.length === 0,
+      divergences
+    };
+  } catch (err: any) {
+    console.error('❌ [validateLiveCartStock] Erro inesperado na validação:', err);
+    return { isValid: true, divergences: [] };
   }
 }
 
@@ -241,6 +385,61 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
       const { error: itemsError } = await supabase.from('itens_pedido').insert(orderItems);
       if (itemsError) {
         console.warn('⚠️ [Supabase] Aviso ao registrar itens do pedido:', itemsError.message);
+      }
+
+      // 4. Criação da Reserva Provisória (Soft-Hold) para proteger contra venda dupla no WhatsApp
+      const tempoReserva = Number(payload.tempoReservaMinutos ?? 20);
+      const isReservaAtiva = payload.reservaAtiva !== false;
+
+      if (isReservaAtiva && tempoReserva > 0) {
+        const expiraEm = new Date(Date.now() + tempoReserva * 60 * 1000).toISOString();
+        const validOrderItems = orderItems.filter(
+          (oi) => oi.produto_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(oi.produto_id)
+        );
+
+        if (validOrderItems.length > 0) {
+          const reservasToInsert = await Promise.all(
+            validOrderItems.map(async (oi) => {
+              let variacaoId: string | null = null;
+              if (oi.cor && oi.tamanho) {
+                try {
+                  const { data: vData } = await supabase
+                    .from('variacoes_produto')
+                    .select('id')
+                    .eq('produto_id', oi.produto_id)
+                    .ilike('cor_nome', oi.cor.trim())
+                    .ilike('tamanho', oi.tamanho.trim())
+                    .limit(1)
+                    .maybeSingle();
+                  if (vData?.id) variacaoId = vData.id;
+                } catch {}
+              }
+
+              return {
+                loja_id: lojaId,
+                produto_id: oi.produto_id!,
+                variacao_id: variacaoId,
+                produto_nome: oi.nome_produto,
+                tamanho: oi.tamanho,
+                cor: oi.cor,
+                quantidade: oi.quantidade,
+                vendedora_nome: 'Checkout WhatsApp',
+                cliente_nome: payload.cliente.nome,
+                cliente_telefone: payload.cliente.telefone,
+                motivo: 'whatsapp_pix',
+                expira_em: expiraEm,
+                status: 'ativa'
+              };
+            })
+          );
+
+          try {
+            await supabase.from('reservas_estoque').insert(reservasToInsert);
+            console.log(`⏱️ [Supabase] ${reservasToInsert.length} reservas provisórias criadas por ${tempoReserva} min!`);
+          } catch (e: any) {
+            console.warn('⚠️ [Supabase] Aviso ao registrar reservas temporárias:', e?.message || e);
+          }
+        }
       }
     }
 
