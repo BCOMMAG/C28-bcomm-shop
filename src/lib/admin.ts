@@ -332,7 +332,11 @@ export async function getAdminOrders(
       .order('created_at', { ascending: false });
 
     if (statusFilter && statusFilter !== 'todos') {
-      query = query.eq('status', statusFilter);
+      if (statusFilter === 'pendente' || statusFilter === 'aguardando_whatsapp') {
+        query = query.in('status', ['pendente', 'aguardando_whatsapp']);
+      } else {
+        query = query.eq('status', statusFilter);
+      }
     }
 
     const { data, error } = await query;

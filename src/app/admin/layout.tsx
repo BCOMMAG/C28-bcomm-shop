@@ -144,8 +144,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       }
     };
     fetchNotifs();
-    const interval = setInterval(fetchNotifs, 45000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchNotifs, 30000);
+
+    const supabase = getSupabaseBrowserClient();
+    const channel = supabase
+      .channel('admin-header-pedidos-notifs')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pedidos'
+        },
+        () => {
+          fetchNotifs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [isAuthenticated]);
 
   // Carrega a equipe e o colaborador ativo da sessão

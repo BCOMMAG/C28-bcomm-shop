@@ -58,6 +58,7 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
 import { useStore } from '@/context/StoreContext';
 import { MembroEquipe, logStoreAuditAction } from '@/lib/team';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type ViewMode = 'cards' | 'lista' | 'kanban';
 type PeriodFilter = 'todos' | 'hoje' | 'ontem' | '7d' | '30d' | 'mes_atual' | 'custom';
@@ -206,6 +207,41 @@ export default function AdminPedidosPage() {
 
   useEffect(() => {
     fetchOrders();
+
+    if (!tenantId) return;
+    const supabase = getSupabaseBrowserClient();
+    const channelName = `admin-pedidos-live-${tenantId}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pedidos',
+          filter: `loja_id=eq.${tenantId}`
+        },
+        (payload) => {
+          fetchOrders();
+          if (payload.eventType === 'INSERT') {
+            showToast('🔔 Novo pedido recebido da vitrine!', 'success');
+          }
+        }
+      )
+      .subscribe();
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchOrders();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [tenantId]);
 
   // Fechar popovers ao clicar fora
@@ -280,7 +316,7 @@ export default function AdminPedidosPage() {
     const now = Date.now();
     const diffHours = (now - createdTime) / (1000 * 60 * 60);
 
-    if (order.status === 'pendente' && diffHours > 24) {
+    if ((order.status === 'pendente' || order.status === 'aguardando_whatsapp') && diffHours > 24) {
       return {
         label: `${Math.floor(diffHours / 24)}d no WhatsApp`,
         severity: 'warning'
@@ -330,6 +366,8 @@ export default function AdminPedidosPage() {
             <AlertCircle className="w-3 h-3 text-rose-600" /> Cancelado
           </span>
         );
+      case 'pendente':
+      case 'aguardando_whatsapp':
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
@@ -351,7 +389,8 @@ export default function AdminPedidosPage() {
     };
 
     orders.forEach((o) => {
-      const st = o.status as keyof typeof counts;
+      const rawStatus = o.status;
+      const st = (rawStatus === 'aguardando_whatsapp' ? 'pendente' : rawStatus) as keyof typeof counts;
       if (counts[st]) {
         counts[st].count += 1;
         counts[st].total += Number(o.total || 0);
@@ -412,8 +451,14 @@ export default function AdminPedidosPage() {
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       // 1. Multi-seleção de Status
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(o.status)) {
-        return false;
+      if (selectedStatuses.length > 0) {
+        const orderStatusNormalized = o.status === 'aguardando_whatsapp' ? 'pendente' : o.status;
+        const matchesStatus =
+          selectedStatuses.includes(o.status) ||
+          selectedStatuses.includes(orderStatusNormalized);
+        if (!matchesStatus) {
+          return false;
+        }
       }
 
       // 2. Busca por Texto (Número, Cliente, Telefone, Rastreio ou Itens)
@@ -1452,7 +1497,7 @@ export default function AdminPedidosPage() {
                     <button
                       onClick={() => {
                         setStatusModalOrder(order);
-                        setSelectedNewStatus(order.status);
+                        setSelectedNewStatus(order.status === 'aguardando_whatsapp' ? 'pendente' : order.status);
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                     >
@@ -1770,7 +1815,7 @@ export default function AdminPedidosPage() {
                       {/* Status com Dropdown Inline */}
                       <td className="p-3 whitespace-nowrap">
                         <select
-                          value={order.status}
+                          value={order.status === 'aguardando_whatsapp' ? 'pendente' : order.status}
                           onChange={(e) =>
                             handleQuickStatusChange(order, e.target.value as CustomerOrder['status'])
                           }
@@ -1836,7 +1881,7 @@ export default function AdminPedidosPage() {
                           <button
                             onClick={() => {
                               setStatusModalOrder(order);
-                              setSelectedNewStatus(order.status);
+                              setSelectedNewStatus(order.status === 'aguardando_whatsapp' ? 'pendente' : order.status);
                             }}
                             className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                             title="Alterar Status Completo"
@@ -1864,7 +1909,12 @@ export default function AdminPedidosPage() {
             { id: 'enviado', label: 'Enviados (Correios)', next: 'entregue', color: 'border-indigo-400 bg-indigo-50/40 text-indigo-900' },
             { id: 'entregue', label: 'Entregues', next: null, color: 'border-teal-400 bg-teal-50/40 text-teal-900' }
           ].map((column) => {
-            const columnOrders = filteredOrders.filter((o) => o.status === column.id);
+            const columnOrders = filteredOrders.filter((o) => {
+              if (column.id === 'pendente') {
+                return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
+              }
+              return o.status === column.id;
+            });
             const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
             return (
@@ -2697,7 +2747,7 @@ export default function AdminPedidosPage() {
                   <button
                     onClick={() => {
                       setStatusModalOrder(detailsModalOrder);
-                      setSelectedNewStatus(detailsModalOrder.status);
+                      setSelectedNewStatus(detailsModalOrder.status === 'aguardando_whatsapp' ? 'pendente' : detailsModalOrder.status);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                   >
