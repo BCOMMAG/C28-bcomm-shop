@@ -1,4 +1,5 @@
 import { Loja } from '@/types/database';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 // Cache em memória para resolução rápida de lojas (evita roundtrips desnecessários)
 const tenantCache = new Map<string, { loja: Loja; expiresAt: number }>();
@@ -123,27 +124,17 @@ export async function getTenantByHost(host: string): Promise<Loja> {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from('lojas')
+      .select('*')
+      .eq('dominio_proprio', cleanHost)
+      .eq('ativo', true);
 
-    if (!supabaseUrl || !supabaseKey) {
-      return DEFAULT_LEIDY_TENANT;
-    }
-
-    // Busca via REST direto pelo domínio próprio
-    const res = await fetch(`${supabaseUrl}/rest/v1/lojas?dominio_proprio=eq.${encodeURIComponent(cleanHost)}&ativo=eq.true&select=*`, {
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-    });
-
-    if (res.ok) {
-      const data: Loja[] = await res.json();
-      if (data && data.length > 0) {
-        tenantCache.set(cleanHost, { loja: data[0], expiresAt: Date.now() + CACHE_TTL_MS });
-        return data[0];
-      }
+    if (!error && data && data.length > 0) {
+      const loja = data[0] as Loja;
+      tenantCache.set(cleanHost, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
+      return loja;
     }
   } catch (error) {
     console.warn(`Erro ao resolver tenant para o host ${cleanHost}:`, error);
@@ -165,27 +156,18 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from('lojas')
+      .select('*')
+      .eq('slug', dbSlug)
+      .eq('ativo', true);
 
-    if (supabaseUrl && supabaseKey) {
-      // Consulta pelo slug canônico do banco
-      const res = await fetch(`${supabaseUrl}/rest/v1/lojas?slug=eq.${encodeURIComponent(dbSlug)}&ativo=eq.true&select=*`, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-
-      if (res.ok) {
-        const data: Loja[] = await res.json();
-        if (data && data.length > 0) {
-          const tenantFound = data[0];
-          tenantCache.set(`slug:${dbSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
-          tenantCache.set(`slug:${cleanSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
-          return tenantFound;
-        }
-      }
+    if (!error && data && data.length > 0) {
+      const tenantFound = data[0] as Loja;
+      tenantCache.set(`slug:${dbSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
+      tenantCache.set(`slug:${cleanSlug}`, { loja: tenantFound, expiresAt: Date.now() + CACHE_TTL_MS });
+      return tenantFound;
     }
   } catch (error) {
     console.warn(`Erro ao resolver tenant para o slug ${cleanSlug} (dbSlug: ${dbSlug}):`, error);
