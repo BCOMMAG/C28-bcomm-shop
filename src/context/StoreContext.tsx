@@ -78,7 +78,23 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentTenant, setCurrentTenant] = useState<Loja>(DEFAULT_LEIDY_TENANT);
+  // Inicialização instantânea via cache local (SWR) para eliminar delay visual / FOUC no F5
+  const [currentTenant, setCurrentTenant] = useState<Loja>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        const firstSegment = pathSegments[0] || 'leidy-boutique';
+        const cached =
+          localStorage.getItem(`bcomm_tenant_${firstSegment}`) ||
+          localStorage.getItem('bcomm_tenant_last');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.id) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_LEIDY_TENANT;
+  });
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -148,6 +164,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           tenant = await getTenantByHost(window.location.hostname);
         }
         setCurrentTenant(tenant);
+        if (typeof window !== 'undefined' && tenant) {
+          try {
+            localStorage.setItem(`bcomm_tenant_${tenant.slug}`, JSON.stringify(tenant));
+            localStorage.setItem('bcomm_tenant_last', JSON.stringify(tenant));
+          } catch {}
+        }
       }
       const [dynamicProds, heroBanners] = await Promise.all([
         getStoreProducts(tenant.id),

@@ -41,8 +41,17 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
     tagline: 'Curadoria Exclusiva em Moda Feminina',
     frete_gratis_valor: 350.00,
-    barra_aviso: 'Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp',
-    barra_aviso_ativa: true
+    barra_aviso: 'Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp',
+    barra_aviso_ativa: true,
+    barra_aviso_estilo: {
+      modo: 'unificado',
+      icone: 'truck',
+      bg_light: '#1A1918',
+      text_light: '#b01717',
+      bg_dark: '#0D0C0B',
+      text_dark: '#EED59B',
+      font_family: "'Montserrat', sans-serif"
+    }
   },
   configuracoes_financeiras: {
     imposto_padrao: 4,

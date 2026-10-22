@@ -438,7 +438,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           return (
             <div
-              className="py-1.5 px-3 text-center text-[10px] sm:text-xs font-medium tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-2xs backdrop-blur-md"
+              suppressHydrationWarning
+              className="py-1.5 px-3 text-center text-[10px] sm:text-xs font-medium tracking-wide flex items-center justify-center gap-1.5 transition-colors duration-200 shadow-2xs backdrop-blur-md"
               style={{
                 backgroundColor: bgColor,
                 color: textColor,
