@@ -492,6 +492,34 @@ export default function AdminPedidosPage() {
     return Array.from(new Set([...rawList, ...cleanList]));
   };
 
+  // Relógio em tempo real para contagem regressiva precisa de horas:minutos:segundos (HH:MM:SS)
+  const [nowMs, setNowMs] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const clockTimer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  // Formatar contagem regressiva em Horas:Minutos:Segundos (HH:MM:SS)
+  const getReservationCountdown = (expiraEm?: string) => {
+    if (!expiraEm) return { formatted: '00:00:00', totalSeconds: 0, isExpiringSoon: false };
+    const expMs = new Date(expiraEm).getTime();
+    const diffSec = Math.max(0, Math.floor((expMs - nowMs) / 1000));
+
+    const hours = Math.floor(diffSec / 3600);
+    const minutes = Math.floor((diffSec % 3600) / 60);
+    const seconds = diffSec % 60;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      formatted: `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`,
+      totalSeconds: diffSec,
+      isExpiringSoon: diffSec <= 300 && diffSec > 0
+    };
+  };
+
   // Obter Reserva Ativa ou Pausada correspondente ao Pedido
   const getOrderReservation = (order?: CustomerOrder | null): ReservaEstoque | undefined => {
     if (!order) return undefined;
@@ -1697,10 +1725,11 @@ export default function AdminPedidosPage() {
                               </span>
                             );
                           }
-                          if (res.status === 'ativa' && res.minutos_restantes !== null && res.minutos_restantes !== undefined) {
+                          if (res.status === 'ativa') {
+                            const countdown = getReservationCountdown(res.expira_em);
                             return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
-                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {res.minutos_restantes} min
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {countdown.formatted}
                               </span>
                             );
                           }
@@ -2161,10 +2190,11 @@ export default function AdminPedidosPage() {
                               </span>
                             );
                           }
-                          if (res.status === 'ativa' && res.minutos_restantes !== null && res.minutos_restantes !== undefined) {
+                          if (res.status === 'ativa') {
+                            const countdown = getReservationCountdown(res.expira_em);
                             return (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 mt-1 block w-fit">
-                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {res.minutos_restantes}m
+                              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 mt-1 block w-fit">
+                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {countdown.formatted}
                               </span>
                             );
                           }
@@ -2377,7 +2407,8 @@ export default function AdminPedidosPage() {
                             }
 
                             const isPausada = reserva.status === 'pausada';
-                            const isExpiringSoon = (reserva.minutos_restantes ?? 20) <= 5 && !isPausada;
+                            const countdown = getReservationCountdown(reserva.expira_em);
+                            const isExpiringSoon = countdown.isExpiringSoon && !isPausada;
                             const isOverdue = (reserva.horas_pausada ?? 0) >= 12;
 
                             return (
@@ -2403,7 +2434,9 @@ export default function AdminPedidosPage() {
                                     ) : (
                                       <>
                                         <Timer className={`w-3 h-3 ${isExpiringSoon ? 'text-rose-600' : 'text-amber-700'} shrink-0`} />
-                                        <span>{reserva.minutos_restantes !== undefined && reserva.minutos_restantes !== null ? `${reserva.minutos_restantes} min restantes` : 'Reserva 20 min'}</span>
+                                        <span className="font-mono font-black tracking-tight">
+                                          {countdown.totalSeconds > 0 ? countdown.formatted : '00:00:00'}
+                                        </span>
                                       </>
                                     )}
                                   </span>
@@ -3177,6 +3210,7 @@ export default function AdminPedidosPage() {
                 }
 
                 const isPausada = reserva.status === 'pausada';
+                const countdown = getReservationCountdown(reserva.expira_em);
                 const isOverdue = (reserva.horas_pausada ?? 0) >= 12;
 
                 return (
@@ -3185,6 +3219,8 @@ export default function AdminPedidosPage() {
                       ? isOverdue
                         ? 'bg-amber-50/90 border-amber-300'
                         : 'bg-sky-50/80 border-sky-300'
+                      : countdown.isExpiringSoon
+                      ? 'bg-rose-50/80 border-rose-300'
                       : 'bg-amber-50/60 border-amber-200'
                   }`}>
                     {/* Topo da Reserva */}
@@ -3195,7 +3231,7 @@ export default function AdminPedidosPage() {
                             <Snowflake className="w-4 h-4" />
                           </div>
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <div className={`w-8 h-8 rounded-lg ${countdown.isExpiringSoon ? 'bg-rose-500' : 'bg-amber-500'} text-white flex items-center justify-center shadow-xs shrink-0`}>
                             <Timer className="w-4 h-4" />
                           </div>
                         )}
@@ -3208,22 +3244,31 @@ export default function AdminPedidosPage() {
                               ? isOverdue
                                 ? `⚠️ Alerta: Reserva pausada há ${reserva.horas_pausada}h. Verifique com a cliente no WhatsApp.`
                                 : 'As peças deste pedido estão travadas para a cliente e NÃO expiram sozinhas.'
-                              : reserva.minutos_restantes !== undefined && reserva.minutos_restantes !== null
-                              ? `Restam aproximadamente ${reserva.minutos_restantes} minutos para expiração automática.`
-                              : 'Reserva ativa para garantia de atendimento no WhatsApp.'}
+                              : countdown.totalSeconds > 0
+                              ? `Tempo restante: ${countdown.formatted} (horas:minutos:segundos).`
+                              : 'Prazo da reserva provisória expirado.'}
                           </span>
                         </div>
                       </div>
 
                       {/* Badge do Status Atual */}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-black tracking-wider flex items-center gap-1 ${
                         isPausada
                           ? isOverdue
                             ? 'bg-amber-200 text-amber-900 border border-amber-300'
                             : 'bg-sky-100 text-sky-900 border border-sky-300'
+                          : countdown.isExpiringSoon
+                          ? 'bg-rose-100 text-rose-900 border border-rose-300 animate-pulse'
                           : 'bg-amber-100 text-amber-900 border border-amber-300'
                       }`}>
-                        {isPausada ? (isOverdue ? `Pausada há ${reserva.horas_pausada}h` : 'Congelada ❄️') : `${reserva.minutos_restantes ?? 20}m Restantes ⏱️`}
+                        {isPausada ? (
+                          isOverdue ? `Pausada há ${reserva.horas_pausada}h` : 'Congelada ❄️'
+                        ) : (
+                          <>
+                            <Timer className="w-3.5 h-3.5 text-amber-700" />
+                            <span>{countdown.totalSeconds > 0 ? countdown.formatted : '00:00:00'}</span>
+                          </>
+                        )}
                       </span>
                     </div>
 
