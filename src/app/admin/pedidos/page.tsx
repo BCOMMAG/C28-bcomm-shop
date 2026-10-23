@@ -313,12 +313,33 @@ export default function AdminPedidosPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Atalhos Rápidos de Teclado (Power Users)
+  // Atalhos Rápidos de Teclado (Power Users com Fechamento em Cascata LIFO)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
           (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (releaseModalOrder) {
+          if (!isProcessingRelease) setReleaseModalOrder(null);
+        } else if (statusModalOrder) {
+          setStatusModalOrder(null);
+        } else if (printModalOrder) {
+          setPrintModalOrder(null);
+        } else if (trackingModalOrder) {
+          setTrackingModalOrder(null);
+        } else if (bulkStatusModalOpen) {
+          setBulkStatusModalOpen(false);
+        } else if (detailsModalOrder) {
+          setDetailsModalOrder(null);
+        } else {
+          setIsFilterPopoverOpen(false);
+          setIsPeriodDropdownOpen(false);
+          setSnippetMenuOrderId(null);
         }
         return;
       }
@@ -332,15 +353,19 @@ export default function AdminPedidosPage() {
         handleChangeViewMode('lista');
       } else if (e.key === '3') {
         handleChangeViewMode('kanban');
-      } else if (e.key === 'Escape') {
-        setIsFilterPopoverOpen(false);
-        setIsPeriodDropdownOpen(false);
-        setSnippetMenuOrderId(null);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [
+    releaseModalOrder,
+    statusModalOrder,
+    printModalOrder,
+    trackingModalOrder,
+    bulkStatusModalOpen,
+    detailsModalOrder,
+    isProcessingRelease
+  ]);
 
   // Formatadores
   const formatCurrency = (val: number) => {
@@ -881,6 +906,11 @@ export default function AdminPedidosPage() {
           )
         );
 
+        // Sincronização em tempo real do modal de detalhes se estiver aberto
+        setDetailsModalOrder((prev) =>
+          prev && prev.id === statusModalOrder.id ? { ...prev, status: selectedNewStatus } : prev
+        );
+
         // Registro de Auditoria
         await logStoreAuditAction(tenantId, {
           colaborador_id: activeMember?.id,
@@ -919,6 +949,11 @@ export default function AdminPedidosPage() {
       showToast(`Pedido #${order.numero_pedido} avançou para "${newStatus}"!`);
       setOrders((prev) =>
         prev.map((ord) => (ord.id === order.id ? { ...ord, status: newStatus } : ord))
+      );
+
+      // Sincronização em tempo real do modal de detalhes se estiver aberto
+      setDetailsModalOrder((prev) =>
+        prev && prev.id === order.id ? { ...prev, status: newStatus } : prev
       );
 
       // Auditoria
@@ -1003,6 +1038,17 @@ export default function AdminPedidosPage() {
         )
       );
 
+      // Sincronização em tempo real do modal de detalhes se estiver aberto
+      setDetailsModalOrder((prev) =>
+        prev && prev.id === trackingModalOrder.id
+          ? {
+              ...prev,
+              codigo_rastreio: code || undefined,
+              status: code ? 'enviado' : 'em_separacao'
+            }
+          : prev
+      );
+
       // Auditoria
       await logStoreAuditAction(tenantId, {
         colaborador_id: activeMember?.id,
@@ -1053,7 +1099,7 @@ export default function AdminPedidosPage() {
       {/* TOAST DE NOTIFICAÇÃO FLUTUANTE */}
       {feedbackToast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 shadow-2xl animate-fade-in border ${
+          className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 shadow-2xl animate-fade-in border ${
             feedbackToast.type === 'success'
               ? 'bg-slate-900 text-emerald-400 border-slate-700'
               : feedbackToast.type === 'warning'
@@ -2564,481 +2610,6 @@ export default function AdminPedidosPage() {
         </div>
       )}
 
-      {/* MODAL ALTERAR STATUS INDIVIDUAL */}
-      {statusModalOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Atualizar Pedido #{statusModalOrder.numero_pedido}
-              </h3>
-              <button
-                onClick={() => setStatusModalOrder(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              Selecione o novo status da venda. Se você marcar como <strong>&ldquo;Pago&rdquo;</strong>, o sistema dará baixa automática nas peças no estoque.
-            </p>
-
-            <div className="space-y-2">
-              {[
-                { id: 'pendente', label: 'Aguardando WhatsApp' },
-                { id: 'pago', label: 'Pago (Confirmação Automática de Estoque)' },
-                { id: 'em_separacao', label: 'Em Separação no Provador/Estoque' },
-                { id: 'enviado', label: 'Enviado aos Correios / Transportadora' },
-                { id: 'entregue', label: 'Entregue com Sucesso' },
-                { id: 'cancelado', label: 'Cancelado (Estorno de Estoque Automático)' }
-              ].map((s) => (
-                <label
-                  key={s.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
-                    selectedNewStatus === s.id
-                      ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="status"
-                    checked={selectedNewStatus === s.id}
-                    onChange={() => setSelectedNewStatus(s.id as CustomerOrder['status'])}
-                    className="text-amber-600 focus:ring-amber-500"
-                  />
-                  <span>{s.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setStatusModalOrder(null)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveStatus}
-                disabled={isUpdatingStatus}
-                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
-              >
-                {isUpdatingStatus ? 'Salvando...' : 'Confirmar Alteração'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ALTERAR STATUS EM LOTE (BULK STATUS MODAL) */}
-      {bulkStatusModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Atualizar {selectedOrderIds.length} Pedidos em Lote
-              </h3>
-              <button
-                onClick={() => setBulkStatusModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              Selecione o novo status que será aplicado simultaneamente para todos os {selectedOrderIds.length} pedidos selecionados:
-            </p>
-
-            <div className="space-y-2">
-              {[
-                { id: 'pago', label: 'Marcar como Pagos' },
-                { id: 'em_separacao', label: 'Marcar como Em Separação' },
-                { id: 'enviado', label: 'Marcar como Enviados aos Correios' },
-                { id: 'entregue', label: 'Marcar como Entregues' },
-                { id: 'cancelado', label: 'Cancelar Pedidos Selecionados' }
-              ].map((s) => (
-                <label
-                  key={s.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
-                    bulkNewStatus === s.id
-                      ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="bulkStatus"
-                    checked={bulkNewStatus === s.id}
-                    onChange={() => setBulkNewStatus(s.id as CustomerOrder['status'])}
-                    className="text-amber-600 focus:ring-amber-500"
-                  />
-                  <span>{s.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setBulkStatusModalOpen(false)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveBulkStatus}
-                disabled={isUpdatingBulkStatus}
-                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
-              >
-                {isUpdatingBulkStatus ? 'Atualizando...' : 'Confirmar em Lote'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CÓDIGO DE RASTREIO */}
-      {trackingModalOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Rastreamento Correios #{trackingModalOrder.numero_pedido}
-              </h3>
-              <button
-                onClick={() => setTrackingModalOrder(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Código de Rastreamento (ex: QD123456789BR)
-              </label>
-              <input
-                type="text"
-                value={trackingInput}
-                onChange={(e) => setTrackingInput(e.target.value)}
-                placeholder="Insira o código dos Correios..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setTrackingModalOrder(null)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveTracking}
-                disabled={isUpdatingTracking}
-                className="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm cursor-pointer"
-              >
-                {isUpdatingTracking ? 'Salvando...' : 'Salvar Código & Marcar Enviado'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE EXPEDIÇÃO & IMPRESSÃO (DECLARAÇÃO DE CONTEÚDO CORREIOS / ROMANEIO) */}
-      {printModalOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
-                  <Printer className="w-5 h-5 text-amber-600" />
-                  Expedição do Pedido #{printModalOrder.numero_pedido}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Gere a Declaração de Conteúdo oficial dos Correios ou o Romaneio de Separação para embalagem.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir Agora (A4)</span>
-                </button>
-
-                <button
-                  onClick={() => setPrintModalOrder(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* SELETOR DE MODELO DE IMPRESSÃO */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-              <button
-                onClick={() => setPrintType('declaracao')}
-                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                  printType === 'declaracao'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                📄 Declaração de Conteúdo Oficial (Correios)
-              </button>
-              <button
-                onClick={() => setPrintType('romaneio')}
-                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                  printType === 'romaneio'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                📦 Romaneio de Separação & Embalagem
-              </button>
-            </div>
-
-            {/* DOCUMENTO PRÉ-VISUALIZAÇÃO / IMPRESSÃO */}
-            <div className="border border-slate-300 rounded-xl p-6 bg-white text-slate-900 font-sans text-xs space-y-4 max-h-[60vh] overflow-y-auto">
-              {printType === 'declaracao' ? (
-                /* MODELO OFICIAL DE DECLARAÇÃO DE CONTEÚDO DOS CORREIOS */
-                <div className="space-y-4 font-mono">
-                  <div className="text-center border-b border-slate-300 pb-3">
-                    <h2 className="text-sm font-extrabold uppercase tracking-wider">
-                      DECLARAÇÃO DE CONTEÚDO
-                    </h2>
-                    <p className="text-[10px] text-slate-600">
-                      Conforme Portaria dos Correios & Legislação Postal Brasileira
-                    </p>
-                  </div>
-
-                  {/* REMETENTE E DESTINATÁRIO */}
-                  <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 text-[11px]">
-                    <div className="space-y-1">
-                      <strong className="block text-slate-900 uppercase">REMETENTE:</strong>
-                      <p><strong>Nome/Razão:</strong> {lojaNome} Moda Feminina</p>
-                      <p><strong>Chave / Identificador:</strong> {chavePix}</p>
-                      <p><strong>Atendimento:</strong> {currentTenant?.whatsapp || '(41) 97347-601'}</p>
-                      <p><strong>Cidade/UF:</strong> Curitiba - PR | CEP: 80000-000</p>
-                    </div>
-
-                    <div className="space-y-1 border-l border-slate-200 pl-4">
-                      <strong className="block text-slate-900 uppercase">DESTINATÁRIO:</strong>
-                      <p><strong>Nome:</strong> {printModalOrder.cliente_nome}</p>
-                      <p><strong>Telefone:</strong> {printModalOrder.cliente_telefone || '-'}</p>
-                      <p>
-                        <strong>Endereço:</strong> {printModalOrder.endereco_entrega?.logradouro},{' '}
-                        {printModalOrder.endereco_entrega?.numero}{' '}
-                        {printModalOrder.endereco_entrega?.complemento || ''}
-                      </p>
-                      <p>
-                        <strong>Bairro/Cidade:</strong> {printModalOrder.endereco_entrega?.bairro} -{' '}
-                        {printModalOrder.endereco_entrega?.cidade}/{printModalOrder.endereco_entrega?.uf || 'BR'}
-                      </p>
-                      <p><strong>CEP:</strong> {printModalOrder.endereco_entrega?.cep}</p>
-                    </div>
-                  </div>
-
-                  {/* DISCRIMINAÇÃO DOS ITENS */}
-                  <div className="space-y-2">
-                    <strong className="block text-[11px] uppercase">DISCRIMINAÇÃO DO CONTEÚDO:</strong>
-                    <table className="w-full border-collapse border border-slate-300 text-[10px]">
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-slate-300 text-left">
-                          <th className="p-1.5 border-r border-slate-300">Item</th>
-                          <th className="p-1.5 border-r border-slate-300">Conteúdo</th>
-                          <th className="p-1.5 border-r border-slate-300">Grade / Cor</th>
-                          <th className="p-1.5 border-r border-slate-300 text-center">Qtd</th>
-                          <th className="p-1.5 text-right">Valor (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(printModalOrder.itens_pedido || []).map((it, idx) => (
-                          <tr key={idx} className="border-b border-slate-200">
-                            <td className="p-1.5 border-r border-slate-300 font-bold">{idx + 1}</td>
-                            <td className="p-1.5 border-r border-slate-300">{it.nome_produto}</td>
-                            <td className="p-1.5 border-r border-slate-300">{it.tamanho} / {it.cor}</td>
-                            <td className="p-1.5 border-r border-slate-300 text-center">{it.quantidade}</td>
-                            <td className="p-1.5 text-right font-bold">
-                              {formatCurrency(it.preco_unitario * it.quantidade)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-slate-50 font-bold">
-                          <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">
-                            TOTAL DAS MERCADORIAS:
-                          </td>
-                          <td className="p-1.5 text-center border-r border-slate-300">
-                            {(printModalOrder.itens_pedido || []).reduce((acc, i) => acc + (i.quantidade || 1), 0)}
-                          </td>
-                          <td className="p-1.5 text-right">
-                            {formatCurrency(Number(printModalOrder.total || 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {/* DECLARAÇÃO LEGAL */}
-                  <div className="text-[9px] text-slate-600 border border-slate-300 p-2 leading-relaxed">
-                    Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, não realizando com habitualidade ou em volume que caracterize intuito comercial operações de circulação de mercadorias. Sob as penas da lei, declaro que as informações acima são a expressão da verdade.
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 text-[10px]">
-                    <span>Data: ____/____/2026</span>
-                    <span>Assinatura do Emitente: ____________________________________</span>
-                  </div>
-                </div>
-              ) : (
-                /* MODELO DE ROMANEIO DE SEPARAÇÃO (PACKING LIST) */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                    <div>
-                      <h2 className="text-base font-extrabold text-slate-900">
-                        ROMANEIO DE SEPARAÇÃO & EXPEDIÇÃO
-                      </h2>
-                      <span className="text-xs text-amber-700 font-bold">
-                        Pedido #{printModalOrder.numero_pedido} &bull; Cliente: {printModalOrder.cliente_nome}
-                      </span>
-                    </div>
-                    <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold">
-                      {getStatusBadge(printModalOrder.status)}
-                    </span>
-                  </div>
-
-                  {/* CHECKLIST DE ITENS */}
-                  <div className="space-y-3">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                      Peças a Separar no Estoque:
-                    </span>
-                    <div className="space-y-2">
-                      {(printModalOrder.itens_pedido || []).map((it, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg gap-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                            />
-                            <div>
-                              <span className="text-xs font-bold text-slate-900 block">
-                                {it.nome_produto}
-                              </span>
-                              <span className="text-[11px] text-slate-500">
-                                Cor: <strong className="text-slate-800">{it.cor}</strong> &bull; Tamanho: <strong className="text-slate-800">{it.tamanho}</strong> &bull; Qtd: <strong className="text-amber-800 font-bold">{it.quantidade} unidade(s)</strong>
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-mono font-bold text-slate-700">
-                            {formatCurrency(it.preco_unitario * it.quantidade)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* CHECKLIST DE QUALIDADE */}
-                  <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3 text-xs space-y-1.5">
-                    <strong className="text-amber-900 block font-bold">
-                      Checklist de Embalagem Boutique:
-                    </strong>
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Peças passadas e sem fiapos</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Perfume característico da boutique</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Cartão de agradecimento assinado</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Fita de cetim e papel seda</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* ALERTA DE EMBALAGEM PARA PRESENTE VIP */}
-                  {isOrderGift(printModalOrder) && (
-                    <div className="border-2 border-amber-400 bg-amber-50 rounded-lg p-3.5 space-y-2">
-                      <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs uppercase">
-                        <Gift className="w-4 h-4 text-amber-700" />
-                        <span>Atenção Expedição: Pedido para Presente VIP!</span>
-                      </div>
-                      <div className="text-xs text-amber-950 space-y-1.5">
-                        <p>• Utilizar caixa rígida exclusiva da boutique com papel de seda e laço de cetim dourado.</p>
-                        {getOrderGiftDetails(printModalOrder).message ? (
-                          <div className="bg-white p-2.5 rounded border border-amber-300">
-                            <span className="text-[10px] uppercase font-bold text-amber-800 block mb-0.5">
-                              Dedicatória a ser transcrita no cartão:
-                            </span>
-                            <p className="font-serif italic text-xs text-slate-800 leading-relaxed">
-                              &ldquo;{getOrderGiftDetails(printModalOrder).message}&rdquo;
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="italic text-[11px] text-amber-800">
-                            • Incluir cartão especial em branco no envelope para a cliente preencher.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ENDEREÇO DE ENVIO */}
-                  <div className="border border-slate-200 rounded-lg p-3 text-xs space-y-1">
-                    <strong className="text-slate-800 block">Endereço de Destino:</strong>
-                    <p className="text-slate-600">
-                      {printModalOrder.cliente_nome} &bull; Tel: {printModalOrder.cliente_telefone || '-'}
-                    </p>
-                    <p className="text-slate-600">
-                      {printModalOrder.endereco_entrega?.logradouro}, {printModalOrder.endereco_entrega?.numero}{' '}
-                      {printModalOrder.endereco_entrega?.complemento || ''} &bull;{' '}
-                      {printModalOrder.endereco_entrega?.bairro} &bull;{' '}
-                      {printModalOrder.endereco_entrega?.cidade}/{printModalOrder.endereco_entrega?.uf || 'BR'}
-                    </p>
-                    <p className="font-mono text-slate-800 font-bold">
-                      CEP: {printModalOrder.endereco_entrega?.cep}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
-              <button
-                onClick={() => setPrintModalOrder(null)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Fechar
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir Documento</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MODAL DE DETALHES COMPLETOS DO PEDIDO (PIPELINES EM VERTICAL / KANBAN / LISTA) */}
       {detailsModalOrder && (() => {
         const dItems = detailsModalOrder.itens_pedido || [];
@@ -3047,7 +2618,13 @@ export default function AdminPedidosPage() {
         const dSla = getOrderSlaAlert(detailsModalOrder);
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDetailsModalOrder(null);
+            }}
+            style={{ zIndex: 50 }}
+            className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          >
             <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8 animate-in fade-in zoom-in-95 duration-150">
               {/* Header do Modal de Detalhes */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -3450,10 +3027,538 @@ export default function AdminPedidosPage() {
         );
       })()}
 
-      {/* MODAL DE DECISÃO: LIBERAÇÃO DE PEÇAS & CANCELAMENTO DE PEDIDO */}
+      {/* MODAL ALTERAR STATUS INDIVIDUAL (Nível 2: z-[60] para abrir na frente dos detalhes) */}
+      {statusModalOrder && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setStatusModalOrder(null);
+          }}
+          style={{ zIndex: 60 }}
+          className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                Atualizar Pedido #{statusModalOrder.numero_pedido}
+              </h3>
+              <button
+                onClick={() => setStatusModalOrder(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Selecione o novo status da venda. Se você marcar como <strong>&ldquo;Pago&rdquo;</strong>, o sistema dará baixa automática nas peças no estoque.
+            </p>
+
+            <div className="space-y-2">
+              {[
+                { id: 'pendente', label: 'Aguardando WhatsApp' },
+                { id: 'pago', label: 'Pago (Confirmação Automática de Estoque)' },
+                { id: 'em_separacao', label: 'Em Separação no Provador/Estoque' },
+                { id: 'enviado', label: 'Enviado aos Correios / Transportadora' },
+                { id: 'entregue', label: 'Entregue com Sucesso' },
+                { id: 'cancelado', label: 'Cancelado (Estorno de Estoque Automático)' }
+              ].map((s) => (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                    selectedNewStatus === s.id
+                      ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="status"
+                    checked={selectedNewStatus === s.id}
+                    onChange={() => setSelectedNewStatus(s.id as CustomerOrder['status'])}
+                    className="text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>{s.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setStatusModalOrder(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveStatus}
+                disabled={isUpdatingStatus}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
+              >
+                {isUpdatingStatus ? 'Salvando...' : 'Confirmar Alteração'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ALTERAR STATUS EM LOTE (BULK STATUS MODAL - Nível 2: z-[60]) */}
+      {bulkStatusModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setBulkStatusModalOpen(false);
+          }}
+          className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                Atualizar {selectedOrderIds.length} Pedidos em Lote
+              </h3>
+              <button
+                onClick={() => setBulkStatusModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Selecione o novo status que será aplicado simultaneamente para todos os {selectedOrderIds.length} pedidos selecionados:
+            </p>
+
+            <div className="space-y-2">
+              {[
+                { id: 'pago', label: 'Marcar como Pagos' },
+                { id: 'em_separacao', label: 'Marcar como Em Separação' },
+                { id: 'enviado', label: 'Marcar como Enviados aos Correios' },
+                { id: 'entregue', label: 'Marcar como Entregues' },
+                { id: 'cancelado', label: 'Cancelar Pedidos Selecionados' }
+              ].map((s) => (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                    bulkNewStatus === s.id
+                      ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bulkStatus"
+                    checked={bulkNewStatus === s.id}
+                    onChange={() => setBulkNewStatus(s.id as CustomerOrder['status'])}
+                    className="text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>{s.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setBulkStatusModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveBulkStatus}
+                disabled={isUpdatingBulkStatus}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
+              >
+                {isUpdatingBulkStatus ? 'Atualizando...' : 'Confirmar em Lote'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CÓDIGO DE RASTREIO (Nível 2: z-[60] para abrir na frente dos detalhes) */}
+      {trackingModalOrder && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setTrackingModalOrder(null);
+          }}
+          className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                Rastreamento Correios #{trackingModalOrder.numero_pedido}
+              </h3>
+              <button
+                onClick={() => setTrackingModalOrder(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Código de Rastreamento (ex: QD123456789BR)
+              </label>
+              <input
+                type="text"
+                value={trackingInput}
+                onChange={(e) => setTrackingInput(e.target.value)}
+                placeholder="Insira o código dos Correios..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setTrackingModalOrder(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveTracking}
+                disabled={isUpdatingTracking}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm cursor-pointer"
+              >
+                {isUpdatingTracking ? 'Salvando...' : 'Salvar Código & Marcar Enviado'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EXPEDIÇÃO & IMPRESSÃO (Nível 2: z-[60] para abrir na frente dos detalhes) */}
+      {printModalOrder && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPrintModalOrder(null);
+          }}
+          style={{ zIndex: 60 }}
+          className="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150"
+        >
+          {/* Estilos dedicados de impressão limpa A4 oficial */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #documento-impressao-pedido, #documento-impressao-pedido * {
+                visibility: visible !important;
+              }
+              #documento-impressao-pedido {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 12px !important;
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                max-height: none !important;
+                overflow: visible !important;
+              }
+            }
+          `}} />
+
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 my-8 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-amber-600" />
+                  Expedição do Pedido #{printModalOrder.numero_pedido}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Gere a Declaração de Conteúdo oficial dos Correios ou o Romaneio de Separação para embalagem.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir Agora (A4)</span>
+                </button>
+
+                <button
+                  onClick={() => setPrintModalOrder(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* SELETOR DE MODELO DE IMPRESSÃO */}
+            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setPrintType('declaracao')}
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                  printType === 'declaracao'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📄 Declaração de Conteúdo Oficial (Correios)
+              </button>
+              <button
+                onClick={() => setPrintType('romaneio')}
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                  printType === 'romaneio'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📦 Romaneio de Separação & Embalagem
+              </button>
+            </div>
+
+            {/* DOCUMENTO PRÉ-VISUALIZAÇÃO / IMPRESSÃO */}
+            <div id="documento-impressao-pedido" className="border border-slate-300 rounded-xl p-6 bg-white text-slate-900 font-sans text-xs space-y-4 max-h-[60vh] overflow-y-auto">
+              {printType === 'declaracao' ? (
+                /* MODELO OFICIAL DE DECLARAÇÃO DE CONTEÚDO DOS CORREIOS */
+                <div className="space-y-4 font-mono">
+                  <div className="text-center border-b border-slate-300 pb-3">
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider">
+                      DECLARAÇÃO DE CONTEÚDO
+                    </h2>
+                    <p className="text-[10px] text-slate-600">
+                      Conforme Portaria dos Correios & Legislação Postal Brasileira
+                    </p>
+                  </div>
+
+                  {/* REMETENTE E DESTINATÁRIO */}
+                  <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 text-[11px]">
+                    <div className="space-y-1">
+                      <strong className="block text-slate-900 uppercase">REMETENTE:</strong>
+                      <p><strong>Nome/Razão:</strong> {lojaNome} Moda Feminina</p>
+                      <p><strong>Chave / Identificador:</strong> {chavePix}</p>
+                      <p><strong>Atendimento:</strong> {currentTenant?.whatsapp || '(41) 97347-601'}</p>
+                      <p><strong>Cidade/UF:</strong> Curitiba - PR | CEP: 80000-000</p>
+                    </div>
+
+                    <div className="space-y-1 border-l border-slate-200 pl-4">
+                      <strong className="block text-slate-900 uppercase">DESTINATÁRIO:</strong>
+                      <p><strong>Nome:</strong> {printModalOrder.cliente_nome}</p>
+                      <p><strong>Telefone:</strong> {printModalOrder.cliente_telefone || '-'}</p>
+                      <p>
+                        <strong>Endereço:</strong> {printModalOrder.endereco_entrega?.logradouro},{' '}
+                        {printModalOrder.endereco_entrega?.numero}{' '}
+                        {printModalOrder.endereco_entrega?.complemento || ''}
+                      </p>
+                      <p>
+                        <strong>Bairro/Cidade:</strong> {printModalOrder.endereco_entrega?.bairro} -{' '}
+                        {printModalOrder.endereco_entrega?.cidade}/{printModalOrder.endereco_entrega?.uf || 'BR'}
+                      </p>
+                      <p><strong>CEP:</strong> {printModalOrder.endereco_entrega?.cep}</p>
+                    </div>
+                  </div>
+
+                  {/* DISCRIMINAÇÃO DOS ITENS */}
+                  <div className="space-y-2">
+                    <strong className="block text-[11px] uppercase">DISCRIMINAÇÃO DO CONTEÚDO:</strong>
+                    <table className="w-full border-collapse border border-slate-300 text-[10px]">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-300 text-left">
+                          <th className="p-1.5 border-r border-slate-300">Item</th>
+                          <th className="p-1.5 border-r border-slate-300">Conteúdo</th>
+                          <th className="p-1.5 border-r border-slate-300">Grade / Cor</th>
+                          <th className="p-1.5 border-r border-slate-300 text-center">Qtd</th>
+                          <th className="p-1.5 text-right">Valor (R$)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(printModalOrder.itens_pedido || []).map((it, idx) => (
+                          <tr key={idx} className="border-b border-slate-200">
+                            <td className="p-1.5 border-r border-slate-300 font-bold">{idx + 1}</td>
+                            <td className="p-1.5 border-r border-slate-300">{it.nome_produto}</td>
+                            <td className="p-1.5 border-r border-slate-300">{it.tamanho} / {it.cor}</td>
+                            <td className="p-1.5 border-r border-slate-300 text-center">{it.quantidade}</td>
+                            <td className="p-1.5 text-right font-bold">
+                              {formatCurrency(it.preco_unitario * it.quantidade)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-50 font-bold">
+                          <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">
+                            TOTAL DAS MERCADORIAS:
+                          </td>
+                          <td className="p-1.5 text-center border-r border-slate-300">
+                            {(printModalOrder.itens_pedido || []).reduce((acc, i) => acc + (i.quantidade || 1), 0)}
+                          </td>
+                          <td className="p-1.5 text-right">
+                            {formatCurrency(Number(printModalOrder.total || 0))}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* DECLARAÇÃO LEGAL */}
+                  <div className="text-[9px] text-slate-600 border border-slate-300 p-2 leading-relaxed">
+                    Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, não realizando com habitualidade ou em volume que caracterize intuito comercial operações de circulação de mercadorias. Sob as penas da lei, declaro que as informações acima são a expressão da verdade.
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 text-[10px]">
+                    <span>Data: ____/____/2026</span>
+                    <span>Assinatura do Emitente: ____________________________________</span>
+                  </div>
+                </div>
+              ) : (
+                /* MODELO DE ROMANEIO DE SEPARAÇÃO (PACKING LIST) */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div>
+                      <h2 className="text-base font-extrabold text-slate-900">
+                        ROMANEIO DE SEPARAÇÃO & EXPEDIÇÃO
+                      </h2>
+                      <span className="text-xs text-amber-700 font-bold">
+                        Pedido #{printModalOrder.numero_pedido} &bull; Cliente: {printModalOrder.cliente_nome}
+                      </span>
+                    </div>
+                    <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold">
+                      {getStatusBadge(printModalOrder.status)}
+                    </span>
+                  </div>
+
+                  {/* CHECKLIST DE ITENS */}
+                  <div className="space-y-3">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                      Peças a Separar no Estoque:
+                    </span>
+                    <div className="space-y-2">
+                      {(printModalOrder.itens_pedido || []).map((it, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg gap-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-slate-900 block">
+                                {it.nome_produto}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                Cor: <strong className="text-slate-800">{it.cor}</strong> &bull; Tamanho: <strong className="text-slate-800">{it.tamanho}</strong> &bull; Qtd: <strong className="text-amber-800 font-bold">{it.quantidade} unidade(s)</strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-mono font-bold text-slate-700">
+                            {formatCurrency(it.preco_unitario * it.quantidade)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CHECKLIST DE QUALIDADE */}
+                  <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3 text-xs space-y-1.5">
+                    <strong className="text-amber-900 block font-bold">
+                      Checklist de Embalagem Boutique:
+                    </strong>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" className="rounded text-amber-600" />
+                        <span>Peças passadas e sem fiapos</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" className="rounded text-amber-600" />
+                        <span>Perfume característico da boutique</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" className="rounded text-amber-600" />
+                        <span>Cartão de agradecimento assinado</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" className="rounded text-amber-600" />
+                        <span>Fita de cetim e papel seda</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* ALERTA DE EMBALAGEM PARA PRESENTE VIP */}
+                  {isOrderGift(printModalOrder) && (
+                    <div className="border-2 border-amber-400 bg-amber-50 rounded-lg p-3.5 space-y-2">
+                      <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs uppercase">
+                        <Gift className="w-4 h-4 text-amber-700" />
+                        <span>Atenção Expedição: Pedido para Presente VIP!</span>
+                      </div>
+                      <div className="text-xs text-amber-950 space-y-1.5">
+                        <p>• Utilizar caixa rígida exclusiva da boutique com papel de seda e laço de cetim dourado.</p>
+                        {getOrderGiftDetails(printModalOrder).message ? (
+                          <div className="bg-white p-2.5 rounded border border-amber-300">
+                            <span className="text-[10px] uppercase font-bold text-amber-800 block mb-0.5">
+                              Dedicatória a ser transcrita no cartão:
+                            </span>
+                            <p className="font-serif italic text-xs text-slate-800 leading-relaxed">
+                              &ldquo;{getOrderGiftDetails(printModalOrder).message}&rdquo;
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="italic text-[11px] text-amber-800">
+                            • Incluir cartão especial em branco no envelope para a cliente preencher.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ENDEREÇO DE ENVIO */}
+                  <div className="border border-slate-200 rounded-lg p-3 text-xs space-y-1">
+                    <strong className="text-slate-800 block">Endereço de Destino:</strong>
+                    <p className="text-slate-600">
+                      {printModalOrder.cliente_nome} &bull; Tel: {printModalOrder.cliente_telefone || '-'}
+                    </p>
+                    <p className="text-slate-600">
+                      {printModalOrder.endereco_entrega?.logradouro}, {printModalOrder.endereco_entrega?.numero}{' '}
+                      {printModalOrder.endereco_entrega?.complemento || ''} &bull;{' '}
+                      {printModalOrder.endereco_entrega?.bairro} &bull;{' '}
+                      {printModalOrder.endereco_entrega?.cidade}/{printModalOrder.endereco_entrega?.uf || 'BR'}
+                    </p>
+                    <p className="font-mono text-slate-800 font-bold">
+                      CEP: {printModalOrder.endereco_entrega?.cep}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
+              <button
+                onClick={() => setPrintModalOrder(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimir Documento</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE DECISÃO: LIBERAÇÃO DE PEÇAS & CANCELAMENTO DE PEDIDO (Nível 3: z-[70]) */}
       {releaseModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isProcessingRelease) setReleaseModalOrder(null);
+          }}
+          style={{ zIndex: 70 }}
+          className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
