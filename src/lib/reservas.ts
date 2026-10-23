@@ -608,7 +608,41 @@ export async function reactivateOrderReservation(
     const supabase = getSupabaseBrowserClient();
     const cleanNum = (orderNumber || '').replace(/^#+/, '').trim();
 
-    // 1. Busca os itens do pedido
+    const expiraEm = new Date(Date.now() + Math.max(5, minutes) * 60 * 1000).toISOString();
+
+    // 1. Tenta reativar registros de reserva previamente existentes para este pedido
+    const { data: existingReservas } = await supabase
+      .from('reservas_estoque')
+      .select('id')
+      .eq('loja_id', lojaId)
+      .in('status', ['liberada', 'expirada'])
+      .ilike('motivo', `%${cleanNum}%`);
+
+    if (existingReservas && existingReservas.length > 0) {
+      const existingIds = existingReservas.map((r: any) => r.id);
+      const { error: updateErr } = await supabase
+        .from('reservas_estoque')
+        .update({
+          status: 'ativa',
+          expira_em: expiraEm
+        })
+        .in('id', existingIds);
+
+      if (!updateErr) {
+        await logStoreAuditAction(lojaId, {
+          colaborador_nome: autorNome,
+          cargo: 'atendente',
+          acao: 'reativou_reserva_estoque',
+          entidade: 'pedidos',
+          entidade_id: cleanNum,
+          motivo: `Reserva do pedido #${cleanNum} reativada manualmente no atendimento (+${minutes} min)`
+        }).catch(() => {});
+
+        return { success: true, updatedCount: existingIds.length };
+      }
+    }
+
+    // 2. Busca os itens do pedido
     const { data: itens, error: itensErr } = await supabase
       .from('itens_pedido')
       .select('*')
@@ -618,24 +652,48 @@ export async function reactivateOrderReservation(
       return { success: false, error: 'Não foi possível encontrar os itens deste pedido para reativar a reserva.' };
     }
 
-    const expiraEm = new Date(Date.now() + Math.max(5, minutes) * 60 * 1000).toISOString();
+    // 3. Resolve e valida produto_id para cada item (garantindo que pedidos legados/simulados tenham o id preenchido)
+    const newReservas = [];
+    for (const item of itens) {
+      let prodId = item.produto_id;
+      if (!prodId && item.nome_produto) {
+        const { data: foundProd } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('loja_id', lojaId)
+          .ilike('nome', item.nome_produto)
+          .limit(1)
+          .maybeSingle();
 
-    // 2. Insere nova reserva provisória para cada item
-    const newReservas = itens.map((item) => ({
-      loja_id: lojaId,
-      produto_id: item.produto_id || null,
-      variacao_id: item.variacao_id || null,
-      produto_nome: item.nome_produto || 'Produto',
-      tamanho: item.tamanho || 'U',
-      cor: item.cor || 'Padrão',
-      quantidade: item.quantidade || 1,
-      vendedora_nome: autorNome,
-      cliente_nome: clienteNome || 'Cliente WhatsApp',
-      cliente_telefone: clienteTelefone || '',
-      motivo: `whatsapp_pix:${cleanNum}`,
-      status: 'ativa',
-      expira_em: expiraEm
-    }));
+        if (foundProd?.id) {
+          prodId = foundProd.id;
+          await supabase.from('itens_pedido').update({ produto_id: prodId }).eq('id', item.id);
+        }
+      }
+
+      if (!prodId) {
+        return {
+          success: false,
+          error: `Não foi possível reativar: o produto "${item.nome_produto || 'item'}" não possui código vinculado no catálogo.`
+        };
+      }
+
+      newReservas.push({
+        loja_id: lojaId,
+        produto_id: prodId,
+        variacao_id: item.variacao_id || null,
+        produto_nome: item.nome_produto || 'Produto',
+        tamanho: item.tamanho || 'U',
+        cor: item.cor || 'Padrão',
+        quantidade: item.quantidade || 1,
+        vendedora_nome: autorNome,
+        cliente_nome: clienteNome || 'Cliente WhatsApp',
+        cliente_telefone: clienteTelefone || '',
+        motivo: `whatsapp_pix:${cleanNum}`,
+        status: 'ativa',
+        expira_em: expiraEm
+      });
+    }
 
     const { error: insertErr } = await supabase
       .from('reservas_estoque')
