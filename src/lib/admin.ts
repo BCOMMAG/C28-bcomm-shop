@@ -397,6 +397,7 @@ export async function updateAdminOrderStatusWithStock(
       .from('pedidos')
       .select(`
         status,
+        numero_pedido,
         cliente_id,
         endereco_entrega,
         clientes_loja (telefone),
@@ -417,17 +418,25 @@ export async function updateAdminOrderStatusWithStock(
 
     if (isNowPaid && wasPending) {
       console.log('📉 [Estoque] Baixando estoque para pedido confirmado:', orderId);
-      // Converte reservas provisórias ativas da cliente em venda
-      if (phoneVariants.length > 0) {
-        try {
+      // Converte reservas provisórias ativas ou pausadas da cliente em venda
+      try {
+        if (order.numero_pedido) {
+          await supabase
+            .from('reservas_estoque')
+            .update({ status: 'convertida_venda' })
+            .eq('loja_id', lojaId)
+            .in('status', ['ativa', 'pausada'])
+            .ilike('motivo', `%${order.numero_pedido}%`);
+        }
+        if (phoneVariants.length > 0) {
           await supabase
             .from('reservas_estoque')
             .update({ status: 'convertida_venda' })
             .eq('loja_id', lojaId)
             .in('cliente_telefone', phoneVariants)
-            .eq('status', 'ativa');
-        } catch {}
-      }
+            .in('status', ['ativa', 'pausada']);
+        }
+      } catch {}
       for (const item of itens) {
         let prodId = item.produto_id;
         if (!prodId && item.nome_produto) {
@@ -487,16 +496,24 @@ export async function updateAdminOrderStatusWithStock(
 
     if (isNowCanceled) {
       // Libera reservas provisórias associadas à cliente
-      if (phoneVariants.length > 0) {
-        try {
+      try {
+        if (order.numero_pedido) {
+          await supabase
+            .from('reservas_estoque')
+            .update({ status: 'liberada' })
+            .eq('loja_id', lojaId)
+            .in('status', ['ativa', 'pausada'])
+            .ilike('motivo', `%${order.numero_pedido}%`);
+        }
+        if (phoneVariants.length > 0) {
           await supabase
             .from('reservas_estoque')
             .update({ status: 'liberada' })
             .eq('loja_id', lojaId)
             .in('cliente_telefone', phoneVariants)
-            .eq('status', 'ativa');
-        } catch {}
-      }
+            .in('status', ['ativa', 'pausada']);
+        }
+      } catch {}
     }
 
     if (isNowCanceled && wasPaidOrProcessing) {
@@ -581,6 +598,7 @@ export async function releaseOrderReservation(
     const { data: order, error: orderErr } = await supabase
       .from('pedidos')
       .select(`
+        numero_pedido,
         cliente_id,
         endereco_entrega,
         clientes_loja (telefone)
@@ -592,13 +610,22 @@ export async function releaseOrderReservation(
 
     const phoneVariants = getCustomerPhoneVariants(order);
 
+    if (order?.numero_pedido) {
+      await supabase
+        .from('reservas_estoque')
+        .update({ status: 'liberada' })
+        .eq('loja_id', lojaId)
+        .in('status', ['ativa', 'pausada'])
+        .ilike('motivo', `%${order.numero_pedido}%`);
+    }
+
     if (phoneVariants.length > 0) {
       await supabase
         .from('reservas_estoque')
         .update({ status: 'liberada' })
         .eq('loja_id', lojaId)
         .in('cliente_telefone', phoneVariants)
-        .eq('status', 'ativa');
+        .in('status', ['ativa', 'pausada']);
     }
     return { success: true };
   } catch (err: any) {

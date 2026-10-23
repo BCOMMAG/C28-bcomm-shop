@@ -46,7 +46,11 @@ import {
   HelpCircle,
   Trash2,
   AlertTriangle,
-  Check
+  Check,
+  Pause,
+  Play,
+  Snowflake,
+  Timer
 } from 'lucide-react';
 import {
   getAdminOrders,
@@ -54,6 +58,14 @@ import {
   updateAdminOrderTracking
 } from '@/lib/admin';
 import { CustomerOrder, isOrderGift, getOrderGiftDetails } from '@/lib/orders';
+import {
+  getActiveReservations,
+  ReservaEstoque,
+  pauseOrderReservation,
+  resumeOrderReservation,
+  extendOrderReservation,
+  releaseOrderReservationFull
+} from '@/lib/reservas';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
 import { useStore } from '@/context/StoreContext';
@@ -76,6 +88,9 @@ export default function AdminPedidosPage() {
 
   // Dados dos Pedidos
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [reservations, setReservations] = useState<ReservaEstoque[]>([]);
+  const [onlyPausedReservations, setOnlyPausedReservations] = useState(false);
+  const [reservaActionLoading, setReservaActionLoading] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Colaborador Ativo & Governança (RBAC)
@@ -190,23 +205,30 @@ export default function AdminPedidosPage() {
     }
   };
 
-  // Carrega Pedidos do Supabase
-  const fetchOrders = async () => {
+  // Carrega Pedidos e Reservas Provisórias do Supabase
+  const fetchOrdersAndReservations = async () => {
     setLoading(true);
     try {
-      const data = await getAdminOrders(tenantId);
-      setOrders(data || []);
+      const [ordersData, resData] = await Promise.all([
+        getAdminOrders(tenantId),
+        getActiveReservations(tenantId)
+      ]);
+      setOrders(ordersData || []);
+      setReservations(resData || []);
       setSelectedOrderIds([]);
     } catch (err) {
-      console.error('Erro ao carregar pedidos:', err);
+      console.error('Erro ao carregar pedidos e reservas:', err);
       setOrders([]);
+      setReservations([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchOrders = fetchOrdersAndReservations;
+
   useEffect(() => {
-    fetchOrders();
+    fetchOrdersAndReservations();
 
     if (!tenantId) return;
     const supabase = getSupabaseBrowserClient();
@@ -223,24 +245,49 @@ export default function AdminPedidosPage() {
           filter: `loja_id=eq.${tenantId}`
         },
         (payload) => {
-          fetchOrders();
+          fetchOrdersAndReservations();
           if (payload.eventType === 'INSERT') {
             showToast('🔔 Novo pedido recebido da vitrine!', 'success');
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reservas_estoque',
+          filter: `loja_id=eq.${tenantId}`
+        },
+        () => {
+          getActiveReservations(tenantId).then((res) => setReservations(res || []));
         }
       )
       .subscribe();
 
     const handleVisibility = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        fetchOrders();
+        fetchOrdersAndReservations();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
+    // Atualiza contagem regressiva em memória a cada 15s
+    const countdownTimer = setInterval(() => {
+      setReservations((prev) =>
+        prev.map((r) => {
+          if (r.status === 'pausada') return r;
+          const expiraTime = r.expira_em ? new Date(r.expira_em).getTime() : 0;
+          const remaining = Math.max(0, Math.ceil((expiraTime - Date.now()) / (1000 * 60)));
+          return { ...r, minutos_restantes: remaining };
+        })
+      );
+    }, 15000);
+
     return () => {
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(countdownTimer);
     };
   }, [tenantId]);
 
@@ -426,6 +473,129 @@ export default function AdminPedidosPage() {
     setIsFilterPopoverOpen(false);
   };
 
+  // Obter Reserva Ativa ou Pausada correspondente ao Pedido
+  const getOrderReservation = (order?: CustomerOrder | null): ReservaEstoque | undefined => {
+    if (!order) return undefined;
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    const num = (order.numero_pedido || '').trim().toLowerCase();
+
+    return reservations.find((r) => {
+      if (r.motivo && num && r.motivo.toLowerCase().includes(num)) return true;
+      if (cleanPhone && r.cliente_telefone) {
+        const rClean = r.cliente_telefone.replace(/\D/g, '');
+        if (rClean && (rClean === cleanPhone || rClean.includes(cleanPhone) || cleanPhone.includes(rClean))) {
+          return true;
+        }
+      }
+      return false;
+    });
+  };
+
+  const pausedReservationsCount = useMemo(() => {
+    return reservations.filter((r) => r.status === 'pausada').length;
+  }, [reservations]);
+
+  // Pausar Reserva do Pedido (Congelar Tempo)
+  const handlePauseReservation = async (order: CustomerOrder) => {
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+
+    const res = await pauseOrderReservation(tenantId, order.numero_pedido, phones, authorName);
+    setReservaActionLoading(null);
+
+    if (res.success) {
+      showToast(`❄️ Reserva do pedido #${order.numero_pedido} congelada com sucesso!`, 'success');
+      const freshRes = await getActiveReservations(tenantId);
+      setReservations(freshRes);
+    } else {
+      showToast(res.error || 'Erro ao pausar reserva.', 'error');
+    }
+  };
+
+  // Retomar Reserva do Pedido (+X minutos)
+  const handleResumeReservation = async (order: CustomerOrder, additionalMinutes: number = 20) => {
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+
+    const res = await resumeOrderReservation(tenantId, order.numero_pedido, phones, additionalMinutes, authorName);
+    setReservaActionLoading(null);
+
+    if (res.success) {
+      showToast(`▶️ Reserva do pedido #${order.numero_pedido} retomada (+${additionalMinutes} min)!`, 'success');
+      const freshRes = await getActiveReservations(tenantId);
+      setReservations(freshRes);
+    } else {
+      showToast(res.error || 'Erro ao retomar reserva.', 'error');
+    }
+  };
+
+  // Estender Tempo de Reserva (+15m, +30m, +60m)
+  const handleExtendReservation = async (order: CustomerOrder, minutesToAdd: number = 20) => {
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+
+    const res = await extendOrderReservation(tenantId, order.numero_pedido, phones, minutesToAdd, authorName);
+    setReservaActionLoading(null);
+
+    if (res.success) {
+      showToast(`⏱️ Reserva estendida por mais ${minutesToAdd} min!`, 'success');
+      const freshRes = await getActiveReservations(tenantId);
+      setReservations(freshRes);
+    } else {
+      showToast(res.error || 'Erro ao estender reserva.', 'error');
+    }
+  };
+
+  // Liberar Reserva de Peças Antecipadamente
+  const handleReleaseReservation = async (order: CustomerOrder) => {
+    if (!confirm(`Deseja liberar as peças do pedido #${order.numero_pedido} e devolvê-las à vitrine da loja?`)) {
+      return;
+    }
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+
+    const res = await releaseOrderReservationFull(tenantId, order.numero_pedido, phones, authorName);
+    setReservaActionLoading(null);
+
+    if (res.success) {
+      showToast(`🔓 Peças do pedido #${order.numero_pedido} liberadas para o catálogo!`, 'success');
+      const freshRes = await getActiveReservations(tenantId);
+      setReservations(freshRes);
+    } else {
+      showToast(res.error || 'Erro ao liberar reserva.', 'error');
+    }
+  };
+
+  // Disparar Mensagem VIP no WhatsApp
+  const handleSendVipWhatsAppMessage = (order: CustomerOrder, reserva?: ReservaEstoque) => {
+    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
+    if (!cleanPhone) {
+      showToast('Telefone do cliente não encontrado.', 'error');
+      return;
+    }
+    const clienteNome = order.cliente_nome?.split(' ')[0] || 'Cliente VIP';
+    const isPausada = reserva?.status === 'pausada';
+
+    const texto = encodeURIComponent(
+      `Olá, *${clienteNome}*! 👗✨\n\n` +
+      (isPausada
+        ? `Passando para avisar que suas peças do pedido *#${order.numero_pedido}* estão com o *tempo de reserva congelado exclusivamente para você* aqui no sistema da *${lojaNome}*! ❄️\n\n` +
+          `Fique super tranquila para concluir seu pagamento no seu tempo. Assim que realizar o PIX, nos envie o comprovante por aqui para prepararmos o envio do seu pacote com todo carinho! 🛍️💖`
+        : `Passando para avisar que suas peças do pedido *#${order.numero_pedido}* estão reservadas exclusivamente para você no sistema da *${lojaNome}*! ⏱️\n\n` +
+          `Caso precise de mais tempo para concluir, me avise por aqui que posso pausar o tempo para você! 💖`)
+    );
+
+    window.open(`https://wa.me/55${cleanPhone}?text=${texto}`, '_blank');
+  };
+
   // Limpar Todos os Filtros
   const handleClearAllFilters = () => {
     setSelectedStatuses([]);
@@ -435,6 +605,7 @@ export default function AdminPedidosPage() {
     setCustomEndDate('');
     setPaymentFilter('todos');
     setOnlyGifts(false);
+    setOnlyPausedReservations(false);
     setIsFilterPopoverOpen(false);
   };
 
@@ -444,8 +615,9 @@ export default function AdminPedidosPage() {
     if (periodFilter !== 'todos') count += 1;
     if (paymentFilter !== 'todos') count += 1;
     if (onlyGifts) count += 1;
+    if (onlyPausedReservations) count += 1;
     return count;
-  }, [selectedStatuses, periodFilter, paymentFilter, onlyGifts]);
+  }, [selectedStatuses, periodFilter, paymentFilter, onlyGifts, onlyPausedReservations]);
 
   // Filtragem dos Pedidos
   const filteredOrders = useMemo(() => {
@@ -484,6 +656,12 @@ export default function AdminPedidosPage() {
       // 4. Filtro por Presentes VIP
       if (onlyGifts && !isOrderGift(o)) {
         return false;
+      }
+
+      // 4.1. Filtro por Reservas Congeladas
+      if (onlyPausedReservations) {
+        const res = getOrderReservation(o);
+        if (res?.status !== 'pausada') return false;
       }
 
       // 5. Filtro por Período
@@ -545,7 +723,7 @@ export default function AdminPedidosPage() {
       }
       return 0;
     });
-  }, [orders, selectedStatuses, searchTerm, paymentFilter, onlyGifts, periodFilter, customStartDate, customEndDate, sortOrder]);
+  }, [orders, reservations, selectedStatuses, searchTerm, paymentFilter, onlyGifts, onlyPausedReservations, periodFilter, customStartDate, customEndDate, sortOrder]);
 
   // Gestão de Seleção em Massa (Checkboxes)
   const isAllSelected = filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length;
@@ -1165,6 +1343,27 @@ export default function AdminPedidosPage() {
           <span className="hidden md:inline">Presentes VIP</span>
         </button>
 
+        {/* Chip Rápido de Reservas Congeladas */}
+        <button
+          onClick={() => setOnlyPausedReservations(!onlyPausedReservations)}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+            onlyPausedReservations
+              ? 'bg-sky-100 text-sky-950 border-sky-400 font-bold shadow-2xs'
+              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+          title="Filtrar pedidos com tempo de reserva congelado"
+        >
+          <Snowflake className={`w-3.5 h-3.5 ${onlyPausedReservations ? 'text-sky-700' : 'text-slate-400'}`} />
+          <span className="hidden md:inline">Reservas Congeladas</span>
+          {pausedReservationsCount > 0 && (
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+              onlyPausedReservations ? 'bg-sky-700 text-white' : 'bg-sky-100 text-sky-800'
+            }`}>
+              {pausedReservationsCount}
+            </span>
+          )}
+        </button>
+
         <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
         {/* Botão Exportar Planilha (CSV) */}
@@ -1300,6 +1499,18 @@ export default function AdminPedidosPage() {
             </span>
           )}
 
+          {onlyPausedReservations && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 border border-sky-300 font-bold text-[11px]">
+              ❄️ Reservas Congeladas
+              <button
+                onClick={() => setOnlyPausedReservations(false)}
+                className="hover:text-rose-600 p-0.5 rounded cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
           <button
             onClick={handleClearAllFilters}
             className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline ml-2 cursor-pointer"
@@ -1383,6 +1594,25 @@ export default function AdminPedidosPage() {
                             <Clock className="w-2.5 h-2.5" /> {slaAlert.label}
                           </span>
                         )}
+                        {(() => {
+                          const res = getOrderReservation(order);
+                          if (!res) return null;
+                          if (res.status === 'pausada') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-900 border border-sky-300 shadow-2xs">
+                                <Snowflake className="w-2.5 h-2.5 text-sky-700" /> Reserva Congelada
+                              </span>
+                            );
+                          }
+                          if (res.status === 'ativa' && res.minutos_restantes !== null && res.minutos_restantes !== undefined) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {res.minutos_restantes} min
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       <span className="text-[11px] text-slate-500 block mt-0.5">
                         {formatDate(order.created_at)}
@@ -1828,6 +2058,25 @@ export default function AdminPedidosPage() {
                           <option value="entregue">Entregue</option>
                           <option value="cancelado">Cancelado</option>
                         </select>
+                        {(() => {
+                          const res = getOrderReservation(order);
+                          if (!res) return null;
+                          if (res.status === 'pausada') {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded bg-sky-100 text-sky-900 border border-sky-300 mt-1 block w-fit">
+                                <Snowflake className="w-2.5 h-2.5 text-sky-600" /> Congelada
+                              </span>
+                            );
+                          }
+                          if (res.status === 'ativa' && res.minutos_restantes !== null && res.minutos_restantes !== undefined) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 mt-1 block w-fit">
+                                <Timer className="w-2.5 h-2.5 text-amber-700" /> {res.minutos_restantes}m
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </td>
 
                       {/* Rastreamento */}
@@ -1984,6 +2233,70 @@ export default function AdminPedidosPage() {
                               </span>
                             </div>
                           </div>
+
+                          {/* Indicador de Reserva Provisória */}
+                          {(() => {
+                            const reserva = getOrderReservation(order);
+                            const isPendente = order.status === 'pendente' || order.status === 'aguardando_whatsapp';
+                            if (!reserva && !isPendente) return null;
+
+                            const isPausada = reserva?.status === 'pausada';
+                            const isExpiringSoon = (reserva?.minutos_restantes ?? 20) <= 5 && !isPausada;
+                            const isOverdue = (reserva?.horas_pausada ?? 0) >= 12;
+
+                            return (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className={`p-1.5 rounded-lg border text-[10px] space-y-1 transition-all ${
+                                  isPausada
+                                    ? isOverdue
+                                      ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                                      : 'bg-sky-50/90 border-sky-300 text-sky-950'
+                                    : isExpiringSoon
+                                    ? 'bg-rose-50 border-rose-300 text-rose-900 animate-pulse'
+                                    : 'bg-amber-50/70 border-amber-200 text-amber-900'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold flex items-center gap-1">
+                                    {isPausada ? (
+                                      <>
+                                        <Snowflake className="w-3 h-3 text-sky-600 shrink-0" />
+                                        <span className="truncate">{isOverdue ? `⚠️ Congelada +${reserva?.horas_pausada}h` : '❄️ Tempo Congelado'}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Timer className={`w-3 h-3 ${isExpiringSoon ? 'text-rose-600' : 'text-amber-700'} shrink-0`} />
+                                        <span>{reserva?.minutos_restantes !== undefined && reserva.minutos_restantes !== null ? `${reserva.minutos_restantes} min restantes` : 'Reserva 20 min'}</span>
+                                      </>
+                                    )}
+                                  </span>
+
+                                  {isPausada ? (
+                                    <button
+                                      onClick={() => handleResumeReservation(order)}
+                                      disabled={reservaActionLoading === order.id}
+                                      className="px-1.5 py-0.5 rounded bg-sky-600 hover:bg-sky-700 text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
+                                      title="Retomar contagem da reserva (+20 min)"
+                                    >
+                                      <Play className="w-2 h-2 fill-current" />
+                                      <span>Retomar</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handlePauseReservation(order)}
+                                      disabled={reservaActionLoading === order.id}
+                                      className="px-1.5 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
+                                      title="Congelar o tempo da reserva por prazo indeterminado"
+                                    >
+                                      <Pause className="w-2 h-2 fill-current" />
+                                      <span>Congelar</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Ações do Mini Card (Cliques não abrem o modal duplicado) */}
                           <div
@@ -2650,6 +2963,124 @@ export default function AdminPedidosPage() {
                   {detailsModalOrder.codigo_rastreio ? 'Alterar Rastreio' : '+ Adicionar Rastreio'}
                 </button>
               </div>
+
+              {/* Box de Reserva Provisória & Gestão de Tempo */}
+              {(() => {
+                const reserva = getOrderReservation(detailsModalOrder);
+                const isPendente = detailsModalOrder.status === 'pendente' || detailsModalOrder.status === 'aguardando_whatsapp';
+                if (!reserva && !isPendente) return null;
+
+                const isPausada = reserva?.status === 'pausada';
+                const isOverdue = (reserva?.horas_pausada ?? 0) >= 12;
+
+                return (
+                  <div className={`rounded-xl p-4 border space-y-3 text-xs transition-all ${
+                    isPausada
+                      ? isOverdue
+                        ? 'bg-amber-50/90 border-amber-300'
+                        : 'bg-sky-50/80 border-sky-300'
+                      : 'bg-amber-50/60 border-amber-200'
+                  }`}>
+                    {/* Topo da Reserva */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        {isPausada ? (
+                          <div className="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                            <Snowflake className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                            <Timer className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-extrabold text-slate-900 text-xs block">
+                            {isPausada ? 'Reserva Congelada no Sistema' : 'Reserva Provisória em Contagem'}
+                          </span>
+                          <span className="text-[11px] text-slate-600">
+                            {isPausada
+                              ? isOverdue
+                                ? `⚠️ Alerta: Reserva pausada há ${reserva?.horas_pausada}h. Verifique com a cliente no WhatsApp.`
+                                : 'As peças deste pedido estão travadas para a cliente e NÃO expiram sozinhas.'
+                              : reserva?.minutos_restantes !== undefined && reserva?.minutos_restantes !== null
+                              ? `Restam aproximadamente ${reserva.minutos_restantes} minutos para expiração automática.`
+                              : 'Reserva ativa para garantia de atendimento no WhatsApp.'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Badge do Status Atual */}
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        isPausada
+                          ? isOverdue
+                            ? 'bg-amber-200 text-amber-900 border border-amber-300'
+                            : 'bg-sky-100 text-sky-900 border border-sky-300'
+                          : 'bg-amber-100 text-amber-900 border border-amber-300'
+                      }`}>
+                        {isPausada ? (isOverdue ? `Pausada há ${reserva?.horas_pausada}h` : 'Congelada ❄️') : `${reserva?.minutos_restantes ?? 20}m Restantes ⏱️`}
+                      </span>
+                    </div>
+
+                    {/* Botões de Ação na Reserva */}
+                    <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-200/80">
+                      {isPausada ? (
+                        <button
+                          onClick={() => handleResumeReservation(detailsModalOrder, 20)}
+                          disabled={reservaActionLoading === detailsModalOrder.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition-colors cursor-pointer shadow-xs"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Retomar Contagem (+20 min)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handlePauseReservation(detailsModalOrder)}
+                          disabled={reservaActionLoading === detailsModalOrder.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-sky-300 transition-colors cursor-pointer shadow-xs"
+                        >
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                          <span>Congelar Tempo da Reserva</span>
+                        </button>
+                      )}
+
+                      {/* Extensões Rápidas de Tempo */}
+                      <div className="flex items-center gap-1">
+                        {[15, 30, 60].map((mins) => (
+                          <button
+                            key={mins}
+                            onClick={() => handleExtendReservation(detailsModalOrder, mins)}
+                            disabled={reservaActionLoading === detailsModalOrder.id}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                            title={`Definir validade para mais ${mins} minutos a partir de agora`}
+                          >
+                            +{mins}m
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Botão de Mensagem VIP no WhatsApp */}
+                      <button
+                        onClick={() => handleSendVipWhatsAppMessage(detailsModalOrder, reserva)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs ml-auto"
+                        title="Abrir WhatsApp com mensagem VIP informando que as peças estão congeladas para a cliente"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Avisar no WhatsApp</span>
+                      </button>
+
+                      {/* Botão de Liberar Peças */}
+                      <button
+                        onClick={() => handleReleaseReservation(detailsModalOrder)}
+                        disabled={reservaActionLoading === detailsModalOrder.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100/80 border border-rose-200 transition-colors cursor-pointer"
+                        title="Devolver peças imediatamente ao estoque disponível"
+                      >
+                        <span>Liberar Peças</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Box Exclusivo de Presente VIP (se houver) */}
               {dGift.isGift && (

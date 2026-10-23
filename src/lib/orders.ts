@@ -158,14 +158,13 @@ export async function validateLiveCartStock(
       return { isValid: true, divergences: [] };
     }
 
-    // 2. Busca reservas ativas vigentes da loja
+    // 2. Busca reservas ativas vigentes OU reservas pausadas (congeladas) da loja
     const nowIso = new Date().toISOString();
     const { data: activeRes } = await supabase
       .from('reservas_estoque')
-      .select('produto_id, variacao_id, cor, tamanho, quantidade')
+      .select('produto_id, variacao_id, cor, tamanho, quantidade, status, expira_em')
       .eq('loja_id', lojaId)
-      .eq('status', 'ativa')
-      .gt('expira_em', nowIso);
+      .or(`status.eq.pausada,and(status.eq.ativa,expira_em.gt.${nowIso})`);
 
     const divergences: CartStockDivergenceItem[] = [];
 
@@ -426,7 +425,7 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
                 vendedora_nome: 'Checkout WhatsApp',
                 cliente_nome: payload.cliente.nome,
                 cliente_telefone: payload.cliente.telefone,
-                motivo: 'whatsapp_pix',
+                motivo: `whatsapp_pix:${numeroPedido}`,
                 expira_em: expiraEm,
                 status: 'ativa'
               };
