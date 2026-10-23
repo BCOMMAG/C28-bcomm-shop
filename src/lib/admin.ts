@@ -537,8 +537,8 @@ export async function updateAdminOrderStatusWithStock(
               .from('variacoes_produto')
               .select('id, estoque')
               .eq('produto_id', prodId)
-              .ilike('cor_nome', item.cor)
-              .ilike('tamanho', item.tamanho);
+              .ilike('cor_nome', item.cor.trim())
+              .ilike('tamanho', item.tamanho.trim());
 
             if (vars && vars.length > 0) {
               const v = vars[0];
