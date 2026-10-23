@@ -252,47 +252,132 @@ export async function getReservedStockMap(
 }
 
 /**
- * Localiza os IDs de reservas associados a um pedido específico através do número do pedido e/ou telefone.
+ * Gera variações completas de formato para um ou mais números de telefone
+ * (com/sem pontuação, formato internacional +55 e números com e sem DDD)
+ * para garantir correspondência no banco de dados.
+ */
+export function generatePhoneVariants(phones: string[] = []): string[] {
+  const set = new Set<string>();
+  (phones || []).forEach((p) => {
+    if (!p) return;
+    const str = String(p).trim();
+    if (!str) return;
+    set.add(str);
+    const clean = str.replace(/\D/g, '');
+    if (clean) set.add(clean);
+    let dddAndNum = clean;
+    if (clean.startsWith('55') && clean.length >= 12) {
+      dddAndNum = clean.slice(2);
+      set.add(dddAndNum);
+    }
+    if (dddAndNum.length === 11) {
+      const ddd = dddAndNum.slice(0, 2);
+      const part1 = dddAndNum.slice(2, 7);
+      const part2 = dddAndNum.slice(7);
+      set.add(`(${ddd}) ${part1}-${part2}`);
+      set.add(`(${ddd}) ${part1}${part2}`);
+      set.add(`${ddd} ${part1}-${part2}`);
+      set.add(`+55${dddAndNum}`);
+    } else if (dddAndNum.length === 10) {
+      const ddd = dddAndNum.slice(0, 2);
+      const part1 = dddAndNum.slice(2, 6);
+      const part2 = dddAndNum.slice(6);
+      set.add(`(${ddd}) ${part1}-${part2}`);
+      set.add(`(${ddd}) ${part1}${part2}`);
+      set.add(`${ddd} ${part1}-${part2}`);
+      set.add(`+55${dddAndNum}`);
+    }
+  });
+  return Array.from(set).filter(Boolean);
+}
+
+/**
+ * Localiza os IDs de reservas associados a um pedido específico através do número do pedido,
+ * variações de telefone e/ou ID direto da reserva.
  */
 export async function findOrderReservationIds(
   lojaId: string = DEFAULT_TENANT_ID,
   orderNumber?: string,
-  phones: string[] = []
+  phones: string[] = [],
+  targetReservationId?: string
 ): Promise<string[]> {
   try {
     const supabase = getSupabaseBrowserClient();
-    let foundIds: string[] = [];
+    const foundIdsSet = new Set<string>();
 
-    // 1. Tenta buscar pelo número do pedido registrado no campo 'motivo'
+    // 0. ID direto da reserva (se fornecido pelo componente que já possui a reserva em tela)
+    if (targetReservationId) {
+      const { data: resById } = await supabase
+        .from('reservas_estoque')
+        .select('id')
+        .eq('loja_id', lojaId)
+        .eq('id', targetReservationId)
+        .in('status', ['ativa', 'pausada'])
+        .maybeSingle();
+
+      if (resById?.id) {
+        foundIdsSet.add(resById.id);
+      }
+    }
+
+    // 1. Tenta buscar pelo número do pedido registrado no campo 'motivo' (sanitizando prefixos como '#')
     if (orderNumber) {
-      const cleanNum = orderNumber.trim();
+      const rawNum = orderNumber.trim();
+      const cleanNum = rawNum.replace(/^#+/, '').trim();
+      const searchTerms = Array.from(new Set([cleanNum, rawNum].filter(Boolean)));
+
+      const orCondition = searchTerms.map((t) => `motivo.ilike.%${t}%`).join(',');
       const { data: resByMotivo } = await supabase
         .from('reservas_estoque')
         .select('id')
         .eq('loja_id', lojaId)
         .in('status', ['ativa', 'pausada'])
-        .ilike('motivo', `%${cleanNum}%`);
+        .or(orCondition);
 
       if (resByMotivo && resByMotivo.length > 0) {
-        foundIds = resByMotivo.map((r: any) => r.id);
+        resByMotivo.forEach((r: any) => foundIdsSet.add(r.id));
       }
     }
 
     // 2. Se não encontrou pelo motivo, busca pelas variações do telefone da cliente
-    if (foundIds.length === 0 && phones.length > 0) {
+    if (foundIdsSet.size === 0 && phones.length > 0) {
+      const allPhoneVariants = generatePhoneVariants(phones);
       const { data: resByPhone } = await supabase
         .from('reservas_estoque')
-        .select('id')
+        .select('id, cliente_telefone')
         .eq('loja_id', lojaId)
         .in('status', ['ativa', 'pausada'])
-        .in('cliente_telefone', phones);
+        .in('cliente_telefone', allPhoneVariants);
 
       if (resByPhone && resByPhone.length > 0) {
-        foundIds = resByPhone.map((r: any) => r.id);
+        resByPhone.forEach((r: any) => foundIdsSet.add(r.id));
+      }
+
+      // 2.1 Fallback por normalização de dígitos limpos em memória
+      if (foundIdsSet.size === 0) {
+        const { data: allActive } = await supabase
+          .from('reservas_estoque')
+          .select('id, cliente_telefone')
+          .eq('loja_id', lojaId)
+          .in('status', ['ativa', 'pausada']);
+
+        if (allActive && allActive.length > 0) {
+          const cleanPhones = phones.map((p) => p.replace(/\D/g, '')).filter(Boolean);
+          allActive.forEach((r: any) => {
+            if (!r.cliente_telefone) return;
+            const rClean = String(r.cliente_telefone).replace(/\D/g, '');
+            const match = cleanPhones.some(
+              (cp) => cp && rClean && (cp === rClean || rClean.endsWith(cp) || cp.endsWith(rClean))
+            );
+            if (match) {
+              foundIdsSet.add(r.id);
+            }
+          });
+        }
       }
     }
 
-    return foundIds;
+    return Array.from(foundIdsSet);
   } catch (err) {
     console.error('❌ [reservas.ts] Erro ao localizar reservas do pedido:', err);
     return [];
@@ -307,11 +392,12 @@ export async function pauseOrderReservation(
   lojaId: string = DEFAULT_TENANT_ID,
   orderNumber: string,
   phones: string[] = [],
-  autorNome: string = 'Atendente'
+  autorNome: string = 'Atendente',
+  targetReservationId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const ids = await findOrderReservationIds(lojaId, orderNumber, phones);
+    const ids = await findOrderReservationIds(lojaId, orderNumber, phones, targetReservationId);
 
     if (ids.length === 0) {
       return { success: false, updatedCount: 0, error: 'Nenhuma reserva ativa encontrada para este pedido.' };
@@ -324,13 +410,14 @@ export async function pauseOrderReservation(
 
     if (error) throw error;
 
+    const displayNum = (orderNumber || '').replace(/^#+/, '');
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
       cargo: 'atendente',
       acao: 'pausou_reserva_estoque',
       entidade: 'pedidos',
-      entidade_id: orderNumber,
-      motivo: `Reserva do pedido #${orderNumber} congelada para atendimento no WhatsApp`
+      entidade_id: displayNum || ids[0],
+      motivo: `Reserva do pedido #${displayNum || ids[0]} congelada para atendimento no WhatsApp`
     }).catch(() => {});
 
     return { success: true, updatedCount: ids.length };
@@ -348,11 +435,12 @@ export async function resumeOrderReservation(
   orderNumber: string,
   phones: string[] = [],
   additionalMinutes: number = 20,
-  autorNome: string = 'Atendente'
+  autorNome: string = 'Atendente',
+  targetReservationId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const ids = await findOrderReservationIds(lojaId, orderNumber, phones);
+    const ids = await findOrderReservationIds(lojaId, orderNumber, phones, targetReservationId);
 
     if (ids.length === 0) {
       return { success: false, updatedCount: 0, error: 'Nenhuma reserva encontrada para este pedido.' };
@@ -370,13 +458,14 @@ export async function resumeOrderReservation(
 
     if (error) throw error;
 
+    const displayNum = (orderNumber || '').replace(/^#+/, '');
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
       cargo: 'atendente',
       acao: 'retomou_reserva_estoque',
       entidade: 'pedidos',
-      entidade_id: orderNumber,
-      motivo: `Contagem da reserva do pedido #${orderNumber} retomada (+${additionalMinutes} min)`
+      entidade_id: displayNum || ids[0],
+      motivo: `Contagem da reserva do pedido #${displayNum || ids[0]} retomada (+${additionalMinutes} min)`
     }).catch(() => {});
 
     return { success: true, updatedCount: ids.length };
@@ -394,11 +483,12 @@ export async function extendOrderReservation(
   orderNumber: string,
   phones: string[] = [],
   minutesToAdd: number = 20,
-  autorNome: string = 'Atendente'
+  autorNome: string = 'Atendente',
+  targetReservationId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const ids = await findOrderReservationIds(lojaId, orderNumber, phones);
+    const ids = await findOrderReservationIds(lojaId, orderNumber, phones, targetReservationId);
 
     if (ids.length === 0) {
       return { success: false, updatedCount: 0, error: 'Nenhuma reserva encontrada para estender.' };
@@ -416,13 +506,14 @@ export async function extendOrderReservation(
 
     if (error) throw error;
 
+    const displayNum = (orderNumber || '').replace(/^#+/, '');
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
       cargo: 'atendente',
       acao: 'estendeu_reserva_estoque',
       entidade: 'pedidos',
-      entidade_id: orderNumber,
-      motivo: `Prazo da reserva do pedido #${orderNumber} estendido por mais ${minutesToAdd} minutos`
+      entidade_id: displayNum || ids[0],
+      motivo: `Prazo da reserva do pedido #${displayNum || ids[0]} estendido por mais ${minutesToAdd} minutos`
     }).catch(() => {});
 
     return { success: true, updatedCount: ids.length };
@@ -439,11 +530,12 @@ export async function releaseOrderReservationFull(
   lojaId: string = DEFAULT_TENANT_ID,
   orderNumber: string,
   phones: string[] = [],
-  autorNome: string = 'Atendente'
+  autorNome: string = 'Atendente',
+  targetReservationId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const ids = await findOrderReservationIds(lojaId, orderNumber, phones);
+    const ids = await findOrderReservationIds(lojaId, orderNumber, phones, targetReservationId);
 
     if (ids.length === 0) {
       return { success: false, updatedCount: 0, error: 'Nenhuma reserva encontrada para liberar.' };
@@ -456,13 +548,14 @@ export async function releaseOrderReservationFull(
 
     if (error) throw error;
 
+    const displayNum = (orderNumber || '').replace(/^#+/, '');
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
       cargo: 'atendente',
       acao: 'liberou_reserva_estoque',
       entidade: 'pedidos',
-      entidade_id: orderNumber,
-      motivo: `Peças do pedido #${orderNumber} liberadas e devolvidas ao catálogo online`
+      entidade_id: displayNum || ids[0],
+      motivo: `Peças do pedido #${displayNum || ids[0]} liberadas e devolvidas ao catálogo online`
     }).catch(() => {});
 
     return { success: true, updatedCount: ids.length };

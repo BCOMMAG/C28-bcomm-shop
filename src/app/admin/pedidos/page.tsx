@@ -473,14 +473,26 @@ export default function AdminPedidosPage() {
     setIsFilterPopoverOpen(false);
   };
 
+  // Obter Lista Completa de Variações de Telefones do Pedido
+  const getCustomerPhoneList = (order: CustomerOrder): string[] => {
+    const rawList = [
+      order.cliente_telefone,
+      (order as any).endereco_entrega?.telefone,
+      (order as any).clientes_loja?.telefone
+    ].filter(Boolean) as string[];
+    const cleanList = rawList.map((p) => p.replace(/\D/g, '')).filter(Boolean);
+    return Array.from(new Set([...rawList, ...cleanList]));
+  };
+
   // Obter Reserva Ativa ou Pausada correspondente ao Pedido
   const getOrderReservation = (order?: CustomerOrder | null): ReservaEstoque | undefined => {
     if (!order) return undefined;
     const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-    const num = (order.numero_pedido || '').trim().toLowerCase();
+    const num = (order.numero_pedido || '').trim().toLowerCase().replace(/^#+/, '');
 
     return reservations.find((r) => {
-      if (r.motivo && num && r.motivo.toLowerCase().includes(num)) return true;
+      const rMotivo = (r.motivo || '').toLowerCase();
+      if (num && rMotivo.includes(num)) return true;
       if (cleanPhone && r.cliente_telefone) {
         const rClean = r.cliente_telefone.replace(/\D/g, '');
         if (rClean && (rClean === cleanPhone || rClean.includes(cleanPhone) || cleanPhone.includes(rClean))) {
@@ -496,17 +508,17 @@ export default function AdminPedidosPage() {
   }, [reservations]);
 
   // Pausar Reserva do Pedido (Congelar Tempo)
-  const handlePauseReservation = async (order: CustomerOrder) => {
+  const handlePauseReservation = async (order: CustomerOrder, targetReservaId?: string) => {
     setReservaActionLoading(order.id);
     const authorName = activeMember?.nome || 'Atendente';
-    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+    const phones = getCustomerPhoneList(order);
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
 
-    const res = await pauseOrderReservation(tenantId, order.numero_pedido, phones, authorName);
+    const res = await pauseOrderReservation(tenantId, order.numero_pedido, phones, authorName, targetReservaId);
     setReservaActionLoading(null);
 
     if (res.success) {
-      showToast(`❄️ Reserva do pedido #${order.numero_pedido} congelada com sucesso!`, 'success');
+      showToast(`❄️ Reserva do pedido #${displayNum} congelada com sucesso!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
     } else {
@@ -515,17 +527,17 @@ export default function AdminPedidosPage() {
   };
 
   // Retomar Reserva do Pedido (+X minutos)
-  const handleResumeReservation = async (order: CustomerOrder, additionalMinutes: number = 20) => {
+  const handleResumeReservation = async (order: CustomerOrder, additionalMinutes: number = 20, targetReservaId?: string) => {
     setReservaActionLoading(order.id);
     const authorName = activeMember?.nome || 'Atendente';
-    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+    const phones = getCustomerPhoneList(order);
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
 
-    const res = await resumeOrderReservation(tenantId, order.numero_pedido, phones, additionalMinutes, authorName);
+    const res = await resumeOrderReservation(tenantId, order.numero_pedido, phones, additionalMinutes, authorName, targetReservaId);
     setReservaActionLoading(null);
 
     if (res.success) {
-      showToast(`▶️ Reserva do pedido #${order.numero_pedido} retomada (+${additionalMinutes} min)!`, 'success');
+      showToast(`▶️ Reserva do pedido #${displayNum} retomada (+${additionalMinutes} min)!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
     } else {
@@ -534,13 +546,13 @@ export default function AdminPedidosPage() {
   };
 
   // Estender Tempo de Reserva (+15m, +30m, +60m)
-  const handleExtendReservation = async (order: CustomerOrder, minutesToAdd: number = 20) => {
+  const handleExtendReservation = async (order: CustomerOrder, minutesToAdd: number = 20, targetReservaId?: string) => {
     setReservaActionLoading(order.id);
     const authorName = activeMember?.nome || 'Atendente';
-    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+    const phones = getCustomerPhoneList(order);
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
 
-    const res = await extendOrderReservation(tenantId, order.numero_pedido, phones, minutesToAdd, authorName);
+    const res = await extendOrderReservation(tenantId, order.numero_pedido, phones, minutesToAdd, authorName, targetReservaId);
     setReservaActionLoading(null);
 
     if (res.success) {
@@ -553,20 +565,20 @@ export default function AdminPedidosPage() {
   };
 
   // Liberar Reserva de Peças Antecipadamente
-  const handleReleaseReservation = async (order: CustomerOrder) => {
-    if (!confirm(`Deseja liberar as peças do pedido #${order.numero_pedido} e devolvê-las à vitrine da loja?`)) {
+  const handleReleaseReservation = async (order: CustomerOrder, targetReservaId?: string) => {
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
+    if (!confirm(`Deseja liberar as peças do pedido #${displayNum} e devolvê-las à vitrine da loja?`)) {
       return;
     }
     setReservaActionLoading(order.id);
     const authorName = activeMember?.nome || 'Atendente';
-    const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
-    const phones = Array.from(new Set([order.cliente_telefone, cleanPhone].filter(Boolean))) as string[];
+    const phones = getCustomerPhoneList(order);
 
-    const res = await releaseOrderReservationFull(tenantId, order.numero_pedido, phones, authorName);
+    const res = await releaseOrderReservationFull(tenantId, order.numero_pedido, phones, authorName, targetReservaId);
     setReservaActionLoading(null);
 
     if (res.success) {
-      showToast(`🔓 Peças do pedido #${order.numero_pedido} liberadas para o catálogo!`, 'success');
+      showToast(`🔓 Peças do pedido #${displayNum} liberadas para o catálogo!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
     } else {
@@ -2237,12 +2249,11 @@ export default function AdminPedidosPage() {
                           {/* Indicador de Reserva Provisória */}
                           {(() => {
                             const reserva = getOrderReservation(order);
-                            const isPendente = order.status === 'pendente' || order.status === 'aguardando_whatsapp';
-                            if (!reserva && !isPendente) return null;
+                            if (!reserva) return null;
 
-                            const isPausada = reserva?.status === 'pausada';
-                            const isExpiringSoon = (reserva?.minutos_restantes ?? 20) <= 5 && !isPausada;
-                            const isOverdue = (reserva?.horas_pausada ?? 0) >= 12;
+                            const isPausada = reserva.status === 'pausada';
+                            const isExpiringSoon = (reserva.minutos_restantes ?? 20) <= 5 && !isPausada;
+                            const isOverdue = (reserva.horas_pausada ?? 0) >= 12;
 
                             return (
                               <div
@@ -2262,19 +2273,22 @@ export default function AdminPedidosPage() {
                                     {isPausada ? (
                                       <>
                                         <Snowflake className="w-3 h-3 text-sky-600 shrink-0" />
-                                        <span className="truncate">{isOverdue ? `⚠️ Congelada +${reserva?.horas_pausada}h` : '❄️ Tempo Congelado'}</span>
+                                        <span className="truncate">{isOverdue ? `⚠️ Congelada +${reserva.horas_pausada}h` : '❄️ Tempo Congelado'}</span>
                                       </>
                                     ) : (
                                       <>
                                         <Timer className={`w-3 h-3 ${isExpiringSoon ? 'text-rose-600' : 'text-amber-700'} shrink-0`} />
-                                        <span>{reserva?.minutos_restantes !== undefined && reserva.minutos_restantes !== null ? `${reserva.minutos_restantes} min restantes` : 'Reserva 20 min'}</span>
+                                        <span>{reserva.minutos_restantes !== undefined && reserva.minutos_restantes !== null ? `${reserva.minutos_restantes} min restantes` : 'Reserva 20 min'}</span>
                                       </>
                                     )}
                                   </span>
 
                                   {isPausada ? (
                                     <button
-                                      onClick={() => handleResumeReservation(order)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleResumeReservation(order, 20, reserva.id);
+                                      }}
                                       disabled={reservaActionLoading === order.id}
                                       className="px-1.5 py-0.5 rounded bg-sky-600 hover:bg-sky-700 text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
                                       title="Retomar contagem da reserva (+20 min)"
@@ -2284,7 +2298,10 @@ export default function AdminPedidosPage() {
                                     </button>
                                   ) : (
                                     <button
-                                      onClick={() => handlePauseReservation(order)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePauseReservation(order, reserva.id);
+                                      }}
                                       disabled={reservaActionLoading === order.id}
                                       className="px-1.5 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
                                       title="Congelar o tempo da reserva por prazo indeterminado"
@@ -2967,11 +2984,10 @@ export default function AdminPedidosPage() {
               {/* Box de Reserva Provisória & Gestão de Tempo */}
               {(() => {
                 const reserva = getOrderReservation(detailsModalOrder);
-                const isPendente = detailsModalOrder.status === 'pendente' || detailsModalOrder.status === 'aguardando_whatsapp';
-                if (!reserva && !isPendente) return null;
+                if (!reserva) return null;
 
-                const isPausada = reserva?.status === 'pausada';
-                const isOverdue = (reserva?.horas_pausada ?? 0) >= 12;
+                const isPausada = reserva.status === 'pausada';
+                const isOverdue = (reserva.horas_pausada ?? 0) >= 12;
 
                 return (
                   <div className={`rounded-xl p-4 border space-y-3 text-xs transition-all ${
@@ -3000,9 +3016,9 @@ export default function AdminPedidosPage() {
                           <span className="text-[11px] text-slate-600">
                             {isPausada
                               ? isOverdue
-                                ? `⚠️ Alerta: Reserva pausada há ${reserva?.horas_pausada}h. Verifique com a cliente no WhatsApp.`
+                                ? `⚠️ Alerta: Reserva pausada há ${reserva.horas_pausada}h. Verifique com a cliente no WhatsApp.`
                                 : 'As peças deste pedido estão travadas para a cliente e NÃO expiram sozinhas.'
-                              : reserva?.minutos_restantes !== undefined && reserva?.minutos_restantes !== null
+                              : reserva.minutos_restantes !== undefined && reserva.minutos_restantes !== null
                               ? `Restam aproximadamente ${reserva.minutos_restantes} minutos para expiração automática.`
                               : 'Reserva ativa para garantia de atendimento no WhatsApp.'}
                           </span>
@@ -3017,7 +3033,7 @@ export default function AdminPedidosPage() {
                             : 'bg-sky-100 text-sky-900 border border-sky-300'
                           : 'bg-amber-100 text-amber-900 border border-amber-300'
                       }`}>
-                        {isPausada ? (isOverdue ? `Pausada há ${reserva?.horas_pausada}h` : 'Congelada ❄️') : `${reserva?.minutos_restantes ?? 20}m Restantes ⏱️`}
+                        {isPausada ? (isOverdue ? `Pausada há ${reserva.horas_pausada}h` : 'Congelada ❄️') : `${reserva.minutos_restantes ?? 20}m Restantes ⏱️`}
                       </span>
                     </div>
 
@@ -3025,7 +3041,7 @@ export default function AdminPedidosPage() {
                     <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-200/80">
                       {isPausada ? (
                         <button
-                          onClick={() => handleResumeReservation(detailsModalOrder, 20)}
+                          onClick={() => handleResumeReservation(detailsModalOrder, 20, reserva.id)}
                           disabled={reservaActionLoading === detailsModalOrder.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition-colors cursor-pointer shadow-xs"
                         >
@@ -3034,7 +3050,7 @@ export default function AdminPedidosPage() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handlePauseReservation(detailsModalOrder)}
+                          onClick={() => handlePauseReservation(detailsModalOrder, reserva.id)}
                           disabled={reservaActionLoading === detailsModalOrder.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-sky-300 transition-colors cursor-pointer shadow-xs"
                         >
@@ -3048,7 +3064,7 @@ export default function AdminPedidosPage() {
                         {[15, 30, 60].map((mins) => (
                           <button
                             key={mins}
-                            onClick={() => handleExtendReservation(detailsModalOrder, mins)}
+                            onClick={() => handleExtendReservation(detailsModalOrder, mins, reserva.id)}
                             disabled={reservaActionLoading === detailsModalOrder.id}
                             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
                             title={`Definir validade para mais ${mins} minutos a partir de agora`}
@@ -3070,7 +3086,7 @@ export default function AdminPedidosPage() {
 
                       {/* Botão de Liberar Peças */}
                       <button
-                        onClick={() => handleReleaseReservation(detailsModalOrder)}
+                        onClick={() => handleReleaseReservation(detailsModalOrder, reserva.id)}
                         disabled={reservaActionLoading === detailsModalOrder.id}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100/80 border border-rose-200 transition-colors cursor-pointer"
                         title="Devolver peças imediatamente ao estoque disponível"
