@@ -532,12 +532,34 @@ export async function releaseOrderReservationFull(
   phones: string[] = [],
   autorNome: string = 'Atendente',
   targetReservationId?: string
-): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+): Promise<{ success: boolean; updatedCount: number; alreadyReleased?: boolean; message?: string; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
     const ids = await findOrderReservationIds(lojaId, orderNumber, phones, targetReservationId);
 
     if (ids.length === 0) {
+      // Verifica se já foi liberada previamente para dar um feedback informativo amigável
+      const cleanNum = (orderNumber || '').replace(/^#+/, '').trim();
+      let alreadyReleased = false;
+      if (cleanNum) {
+        const { data: pastLiberada } = await supabase
+          .from('reservas_estoque')
+          .select('id')
+          .eq('loja_id', lojaId)
+          .eq('status', 'liberada')
+          .ilike('motivo', `%${cleanNum}%`)
+          .limit(1);
+        if (pastLiberada && pastLiberada.length > 0) alreadyReleased = true;
+      }
+      if (alreadyReleased) {
+        return {
+          success: true,
+          updatedCount: 0,
+          alreadyReleased: true,
+          message: `As peças do pedido #${cleanNum} já haviam sido liberadas anteriormente para a vitrine.`
+        };
+      }
+
       return { success: false, updatedCount: 0, error: 'Nenhuma reserva encontrada para liberar.' };
     }
 
@@ -558,9 +580,81 @@ export async function releaseOrderReservationFull(
       motivo: `Peças do pedido #${displayNum || ids[0]} liberadas e devolvidas ao catálogo online`
     }).catch(() => {});
 
-    return { success: true, updatedCount: ids.length };
+    return {
+      success: true,
+      updatedCount: ids.length,
+      message: `Peças do pedido #${displayNum} liberadas para o catálogo!`
+    };
   } catch (err: any) {
     console.error('❌ [reservas.ts] Falha ao liberar reserva:', err);
     return { success: false, updatedCount: 0, error: err?.message || 'Falha ao liberar reserva' };
+  }
+}
+
+/**
+ * Reativa ou cria uma nova reserva provisória para um pedido pendente caso a cliente
+ * retome o contato no WhatsApp e as peças ainda estejam disponíveis no estoque.
+ */
+export async function reactivateOrderReservation(
+  lojaId: string = DEFAULT_TENANT_ID,
+  orderId: string,
+  orderNumber: string,
+  clienteNome: string,
+  clienteTelefone: string,
+  minutes: number = 20,
+  autorNome: string = 'Atendente'
+): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const cleanNum = (orderNumber || '').replace(/^#+/, '').trim();
+
+    // 1. Busca os itens do pedido
+    const { data: itens, error: itensErr } = await supabase
+      .from('itens_pedido')
+      .select('*')
+      .eq('pedido_id', orderId);
+
+    if (itensErr || !itens || itens.length === 0) {
+      return { success: false, error: 'Não foi possível encontrar os itens deste pedido para reativar a reserva.' };
+    }
+
+    const expiraEm = new Date(Date.now() + Math.max(5, minutes) * 60 * 1000).toISOString();
+
+    // 2. Insere nova reserva provisória para cada item
+    const newReservas = itens.map((item) => ({
+      loja_id: lojaId,
+      produto_id: item.produto_id || null,
+      variacao_id: item.variacao_id || null,
+      produto_nome: item.nome_produto || 'Produto',
+      tamanho: item.tamanho || 'U',
+      cor: item.cor || 'Padrão',
+      quantidade: item.quantidade || 1,
+      vendedora_nome: autorNome,
+      cliente_nome: clienteNome || 'Cliente WhatsApp',
+      cliente_telefone: clienteTelefone || '',
+      motivo: `whatsapp_pix:${cleanNum}`,
+      status: 'ativa',
+      expira_em: expiraEm
+    }));
+
+    const { error: insertErr } = await supabase
+      .from('reservas_estoque')
+      .insert(newReservas);
+
+    if (insertErr) throw insertErr;
+
+    await logStoreAuditAction(lojaId, {
+      colaborador_nome: autorNome,
+      cargo: 'atendente',
+      acao: 'reativou_reserva_estoque',
+      entidade: 'pedidos',
+      entidade_id: cleanNum,
+      motivo: `Reserva do pedido #${cleanNum} reativada manualmente no atendimento (+${minutes} min)`
+    }).catch(() => {});
+
+    return { success: true, updatedCount: newReservas.length };
+  } catch (err: any) {
+    console.error('❌ [reservas.ts] Erro ao reativar reserva:', err);
+    return { success: false, error: err?.message || 'Falha ao reativar reserva' };
   }
 }

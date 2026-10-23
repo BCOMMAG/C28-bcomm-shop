@@ -64,7 +64,8 @@ import {
   pauseOrderReservation,
   resumeOrderReservation,
   extendOrderReservation,
-  releaseOrderReservationFull
+  releaseOrderReservationFull,
+  reactivateOrderReservation
 } from '@/lib/reservas';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
@@ -142,13 +143,20 @@ export default function AdminPedidosPage() {
 
   const [snippetMenuOrderId, setSnippetMenuOrderId] = useState<string | null>(null);
 
+  // Modal de Decisão de Liberação (Liberar & Cancelar vs Apenas Devolver ao Estoque)
+  const [releaseModalOrder, setReleaseModalOrder] = useState<{
+    order: CustomerOrder;
+    targetReservaId?: string;
+  } | null>(null);
+  const [isProcessingRelease, setIsProcessingRelease] = useState(false);
+
   // Toast de Notificação
   const [feedbackToast, setFeedbackToast] = useState<{
-    type: 'success' | 'error' | 'warning';
+    type: 'success' | 'error' | 'warning' | 'info';
     message: string;
   } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setFeedbackToast({ message, type });
     setTimeout(() => setFeedbackToast(null), 4000);
   };
@@ -564,25 +572,94 @@ export default function AdminPedidosPage() {
     }
   };
 
-  // Liberar Reserva de Peças Antecipadamente
-  const handleReleaseReservation = async (order: CustomerOrder, targetReservaId?: string) => {
-    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
-    if (!confirm(`Deseja liberar as peças do pedido #${displayNum} e devolvê-las à vitrine da loja?`)) {
-      return;
-    }
+  // Abrir Modal de Decisão de Liberação de Peças
+  const handleOpenReleaseModal = (order: CustomerOrder, targetReservaId?: string) => {
+    setReleaseModalOrder({ order, targetReservaId });
+  };
+
+  // Executar a Liberação (com ou sem Cancelamento do Pedido)
+  const handleExecuteRelease = async (
+    order: CustomerOrder,
+    alsoCancelOrder: boolean,
+    targetReservaId?: string
+  ) => {
+    setIsProcessingRelease(true);
     setReservaActionLoading(order.id);
     const authorName = activeMember?.nome || 'Atendente';
     const phones = getCustomerPhoneList(order);
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
 
+    // 1. Libera as reservas provisórias no estoque
     const res = await releaseOrderReservationFull(tenantId, order.numero_pedido, phones, authorName, targetReservaId);
+
+    // 2. Se optou por também cancelar o pedido
+    if (alsoCancelOrder) {
+      await updateAdminOrderStatusWithStock(order.id, 'cancelado', tenantId);
+      await logStoreAuditAction(tenantId, {
+        colaborador_nome: authorName,
+        cargo: 'atendente',
+        acao: 'cancelou_pedido',
+        entidade: 'pedidos',
+        entidade_id: order.id,
+        motivo: `Pedido #${displayNum} cancelado: desistência da cliente / peças devolvidas à vitrine`
+      }).catch(() => {});
+    }
+
+    // 3. Atualiza estado local de reservas e pedidos em tempo real
+    const freshRes = await getActiveReservations(tenantId);
+    setReservations(freshRes);
+
+    const freshOrders = await getAdminOrders(tenantId);
+    setOrders(freshOrders);
+
+    // Se o modal de detalhes estiver aberto para este pedido, atualiza seu status
+    if (detailsModalOrder && detailsModalOrder.id === order.id) {
+      if (alsoCancelOrder) {
+        setDetailsModalOrder({ ...detailsModalOrder, status: 'cancelado' });
+      } else {
+        const updated = freshOrders.find((o) => o.id === order.id);
+        if (updated) setDetailsModalOrder(updated);
+      }
+    }
+
+    setIsProcessingRelease(false);
+    setReservaActionLoading(null);
+    setReleaseModalOrder(null);
+
+    if (alsoCancelOrder) {
+      showToast(`🔓 Peças devolvidas à vitrine e pedido #${displayNum} cancelado!`, 'success');
+    } else {
+      if (res.alreadyReleased) {
+        showToast(res.message || `ℹ️ As peças do pedido #${displayNum} já haviam sido liberadas.`, 'info');
+      } else {
+        showToast(`🔓 Peças do pedido #${displayNum} liberadas para o catálogo!`, 'success');
+      }
+    }
+  };
+
+  // Reativar Reserva de Estoque (+20 min)
+  const handleReactivateReservation = async (order: CustomerOrder, additionalMinutes: number = 20) => {
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
+
+    const res = await reactivateOrderReservation(
+      tenantId,
+      order.id,
+      order.numero_pedido || '',
+      order.cliente_nome || 'Cliente VIP',
+      order.cliente_telefone || '',
+      additionalMinutes,
+      authorName
+    );
     setReservaActionLoading(null);
 
     if (res.success) {
-      showToast(`🔓 Peças do pedido #${displayNum} liberadas para o catálogo!`, 'success');
+      showToast(`🔄 Reserva do pedido #${displayNum} reativada por ${additionalMinutes} min!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
     } else {
-      showToast(res.error || 'Erro ao liberar reserva.', 'error');
+      showToast(res.error || 'Erro ao reativar reserva.', 'error');
     }
   };
 
@@ -953,6 +1030,8 @@ export default function AdminPedidosPage() {
               ? 'bg-slate-900 text-emerald-400 border-slate-700'
               : feedbackToast.type === 'warning'
               ? 'bg-amber-900 text-amber-200 border-amber-600'
+              : feedbackToast.type === 'info'
+              ? 'bg-sky-950 text-sky-200 border-sky-700'
               : 'bg-rose-900 text-rose-200 border-rose-600'
           }`}
         >
@@ -960,6 +1039,8 @@ export default function AdminPedidosPage() {
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           ) : feedbackToast.type === 'warning' ? (
             <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0" />
+          ) : feedbackToast.type === 'info' ? (
+            <HelpCircle className="w-4 h-4 text-sky-400 shrink-0" />
           ) : (
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           )}
@@ -2249,7 +2330,51 @@ export default function AdminPedidosPage() {
                           {/* Indicador de Reserva Provisória */}
                           {(() => {
                             const reserva = getOrderReservation(order);
-                            if (!reserva) return null;
+                            const isPendente = order.status === 'pendente' || order.status === 'aguardando_whatsapp';
+                            const isCancelado = order.status === 'cancelado';
+
+                            if (isCancelado) {
+                              return (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg border border-rose-200/80 bg-rose-50/70 text-[10px] text-rose-800 flex items-center gap-1 font-semibold"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 text-rose-600 shrink-0" />
+                                  <span>Peças Devolvidas ao Estoque</span>
+                                </div>
+                              );
+                            }
+
+                            if (!reserva) {
+                              if (isPendente) {
+                                return (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] space-y-1 transition-all"
+                                  >
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="font-semibold text-slate-600 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        <span className="truncate">Peças Liberadas (Vitrine)</span>
+                                      </span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleReactivateReservation(order, 20);
+                                        }}
+                                        disabled={reservaActionLoading === order.id}
+                                        className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
+                                        title="Reativar reserva de estoque por 20 minutos caso a cliente queira fechar"
+                                      >
+                                        <RefreshCw className="w-2 h-2" />
+                                        <span>Reativar (20m)</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }
 
                             const isPausada = reserva.status === 'pausada';
                             const isExpiringSoon = (reserva.minutos_restantes ?? 20) <= 5 && !isPausada;
@@ -2984,7 +3109,72 @@ export default function AdminPedidosPage() {
               {/* Box de Reserva Provisória & Gestão de Tempo */}
               {(() => {
                 const reserva = getOrderReservation(detailsModalOrder);
-                if (!reserva) return null;
+                const isPendente = detailsModalOrder.status === 'pendente' || detailsModalOrder.status === 'aguardando_whatsapp';
+                const isCancelado = detailsModalOrder.status === 'cancelado';
+
+                if (isCancelado) {
+                  return (
+                    <div className="rounded-xl p-3.5 border border-rose-200 bg-rose-50/70 space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-rose-900 text-xs block">
+                            Pedido Cancelado — Peças Liberadas para a Vitrine
+                          </span>
+                          <span className="text-[11px] text-rose-700">
+                            O estoque deste pedido foi estornado e devolvido à vitrine online da loja.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (!reserva) {
+                  if (isPendente) {
+                    return (
+                      <div className="rounded-xl p-3.5 border border-slate-200 bg-slate-50 space-y-2 text-xs">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shadow-xs shrink-0 font-bold">
+                              ⚪
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-slate-900 text-xs block">
+                                Peças Liberadas (Sem Reserva Ativa no Catálogo)
+                              </span>
+                              <span className="text-[11px] text-slate-600">
+                                As roupas deste pedido foram devolvidas à vitrine da loja e podem ser compradas por outras clientes.
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-auto">
+                            <button
+                              onClick={() => handleReactivateReservation(detailsModalOrder, 20)}
+                              disabled={reservaActionLoading === detailsModalOrder.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs"
+                              title="Reativar reserva por mais 20 minutos se a cliente quiser finalizar"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Reativar Reserva (+20 min)</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenReleaseModal(detailsModalOrder)}
+                              disabled={reservaActionLoading === detailsModalOrder.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                              title="Cancelar este pedido definitivamente"
+                            >
+                              <span>Cancelar Pedido</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }
 
                 const isPausada = reserva.status === 'pausada';
                 const isOverdue = (reserva.horas_pausada ?? 0) >= 12;
@@ -3086,7 +3276,7 @@ export default function AdminPedidosPage() {
 
                       {/* Botão de Liberar Peças */}
                       <button
-                        onClick={() => handleReleaseReservation(detailsModalOrder, reserva.id)}
+                        onClick={() => handleOpenReleaseModal(detailsModalOrder, reserva.id)}
                         disabled={reservaActionLoading === detailsModalOrder.id}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100/80 border border-rose-200 transition-colors cursor-pointer"
                         title="Devolver peças imediatamente ao estoque disponível"
@@ -3214,6 +3404,90 @@ export default function AdminPedidosPage() {
           </div>
         );
       })()}
+
+      {/* MODAL DE DECISÃO: LIBERAÇÃO DE PEÇAS & CANCELAMENTO DE PEDIDO */}
+      {releaseModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    Liberar Peças da Reserva
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {releaseModalOrder.order.cliente_nome || 'Cliente VIP'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReleaseModalOrder(null)}
+                disabled={isProcessingRelease}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <p className="font-semibold">O que você deseja fazer com este pedido?</p>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                As peças serão imediatamente devolvidas à vitrine da loja para que outras clientes possam comprar.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Opção 1: Liberar & Cancelar (Recomendado) */}
+              <button
+                onClick={() => handleExecuteRelease(releaseModalOrder.order, true, releaseModalOrder.targetReservaId)}
+                disabled={isProcessingRelease}
+                className="w-full text-left p-3.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 hover:border-rose-300 transition-all cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between font-extrabold text-xs text-rose-900">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-600" />
+                    Liberar Peças e Cancelar Pedido
+                  </span>
+                  <span className="text-[10px] bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded font-black uppercase">
+                    Recomendado
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 pl-5.5">
+                  Devolve as peças ao catálogo e move o pedido para a coluna <b>Cancelados</b>, mantendo o histórico de atendimento registrado.
+                </p>
+              </button>
+
+              {/* Opção 2: Apenas Devolver Peças à Vitrine */}
+              <button
+                onClick={() => handleExecuteRelease(releaseModalOrder.order, false, releaseModalOrder.targetReservaId)}
+                disabled={isProcessingRelease}
+                className="w-full text-left p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100/80 hover:border-slate-300 transition-all cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                  <RefreshCw className="w-4 h-4 text-slate-500" />
+                  <span>Apenas Devolver Peças (Manter Pedido Aberto)</span>
+                </div>
+                <p className="text-[11px] text-slate-600 pl-5.5">
+                  Libera o estoque para novas vendas, mas mantém o pedido em <b>Aguardando WhatsApp</b> com status de peças liberadas.
+                </p>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setReleaseModalOrder(null)}
+                disabled={isProcessingRelease}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Voltar / Manter Como Está
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

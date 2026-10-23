@@ -421,12 +421,16 @@ export async function updateAdminOrderStatusWithStock(
       // Converte reservas provisórias ativas ou pausadas da cliente em venda
       try {
         if (order.numero_pedido) {
+          const cleanNum = String(order.numero_pedido).replace(/^#+/, '').trim();
+          const searchTerms = Array.from(new Set([cleanNum, String(order.numero_pedido).trim()].filter(Boolean)));
+          const orCondition = searchTerms.map((t) => `motivo.ilike.%${t}%`).join(',');
+
           await supabase
             .from('reservas_estoque')
             .update({ status: 'convertida_venda' })
             .eq('loja_id', lojaId)
             .in('status', ['ativa', 'pausada'])
-            .ilike('motivo', `%${order.numero_pedido}%`);
+            .or(orCondition);
         }
         if (phoneVariants.length > 0) {
           await supabase
@@ -498,12 +502,16 @@ export async function updateAdminOrderStatusWithStock(
       // Libera reservas provisórias associadas à cliente
       try {
         if (order.numero_pedido) {
+          const cleanNum = String(order.numero_pedido).replace(/^#+/, '').trim();
+          const searchTerms = Array.from(new Set([cleanNum, String(order.numero_pedido).trim()].filter(Boolean)));
+          const orCondition = searchTerms.map((t) => `motivo.ilike.%${t}%`).join(',');
+
           await supabase
             .from('reservas_estoque')
             .update({ status: 'liberada' })
             .eq('loja_id', lojaId)
             .in('status', ['ativa', 'pausada'])
-            .ilike('motivo', `%${order.numero_pedido}%`);
+            .or(orCondition);
         }
         if (phoneVariants.length > 0) {
           await supabase
