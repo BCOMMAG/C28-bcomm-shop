@@ -357,6 +357,28 @@ export async function getAdminOrders(
   }
 }
 
+function getCustomerPhoneVariants(order: any): string[] {
+  const rawPhone =
+    order?.clientes_loja?.telefone ||
+    order?.endereco_entrega?.telefone ||
+    order?.cliente_telefone ||
+    '';
+
+  if (!rawPhone) return [];
+
+  const str = String(rawPhone).trim();
+  const clean = str.replace(/\D/g, '');
+  const variants = new Set<string>([str, clean]);
+
+  if (clean.length === 11) {
+    variants.add(`(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`);
+  } else if (clean.length === 10) {
+    variants.add(`(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`);
+  }
+
+  return Array.from(variants).filter(Boolean);
+}
+
 /**
  * Atualiza o status de um pedido na nuvem com controle inteligente de estoque:
  * - Se marcar como PAGO -> Baixa estoque da grade no banco
@@ -373,14 +395,21 @@ export async function updateAdminOrderStatusWithStock(
     // 1. Busca status atual e itens do pedido
     const { data: order, error: orderErr } = await supabase
       .from('pedidos')
-      .select('status, cliente_telefone, itens_pedido (*)')
+      .select(`
+        status,
+        cliente_id,
+        endereco_entrega,
+        clientes_loja (telefone),
+        itens_pedido (*)
+      `)
       .eq('id', orderId)
       .single();
 
     if (orderErr || !order) throw orderErr || new Error('Pedido não encontrado');
 
     const previousStatus = order.status;
-    const itens = order.itens_pedido || [];
+    const itens = (order as any).itens_pedido || [];
+    const phoneVariants = getCustomerPhoneVariants(order);
 
     // Se mudou para PAGO (e antes não era pago nem enviado) -> Baixa estoque!
     const isNowPaid = newStatus === 'pago' || newStatus === 'em_separacao';
@@ -389,13 +418,13 @@ export async function updateAdminOrderStatusWithStock(
     if (isNowPaid && wasPending) {
       console.log('📉 [Estoque] Baixando estoque para pedido confirmado:', orderId);
       // Converte reservas provisórias ativas da cliente em venda
-      if (order.cliente_telefone) {
+      if (phoneVariants.length > 0) {
         try {
           await supabase
             .from('reservas_estoque')
             .update({ status: 'convertida_venda' })
             .eq('loja_id', lojaId)
-            .eq('cliente_telefone', order.cliente_telefone)
+            .in('cliente_telefone', phoneVariants)
             .eq('status', 'ativa');
         } catch {}
       }
@@ -436,8 +465,8 @@ export async function updateAdminOrderStatusWithStock(
               .from('variacoes_produto')
               .select('id, estoque')
               .eq('produto_id', prodId)
-              .ilike('cor_nome', item.cor)
-              .ilike('tamanho', item.tamanho);
+              .ilike('cor_nome', item.cor.trim())
+              .ilike('tamanho', item.tamanho.trim());
 
             if (vars && vars.length > 0) {
               const v = vars[0];
@@ -458,13 +487,13 @@ export async function updateAdminOrderStatusWithStock(
 
     if (isNowCanceled) {
       // Libera reservas provisórias associadas à cliente
-      if (order.cliente_telefone) {
+      if (phoneVariants.length > 0) {
         try {
           await supabase
             .from('reservas_estoque')
             .update({ status: 'liberada' })
             .eq('loja_id', lojaId)
-            .eq('cliente_telefone', order.cliente_telefone)
+            .in('cliente_telefone', phoneVariants)
             .eq('status', 'ativa');
         } catch {}
       }
@@ -549,18 +578,26 @@ export async function releaseOrderReservation(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseBrowserClient();
   try {
-    const { data: order } = await supabase
+    const { data: order, error: orderErr } = await supabase
       .from('pedidos')
-      .select('cliente_telefone')
+      .select(`
+        cliente_id,
+        endereco_entrega,
+        clientes_loja (telefone)
+      `)
       .eq('id', orderId)
       .single();
 
-    if (order?.cliente_telefone) {
+    if (orderErr) throw orderErr;
+
+    const phoneVariants = getCustomerPhoneVariants(order);
+
+    if (phoneVariants.length > 0) {
       await supabase
         .from('reservas_estoque')
         .update({ status: 'liberada' })
         .eq('loja_id', lojaId)
-        .eq('cliente_telefone', order.cliente_telefone)
+        .in('cliente_telefone', phoneVariants)
         .eq('status', 'ativa');
     }
     return { success: true };
