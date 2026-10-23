@@ -44,7 +44,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     isGiftServiceActive,
     allowGiftMessage,
     currentTenant,
-    getItemStock
+    getItemStock,
+    activeReservations
   } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
@@ -688,18 +689,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
 
               {/* Botão Principal: FINALIZAR COMPRA (Leva com segurança para o checkout da loja) */}
-              <button
-                type="button"
-                onClick={() => {
-                  closeCartSilently();
-                  router.push(getStoreCheckoutUrl(currentTenant?.slug));
-                }}
-                className="w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all duration-300 shadow-md active:scale-95 group cursor-pointer"
-              >
-                <Lock className="w-4 h-4" />
-                <span>FINALIZAR COMPRA</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
+              {(() => {
+                const hasReservedItems = items.some((item) => getItemStock(item.productId, item.size, item.color) <= 0);
+                return (
+                  <>
+                    {hasReservedItems && (
+                      <div className="p-2.5 rounded-none bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-[11px] text-rose-900 dark:text-rose-200 flex items-start gap-2 animate-fadeIn">
+                        <Clock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 animate-pulse" />
+                        <span>
+                          <strong>Peça em reserva temporária:</strong> Uma ou mais peças da sua sacola estão atualmente no provador de outra cliente. Remova-a ou fale com a consultora para entrar na fila VIP.
+                        </span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={hasReservedItems}
+                      onClick={() => {
+                        closeCartSilently();
+                        router.push(getStoreCheckoutUrl(currentTenant?.slug));
+                      }}
+                      className={`w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md ${
+                        hasReservedItems
+                          ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                          : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] active:scale-95 group cursor-pointer'
+                      }`}
+                      title={hasReservedItems ? 'Remova as peças em reserva para continuar' : 'Finalizar compra'}
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>{hasReservedItems ? 'PEÇA EM RESERVA NO PROVADOR' : 'FINALIZAR COMPRA'}</span>
+                      {!hasReservedItems && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+                    </button>
+                  </>
+                );
+              })()}
 
               {/* Botão Secundário: Dúvidas / Falar no WhatsApp sem quebrar tela */}
               <button

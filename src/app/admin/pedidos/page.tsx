@@ -69,7 +69,7 @@ import {
 } from '@/lib/reservas';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportOrdersToCsv } from '@/lib/export';
-import { useStore } from '@/context/StoreContext';
+import { useStore, notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { MembroEquipe, logStoreAuditAction } from '@/lib/team';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -582,6 +582,7 @@ export default function AdminPedidosPage() {
       showToast(`❄️ Reserva do pedido #${displayNum} congelada com sucesso!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
+      notifyStockChangeCrossTab();
     } else {
       showToast(res.error || 'Erro ao pausar reserva.', 'error');
     }
@@ -601,6 +602,7 @@ export default function AdminPedidosPage() {
       showToast(`▶️ Reserva do pedido #${displayNum} retomada (+${additionalMinutes} min)!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
+      notifyStockChangeCrossTab();
     } else {
       showToast(res.error || 'Erro ao retomar reserva.', 'error');
     }
@@ -620,6 +622,7 @@ export default function AdminPedidosPage() {
       showToast(`⏱️ Reserva estendida por mais ${minutesToAdd} min!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
+      notifyStockChangeCrossTab();
     } else {
       showToast(res.error || 'Erro ao estender reserva.', 'error');
     }
@@ -664,6 +667,7 @@ export default function AdminPedidosPage() {
 
     const freshOrders = await getAdminOrders(tenantId);
     setOrders(freshOrders);
+    notifyStockChangeCrossTab();
 
     // Se o modal de detalhes estiver aberto para este pedido, atualiza seu status
     if (detailsModalOrder && detailsModalOrder.id === order.id) {
@@ -711,6 +715,7 @@ export default function AdminPedidosPage() {
       showToast(`🔄 Reserva do pedido #${displayNum} reativada por ${additionalMinutes} min!`, 'success');
       const freshRes = await getActiveReservations(tenantId);
       setReservations(freshRes);
+      notifyStockChangeCrossTab();
     } else {
       showToast(res.error || 'Erro ao reativar reserva.', 'error');
     }
@@ -923,6 +928,7 @@ export default function AdminPedidosPage() {
         }).catch(() => {});
 
         setStatusModalOrder(null);
+        notifyStockChangeCrossTab();
       } else {
         showToast(res.error || 'Erro ao alterar status.', 'error');
       }
@@ -966,6 +972,8 @@ export default function AdminPedidosPage() {
         entidade_id: order.id,
         motivo: `Status rápido do pedido #${order.numero_pedido} alterado de ${oldStatus} para ${newStatus}`
       }).catch(() => {});
+
+      notifyStockChangeCrossTab();
     } else {
       showToast(res.error || 'Erro ao atualizar status.', 'error');
     }
@@ -1011,6 +1019,7 @@ export default function AdminPedidosPage() {
     }).catch(() => {});
 
     showToast(`${successCount} pedido(s) atualizado(s) em lote com sucesso!`);
+    notifyStockChangeCrossTab();
     setIsUpdatingBulkStatus(false);
     setBulkStatusModalOpen(false);
     setSelectedOrderIds([]);

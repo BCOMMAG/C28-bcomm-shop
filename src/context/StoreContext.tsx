@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Product, CartItem } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
@@ -54,6 +54,7 @@ interface StoreContextType {
   setSavedAddressInfo: (cep: string, address: ViaCepResponse | null) => void;
   activeReservations: ReservaEstoque[];
   refreshReservations: () => Promise<void>;
+  notifyStockChangeCrossTab: () => void;
   getItemStock: (productId: string, size: string, color: string) => number;
   getVariationAvailability: (productId: string, color: string, size: string) => VariationAvailability;
   getColorAvailability: (productId: string, color: string) => 'disponivel' | 'em_reserva' | 'esgotado';
@@ -91,6 +92,21 @@ interface StoreContextType {
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+/**
+ * Emite notificação de sincronização instantânea entre abas no mesmo navegador.
+ */
+export const notifyStockChangeCrossTab = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('bcomm_stock_sync_tick', Date.now().toString());
+    if ('BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('bcomm_stock_sync');
+      bc.postMessage({ type: 'reservation_change', timestamp: Date.now() });
+      setTimeout(() => bc.close(), 100);
+    }
+  } catch {}
+};
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Inicialização instantânea via cache local (SWR) para eliminar delay visual / FOUC no F5
@@ -239,13 +255,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [currentTenant?.id]);
 
-  // Sincronização em Tempo Real (Supabase Realtime WebSocket + Revalidação ao focar aba)
+  // Sincronização em Tempo Real (Tripla Camada: Supabase WebSocket + Cross-Tab Sync + Heartbeat)
   useEffect(() => {
     if (!currentTenant?.id) return;
 
     const supabase = getSupabaseBrowserClient();
     const channelName = `store-stock-sync-${currentTenant.id}`;
 
+    // Camada 1: Supabase Realtime WebSocket sem filtros restritivos (para capturar INSERT, UPDATE e DELETE sem perdas)
     const channel = supabase
       .channel(channelName)
       .on(
@@ -264,8 +281,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {
           event: '*',
           schema: 'public',
-          table: 'produtos',
-          filter: `loja_id=eq.${currentTenant.id}`
+          table: 'produtos'
         },
         () => {
           refreshProducts();
@@ -276,14 +292,55 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {
           event: '*',
           schema: 'public',
-          table: 'reservas_estoque',
-          filter: `loja_id=eq.${currentTenant.id}`
+          table: 'reservas_estoque'
         },
-        () => {
+        (payload: any) => {
+          if (payload.eventType === 'DELETE' && payload.old?.id) {
+            setActiveReservations((prev) => prev.filter((r) => r.id !== payload.old.id));
+          } else if (payload.eventType === 'INSERT' && payload.new?.id) {
+            setActiveReservations((prev) => [payload.new, ...prev.filter((r) => r.id !== payload.new.id)]);
+          } else if (payload.eventType === 'UPDATE' && payload.new?.id) {
+            setActiveReservations((prev) =>
+              prev.map((r) => (r.id === payload.new.id ? { ...r, ...payload.new } : r))
+            );
+          }
           refreshReservations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`📡 [Realtime] Canal ${channelName} conectado com sucesso!`);
+        }
+      });
+
+    // Camada 2: Sincronização Instantânea Entre Abas (Cross-Tab via BroadcastChannel e localStorage)
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('bcomm_stock_sync');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'reservation_change' || event.data === 'sync') {
+            refreshReservations();
+            refreshProducts();
+          }
+        };
+      }
+    } catch {}
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'bcomm_stock_sync_tick') {
+        refreshReservations();
+        refreshProducts();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    // Camada 3: Pulso Leve de Heartbeat (a cada 8 segundos) e revalidação ao focar aba
+    const heartbeatTimer = setInterval(() => {
+      refreshReservations();
+    }, 8000);
 
     const handleVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -298,7 +355,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       supabase.removeChannel(channel);
-      if (typeof document !== 'undefined') {
+      clearInterval(heartbeatTimer);
+      if (bc) {
+        try { bc.close(); } catch {}
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageEvent);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
@@ -458,113 +520,115 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cartItems, isGift, giftMessage, currentTenant.slug]);
 
-  // Consulta do estoque líquido disponível de uma variante específica (descontando reservas ativas/pausadas)
-  const getItemStock = (productId: string, size: string, color: string): number => {
-    const availability = getVariationAvailability(productId, color, size);
-    return availability.estoqueDisponivel;
-  };
-
   // Avaliação detalhada de disponibilidade de uma combinação específica (Produto + Cor + Tamanho)
-  const getVariationAvailability = (
-    productId: string,
-    color: string,
-    size: string
-  ): VariationAvailability => {
-    const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
-    if (!prod) {
-      return {
-        status: 'disponivel',
-        estoqueFisico: 99,
-        estoqueDisponivel: 99,
-        reservedCount: 0,
-        isReserved: false
-      };
-    }
-
-    let estoqueFisico = 0;
-    let variacaoId: string | undefined = undefined;
-
-    const cleanColor = (color || '').trim().toLowerCase();
-    const cleanSize = (size || '').trim().toLowerCase();
-
-    if (prod.variations && prod.variations.length > 0) {
-      const v = prod.variations.find(
-        (item) =>
-          item.color.trim().toLowerCase() === cleanColor &&
-          item.size.trim().toLowerCase() === cleanSize
-      );
-      if (v !== undefined) {
-        estoqueFisico = Number(v.stock ?? 0);
-        variacaoId = (v as any).id;
+  const getVariationAvailability = useCallback(
+    (productId: string, color: string, size: string): VariationAvailability => {
+      const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+      if (!prod) {
+        return {
+          status: 'disponivel',
+          estoqueFisico: 99,
+          estoqueDisponivel: 99,
+          reservedCount: 0,
+          isReserved: false
+        };
       }
-    } else if (prod.totalStock !== undefined) {
-      estoqueFisico = Number(prod.totalStock);
-    } else {
-      estoqueFisico = Number(prod.remainingPieces ?? 10);
-    }
 
-    // Desconta reservas ativas e reservas pausadas (congeladas)
-    let reservedCount = 0;
-    if (activeReservations && activeReservations.length > 0) {
-      activeReservations.forEach((res) => {
-        const isTargetRes = res.status === 'ativa' || res.status === 'pausada';
-        if (!isTargetRes) return;
+      let estoqueFisico = 0;
+      let variacaoId: string | undefined = undefined;
 
-        const matchVar = variacaoId && res.variacao_id ? res.variacao_id === variacaoId : false;
-        const matchProd =
-          res.produto_id === prod.id &&
-          (res.cor || '').trim().toLowerCase() === cleanColor &&
-          (res.tamanho || '').trim().toLowerCase() === cleanSize;
+      const cleanColor = (color || '').trim().toLowerCase();
+      const cleanSize = (size || '').trim().toLowerCase();
 
-        if (matchVar || matchProd) {
-          reservedCount += Number(res.quantidade || 1);
+      if (prod.variations && prod.variations.length > 0) {
+        const v = prod.variations.find(
+          (item) =>
+            item.color.trim().toLowerCase() === cleanColor &&
+            item.size.trim().toLowerCase() === cleanSize
+        );
+        if (v !== undefined) {
+          estoqueFisico = Number(v.stock ?? 0);
+          variacaoId = (v as any).id;
         }
-      });
-    }
+      } else if (prod.totalStock !== undefined) {
+        estoqueFisico = Number(prod.totalStock);
+      } else {
+        estoqueFisico = Number(prod.remainingPieces ?? 10);
+      }
 
-    const estoqueDisponivel = Math.max(0, estoqueFisico - reservedCount);
-    const isReserved = estoqueFisico > 0 && estoqueDisponivel <= 0;
+      // Desconta reservas ativas e reservas pausadas (congeladas)
+      let reservedCount = 0;
+      if (activeReservations && activeReservations.length > 0) {
+        activeReservations.forEach((res) => {
+          const isTargetRes = res.status === 'ativa' || res.status === 'pausada';
+          if (!isTargetRes) return;
 
-    let status: 'disponivel' | 'em_reserva' | 'esgotado' = 'disponivel';
-    if (estoqueDisponivel > 0) {
-      status = 'disponivel';
-    } else if (isReserved) {
-      status = 'em_reserva';
-    } else {
-      status = 'esgotado';
-    }
+          const matchVar = variacaoId && res.variacao_id ? res.variacao_id === variacaoId : false;
+          const matchProd =
+            res.produto_id === prod.id &&
+            (res.cor || '').trim().toLowerCase() === cleanColor &&
+            (res.tamanho || '').trim().toLowerCase() === cleanSize;
 
-    return {
-      status,
-      estoqueFisico,
-      estoqueDisponivel,
-      reservedCount,
-      isReserved
-    };
-  };
+          if (matchVar || matchProd) {
+            reservedCount += Number(res.quantidade || 1);
+          }
+        });
+      }
+
+      const estoqueDisponivel = Math.max(0, estoqueFisico - reservedCount);
+      const isReserved = estoqueFisico > 0 && estoqueDisponivel <= 0;
+
+      let status: 'disponivel' | 'em_reserva' | 'esgotado' = 'disponivel';
+      if (estoqueDisponivel > 0) {
+        status = 'disponivel';
+      } else if (isReserved) {
+        status = 'em_reserva';
+      } else {
+        status = 'esgotado';
+      }
+
+      return {
+        status,
+        estoqueFisico,
+        estoqueDisponivel,
+        reservedCount,
+        isReserved
+      };
+    },
+    [products, activeReservations]
+  );
 
   // Avaliação do status agregado de uma Cor (analisando todos os tamanhos daquela cor)
-  const getColorAvailability = (
-    productId: string,
-    colorName: string
-  ): 'disponivel' | 'em_reserva' | 'esgotado' => {
-    const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
-    if (!prod) return 'disponivel';
+  const getColorAvailability = useCallback(
+    (productId: string, colorName: string): 'disponivel' | 'em_reserva' | 'esgotado' => {
+      const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+      if (!prod) return 'disponivel';
 
-    const sizes = prod.sizes && prod.sizes.length > 0 ? prod.sizes : ['Tamanho Único'];
-    const availabilities = sizes.map((size) => getVariationAvailability(productId, colorName, size));
+      const sizes = prod.sizes && prod.sizes.length > 0 ? prod.sizes : ['Tamanho Único'];
+      const availabilities = sizes.map((size) => getVariationAvailability(productId, colorName, size));
 
-    // Se pelo menos um tamanho tiver estoque líquido > 0, a cor está disponível
-    const hasAvailable = availabilities.some((a) => a.status === 'disponivel');
-    if (hasAvailable) return 'disponivel';
+      // Se pelo menos um tamanho tiver estoque líquido > 0, a cor está disponível
+      const hasAvailable = availabilities.some((a) => a.status === 'disponivel');
+      if (hasAvailable) return 'disponivel';
 
-    // Se não tem disponível, mas pelo menos um tamanho tem peça em reserva (físico > 0)
-    const hasReserved = availabilities.some((a) => a.status === 'em_reserva');
-    if (hasReserved) return 'em_reserva';
+      // Se não tem disponível, mas pelo menos um tamanho tem peça em reserva (físico > 0)
+      const hasReserved = availabilities.some((a) => a.status === 'em_reserva');
+      if (hasReserved) return 'em_reserva';
 
-    // Caso contrário, está esgotada no estoque físico
-    return 'esgotado';
-  };
+      // Caso contrário, está esgotada no estoque físico
+      return 'esgotado';
+    },
+    [products, getVariationAvailability]
+  );
+
+  // Consulta do estoque líquido disponível de uma variante específica (descontando reservas ativas/pausadas)
+  const getItemStock = useCallback(
+    (productId: string, size: string, color: string): number => {
+      const availability = getVariationAvailability(productId, color, size);
+      return availability.estoqueDisponivel;
+    },
+    [getVariationAvailability]
+  );
 
   // Revalidação Silenciosa da Sacola quando o catálogo/estoque ou reservas são atualizados
   useEffect(() => {
@@ -778,6 +842,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSavedAddressInfo,
         activeReservations,
         refreshReservations,
+        notifyStockChangeCrossTab,
         getItemStock,
         getVariationAvailability,
         getColorAvailability,

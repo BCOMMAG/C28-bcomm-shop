@@ -80,6 +80,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     currentTenant,
     cartItems,
     openCart,
+    activeReservations,
     getItemStock,
     getVariationAvailability,
     getColorAvailability
@@ -131,7 +132,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       };
     }
     return getVariationAvailability(product.id, selectedColor, selectedSize);
-  }, [product, selectedColor, selectedSize, getVariationAvailability]);
+  }, [product, selectedColor, selectedSize, getVariationAvailability, activeReservations]);
 
   // Peça está retida por reserva temporária de outra cliente no WhatsApp
   const isCombinationInReservation = currentVariationAvailability.status === 'em_reserva';

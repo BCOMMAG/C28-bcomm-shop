@@ -42,7 +42,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const [isJustAdded, setIsJustAdded] = useState(false);
   const router = useRouter();
-  const { cartCount, addToCart, getItemStock } = useStore();
+  const { cartCount, addToCart, getItemStock, activeReservations } = useStore();
 
   const isOutOfStock = product.totalStock === 0;
 
@@ -57,7 +57,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     }
     const liquid = getItemStock(product.id, 'Tamanho Único', 'Padrão');
     return liquid <= 0 && (product.totalStock ?? 0) > 0;
-  }, [product, getItemStock, isOutOfStock]);
+  }, [product, getItemStock, isOutOfStock, activeReservations]);
 
   const handleAction = (e: React.MouseEvent) => {
     e.preventDefault();
