@@ -678,10 +678,25 @@ export async function reactivateOrderReservation(
         };
       }
 
+      let varId = item.variacao_id || null;
+      if (!varId && item.cor && item.tamanho) {
+        try {
+          const { data: vData } = await supabase
+            .from('variacoes_produto')
+            .select('id')
+            .eq('produto_id', prodId)
+            .ilike('cor_nome', item.cor.trim())
+            .ilike('tamanho', item.tamanho.trim())
+            .limit(1)
+            .maybeSingle();
+          if (vData?.id) varId = vData.id;
+        } catch {}
+      }
+
       newReservas.push({
         loja_id: lojaId,
         produto_id: prodId,
-        variacao_id: item.variacao_id || null,
+        variacao_id: varId,
         produto_nome: item.nome_produto || 'Produto',
         tamanho: item.tamanho || 'U',
         cor: item.cor || 'Padrão',

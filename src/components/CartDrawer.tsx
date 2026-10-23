@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight, Gift, Sparkles, Check, Heart, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock, ArrowRight, Gift, Sparkles, Check, Heart, AlertTriangle, Loader2, Clock } from 'lucide-react';
 import { CartItem } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
@@ -337,6 +337,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         {(() => {
                           const itemStock = item.maxStock ?? getItemStock(item.productId, item.size, item.color);
                           const isMaxReached = item.quantity >= itemStock;
+                          const isItemReserved = itemStock <= 0;
+
+                          if (isItemReserved) {
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-rose-600 animate-pulse" />
+                                  Em reserva no provador
+                                </span>
+                              </div>
+                            );
+                          }
 
                           return (
                             <div className="flex items-center gap-2">

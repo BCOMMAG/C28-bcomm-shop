@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, Eye, ShoppingBag, Plus, Check } from 'lucide-react';
+import { Heart, Eye, ShoppingBag, Plus, Check, Clock } from 'lucide-react';
 import { Product } from '@/types';
 import { useStore } from '@/context/StoreContext';
 
@@ -42,28 +42,49 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const [isJustAdded, setIsJustAdded] = useState(false);
   const router = useRouter();
-  const { cartCount, addToCart } = useStore();
+  const { cartCount, addToCart, getItemStock } = useStore();
 
   const isOutOfStock = product.totalStock === 0;
+
+  // Verifica se todas as unidades físicas do produto estão atualmente retidas por reservas temporárias
+  const isAllReserved = useMemo(() => {
+    if (isOutOfStock) return false;
+    if (product.variations && product.variations.length > 0) {
+      const anyPhysical = product.variations.some((v) => v.stock > 0);
+      if (!anyPhysical) return false;
+      const anyLiquid = product.variations.some((v) => getItemStock(product.id, v.size, v.color) > 0);
+      return !anyLiquid;
+    }
+    const liquid = getItemStock(product.id, 'Tamanho Único', 'Padrão');
+    return liquid <= 0 && (product.totalStock ?? 0) > 0;
+  }, [product, getItemStock, isOutOfStock]);
 
   const handleAction = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isOutOfStock) {
+    if (isOutOfStock || isAllReserved) {
       onOpenDetails(product);
       return;
     }
 
-    // Procura o primeiro tamanho e cor com estoque real disponível
+    // Procura o primeiro tamanho e cor com estoque líquido disponível
     let targetSize = product.sizes?.[0] || 'Tamanho Único';
     let targetColor = product.colors?.[0]?.name || 'Padrão';
 
     if (product.variations && product.variations.length > 0) {
-      const availableVar = product.variations.find((v) => v.stock > 0);
+      const availableVar = product.variations.find(
+        (v) => getItemStock(product.id, v.size, v.color) > 0
+      );
       if (availableVar) {
         targetSize = availableVar.size;
         targetColor = availableVar.color;
       }
+    }
+
+    // Se mesmo assim não houver estoque líquido disponível, abre o modal
+    if (getItemStock(product.id, targetSize, targetColor) <= 0) {
+      onOpenDetails(product);
+      return;
     }
 
     // Adiciona diretamente à sacola com feedback visual instantâneo, sem abrir modal de detalhes
@@ -129,6 +150,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 }`}
               >
                 Esgotado
+              </div>
+            );
+          }
+
+          // 0.5. Produto com unidades físicas, mas 100% em Reserva Temporária no WhatsApp
+          if (isAllReserved) {
+            return (
+              <div
+                className={`absolute top-2.5 left-2.5 bg-rose-600/95 dark:bg-rose-900/95 text-white uppercase tracking-wider font-bold rounded-none backdrop-blur-sm border border-rose-400/40 shadow-xs flex items-center gap-1 ${
+                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                }`}
+              >
+                <Clock className="w-2.5 h-2.5 animate-pulse" />
+                <span>Em Reserva</span>
               </div>
             );
           }
@@ -335,6 +370,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               aria-label="Esgotado"
             >
               <span>Esgotado</span>
+            </button>
+          ) : isAllReserved ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenDetails(product);
+              }}
+              className={`w-full sm:w-auto rounded-none bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs ${
+                isCompact
+                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
+                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
+              }`}
+              title="Peça em reserva temporária no provador de outra cliente - Clique para lista VIP"
+              aria-label="Em Reserva"
+            >
+              <Clock className="w-3.5 h-3.5 animate-pulse" />
+              <span>Em Reserva</span>
             </button>
           ) : (
             <button

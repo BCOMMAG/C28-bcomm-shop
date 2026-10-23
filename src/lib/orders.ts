@@ -308,6 +308,33 @@ export async function createOrderInDatabase(payload: CreateOrderPayload): Promis
         : {})
     };
 
+    // Validação Atômica em Tempo Real: Impede reservas e pedidos duplicados se houver colisão de milissegundos
+    if (payload.itens && payload.itens.length > 0) {
+      const liveStockCheck = await validateLiveCartStock(
+        payload.itens.map((i, idx) => ({
+          id: `${i.productId || idx}-${i.size}-${i.color}`,
+          productId: i.productId || '',
+          name: i.name,
+          price: i.price,
+          image: i.image || '',
+          size: i.size,
+          color: i.color,
+          quantity: i.quantity
+        })),
+        lojaId
+      );
+
+      if (!liveStockCheck.isValid && liveStockCheck.divergences.length > 0) {
+        const outItems = liveStockCheck.divergences.map((d) => `${d.name} (${d.color}/${d.size})`).join(', ');
+        console.warn(`🛑 [createOrderInDatabase] Bloqueio atômico de venda duplicada. Estoque líquido insuficiente ou em reserva: ${outItems}`);
+        return {
+          success: false,
+          numeroPedido,
+          error: `ESTOQUE_INDISPONIVEL: ${outItems}`
+        };
+      }
+    }
+
     // Inserir o registro na tabela 'pedidos'
     const { data: pedidoData, error: pedidoError } = await supabase
       .from('pedidos')

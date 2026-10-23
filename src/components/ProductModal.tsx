@@ -79,7 +79,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     products,
     currentTenant,
     cartItems,
-    openCart
+    openCart,
+    getItemStock,
+    getVariationAvailability,
+    getColorAvailability
   } = useStore();
 
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
@@ -106,29 +109,37 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  // Obter estoque real da combinação Cor + Tamanho
+  // Obter estoque líquido real da combinação Cor + Tamanho (descontando reservas ativas vigentes)
   const getVariationStock = (colorName: string, sizeName: string): number => {
     if (!product) return 0;
-    if (product.variations && product.variations.length > 0) {
-      const v = product.variations.find(
-        (item) =>
-          item.color.trim().toLowerCase() === colorName.trim().toLowerCase() &&
-          item.size.trim().toLowerCase() === sizeName.trim().toLowerCase()
-      );
-      if (v !== undefined) return v.stock;
-    }
-    if (product.totalStock !== undefined) return product.totalStock;
-    return product.remainingPieces ?? 10;
+    return getItemStock(product.id, sizeName, colorName);
   };
 
   const isSizeAvailable = (sizeName: string, colorName: string = selectedColor): boolean => {
     return getVariationStock(colorName, sizeName) > 0;
   };
 
+  // Disponibilidade detalhada da combinação selecionada (status: 'disponivel' | 'em_reserva' | 'esgotado')
+  const currentVariationAvailability = useMemo(() => {
+    if (!product || !selectedColor || !selectedSize) {
+      return {
+        status: 'esgotado' as const,
+        estoqueFisico: 0,
+        estoqueDisponivel: 0,
+        reservedCount: 0,
+        isReserved: false
+      };
+    }
+    return getVariationAvailability(product.id, selectedColor, selectedSize);
+  }, [product, selectedColor, selectedSize, getVariationAvailability]);
+
+  // Peça está retida por reserva temporária de outra cliente no WhatsApp
+  const isCombinationInReservation = currentVariationAvailability.status === 'em_reserva';
+
   const currentVariationStock = useMemo(() => {
     if (!product || !selectedColor || !selectedSize) return 0;
-    return getVariationStock(selectedColor, selectedSize);
-  }, [product, selectedColor, selectedSize]);
+    return currentVariationAvailability.estoqueDisponivel;
+  }, [product, selectedColor, selectedSize, currentVariationAvailability]);
 
   // Quantidade que o cliente já incluiu na sacola desta combinação exata
   const quantityInCart = useMemo(() => {
@@ -201,16 +212,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       const initialColor = product.colors[0]?.name || '';
       setSelectedColor(initialColor);
 
-      // Procura o primeiro tamanho disponível com estoque para esta cor
+      // Procura o primeiro tamanho com estoque líquido livre para esta cor
       const firstAvailableSize =
         product.sizes.find((s) => {
-          if (!product.variations || product.variations.length === 0) return true;
-          const v = product.variations.find(
-            (item) =>
-              item.color.trim().toLowerCase() === initialColor.trim().toLowerCase() &&
-              item.size.trim().toLowerCase() === s.trim().toLowerCase()
-          );
-          return v ? v.stock > 0 : true;
+          const avail = getVariationAvailability(product.id, initialColor, s);
+          return avail.status === 'disponivel';
         }) || product.sizes[0] || '';
 
       setSelectedSize(firstAvailableSize);
@@ -293,7 +299,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleAdd = () => {
-    if (isCurrentSelectionOutOfStock || isCartLimitReached) return;
+    if (isCurrentSelectionOutOfStock || isCartLimitReached || isCombinationInReservation) return;
     const qtyToAdd = Math.min(quantity, Math.max(1, effectiveAvailableStock));
     if (effectiveAvailableStock <= 0) return;
     onAddToCart({
@@ -307,7 +313,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleBuyNow = () => {
-    if (!product || isCurrentSelectionOutOfStock || isCartLimitReached) return;
+    if (!product || isCurrentSelectionOutOfStock || isCartLimitReached || isCombinationInReservation) return;
     const qtyToAdd = Math.min(quantity, Math.max(1, effectiveAvailableStock));
     if (effectiveAvailableStock <= 0) return;
     onAddToCart({
@@ -397,6 +403,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
   };
 
+  const generateWhatsAppReservationLink = () => {
+    const storeWhatsapp = currentTenant?.whatsapp?.replace(/\D/g, '') || STORE_INFO.whatsapp;
+    let text = `Olá Leidy! Vi na loja o look *${product.name}* (Cor: *${selectedColor}*, Tamanho: *${selectedSize}*).\n\nNotei que a última peça está em reserva temporária no provador de outra cliente. Gostaria de entrar na lista de espera VIP com prioridade caso a peça seja liberada! ✨`;
+    return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-fadeIn"
@@ -418,15 +430,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleAdd}
-              disabled={isCurrentSelectionOutOfStock}
+              onClick={isCombinationInReservation ? () => window.open(generateWhatsAppReservationLink(), '_blank') : handleAdd}
+              disabled={isCurrentSelectionOutOfStock && !isCombinationInReservation}
               className={`${
-                isCurrentSelectionOutOfStock
+                isCombinationInReservation
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md'
+                  : isCurrentSelectionOutOfStock
                   ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
                   : 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer'
-              } text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-2 transition-all duration-300 shadow-sm`}
+              } text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-2 transition-all duration-300 shadow-sm flex items-center gap-1.5`}
             >
-              {isCurrentSelectionOutOfStock ? 'ESGOTADO' : addedAnimation ? 'ADICIONADO!' : 'ADICIONAR À SACOLA'}
+              {isCombinationInReservation ? (
+                <>
+                  <Clock className="w-3.5 h-3.5 text-white animate-pulse" />
+                  <span>EM RESERVA (FILA VIP)</span>
+                </>
+              ) : isCurrentSelectionOutOfStock ? (
+                'ESGOTADO'
+              ) : addedAnimation ? (
+                'ADICIONADO!'
+              ) : (
+                'ADICIONAR À SACOLA'
+              )}
             </button>
             <button
               onClick={onClose}
@@ -678,6 +703,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <div className="flex items-center gap-2.5 flex-wrap">
                   {product.colors.map((color, idx) => {
                     const isColorSelected = selectedColor === color.name;
+                    const colorStatus = getColorAvailability(product.id, color.name);
+                    const isColorReserved = colorStatus === 'em_reserva';
+                    const isColorOutOfStock = colorStatus === 'esgotado';
+
                     return (
                       <button
                         key={idx}
@@ -688,14 +717,24 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             if (mediaIdx !== -1) setActiveMediaIndex(mediaIdx);
                           }
                           // Se o tamanho atual não estiver disponível na nova cor, seleciona o primeiro disponível
-                          const stockInNewColor = getVariationStock(color.name, selectedSize);
-                          if (stockInNewColor <= 0) {
-                            const nextAvailable = product.sizes.find((s) => getVariationStock(color.name, s) > 0);
+                          const currentAvail = getVariationAvailability(product.id, color.name, selectedSize);
+                          if (currentAvail.status !== 'disponivel') {
+                            const nextAvailable = product.sizes.find(
+                              (s) => getVariationAvailability(product.id, color.name, s).status === 'disponivel'
+                            );
                             if (nextAvailable) setSelectedSize(nextAvailable);
                           }
                         }}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-none border text-xs transition-all cursor-pointer ${
-                          isColorSelected
+                          isColorReserved
+                            ? isColorSelected
+                              ? 'border-rose-500 bg-rose-50/90 dark:bg-rose-950/60 font-bold text-rose-900 dark:text-rose-100 ring-1 ring-rose-500 shadow-xs'
+                              : 'border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 hover:border-rose-400'
+                            : isColorOutOfStock
+                            ? isColorSelected
+                              ? 'border-neutral-400 bg-neutral-200 dark:bg-neutral-800 font-bold text-neutral-600 dark:text-neutral-300'
+                              : 'border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 opacity-60'
+                            : isColorSelected
                             ? 'border-[#C5A059] bg-[#C5A059]/10 font-bold text-[#1A1918] dark:text-white ring-1 ring-[#C5A059]'
                             : 'border-black/20 dark:border-white/20 bg-white dark:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1] hover:border-[#C5A059]'
                         }`}
@@ -705,6 +744,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           style={{ backgroundColor: color.hex }}
                         />
                         <span>{color.name}</span>
+                        {isColorReserved && (
+                          <span className="text-[9px] font-semibold text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-1 py-0.5 rounded-none flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" /> Reserva
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -712,13 +756,20 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                 {/* Frase de Estoque Limitado (Conforme o print) */}
                 <p className="text-[11px] font-bold text-[#1A1918] dark:text-[#FAF8F5] mt-2 mb-2">
-                  {currentVariationStock > 0 && currentVariationStock <= 5
-                    ? `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
-                    : product.remainingPieces && product.remainingPieces <= 5
-                    ? `Últimas ${product.remainingPieces} unidades em estoque com este preço!`
-                    : (product.isOutlet || hasDiscount)
-                    ? 'Últimas 3 unidades em estoque com este preço!'
-                    : 'Peça exclusiva com poucas unidades no estoque!'}
+                  {isCombinationInReservation ? (
+                    <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-bold">
+                      <Clock className="w-3.5 h-3.5 animate-pulse" />
+                      Última unidade desta combinação em reserva temporária no provador!
+                    </span>
+                  ) : currentVariationStock > 0 && currentVariationStock <= 5 ? (
+                    `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
+                  ) : product.remainingPieces && product.remainingPieces <= 5 ? (
+                    `Últimas ${product.remainingPieces} unidades em estoque com este preço!`
+                  ) : (product.isOutlet || hasDiscount) ? (
+                    'Últimas 3 unidades em estoque com este preço!'
+                  ) : (
+                    'Peça exclusiva com poucas unidades no estoque!'
+                  )}
                 </p>
               </div>
 
@@ -741,8 +792,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <div className="flex flex-wrap gap-2.5">
                   {product.sizes.map((size, idx) => {
                     const isSizeSelected = selectedSize === size;
-                    const available = isSizeAvailable(size, selectedColor);
-                    const stock = getVariationStock(selectedColor, size);
+                    const avail = getVariationAvailability(product.id, selectedColor, size);
+                    const isReserved = avail.status === 'em_reserva';
+                    const isOutOfStock = avail.status === 'esgotado';
+                    const stock = avail.estoqueDisponivel;
 
                     return (
                       <button
@@ -751,11 +804,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           setSelectedSize(size);
                           setQuantity(1);
                         }}
-                        title={!available ? 'Tamanho esgotado nesta cor - Clique para ser avisada na reposição' : `Em estoque (${stock} unidades)`}
+                        title={
+                          isReserved
+                            ? 'Tamanho em reserva temporária por outra cliente no WhatsApp'
+                            : isOutOfStock
+                            ? 'Tamanho esgotado nesta cor - Clique para ser avisada na reposição'
+                            : `Em estoque (${stock} unidades)`
+                        }
                         className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border cursor-pointer ${
-                          !available
+                          isReserved
                             ? isSizeSelected
-                              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-400 ring-1 ring-rose-400 shadow-xs'
+                              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-500 ring-1 ring-rose-500 shadow-xs'
+                              : 'bg-rose-50/50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:border-rose-400'
+                            : isOutOfStock
+                            ? isSizeSelected
+                              ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-400 ring-1 ring-neutral-400 shadow-xs'
                               : 'opacity-60 line-through border-dashed border-red-300 dark:border-red-900 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 hover:opacity-100 hover:border-rose-400'
                             : isSizeSelected
                             ? 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] border-[#1A1918] dark:border-white shadow-xs'
@@ -763,7 +826,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         }`}
                       >
                         <span>{size}</span>
-                        {!available && <span className="ml-1 text-[9px] uppercase tracking-tighter no-underline font-normal">(Esgotado)</span>}
+                        {isReserved && (
+                          <span className="ml-1 text-[9px] uppercase tracking-tighter text-rose-600 dark:text-rose-400 font-semibold no-underline">
+                            (Em Reserva)
+                          </span>
+                        )}
+                        {isOutOfStock && (
+                          <span className="ml-1 text-[9px] uppercase tracking-tighter no-underline font-normal">
+                            (Esgotado)
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -772,7 +844,34 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
               {/* Seletor de Quantidade & Ações Principais */}
               <div className="mt-5 space-y-2.5">
-                {isCurrentSelectionOutOfStock ? (
+                {isCombinationInReservation ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 p-3.5 text-xs text-rose-950 dark:text-rose-100">
+                      <div className="flex items-center gap-2 mb-1 text-rose-700 dark:text-rose-300 font-bold">
+                        <Clock className="w-4 h-4 text-rose-600 dark:text-rose-400 animate-pulse" />
+                        <span>Peça em reserva temporária no provador</span>
+                      </div>
+                      <p className="text-[11px] text-rose-800/90 dark:text-rose-300/90 leading-relaxed mb-2">
+                        Esta peça ({selectedColor} / {selectedSize}) foi reservada por outra cliente via WhatsApp. Caso o pagamento não seja concluído nos próximos minutos, ela será liberada imediatamente de volta para a vitrine.
+                      </p>
+                      <p className="text-[11px] font-semibold text-rose-900 dark:text-rose-200">
+                        Deseja ter prioridade caso seja liberada? Fale com a nossa vendedora para garantir sua vaga na fila VIP:
+                      </p>
+                    </div>
+
+                    {/* Botão de Destaque: Falar com Vendedora (Fila VIP) */}
+                    <a
+                      href={generateWhatsAppReservationLink()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 px-5 rounded-none text-xs uppercase tracking-widest font-extrabold flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white transition-all duration-300 shadow-md cursor-pointer"
+                      title="Falar no WhatsApp para lista de espera VIP"
+                    >
+                      <MessageCircle className="w-4 h-4 fill-white text-white" />
+                      <span>FALAR COM VENDEDORA (LISTA DE ESPERA)</span>
+                    </a>
+                  </div>
+                ) : isCurrentSelectionOutOfStock ? (
                   <div className="space-y-3 pt-1">
                     <div className="bg-amber-50 dark:bg-amber-950/40 border border-[#C5A059]/40 p-3.5 text-xs text-amber-950 dark:text-amber-200">
                       <div className="flex items-center gap-2 mb-1">

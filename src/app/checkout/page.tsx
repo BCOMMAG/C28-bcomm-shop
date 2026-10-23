@@ -556,17 +556,13 @@ export default function CheckoutPage() {
 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const newOrderId = `LB-2026-${randomCode}`;
-    setOrderId(newOrderId);
-    setOrderSubmitted(true);
-    setShowPendingModal(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const vis = currentTenant?.configuracoes_visuais as any;
     const tempoReservaMinutos = Number(vis?.tempo_reserva_minutos ?? 20);
     const reservaAtiva = vis?.reserva_estoque_ativa !== false;
 
     // Salva o pedido e os itens oficialmente no banco de dados Supabase com reserva temporária
-    createOrderInDatabase({
+    const orderResult = await createOrderInDatabase({
       numeroPedido: newOrderId,
       cliente: {
         nome: customerName || 'Cliente WhatsApp',
@@ -605,6 +601,30 @@ export default function CheckoutPage() {
       tempoReservaMinutos,
       reservaAtiva
     });
+
+    if (!orderResult.success && orderResult.error?.includes('ESTOQUE_INDISPONIVEL')) {
+      // Pedido interceptado por colisão de reserva em tempo real
+      const freshValidation = await validateLiveCartStock(cartItems, currentTenant?.id);
+      freshValidation.divergences.forEach((div) => {
+        if (div.disponivel <= 0) {
+          removeFromCart(div.itemId);
+        } else {
+          const delta = div.disponivel - div.solicitado;
+          updateCartQuantity(div.itemId, delta);
+        }
+      });
+      setStockDivergenceModal({
+        isOpen: true,
+        divergences: freshValidation.divergences
+      });
+      setShowPendingModal(false);
+      return;
+    }
+
+    setOrderId(newOrderId);
+    setOrderSubmitted(true);
+    setShowPendingModal(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Se utilizou cupom promocional, incrementa o contador real no banco de dados
     if (appliedCoupon?.code) {

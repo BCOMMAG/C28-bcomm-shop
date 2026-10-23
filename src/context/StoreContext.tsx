@@ -10,6 +10,15 @@ import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/te
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getActiveReservations, ReservaEstoque } from '@/lib/reservas';
+
+export interface VariationAvailability {
+  status: 'disponivel' | 'em_reserva' | 'esgotado';
+  estoqueFisico: number;
+  estoqueDisponivel: number;
+  reservedCount: number;
+  isReserved: boolean;
+}
 
 interface StoreContextType {
   currentTenant: Loja;
@@ -43,7 +52,11 @@ interface StoreContextType {
   savedCep: string;
   savedAddress: ViaCepResponse | null;
   setSavedAddressInfo: (cep: string, address: ViaCepResponse | null) => void;
+  activeReservations: ReservaEstoque[];
+  refreshReservations: () => Promise<void>;
   getItemStock: (productId: string, size: string, color: string) => number;
+  getVariationAvailability: (productId: string, color: string, size: string) => VariationAvailability;
+  getColorAvailability: (productId: string, color: string) => 'disponivel' | 'em_reserva' | 'esgotado';
   addToCart: (params: {
     product: Product;
     size: string;
@@ -136,6 +149,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { text, active, estilo };
   }, [currentTenant]);
 
+  // Reservas de estoque ativas e pausadas sincronizadas com o banco
+  const [activeReservations, setActiveReservations] = useState<ReservaEstoque[]>([]);
+
+  const refreshReservations = async () => {
+    const tenantId = currentTenant?.id || DEFAULT_LEIDY_TENANT.id;
+    if (!tenantId) return;
+    try {
+      const res = await getActiveReservations(tenantId);
+      setActiveReservations(res || []);
+    } catch (e) {
+      console.warn('Erro ao carregar reservas ativas na vitrine:', e);
+    }
+  };
+
   // Carrega produtos dinâmicos e hero banner do Supabase na inicialização com suporte a rotas limpas /:slug/ e ?loja=slug
   const refreshProducts = async () => {
     setIsLoadingProducts(true);
@@ -195,9 +222,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     refreshProducts();
+    refreshReservations();
 
     const handleUpdate = () => {
       refreshProducts();
+      refreshReservations();
     };
 
     if (typeof window !== 'undefined') {
@@ -208,7 +237,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         window.removeEventListener('bcomm:banners_updated', handleUpdate);
       };
     }
-  }, []);
+  }, [currentTenant?.id]);
 
   // Sincronização em Tempo Real (Supabase Realtime WebSocket + Revalidação ao focar aba)
   useEffect(() => {
@@ -242,11 +271,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           refreshProducts();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reservas_estoque',
+          filter: `loja_id=eq.${currentTenant.id}`
+        },
+        () => {
+          refreshReservations();
+        }
+      )
       .subscribe();
 
     const handleVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshProducts();
+        refreshReservations();
       }
     };
 
@@ -416,23 +458,115 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cartItems, isGift, giftMessage, currentTenant.slug]);
 
-  // Consulta do estoque máximo de uma variante específica
+  // Consulta do estoque líquido disponível de uma variante específica (descontando reservas ativas/pausadas)
   const getItemStock = (productId: string, size: string, color: string): number => {
+    const availability = getVariationAvailability(productId, color, size);
+    return availability.estoqueDisponivel;
+  };
+
+  // Avaliação detalhada de disponibilidade de uma combinação específica (Produto + Cor + Tamanho)
+  const getVariationAvailability = (
+    productId: string,
+    color: string,
+    size: string
+  ): VariationAvailability => {
     const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
-    if (!prod) return 99;
+    if (!prod) {
+      return {
+        status: 'disponivel',
+        estoqueFisico: 99,
+        estoqueDisponivel: 99,
+        reservedCount: 0,
+        isReserved: false
+      };
+    }
+
+    let estoqueFisico = 0;
+    let variacaoId: string | undefined = undefined;
+
+    const cleanColor = (color || '').trim().toLowerCase();
+    const cleanSize = (size || '').trim().toLowerCase();
+
     if (prod.variations && prod.variations.length > 0) {
       const v = prod.variations.find(
         (item) =>
-          item.color.trim().toLowerCase() === (color || '').trim().toLowerCase() &&
-          item.size.trim().toLowerCase() === (size || '').trim().toLowerCase()
+          item.color.trim().toLowerCase() === cleanColor &&
+          item.size.trim().toLowerCase() === cleanSize
       );
-      if (v !== undefined) return v.stock;
+      if (v !== undefined) {
+        estoqueFisico = Number(v.stock ?? 0);
+        variacaoId = (v as any).id;
+      }
+    } else if (prod.totalStock !== undefined) {
+      estoqueFisico = Number(prod.totalStock);
+    } else {
+      estoqueFisico = Number(prod.remainingPieces ?? 10);
     }
-    if (prod.totalStock !== undefined) return prod.totalStock;
-    return prod.remainingPieces ?? 10;
+
+    // Desconta reservas ativas e reservas pausadas (congeladas)
+    let reservedCount = 0;
+    if (activeReservations && activeReservations.length > 0) {
+      activeReservations.forEach((res) => {
+        const isTargetRes = res.status === 'ativa' || res.status === 'pausada';
+        if (!isTargetRes) return;
+
+        const matchVar = variacaoId && res.variacao_id ? res.variacao_id === variacaoId : false;
+        const matchProd =
+          res.produto_id === prod.id &&
+          (res.cor || '').trim().toLowerCase() === cleanColor &&
+          (res.tamanho || '').trim().toLowerCase() === cleanSize;
+
+        if (matchVar || matchProd) {
+          reservedCount += Number(res.quantidade || 1);
+        }
+      });
+    }
+
+    const estoqueDisponivel = Math.max(0, estoqueFisico - reservedCount);
+    const isReserved = estoqueFisico > 0 && estoqueDisponivel <= 0;
+
+    let status: 'disponivel' | 'em_reserva' | 'esgotado' = 'disponivel';
+    if (estoqueDisponivel > 0) {
+      status = 'disponivel';
+    } else if (isReserved) {
+      status = 'em_reserva';
+    } else {
+      status = 'esgotado';
+    }
+
+    return {
+      status,
+      estoqueFisico,
+      estoqueDisponivel,
+      reservedCount,
+      isReserved
+    };
   };
 
-  // Revalidação Silenciosa da Sacola quando o catálogo/estoque é carregado ou atualizado
+  // Avaliação do status agregado de uma Cor (analisando todos os tamanhos daquela cor)
+  const getColorAvailability = (
+    productId: string,
+    colorName: string
+  ): 'disponivel' | 'em_reserva' | 'esgotado' => {
+    const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+    if (!prod) return 'disponivel';
+
+    const sizes = prod.sizes && prod.sizes.length > 0 ? prod.sizes : ['Tamanho Único'];
+    const availabilities = sizes.map((size) => getVariationAvailability(productId, colorName, size));
+
+    // Se pelo menos um tamanho tiver estoque líquido > 0, a cor está disponível
+    const hasAvailable = availabilities.some((a) => a.status === 'disponivel');
+    if (hasAvailable) return 'disponivel';
+
+    // Se não tem disponível, mas pelo menos um tamanho tem peça em reserva (físico > 0)
+    const hasReserved = availabilities.some((a) => a.status === 'em_reserva');
+    if (hasReserved) return 'em_reserva';
+
+    // Caso contrário, está esgotada no estoque físico
+    return 'esgotado';
+  };
+
+  // Revalidação Silenciosa da Sacola quando o catálogo/estoque ou reservas são atualizados
   useEffect(() => {
     if (!products || products.length === 0) return;
     setCartItems((prev) => {
@@ -442,7 +576,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const availableStock = getItemStock(item.productId, item.size, item.color);
           if (availableStock <= 0) {
             changed = true;
-            return null; // Peça esgotou
+            return null; // Peça esgotou ou entrou em reserva
           }
           if (item.quantity > availableStock) {
             changed = true;
@@ -458,7 +592,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       return changed ? updated : prev;
     });
-  }, [products]);
+  }, [products, activeReservations]);
 
   const addToCart = ({
     product,
@@ -642,7 +776,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         savedCep,
         savedAddress,
         setSavedAddressInfo,
+        activeReservations,
+        refreshReservations,
         getItemStock,
+        getVariationAvailability,
+        getColorAvailability,
         addToCart,
         updateCartQuantity,
         removeFromCart,
