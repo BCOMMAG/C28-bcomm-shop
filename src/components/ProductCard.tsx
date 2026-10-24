@@ -106,9 +106,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onOpenDetails(product)}
     >
-      {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) */}
+      {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) e altura máxima proporcional */}
       <div
-        className="relative aspect-[3/4] w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
+        className="relative aspect-[3/4] max-h-[250px] sm:max-h-[265px] lg:max-h-[280px] xl:max-h-[340px] 2xl:max-h-[400px] w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
         onClick={() => onOpenDetails(product)}
       >
         {/* Imagem do Produto */}
@@ -306,9 +306,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   />
                 ))}
               </div>
-              <span className={`text-[#78716C] dark:text-[#A8A29E] truncate ${
-                isCompact ? 'text-[9px] max-w-[55px]' : 'text-[9px] sm:text-[10px] max-w-[65px] sm:max-w-[85px]'
-              }`}>
+              <span
+                className={`text-[#78716C] dark:text-[#A8A29E] truncate ${
+                  isCompact ? 'text-[9px]' : 'text-[9px] sm:text-[10px]'
+                }`}
+                title={product.colors.length > 1 ? `${product.colors.length} cores: ${product.colors.map((c) => c.name).join(', ')}` : product.colors[0]?.name}
+              >
                 {product.colors.length > 1
                   ? `${product.colors.length} cores`
                   : product.colors[0]?.name}
@@ -325,31 +328,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* SLOT 4: Preço e Botão de Ação (Empilhado verticalmente no mobile para nunca sobrepor) */}
-        <div className="mt-2 sm:mt-2.5 pt-2 border-t border-[#C5A059]/15 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-1">
-          <div className="min-w-0 w-full sm:w-auto">
-            {/* Rótulo de preço ou preço original de OUTLET */}
-            {isOutletSection && product.formattedOriginalPrice ? (
-              <div className="flex items-center gap-1.5 leading-none mb-1">
-                <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
-                  {product.formattedOriginalPrice}
+        <div className="mt-2 sm:mt-2.5 pt-2 border-t border-[#C5A059]/15 flex flex-col gap-2">
+          <div className="w-full flex items-baseline justify-between gap-2 min-w-0">
+            <div className="min-w-0 flex-1">
+              {/* Rótulo de preço ou preço original de OUTLET */}
+              {isOutletSection && product.formattedOriginalPrice ? (
+                <div className="flex items-center gap-1.5 leading-none mb-1">
+                  <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
+                    {product.formattedOriginalPrice}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
+                    OUTLET
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
+                  Valor da Peça
                 </span>
-                <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
-                  OUTLET
+              )}
+              {/* Valor numérico */}
+              <div className="flex items-baseline gap-1">
+                <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
+                  isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
+                }`}>
+                  {product.formattedPrice}
                 </span>
               </div>
-            ) : (
-              <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
-                Valor da Peça
+            </div>
+
+            {/* Indicador sutil de estoque baixo */}
+            {product.remainingPieces && product.remainingPieces > 0 && product.remainingPieces <= 3 && !isOutOfStock && !isAllReserved && (
+              <span className="text-[9px] font-semibold text-[#8B5A2B] dark:text-[#DFBE76] bg-[#8B5A2B]/10 dark:bg-[#DFBE76]/10 px-1.5 py-0.5 rounded-none whitespace-nowrap shrink-0">
+                Restam {product.remainingPieces}
               </span>
             )}
-            {/* Valor numérico */}
-            <div className="flex items-baseline gap-1">
-              <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
-                isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
-              }`}>
-                {product.formattedPrice}
-              </span>
-            </div>
           </div>
 
           {/* Botão de Compra Inteligente (Largura total no mobile para toque confortável e sem colisão) */}
@@ -361,11 +373,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 onOpenDetails(product);
               }}
-              className={`w-full sm:w-auto rounded-none bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs ${
-                isCompact
-                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
-                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
-              }`}
+              className="w-full py-2 px-2.5 rounded-none bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
               title="Peça esgotada no estoque"
               aria-label="Esgotado"
             >
@@ -379,29 +387,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 onOpenDetails(product);
               }}
-              className={`w-full sm:w-auto rounded-none bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs ${
-                isCompact
-                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
-                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
-              }`}
+              className="w-full py-2 px-2.5 rounded-none bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
               title="Peça em reserva temporária no provador de outra cliente - Clique para lista VIP"
               aria-label="Em Reserva"
             >
-              <Clock className="w-3.5 h-3.5 animate-pulse" />
-              <span>Em Reserva</span>
+              <Clock className="w-3.5 h-3.5 animate-pulse shrink-0" />
+              <span className="truncate">Em Reserva (Lista VIP)</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={handleAction}
-              className={`w-full sm:w-auto rounded-none transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs active:scale-[0.98] ${
+              className={`w-full py-2 px-2.5 rounded-none transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs active:scale-[0.99] ${
                 isJustAdded
                   ? 'bg-[#25D366] text-white border border-[#25D366]'
                   : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918]'
-              } ${
-                isCompact
-                  ? 'px-2 py-1.5 gap-1 text-[11px] font-semibold'
-                  : 'px-2.5 sm:px-3 py-2 gap-1.5 text-xs font-semibold'
               }`}
               title="Adicionar à Sacola"
               aria-label="Adicionar à Sacola"
@@ -414,7 +414,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               ) : (
                 <>
                   <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
-                  <span>{isCompact ? 'Adicionar' : 'Adicionar à Sacola'}</span>
+                  <span className="truncate">{isCompact ? 'Adicionar' : 'Adicionar à Sacola'}</span>
                 </>
               )}
             </button>

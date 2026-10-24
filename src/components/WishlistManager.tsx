@@ -392,7 +392,7 @@ export function WishlistManager() {
 
           {/* GRADE DE FAVORITOS */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
               {filteredProducts.map((product) => {
                 const selection = inlineSelections[product.id] || {
                   size: product.sizes[0] || 'Tamanho Único',
@@ -406,7 +406,7 @@ export function WishlistManager() {
                     className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-md flex flex-col justify-between overflow-hidden group hover:border-[#C5A059] transition-all"
                   >
                     {/* Imagem do Produto com Botão de Remover */}
-                    <div className="relative aspect-[3/4] bg-[#FAF8F5] overflow-hidden cursor-pointer">
+                    <div className="relative aspect-[3/4] max-h-[250px] sm:max-h-[270px] xl:max-h-[340px] bg-[#FAF8F5] overflow-hidden cursor-pointer">
                       <Image
                         src={product.thumbnail || product.media[0]?.src || '/images/placeholder.jpg'}
                         alt={product.name}

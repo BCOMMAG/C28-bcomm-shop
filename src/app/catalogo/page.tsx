@@ -31,7 +31,9 @@ import {
   X,
   Check,
   ChevronDown,
-  MessageCircle
+  MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { Product } from '@/types';
 
@@ -131,6 +133,16 @@ function CatalogoContent() {
   // Estados da Barra Superior
   const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'newest'>('relevance');
   const [gridColumns, setGridColumns] = useState<2 | 3 | 4 | 5>(4); // Amostragem de produtos por linha no desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Controle de Sidebar Retrátil (Ocultar/Mostrar Filtros)
+
+  // Inicialização inteligente Notebook-First (3 colunas em telas < 1400px para garantir proporção de alta costura)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 1400) {
+        setGridColumns(3);
+      }
+    }
+  }, []);
 
   // Controle de Gaveta Mobile de Filtros
   const [mobileFilterDrawerOpen, setMobileFilterDrawerOpen] = useState(false);
@@ -1460,6 +1472,26 @@ function CatalogoContent() {
                   </select>
                 </div>
 
+                {/* BOTÃO RETRÁTIL: OCULTAR / MOSTRAR FILTROS (Experiência de Alta Costura) */}
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen((prev) => !prev)}
+                  className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-none border border-[#C5A059]/30 bg-[#FAF8F5] dark:bg-[#252220] hover:border-[#C5A059] text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] transition-all cursor-pointer shadow-2xs"
+                  title={isSidebarOpen ? 'Ocultar filtros e expandir grade de produtos' : 'Mostrar filtros da boutique'}
+                >
+                  {isSidebarOpen ? (
+                    <>
+                      <PanelLeftClose className="w-3.5 h-3.5 text-[#C5A059]" />
+                      <span>Ocultar Filtros</span>
+                    </>
+                  ) : (
+                    <>
+                      <PanelLeftOpen className="w-3.5 h-3.5 text-[#C5A059]" />
+                      <span>Mostrar Filtros</span>
+                    </>
+                  )}
+                </button>
+
                 {/* SELETOR DE AMOSTRAGEM / GRADE (Colunas por Linha no Desktop) */}
                 <div className="hidden lg:flex items-center gap-1.5 pl-3 border-l border-[#C5A059]/25">
                   <span className="text-[11px] text-[#78716C] dark:text-[#A8A29E] whitespace-nowrap font-medium">
@@ -1494,7 +1526,8 @@ function CatalogoContent() {
             {/* ============================================================ */}
             {/* 1. COLUNA ESQUERDA: FILTROS DA BOUTIQUE (Scroll Independente com Botão Fixo no Topo) */}
             {/* ============================================================ */}
-            <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 bg-white dark:bg-[#1A1918] p-4 xl:p-5 rounded-none border border-[#C5A059]/25 shadow-xs sticky top-28 max-h-[calc(100vh-8.5rem)]">
+            {isSidebarOpen && (
+              <aside className="hidden lg:flex flex-col w-60 xl:w-72 shrink-0 bg-white dark:bg-[#1A1918] p-3.5 xl:p-5 rounded-none border border-[#C5A059]/25 shadow-xs sticky top-28 max-h-[calc(100vh-8.5rem)] transition-all">
               {/* Header Fixo do Painel Desktop: Título + Botão de Aplicar Filtros no Topo */}
               <div className="shrink-0 pb-3.5 mb-3 border-b border-[#C5A059]/20 space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -1544,6 +1577,7 @@ function CatalogoContent() {
                 {renderFiltersSidebarContent(true)}
               </div>
             </aside>
+          )}
 
             {/* ============================================================ */}
             {/* 2. COLUNA CENTRAL: CHIPS DE FILTROS ATIVOS + GRID DE PRODUTOS  */}
@@ -1733,8 +1767,12 @@ function CatalogoContent() {
                       : gridColumns === 3
                       ? 'lg:grid-cols-3'
                       : gridColumns === 5
-                      ? 'lg:grid-cols-5'
-                      : 'lg:grid-cols-4'
+                      ? isSidebarOpen
+                        ? 'lg:grid-cols-4 xl:grid-cols-5'
+                        : 'lg:grid-cols-5'
+                      : isSidebarOpen
+                      ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4'
+                      : 'lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4'
                   } gap-3 sm:gap-4`}
                 >
                   {filteredProducts.map((product) => (

@@ -79,7 +79,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon-apple-touch-icon180x180.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className={`${montserrat.className} ${playfair.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative`}>
+      <body className={`${montserrat.className} ${playfair.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full`}>
         <StoreProvider>
           <BackgroundVideo />
           {children}
