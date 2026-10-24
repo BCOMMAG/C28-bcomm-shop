@@ -78,6 +78,23 @@ type PeriodFilter = 'todos' | 'hoje' | 'ontem' | '7d' | '30d' | 'mes_atual' | 'c
 type PaymentFilter = 'todos' | 'pix' | 'cartao';
 type SortOrder = 'recentes' | 'antigos' | 'maior_valor' | 'menor_valor';
 
+export interface KanbanColumnDef {
+  id: CustomerOrder['status'];
+  label: string;
+  next: CustomerOrder['status'] | null;
+  color: string;
+  badge: string;
+}
+
+const ALL_KANBAN_COLUMNS: KanbanColumnDef[] = [
+  { id: 'pendente', label: 'Aguardando WhatsApp', next: 'pago', color: 'border-amber-400 bg-amber-50/40 text-amber-900', badge: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { id: 'pago', label: 'Pagos Confirmados', next: 'em_separacao', color: 'border-emerald-400 bg-emerald-50/40 text-emerald-900', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  { id: 'em_separacao', label: 'Em Separação', next: 'enviado', color: 'border-sky-400 bg-sky-50/40 text-sky-900', badge: 'bg-sky-100 text-sky-800 border-sky-300' },
+  { id: 'enviado', label: 'Enviados (Correios)', next: 'entregue', color: 'border-indigo-400 bg-indigo-50/40 text-indigo-900', badge: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  { id: 'entregue', label: 'Entregues', next: null, color: 'border-teal-400 bg-teal-50/40 text-teal-900', badge: 'bg-teal-100 text-teal-800 border-teal-300' },
+  { id: 'cancelado', label: 'Cancelados', next: null, color: 'border-rose-400 bg-rose-50/40 text-rose-950', badge: 'bg-rose-100 text-rose-800 border-rose-300' }
+];
+
 export default function AdminPedidosPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
@@ -110,11 +127,14 @@ export default function AdminPedidosPage() {
   const [onlyGifts, setOnlyGifts] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>('recentes');
 
-  // Controle de Popovers
+  // Controle de Popovers e Colunas do Kanban
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
+  const [hiddenKanbanColumns, setHiddenKanbanColumns] = useState<string[]>([]);
+  const [isColumnsPopoverOpen, setIsColumnsPopoverOpen] = useState(false);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
   const periodDropdownRef = useRef<HTMLDivElement>(null);
+  const columnsPopoverRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Seleção em Massa (Bulk Actions)
@@ -213,6 +233,38 @@ export default function AdminPedidosPage() {
     }
   };
 
+  // Recupera colunas ocultas salvas no Kanban
+  useEffect(() => {
+    try {
+      const savedHidden = localStorage.getItem('leidy_admin_kanban_hidden_columns');
+      if (savedHidden) {
+        const parsed = JSON.parse(savedHidden);
+        if (Array.isArray(parsed)) {
+          setHiddenKanbanColumns(parsed);
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  const handleToggleHideColumn = (colId: string) => {
+    setHiddenKanbanColumns((prev) => {
+      const next = prev.includes(colId) ? prev.filter((id) => id !== colId) : [...prev, colId];
+      try {
+        localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleShowAllColumns = () => {
+    setHiddenKanbanColumns([]);
+    try {
+      localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify([]));
+    } catch {}
+  };
+
   // Carrega Pedidos e Reservas Provisórias do Supabase
   const fetchOrdersAndReservations = async () => {
     setLoading(true);
@@ -308,6 +360,9 @@ export default function AdminPedidosPage() {
       if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target as Node)) {
         setIsPeriodDropdownOpen(false);
       }
+      if (columnsPopoverRef.current && !columnsPopoverRef.current.contains(event.target as Node)) {
+        setIsColumnsPopoverOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -339,6 +394,7 @@ export default function AdminPedidosPage() {
         } else {
           setIsFilterPopoverOpen(false);
           setIsPeriodDropdownOpen(false);
+          setIsColumnsPopoverOpen(false);
           setSnippetMenuOrderId(null);
         }
         return;
@@ -493,6 +549,17 @@ export default function AdminPedidosPage() {
 
   // Clique no Card de KPI: se já for o único selecionado, limpa; senão filtra apenas ele
   const handleKpiCardClick = (statusId: string) => {
+    // Se o status clicado estiver oculto no Kanban, desarquiva/exibe a coluna automaticamente
+    if (hiddenKanbanColumns.includes(statusId)) {
+      setHiddenKanbanColumns((prev) => {
+        const next = prev.filter((id) => id !== statusId);
+        try {
+          localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+
     if (selectedStatuses.length === 1 && selectedStatuses[0] === statusId) {
       setSelectedStatuses([]);
     } else {
@@ -1579,8 +1646,99 @@ export default function AdminPedidosPage() {
 
         <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
-        {/* Alternador de Modos de Visualização (Cards, Lista e Kanban) */}
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 ml-auto shrink-0">
+        {/* Lado Direito: Gerenciador de Colunas (Kanban) e Alternador de Modos */}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* Seletor de Colunas Visíveis no Modo Kanban */}
+          {viewMode === 'kanban' && (
+            <div className="relative" ref={columnsPopoverRef}>
+              <button
+                id="btn-kanban-columns-trigger"
+                onClick={() => setIsColumnsPopoverOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  hiddenKanbanColumns.length > 0
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+                title="Gerenciar colunas visíveis no Kanban"
+              >
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>Colunas</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    hiddenKanbanColumns.length > 0
+                      ? 'bg-amber-200 text-amber-900'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {ALL_KANBAN_COLUMNS.length - hiddenKanbanColumns.length}/{ALL_KANBAN_COLUMNS.length}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isColumnsPopoverOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isColumnsPopoverOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-30 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                      <Eye className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Colunas do Kanban</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {ALL_KANBAN_COLUMNS.length - hiddenKanbanColumns.length} de {ALL_KANBAN_COLUMNS.length} ativas
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                    {ALL_KANBAN_COLUMNS.map((col) => {
+                      const isVisible = !hiddenKanbanColumns.includes(col.id);
+                      return (
+                        <label
+                          key={col.id}
+                          className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer select-none transition-colors ${
+                            isVisible ? 'bg-slate-50 text-slate-900 font-medium' : 'text-slate-400 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isVisible}
+                              onChange={() => handleToggleHideColumn(col.id)}
+                              className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <span>{col.label}</span>
+                          </div>
+                          {isVisible ? (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" title="Visível" />
+                          ) : (
+                            <span title="Oculta">
+                              <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <button
+                      onClick={handleShowAllColumns}
+                      className="text-amber-700 hover:text-amber-900 font-semibold cursor-pointer py-1 px-1.5 rounded hover:bg-amber-50 transition-colors"
+                    >
+                      Exibir Todas
+                    </button>
+                    <button
+                      onClick={() => handleToggleHideColumn('cancelado')}
+                      className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100 transition-colors"
+                    >
+                      {hiddenKanbanColumns.includes('cancelado') ? 'Mostrar Cancelados' : 'Ocultar Cancelados'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Alternador de Modos de Visualização (Cards, Lista e Kanban) */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
           <button
             onClick={() => handleChangeViewMode('cards')}
             className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
@@ -1618,6 +1776,7 @@ export default function AdminPedidosPage() {
           </button>
         </div>
       </div>
+    </div>
 
       {/* TAGS DE FILTROS ATIVOS (SE HOUVER) */}
       {(selectedStatuses.length > 0 || periodFilter !== 'todos' || paymentFilter !== 'todos' || onlyGifts || searchTerm) && (
@@ -2328,41 +2487,94 @@ export default function AdminPedidosPage() {
         /* ======================================================== */
         /* MODO 3: KANBAN OPERACIONAL (ESTEIRA POR COLUNAS)          */
         /* ======================================================== */
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3.5 overflow-x-auto pb-4">
-          {[
-            { id: 'pendente', label: 'Aguardando WhatsApp', next: 'pago', color: 'border-amber-400 bg-amber-50/40 text-amber-900' },
-            { id: 'pago', label: 'Pagos Confirmados', next: 'em_separacao', color: 'border-emerald-400 bg-emerald-50/40 text-emerald-900' },
-            { id: 'em_separacao', label: 'Em Separação', next: 'enviado', color: 'border-sky-400 bg-sky-50/40 text-sky-900' },
-            { id: 'enviado', label: 'Enviados (Correios)', next: 'entregue', color: 'border-indigo-400 bg-indigo-50/40 text-indigo-900' },
-            { id: 'entregue', label: 'Entregues', next: null, color: 'border-teal-400 bg-teal-50/40 text-teal-900' }
-          ].map((column) => {
-            const columnOrders = filteredOrders.filter((o) => {
-              if (column.id === 'pendente') {
-                return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
-              }
-              return o.status === column.id;
-            });
-            const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
+        (() => {
+          const visibleKanbanColumns = ALL_KANBAN_COLUMNS.filter(
+            (col) => !hiddenKanbanColumns.includes(col.id)
+          );
 
-            return (
-              <div
-                key={column.id}
-                className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[480px] shadow-2xs"
-              >
-                {/* Header da Coluna */}
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          return (
+            <div className="space-y-3">
+              {/* Barra de Aviso e Recuperação quando houver colunas ocultas */}
+              {hiddenKanbanColumns.length > 0 && (
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 shadow-2xs">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800">
-                      {column.label}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white border border-slate-200 text-slate-700">
-                      {columnOrders.length}
+                    <EyeOff className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      <strong>{hiddenKanbanColumns.length}</strong> {hiddenKanbanColumns.length === 1 ? 'coluna oculta' : 'colunas ocultas'}:{' '}
+                      <span className="font-semibold text-amber-800">
+                        {ALL_KANBAN_COLUMNS.filter((c) => hiddenKanbanColumns.includes(c.id)).map((c) => c.label).join(', ')}
+                      </span>
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500">
-                    {formatCurrency(columnTotal)}
-                  </span>
+                  <button
+                    onClick={handleShowAllColumns}
+                    className="font-bold text-amber-800 hover:text-amber-950 underline hover:no-underline cursor-pointer ml-3 shrink-0"
+                  >
+                    Restaurar Todas
+                  </button>
                 </div>
+              )}
+
+              {/* Estado Vazio caso todas as colunas tenham sido ocultadas */}
+              {visibleKanbanColumns.length === 0 ? (
+                <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-white space-y-3 shadow-2xs">
+                  <EyeOff className="w-10 h-10 text-slate-300 mx-auto" />
+                  <div className="text-sm font-bold text-slate-800">Todas as colunas do Kanban estão ocultas</div>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Use o botão &quot;Colunas&quot; na barra superior ou o atalho abaixo para reexibir a esteira completa.
+                  </p>
+                  <button
+                    onClick={handleShowAllColumns}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Restaurar Todas as Colunas</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-flow-col md:auto-cols-[minmax(270px,1fr)] gap-3.5 overflow-x-auto pb-4">
+                  {visibleKanbanColumns.map((column) => {
+                    const columnOrders = filteredOrders.filter((o) => {
+                      if (column.id === 'pendente') {
+                        return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
+                      }
+                      return o.status === column.id;
+                    });
+                    const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
+
+                    return (
+                      <div
+                        key={column.id}
+                        data-kanban-col-id={column.id}
+                        className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[480px] shadow-2xs"
+                      >
+                        {/* Header da Coluna */}
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 gap-1.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-bold text-slate-800 truncate" title={column.label}>
+                              {column.label}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white border border-slate-200 text-slate-700 shrink-0">
+                              {columnOrders.length}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-bold text-slate-500">
+                              {formatCurrency(columnTotal)}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleHideColumn(column.id);
+                              }}
+                              data-kanban-hide-btn={column.id}
+                              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                              title={`Ocultar coluna "${column.label}"`}
+                            >
+                              <EyeOff className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
 
                 {/* Cards na Coluna */}
                 <div className="space-y-2 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
@@ -2568,12 +2780,16 @@ export default function AdminPedidosPage() {
                       );
                     })
                   )}
-                </div>
-              </div>
-            );
-          })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      );
+    })()
+  )}
 
       {/* 5. BARRA FLUTUANTE DE AÇÕES EM MASSA (BULK ACTIONS TOOLBAR) */}
       {selectedOrderIds.length > 0 && (
