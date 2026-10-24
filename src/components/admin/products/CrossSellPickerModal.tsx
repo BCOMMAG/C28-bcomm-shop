@@ -12,7 +12,7 @@ const formatCurrency = (val: number) => {
 export interface CrossSellPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentProduct?: AdminProductItem | { id: string; nome?: string; slug?: string; preco?: number };
+  currentProduct?: AdminProductItem | { id: string; nome?: string; slug?: string; preco?: number; foto_principal?: string | null };
   currentProductId?: string;
   allProducts: AdminProductItem[];
   selectedSlugs: string[];
@@ -105,7 +105,7 @@ export const CrossSellPickerModal: React.FC<CrossSellPickerModalProps> = ({
                 &quot;Monte o Look&quot; / Peças Combinadas (Cross-Sell)
               </h3>
               <p className="text-xs text-slate-500">
-                Selecione as peças que combinam com <b>{currentProduct.nome}</b> para elevar o Ticket Médio na vitrine.
+                Selecione as peças que combinam com <b>{currentProduct?.nome || 'esta peça'}</b> para elevar o Ticket Médio na vitrine.
               </p>
             </div>
           </div>
@@ -133,16 +133,16 @@ export const CrossSellPickerModal: React.FC<CrossSellPickerModalProps> = ({
             {/* Peça Principal */}
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white border border-amber-300 shadow-2xs shrink-0">
               <div className="relative w-8 h-10 rounded overflow-hidden bg-slate-100 shrink-0">
-                {currentProduct.foto_principal ? (
-                  <Image src={currentProduct.foto_principal} alt={currentProduct.nome} fill className="object-cover" />
+                {currentProduct?.foto_principal ? (
+                  <Image src={currentProduct.foto_principal} alt={currentProduct?.nome || 'Peça'} fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[8px] text-slate-400">Foto</div>
                 )}
               </div>
               <div className="text-left">
                 <span className="text-[10px] uppercase font-bold text-amber-700 block leading-tight">Peça Principal</span>
-                <span className="text-xs font-bold text-slate-900 block truncate max-w-[130px]">{currentProduct.nome}</span>
-                <span className="text-[10px] font-semibold text-slate-500">{formatCurrency(currentProduct.preco)}</span>
+                <span className="text-xs font-bold text-slate-900 block truncate max-w-[130px]">{currentProduct?.nome || 'Produto Atual'}</span>
+                <span className="text-[10px] font-semibold text-slate-500">{formatCurrency(currentProduct?.preco || 0)}</span>
               </div>
             </div>
 

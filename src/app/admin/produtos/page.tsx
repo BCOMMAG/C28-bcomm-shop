@@ -879,19 +879,23 @@ export default function AdminProdutosPage() {
       showToast('Digite o nome do sinalizador.', 'error');
       return;
     }
+    const badgeLabel = newCustomBadgeName.trim();
     const newBadge: CustomSinalizador = {
       id: `badge_${Date.now()}`,
-      label: newCustomBadgeName.trim(),
+      nome: badgeLabel,
+      cor: newCustomBadgeColor || '#d97706',
+      label: badgeLabel,
       color: newCustomBadgeColor || '#d97706',
-      icon: newCustomBadgeIcon || '✨'
+      icon: newCustomBadgeIcon || '✨',
+      icone: newCustomBadgeIcon || '✨'
     };
     try {
       const updated = await saveStoreCustomAttribute(tenantId, 'sinalizadores', newBadge, 'add');
       setStoreAttributes(updated);
-      setCustomBadgesSelected((prev) => [...prev, newBadge.label]);
+      setCustomBadgesSelected((prev) => [...prev, badgeLabel]);
       setNewCustomBadgeName('');
       setIsAddingCustomBadge(false);
-      showToast(`Sinalizador "${newBadge.label}" criado e ativado!`);
+      showToast(`Sinalizador "${badgeLabel}" criado e ativado!`);
     } catch (err: any) {
       showToast(err?.message || 'Erro ao salvar novo sinalizador.', 'error');
     }
@@ -4412,7 +4416,8 @@ export default function AdminProdutosPage() {
 
                         {/* Sinalizadores Customizados da Loja */}
                         {(storeAttributes?.sinalizadores || []).map((badge) => {
-                          const isSelected = customBadgesSelected.includes(badge.label);
+                          const badgeLabel = badge.label || badge.nome || 'Sinalizador';
+                          const isSelected = customBadgesSelected.includes(badgeLabel);
                           return (
                             <label
                               key={badge.id}
@@ -4427,16 +4432,16 @@ export default function AdminProdutosPage() {
                                 checked={isSelected}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setCustomBadgesSelected((prev) => [...prev, badge.label]);
+                                    setCustomBadgesSelected((prev) => [...prev, badgeLabel]);
                                   } else {
-                                    setCustomBadgesSelected((prev) => prev.filter((b) => b !== badge.label));
+                                    setCustomBadgesSelected((prev) => prev.filter((b) => b !== badgeLabel));
                                   }
                                 }}
                                 className="accent-amber-600 rounded"
                               />
                               <span className="font-semibold text-slate-800 flex items-center gap-1 truncate">
-                                <span>{badge.icon || '✨'}</span>
-                                <span className="truncate">{badge.label}</span>
+                                <span>{badge.icon || badge.icone || '✨'}</span>
+                                <span className="truncate">{badgeLabel}</span>
                               </span>
                             </label>
                           );
