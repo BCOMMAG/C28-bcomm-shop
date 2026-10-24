@@ -2156,7 +2156,7 @@ export default function AdminProdutosPage() {
                       {/* Editar Completo (Destaque Principal) */}
                       <button
                         onClick={() => handleOpenFullEdit(product)}
-                        title="Editar Cadastro Completo: Fotos R2, Descrição, Grade e Estilo"
+                        title="Editar Cadastro Completo: Fotos e Vídeos, Descrição, Grade e Estilo"
                         className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -2247,6 +2247,7 @@ export default function AdminProdutosPage() {
 
                       {/* Expandir Grade */}
                       <button
+                        data-testid="btn-expand-product-grid"
                         onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
                         title={isExpanded ? 'Recolher grade' : 'Ver variações de cor e tamanho'}
