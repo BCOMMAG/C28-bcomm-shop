@@ -106,5 +106,25 @@ body {
   background: rgba(197, 160, 89, 0.6);
 }
 
+/* Altura proporcional de alta costura para cards de produtos em vitrines e catálogos */
+.catalog-card-image {
+  max-height: 250px;
+}
+@media (min-width: 640px) {
+  .catalog-card-image {
+    max-height: 270px;
+  }
+}
+@media (min-width: 1400px) {
+  .catalog-card-image {
+    max-height: 330px;
+  }
+}
+@media (min-width: 1800px) {
+  .catalog-card-image {
+    max-height: 400px;
+  }
+}
+
 
 

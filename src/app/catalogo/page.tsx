@@ -134,15 +134,23 @@ function CatalogoContent() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'newest'>('relevance');
   const [gridColumns, setGridColumns] = useState<2 | 3 | 4 | 5>(4); // Amostragem de produtos por linha no desktop
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Controle de Sidebar Retrátil (Ocultar/Mostrar Filtros)
+  const [hasManuallySelectedColumns, setHasManuallySelectedColumns] = useState(false);
 
-  // Inicialização inteligente Notebook-First (3 colunas em telas < 1400px para garantir proporção de alta costura)
+  // Inicialização inteligente Notebook-First e sob Zoom (3 colunas em telas < 1400px para garantir proporção de alta costura)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    const handleAutoColumns = () => {
+      if (hasManuallySelectedColumns) return;
       if (window.innerWidth < 1400) {
         setGridColumns(3);
+      } else {
+        setGridColumns(4);
       }
-    }
-  }, []);
+    };
+    handleAutoColumns();
+    window.addEventListener('resize', handleAutoColumns);
+    return () => window.removeEventListener('resize', handleAutoColumns);
+  }, [hasManuallySelectedColumns]);
 
   // Controle de Gaveta Mobile de Filtros
   const [mobileFilterDrawerOpen, setMobileFilterDrawerOpen] = useState(false);
@@ -1503,7 +1511,10 @@ function CatalogoContent() {
                       <button
                         key={cols}
                         type="button"
-                        onClick={() => setGridColumns(cols as 2 | 3 | 4 | 5)}
+                        onClick={() => {
+                          setHasManuallySelectedColumns(true);
+                          setGridColumns(cols as 2 | 3 | 4 | 5);
+                        }}
                         className={`w-7 h-7 rounded-none text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                           isActive
                             ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white shadow-xs'

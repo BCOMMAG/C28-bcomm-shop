@@ -108,7 +108,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) e altura máxima proporcional */}
       <div
-        className="relative aspect-[3/4] max-h-[250px] sm:max-h-[265px] lg:max-h-[280px] xl:max-h-[340px] 2xl:max-h-[400px] w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
+        className="relative aspect-[3/4] catalog-card-image w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
         onClick={() => onOpenDetails(product)}
       >
         {/* Imagem do Produto */}
