@@ -90,6 +90,7 @@ export function mapDbProductToProduct(dbProd: any): Product {
 
   return {
     id: dbProd.slug, // Mantém o slug como id para compatibilidade de rotas e carrinho
+    slug: dbProd.slug || dbProd.id,
     name: dbProd.nome,
     price: currentPrice,
     formattedPrice: formatPrice(currentPrice),

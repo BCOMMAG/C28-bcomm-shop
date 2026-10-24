@@ -15,6 +15,7 @@ export interface ProductVariation {
 
 export interface Product {
   id: string;
+  slug?: string;
   name: string;
   price: number;
   formattedPrice: string;

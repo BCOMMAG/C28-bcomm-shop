@@ -42,7 +42,13 @@ import {
   List,
   Kanban,
   SlidersHorizontal,
-  Check
+  Check,
+  Smartphone,
+  ArrowLeft,
+  Columns3,
+  ScrollText,
+  Play,
+  Film
 } from 'lucide-react';
 import {
   getAdminProducts,
@@ -53,6 +59,7 @@ import {
   deleteAdminProduct,
   getAdminCategories,
   getAdminCategoriesFull,
+  saveAdminCategory,
   checkProductOrdersCount,
   updateAdminProductFull,
   bulkToggleProductActive,
@@ -62,14 +69,22 @@ import {
   AdminProductItem,
   AdminCategoryFull,
   CreateProductInput,
-  UpdateProductInput
+  UpdateProductInput,
+  getStoreCustomAttributes,
+  saveStoreCustomAttribute,
+  updateAdminVariationStockDirect,
+  StoreCustomAttributes,
+  CustomSinalizador,
+  DEFAULT_STORE_ATTRIBUTES
 } from '@/lib/admin';
 import { uploadBrowserFileToR2, deleteFromR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
-import { useStore } from '@/context/StoreContext';
+import { useStore, notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { ProductFittingRoomModal } from '@/components/admin/products/ProductFittingRoomModal';
 import { ProductWaitlistModal } from '@/components/admin/products/ProductWaitlistModal';
+import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatableSelect';
+import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { getReservedStockMap } from '@/lib/reservas';
 import { getAviseMeSummaryMap } from '@/lib/aviseme';
 
@@ -193,6 +208,25 @@ export default function AdminProdutosPage() {
   const [editFullModeling, setEditFullModeling] = useState('');
   const [editFullCollection, setEditFullCollection] = useState('');
   const [editFullPairedSlug, setEditFullPairedSlug] = useState('');
+  const [editFullPairedSlugs, setEditFullPairedSlugs] = useState<string[]>([]);
+  const [isCrossSellModalOpen, setIsCrossSellModalOpen] = useState(false);
+  const [editViewMode, setEditViewMode] = useState<'abas' | 'scroll'>('abas');
+  const [storeAttributes, setStoreAttributes] = useState<StoreCustomAttributes>(DEFAULT_STORE_ATTRIBUTES);
+  const [savedSuccessVarId, setSavedSuccessVarId] = useState<string | null>(null);
+
+  // Grade Multi-Tamanhos por Cor
+  const [multiVarSizes, setMultiVarSizes] = useState<Array<{ id: string; tamanho: string; estoque: number }>>([
+    { id: 'size_1', tamanho: 'M', estoque: 5 }
+  ]);
+
+  // Sinalizadores Customizados
+  const [isAddingCustomBadge, setIsAddingCustomBadge] = useState(false);
+  const [newCustomBadgeName, setNewCustomBadgeName] = useState('');
+  const [newCustomBadgeColor, setNewCustomBadgeColor] = useState('#d97706');
+  const [newCustomBadgeIcon, setNewCustomBadgeIcon] = useState('✨');
+  const [customBadgesSelected, setCustomBadgesSelected] = useState<string[]>([]);
+  const [isAddingNewCat, setIsAddingNewCat] = useState(false);
+  const [newCatInputName, setNewCatInputName] = useState('');
   const [editFullDetails, setEditFullDetails] = useState('');
   const [editFullPrice, setEditFullPrice] = useState<number>(0);
   const [editFullPromoPrice, setEditFullPromoPrice] = useState<string>('');
@@ -230,16 +264,18 @@ export default function AdminProdutosPage() {
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData, reservasMap, aviseMeMap] = await Promise.all([
+      const [prodsData, catsData, reservasMap, aviseMeMap, customAttrs] = await Promise.all([
         getAdminProducts(tenantId),
         getAdminCategoriesFull(tenantId),
         getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} })),
-        getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 }))
+        getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 })),
+        getStoreCustomAttributes(tenantId).catch(() => DEFAULT_STORE_ATTRIBUTES)
       ]);
 
       setCategoriesList(catsData || []);
       setReservedStockMap(reservasMap?.byProduct || {});
       setAviseMeSummary(aviseMeMap?.byProduct || {});
+      setStoreAttributes(customAttrs || DEFAULT_STORE_ATTRIBUTES);
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
@@ -303,6 +339,10 @@ export default function AdminProdutosPage() {
       const savedMode = localStorage.getItem('leidy_admin_produtos_view_mode') as ViewMode | null;
       if (savedMode && ['cards', 'lista', 'kanban'].includes(savedMode)) {
         setViewMode(savedMode);
+      }
+      const savedEditMode = localStorage.getItem('bcomm_product_edit_view_mode') as 'abas' | 'scroll' | null;
+      if (savedEditMode && ['abas', 'scroll'].includes(savedEditMode)) {
+        setEditViewMode(savedEditMode);
       }
     } catch {
       // Ignora erro de storage
@@ -424,8 +464,33 @@ export default function AdminProdutosPage() {
     setEditFullFabric(product.tecido || '');
     setEditFullModeling(product.modelagem || '');
     setEditFullCollection(product.linha || '');
-    setEditFullPairedSlug(product.paired_with_slug || '');
-    setEditFullDetails(Array.isArray(product.detalhes) ? product.detalhes.join('\n') : '');
+
+    // Paired slugs (Cross-Sell / Compre o Look)
+    const pairedList = product.paired_with_slug
+      ? product.paired_with_slug
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    setEditFullPairedSlugs(pairedList);
+    setEditFullPairedSlug(pairedList.join(','));
+
+    // Sinalizadores Customizados
+    const initialCustomBadges: string[] = [];
+    if (Array.isArray(product.detalhes)) {
+      product.detalhes.forEach((d) => {
+        if (d.startsWith('[Badge] ')) {
+          initialCustomBadges.push(d.replace('[Badge] ', '').trim());
+        }
+      });
+    }
+    setCustomBadgesSelected(initialCustomBadges);
+
+    setEditFullDetails(
+      Array.isArray(product.detalhes)
+        ? product.detalhes.filter((d) => !d.startsWith('[Badge] ')).join('\n')
+        : ''
+    );
     setEditFullPrice(product.preco);
     setEditFullPromoPrice(product.preco_promocional ? String(product.preco_promocional) : '');
     setEditFullCostPrice(product.preco_custo ? String(product.preco_custo) : '');
@@ -439,7 +504,7 @@ export default function AdminProdutosPage() {
       id: m.id,
       url: m.url,
       tipo: m.tipo || ('image' as const),
-      label: m.label || (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`),
+      label: m.label || (idx === 0 ? 'Capa Principal' : `Mídia ${idx + 1}`),
       display_order: m.display_order ?? idx
     }));
 
@@ -470,6 +535,9 @@ export default function AdminProdutosPage() {
       sku: v.sku || ''
     }));
     setEditFullVariacoes(existingVars);
+    setMultiVarSizes([{ id: 'size_1', tamanho: 'M', estoque: 5 }]);
+    setIsAddingNewCat(false);
+    setIsAddingCustomBadge(false);
   };
 
   // Salvar Edição Completa da Peça
@@ -489,10 +557,12 @@ export default function AdminProdutosPage() {
       const parsedPromo = editFullPromoPrice ? parseFloat(editFullPromoPrice) : null;
       const parsedCost = editFullCostPrice ? parseFloat(editFullCostPrice) : null;
 
-      const detailsArray = editFullDetails
+      const baseDetails = editFullDetails
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean);
+      const badgeDetails = customBadgesSelected.map((b) => `[Badge] ${b}`);
+      const detailsArray = [...baseDetails, ...badgeDetails];
 
       // Reordena fotos com base no coverIndex
       const orderedFotos = [...editFullFotos];
@@ -500,6 +570,9 @@ export default function AdminProdutosPage() {
         const [coverItem] = orderedFotos.splice(editFullCoverIndex, 1);
         orderedFotos.unshift(coverItem);
       }
+
+      const pairedSlugFinal = editFullPairedSlugs.join(',') || null;
+      const firstVideo = orderedFotos.find((f) => f.tipo === 'video');
 
       const payload: UpdateProductInput = {
         id: editingFullProduct.id,
@@ -519,11 +592,11 @@ export default function AdminProdutosPage() {
         mais_vendido: editFullMaisVendido,
         outlet: editFullOutlet,
         ultimas_pecas: editFullUltimasPecas,
-        paired_with_slug: editFullPairedSlug || null,
+        paired_with_slug: pairedSlugFinal,
         detalhes: detailsArray.length > 0 ? detailsArray : null,
         foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : editingFullProduct.foto_principal,
         fotos: orderedFotos,
-        video_provador_url: editFullVideoProvador.trim() || null,
+        video_provador_url: firstVideo ? firstVideo.url : editFullVideoProvador.trim() || null,
         variacoes: editFullVariacoes
       };
 
@@ -538,7 +611,7 @@ export default function AdminProdutosPage() {
               nome: editFullName.trim(),
               slug: payload.slug || p.slug,
               categoria_id: editFullCatId || null,
-        subcategoria: editFullSubcat.trim() || null,
+              subcategoria: editFullSubcat.trim() || null,
               categoria_nome: catObj ? catObj.nome : p.categoria_nome,
               descricao: editFullDesc,
               preco: editFullPrice,
@@ -551,7 +624,7 @@ export default function AdminProdutosPage() {
               mais_vendido: editFullMaisVendido,
               outlet: editFullOutlet,
               ultimas_pecas: editFullUltimasPecas,
-              paired_with_slug: editFullPairedSlug || null,
+              paired_with_slug: pairedSlugFinal,
               detalhes: detailsArray,
               foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : p.foto_principal,
               midias: orderedFotos.map((f, i) => ({
@@ -559,7 +632,7 @@ export default function AdminProdutosPage() {
                 url: f.url,
                 tipo: f.tipo || 'image',
                 display_order: i,
-                label: i === 0 ? 'Capa Principal' : `Foto ${i + 1}`
+                label: i === 0 ? 'Capa Principal' : `Mídia ${i + 1}`
               })),
               variacoes: editFullVariacoes.map((v, i) => ({
                 id: v.id || `v_${i}`,
@@ -574,6 +647,7 @@ export default function AdminProdutosPage() {
           })
         );
 
+        notifyStockChangeCrossTab();
         showToast(`Peça "${editFullName}" atualizada com sucesso!`);
         setEditingFullProduct(null);
       } else {
@@ -586,43 +660,51 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Upload de Foto na Edição Completa para o Cloudflare R2
-  const handleUploadEditPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Unificado de Foto e Vídeo na Galeria da Peça
+  const handleUploadEditMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(file.name);
+    const folder = isVideo ? 'videos' : 'produtos';
+    const tipo = isVideo ? ('video' as const) : ('image' as const);
+
     setUploadingEditPhoto(true);
     try {
-      const res = await uploadBrowserFileToR2(file, tenantSlug, 'produtos');
+      const res = await uploadBrowserFileToR2(file, tenantSlug, folder);
       if (res.success && res.url) {
         setEditFullFotos((prev) => [
           ...prev,
           {
-            id: `r2_${Date.now()}`,
+            id: `media_${Date.now()}`,
             url: res.url,
-            tipo: 'image',
-            label: `Foto ${prev.length + 1}`,
+            tipo,
+            label: isVideo
+              ? `Vídeo ${prev.filter((m) => m.tipo === 'video').length + 1}`
+              : `Foto ${prev.filter((m) => m.tipo === 'image').length + 1}`,
             display_order: prev.length
           }
         ]);
-        showToast('Foto enviada com sucesso para o Cloudflare R2!');
+        if (isVideo && !editFullVideoProvador) {
+          setEditFullVideoProvador(res.url);
+        }
+        showToast(isVideo ? 'Vídeo adicionado com sucesso!' : 'Foto adicionada com sucesso!');
       } else {
-        showToast(res.error || 'Erro ao enviar foto para o R2.', 'error');
+        showToast(res.error || 'Erro ao enviar mídia.', 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Falha no upload da foto.', 'error');
+      showToast(err?.message || 'Falha no upload do arquivo.', 'error');
     } finally {
       setUploadingEditPhoto(false);
       e.target.value = '';
     }
   };
 
-  // Excluir Foto na Edição Completa
+  // Excluir Mídia na Edição Completa
   const handleDeleteEditPhoto = async (index: number) => {
     const photo = editFullFotos[index];
     if (!photo) return;
 
-    // Tenta remover do Cloudflare R2 em background
     if (photo.url && photo.url.includes('.r2.dev')) {
       deleteFromR2(photo.url).catch(console.warn);
     }
@@ -633,40 +715,186 @@ export default function AdminProdutosPage() {
     } else if (editFullCoverIndex > index) {
       setEditFullCoverIndex((prev) => prev - 1);
     }
-    showToast('Foto removida da galeria.');
+    showToast('Mídia removida da galeria.');
   };
 
-  // Adicionar Variação na Grade da Edição Completa
-  const handleAddVariationInFullEdit = () => {
-    if (!newVarColorName.trim() || !newVarSize.trim()) {
-      showToast('Informe o nome da cor e o tamanho da nova variação.', 'error');
+  // Reordenar Fotos e Vídeos (Mover para esquerda/frente ou direita/trás)
+  const handleMoveEditMedia = (index: number, direction: 'left' | 'right') => {
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= editFullFotos.length) return;
+
+    setEditFullFotos((prev) => {
+      const updated = [...prev];
+      const item = updated.splice(index, 1)[0];
+      updated.splice(targetIndex, 0, item);
+      return updated.map((m, i) => ({ ...m, display_order: i }));
+    });
+
+    if (editFullCoverIndex === index) {
+      setEditFullCoverIndex(targetIndex);
+    } else if (editFullCoverIndex === targetIndex) {
+      setEditFullCoverIndex(index);
+    }
+  };
+
+  // Definir como Capa Principal da Peça (move para posição 0)
+  const handleSetCoverMedia = (index: number) => {
+    if (index === 0) return;
+    setEditFullFotos((prev) => {
+      const updated = [...prev];
+      const [cover] = updated.splice(index, 1);
+      updated.unshift(cover);
+      return updated.map((m, i) => ({ ...m, display_order: i }));
+    });
+    setEditFullCoverIndex(0);
+    showToast('Mídia definida como capa principal da vitrine!');
+  };
+
+  // Gerenciamento da Grade Multi-Tamanhos por Cor
+  const handleAddMultiSizeRow = () => {
+    setMultiVarSizes((prev) => [
+      ...prev,
+      { id: `size_${Date.now()}_${prev.length}`, tamanho: 'G', estoque: 5 }
+    ]);
+  };
+
+  const handleRemoveMultiSizeRow = (id: string) => {
+    setMultiVarSizes((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const handleUpdateMultiSizeRow = (id: string, field: 'tamanho' | 'estoque', value: any) => {
+    setMultiVarSizes((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleApplySizePreset = (preset: 'pmg' | 'numeros') => {
+    if (preset === 'pmg') {
+      setMultiVarSizes([
+        { id: `preset_p_${Date.now()}`, tamanho: 'P', estoque: 5 },
+        { id: `preset_m_${Date.now()}`, tamanho: 'M', estoque: 5 },
+        { id: `preset_g_${Date.now()}`, tamanho: 'G', estoque: 5 }
+      ]);
+      showToast('Grade P, M, G carregada!');
+    } else if (preset === 'numeros') {
+      setMultiVarSizes([
+        { id: `preset_36_${Date.now()}`, tamanho: '36', estoque: 5 },
+        { id: `preset_38_${Date.now()}`, tamanho: '38', estoque: 5 },
+        { id: `preset_40_${Date.now()}`, tamanho: '40', estoque: 5 },
+        { id: `preset_42_${Date.now()}`, tamanho: '42', estoque: 5 },
+        { id: `preset_44_${Date.now()}`, tamanho: '44', estoque: 5 }
+      ]);
+      showToast('Grade 36 ao 44 carregada!');
+    }
+  };
+
+  const handleFinishColorMultiSizes = () => {
+    if (!newVarColorName.trim()) {
+      showToast('Informe o nome da cor para gerar as variações.', 'error');
+      return;
+    }
+    if (multiVarSizes.length === 0) {
+      showToast('Adicione ao menos um tamanho e estoque para esta cor.', 'error');
       return;
     }
 
-    const est = parseInt(newVarStock) || 0;
-    const generatedSku = newVarSku.trim() || `${editFullSlug || 'peca'}-${newVarColorName.trim()}-${newVarSize.trim()}`.toUpperCase();
+    const newItems = multiVarSizes.map((row) => ({
+      id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      cor_nome: newVarColorName.trim(),
+      cor_hex: newVarColorHex,
+      tamanho: row.tamanho.trim(),
+      estoque: Math.max(0, Number(row.estoque) || 0),
+      sku: `${editFullSlug || 'peca'}-${newVarColorName.trim()}-${row.tamanho.trim()}`.toUpperCase()
+    }));
 
-    setEditFullVariacoes((prev) => [
-      ...prev,
-      {
-        id: `temp_${Date.now()}`,
-        cor_nome: newVarColorName.trim(),
-        cor_hex: newVarColorHex,
-        tamanho: newVarSize.trim(),
-        estoque: est,
-        sku: generatedSku
-      }
-    ]);
-
-    setNewVarStock('5');
-    setNewVarSku('');
-    showToast(`Variação ${newVarColorName} (${newVarSize}) adicionada à grade!`);
+    setEditFullVariacoes((prev) => [...prev, ...newItems]);
+    setMultiVarSizes([{ id: `size_${Date.now()}`, tamanho: 'M', estoque: 5 }]);
+    showToast(`${newItems.length} variações da cor "${newVarColorName}" adicionadas à grade!`);
   };
 
-  // Remover Variação na Grade da Edição Completa
   const handleRemoveVariationInFullEdit = (index: number) => {
     setEditFullVariacoes((prev) => prev.filter((_, idx) => idx !== index));
     showToast('Variação removida da grade.');
+  };
+
+  // Adicionar novo atributo customizado da loja
+  const handleCreateStoreAttribute = async (
+    tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos',
+    novoItem: string
+  ) => {
+    try {
+      const updated = await saveStoreCustomAttribute(tenantId, tipo, novoItem, 'add');
+      setStoreAttributes(updated);
+      showToast(`"${novoItem}" adicionado com sucesso às opções da loja!`);
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao salvar novo atributo.', 'error');
+    }
+  };
+
+  // Remover atributo customizado da loja
+  const handleDeleteStoreAttribute = async (
+    tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos',
+    itemParaRemover: string
+  ) => {
+    try {
+      const updated = await saveStoreCustomAttribute(tenantId, tipo, itemParaRemover, 'remove');
+      setStoreAttributes(updated);
+      showToast(`"${itemParaRemover}" removido das opções da loja.`);
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao remover atributo.', 'error');
+    }
+  };
+
+  // Criar Categoria Diretamente no Modal
+  const handleCreateCategoryInline = async () => {
+    if (!newCatInputName.trim()) {
+      showToast('Digite o nome da categoria.', 'error');
+      return;
+    }
+    try {
+      const res = await saveAdminCategory(tenantId, {
+        nome: newCatInputName.trim()
+      });
+      if (res.success && res.data) {
+        const novaCat = res.data;
+        setCategoriesList((prev) => [...prev, novaCat]);
+        setEditFullCatId(novaCat.id);
+        setNewCatInputName('');
+        setIsAddingNewCat(false);
+        showToast(`Categoria "${novaCat.nome}" cadastrada e selecionada!`);
+      } else {
+        showToast(res.error || 'Erro ao criar categoria.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao criar categoria.', 'error');
+    }
+  };
+
+  // Criar Novo Sinalizador Comercial
+  const handleAddCustomBadge = async () => {
+    if (!newCustomBadgeName.trim()) {
+      showToast('Digite o nome do sinalizador.', 'error');
+      return;
+    }
+    const newBadge: CustomSinalizador = {
+      id: `badge_${Date.now()}`,
+      label: newCustomBadgeName.trim(),
+      color: newCustomBadgeColor || '#d97706',
+      icon: newCustomBadgeIcon || '✨'
+    };
+    try {
+      const updated = await saveStoreCustomAttribute(tenantId, 'sinalizadores', newBadge, 'add');
+      setStoreAttributes(updated);
+      setCustomBadgesSelected((prev) => [...prev, newBadge.label]);
+      setNewCustomBadgeName('');
+      setIsAddingCustomBadge(false);
+      showToast(`Sinalizador "${newBadge.label}" criado e ativado!`);
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao salvar novo sinalizador.', 'error');
+    }
   };
 
   // --- SELEÇÃO & AÇÕES EM MASSA ---
@@ -868,12 +1096,59 @@ export default function AdminProdutosPage() {
             };
           })
         );
-        showToast(`Estoque de ${variation.tamanho} (${variation.cor_nome}) atualizado para ${novoEstoque} un!`);
+        notifyStockChangeCrossTab();
+        setSavedSuccessVarId(variationId);
+        setTimeout(() => setSavedSuccessVarId(null), 1200);
       } else {
         showToast(res.error || 'Erro ao atualizar estoque da variação.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao salvar estoque.', 'error');
+    } finally {
+      setUpdatingVarId(null);
+    }
+  };
+
+  // Ajuste Direto e Imediato de Estoque (Digitação Livre do Lojista)
+  const handleDirectVariationStockChange = async (
+    variationId: string,
+    productId: string,
+    rawQuantity: number
+  ) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product || !product.variacoes) return;
+
+    const variation = product.variacoes.find((v) => v.id === variationId);
+    if (!variation) return;
+
+    const estoqueValidado = Math.max(0, Math.floor(rawQuantity));
+    if (variation.estoque === estoqueValidado) return;
+
+    setUpdatingVarId(variationId);
+    try {
+      const res = await updateAdminVariationStockDirect(variationId, productId, estoqueValidado, tenantId);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id !== productId) return p;
+            const updatedVars = (p.variacoes || []).map((v) =>
+              v.id === variationId ? { ...v, estoque: estoqueValidado } : v
+            );
+            return {
+              ...p,
+              estoque_total: res.novoEstoqueTotal ?? updatedVars.reduce((acc, v) => acc + v.estoque, 0),
+              variacoes: updatedVars
+            };
+          })
+        );
+        notifyStockChangeCrossTab();
+        setSavedSuccessVarId(variationId);
+        setTimeout(() => setSavedSuccessVarId(null), 1200);
+      } else {
+        showToast(res.error || 'Erro ao atualizar estoque.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao salvar estoque digitado.', 'error');
     } finally {
       setUpdatingVarId(null);
     }
@@ -2018,17 +2293,38 @@ export default function AdminProdutosPage() {
                               >
                                 -
                               </button>
-                              <span
-                                className={`text-xs font-extrabold px-1.5 py-0.5 rounded min-w-[28px] text-center ${
-                                  v.estoque > 2
-                                    ? 'bg-emerald-50 text-emerald-800'
-                                    : v.estoque > 0
-                                    ? 'bg-amber-50 text-amber-800'
-                                    : 'bg-rose-50 text-rose-800'
-                                }`}
-                              >
-                                {v.estoque}
-                              </span>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  defaultValue={v.estoque}
+                                  key={`${v.id}-${v.estoque}`}
+                                  onFocus={(e) => e.target.select()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = parseInt((e.target as HTMLInputElement).value);
+                                      if (!isNaN(val)) handleDirectVariationStockChange(v.id, product.id, val);
+                                      (e.target as HTMLInputElement).blur();
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val) && val !== v.estoque) {
+                                      handleDirectVariationStockChange(v.id, product.id, val);
+                                    }
+                                  }}
+                                  className={`w-11 text-xs font-extrabold py-0.5 px-0.5 rounded text-center border transition-all focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                                    savedSuccessVarId === v.id
+                                      ? 'bg-emerald-100 text-emerald-900 border-emerald-500 ring-2 ring-emerald-400/40'
+                                      : v.estoque > 2
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 focus:bg-white'
+                                      : v.estoque > 0
+                                      ? 'bg-amber-50 text-amber-800 border-amber-200 focus:bg-white'
+                                      : 'bg-rose-50 text-rose-800 border-rose-200 focus:bg-white'
+                                  }`}
+                                  title="Digite a quantidade e tecle Enter (ou clique fora) para salvar"
+                                />
+                              </div>
                               <button
                                 onClick={() => handleQuickVariationStockChange(v.id, product.id, 1)}
                                 disabled={updatingVarId === v.id}
@@ -3148,614 +3444,1067 @@ export default function AdminProdutosPage() {
       )}
 
       {/* MODAL DE EDIÇÃO COMPLETA DA PEÇA (DOSSIÊ INTEGRAL) */}
-      {editingFullProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] animate-fade-in overflow-hidden">
-            {/* Cabeçalho do Modal */}
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
-                  <Sliders className="w-5 h-5" />
+      {editingFullProduct && (() => {
+        const selectedCat = categoriesList.find((c) => c.id === editFullCatId);
+        const catSubs = selectedCat?.subcategorias || [];
+        const globalSubs = storeAttributes?.subcategorias || [];
+        const categorySubcats = Array.from(new Set([...catSubs, ...globalSubs])).filter(Boolean);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-5xl w-full my-auto shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] animate-fade-in overflow-hidden">
+              {/* Cabeçalho do Modal */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs">
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 font-serif-luxury truncate">
+                        Edição Completa da Peça
+                      </h3>
+                      <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                        Dossiê Integral
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">
+                      {editingFullProduct.nome} • Slug: <span className="font-mono text-slate-700">{editingFullProduct.slug}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                    Edição Completa da Peça
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {editingFullProduct.nome} • Slug: <span className="font-mono">{editingFullProduct.slug}</span>
-                  </p>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Botão de Alternância de Modo: Scroll Contínuo vs Abas */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMode = editViewMode === 'abas' ? 'scroll' : 'abas';
+                      setEditViewMode(nextMode);
+                      try {
+                        localStorage.setItem('admin_product_edit_view_mode', nextMode);
+                      } catch {}
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      editViewMode === 'scroll'
+                        ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
+                    title={
+                      editViewMode === 'scroll'
+                        ? 'Mudar para visualização em Abas separadas'
+                        : 'Mudar para visualização em Página Única Contínua (Scroll)'
+                    }
+                  >
+                    {editViewMode === 'scroll' ? (
+                      <>
+                        <Layers className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Modo em Abas</span>
+                        <span className="sm:hidden">Abas</span>
+                      </>
+                    ) : (
+                      <>
+                        <ScrollText className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="hidden sm:inline">Modo Página Única (Scroll)</span>
+                        <span className="sm:hidden">Scroll</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setEditingFullProduct(null)}
+                    className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                    title="Fechar janela"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              <button
-                onClick={() => setEditingFullProduct(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Abas de Navegação */}
-            <div className="flex items-center gap-1 px-5 border-b border-slate-200 bg-white overflow-x-auto scrollbar-none">
-              {[
-                { id: 'geral', label: '1. Dados Gerais & Estilo', icon: FileText },
-                { id: 'midias', label: '2. Galeria R2 & Reels 9:16', icon: Video },
-                { id: 'grade', label: '3. Grade de Cores & Tamanhos', icon: Layers },
-                { id: 'comercial', label: '4. Preços, CMV & Cross-Sell', icon: DollarSign }
-              ].map((tab) => {
-                const IconComponent = tab.icon;
-                const isActive = activeEditTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveEditTab(tab.id as any)}
-                    className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
-                      isActive
-                        ? 'border-amber-600 text-amber-800 bg-amber-50/40'
-                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                    }`}
-                  >
-                    <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-amber-600' : 'text-slate-400'}`} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Corpo com Scroll */}
-            <div className="p-6 overflow-y-auto space-y-5 text-xs flex-1">
-              {/* ABA 1: DADOS GERAIS */}
-              {activeEditTab === 'geral' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Nome da Peça *</label>
-                      <input
-                        type="text"
-                        value={editFullName}
-                        onChange={(e) => setEditFullName(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
-                        placeholder="Ex: Conjunto Alfaiataria Nobre"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Slug URL (amigável)</label>
-                      <input
-                        type="text"
-                        value={editFullSlug}
-                        onChange={(e) => setEditFullSlug(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
-                        placeholder="ex: conjunto-alfaiataria-nobre"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Categoria</label>
-                      <select
-                        value={editFullCatId}
-                        onChange={(e) => {
-                          setEditFullCatId(e.target.value);
-                          setEditFullSubcat('');
-                        }}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+              {/* Barra de Navegação: Abas ou Âncoras no Modo Scroll */}
+              {editViewMode === 'abas' ? (
+                <div className="flex items-center gap-1 px-4 sm:px-5 border-b border-slate-200 bg-white overflow-x-auto scrollbar-none">
+                  {[
+                    { id: 'geral', label: '1. Dados Gerais & Estilo', icon: FileText },
+                    { id: 'midias', label: '2. Fotos e Vídeos da Peça', icon: Video },
+                    { id: 'grade', label: '3. Grade de Cores & Tamanhos', icon: Layers },
+                    { id: 'comercial', label: '4. Preços, CMV & Cross-Sell', icon: DollarSign }
+                  ].map((tab) => {
+                    const IconComponent = tab.icon;
+                    const isActive = activeEditTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveEditTab(tab.id as any)}
+                        className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+                          isActive
+                            ? 'border-amber-600 text-amber-800 bg-amber-50/40'
+                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                        }`}
                       >
-                        <option value="">Selecione uma categoria...</option>
-                        {categoriesList.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.nome}
-                          </option>
-                        ))}
-                      </select>
+                        <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-amber-600' : 'text-slate-400'}`} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-amber-200/80 bg-amber-50/40 overflow-x-auto scrollbar-none text-xs">
+                  <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                    <ScrollText className="w-3.5 h-3.5 text-amber-600" />
+                    Página Única:
+                  </span>
+                  {[
+                    { id: 'dossie-sec-geral', label: '1. Dados Gerais' },
+                    { id: 'dossie-sec-midias', label: '2. Fotos e Vídeos' },
+                    { id: 'dossie-sec-grade', label: '3. Grade de Estoque' },
+                    { id: 'dossie-sec-comercial', label: '4. Preços & Cross-Sell' }
+                  ].map((anchor) => (
+                    <button
+                      key={anchor.id}
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById(anchor.id);
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:text-amber-800 hover:border-amber-400 font-semibold text-xs transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
+                    >
+                      {anchor.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Corpo com Scroll */}
+              <div id="dossie-scroll-container" className="p-4 sm:p-6 overflow-y-auto space-y-6 text-xs flex-1 scroll-smooth">
+                {/* SEÇÃO 1: DADOS GERAIS & ESTILO */}
+                {(editViewMode === 'scroll' || activeEditTab === 'geral') && (
+                  <div id="dossie-sec-geral" className="space-y-4 scroll-mt-6">
+                    {editViewMode === 'scroll' && (
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                        <div className="w-6 h-6 rounded-md bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-xs">
+                          1
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
+                          Dados Gerais & Estilo
+                        </h4>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-slate-700 mb-1 font-bold">Nome da Peça *</label>
+                        <input
+                          type="text"
+                          value={editFullName}
+                          onChange={(e) => setEditFullName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+                          placeholder="Ex: Conjunto Alfaiataria Nobre"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 mb-1 font-bold">Slug URL (amigável)</label>
+                        <input
+                          type="text"
+                          value={editFullSlug}
+                          onChange={(e) => setEditFullSlug(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
+                          placeholder="ex: conjunto-alfaiataria-nobre"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Subcategoria</label>
-                      {(() => {
-                        const selCat = categoriesList.find((c) => c.id === editFullCatId);
-                        const availableSubs = selCat?.subcategorias || [];
-                        return availableSubs.length > 0 ? (
+                    {/* Linha de Atributos com Seletores Dinâmicos e Cadastro Inline */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Categoria com botão inline para cadastrar nova */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-slate-700 font-bold">Categoria</label>
+                          {!isAddingNewCat && (
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingNewCat(true)}
+                              className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Nova Categoria</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {isAddingNewCat ? (
+                          <div className="flex items-center gap-1.5 p-1.5 bg-amber-50 border border-amber-300 rounded-lg">
+                            <input
+                              type="text"
+                              value={newCatInputName}
+                              onChange={(e) => setNewCatInputName(e.target.value)}
+                              placeholder="Nome da nova categoria..."
+                              className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 font-semibold"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleCreateCategoryInline();
+                                if (e.key === 'Escape') setIsAddingNewCat(false);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleCreateCategoryInline}
+                              className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-bold cursor-pointer"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAddingNewCat(false);
+                                setNewCatInputName('');
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
                           <select
-                            value={editFullSubcat}
-                            onChange={(e) => setEditFullSubcat(e.target.value)}
+                            value={editFullCatId}
+                            onChange={(e) => {
+                              setEditFullCatId(e.target.value);
+                              setEditFullSubcat('');
+                            }}
                             className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
                           >
-                            <option value="">Selecione ou deixe em branco...</option>
-                            {availableSubs.map((sub) => (
-                              <option key={sub} value={sub}>
-                                {sub}
+                            <option value="">Selecione uma categoria...</option>
+                            {categoriesList.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.nome}
                               </option>
                             ))}
                           </select>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder="Ex: Blazers, Cenoura..."
-                            value={editFullSubcat}
-                            onChange={(e) => setEditFullSubcat(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                          />
-                        );
-                      })()}
-                    </div>
+                        )}
+                      </div>
 
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Tecido / Composição</label>
-                      <input
-                        type="text"
+                      {/* Subcategoria */}
+                      <AdminCreatableSelect
+                        label="Subcategoria"
+                        value={editFullSubcat}
+                        options={categorySubcats}
+                        onChange={(val) => setEditFullSubcat(val)}
+                        onCreateOption={(val) => handleCreateStoreAttribute('subcategorias', val)}
+                        onDeleteOption={(val) => handleDeleteStoreAttribute('subcategorias', val)}
+                        placeholder="Selecione ou cadastre..."
+                      />
+
+                      {/* Tecido / Composição */}
+                      <AdminCreatableSelect
+                        label="Tecido / Composição"
                         value={editFullFabric}
-                        onChange={(e) => setEditFullFabric(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                        placeholder="Ex: Crepe Alfaiataria / Tricot"
+                        options={storeAttributes?.tecidos || []}
+                        onChange={(val) => setEditFullFabric(val)}
+                        onCreateOption={(val) => handleCreateStoreAttribute('tecidos', val)}
+                        onDeleteOption={(val) => handleDeleteStoreAttribute('tecidos', val)}
+                        placeholder="Selecione ou cadastre tecido..."
                       />
-                    </div>
 
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Modelagem / Caimento</label>
-                      <input
-                        type="text"
+                      {/* Modelagem / Caimento */}
+                      <AdminCreatableSelect
+                        label="Modelagem / Caimento"
                         value={editFullModeling}
-                        onChange={(e) => setEditFullModeling(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                        placeholder="Ex: Alfaiataria Estruturada / Fluida"
+                        options={storeAttributes?.modelagens || []}
+                        onChange={(val) => setEditFullModeling(val)}
+                        onCreateOption={(val) => handleCreateStoreAttribute('modelagens', val)}
+                        onDeleteOption={(val) => handleDeleteStoreAttribute('modelagens', val)}
+                        placeholder="Selecione ou cadastre modelagem..."
+                      />
+
+                      {/* Linha / Coleção */}
+                      <AdminCreatableSelect
+                        label="Linha / Coleção"
+                        value={editFullCollection}
+                        options={storeAttributes?.colecoes || []}
+                        onChange={(val) => setEditFullCollection(val)}
+                        onCreateOption={(val) => handleCreateStoreAttribute('colecoes', val)}
+                        onDeleteOption={(val) => handleDeleteStoreAttribute('colecoes', val)}
+                        placeholder="Selecione ou cadastre coleção..."
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Linha / Coleção</label>
-                    <input
-                      type="text"
-                      value={editFullCollection}
-                      onChange={(e) => setEditFullCollection(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                      placeholder="Ex: Trabalho & Alfaiataria / Festa & Noite"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Descrição Comercial da Peça</label>
-                    <textarea
-                      rows={3}
-                      value={editFullDesc}
-                      onChange={(e) => setEditFullDesc(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                      placeholder="Descreva a elegância, o caimento e as ocasiões de uso da peça..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-bold">
-                      Detalhes, Tabela de Medidas & Cuidados (1 por linha)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editFullDetails}
-                      onChange={(e) => setEditFullDetails(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-[11px] focus:bg-white"
-                      placeholder="Modelo veste tamanho P (altura 1,72m)&#10;Composição: 97% Crepe Premium, 3% Elastano&#10;Lavagem delicada à mão para proteger o tecido"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ABA 2: MÍDIAS & R2 */}
-              {activeEditTab === 'midias' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div>
-                      <h4 className="font-bold text-slate-900 text-xs">Galeria de Fotos da Peça</h4>
-                      <p className="text-[11px] text-slate-500">
-                        Defina a capa principal da vitrine ou envie novas fotos diretamente para o Cloudflare R2 da loja.
-                      </p>
-                    </div>
-
-                    <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{uploadingEditPhoto ? 'Enviando...' : 'Adicionar Foto no R2'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={uploadingEditPhoto}
-                        onChange={handleUploadEditPhoto}
-                        className="hidden"
+                      <label className="block text-slate-700 mb-1 font-bold">Descrição da Peça</label>
+                      <textarea
+                        rows={3}
+                        value={editFullDesc}
+                        onChange={(e) => setEditFullDesc(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                        placeholder="Descreva a elegância, caimento e proposta de estilo desta peça..."
                       />
-                    </label>
-                  </div>
-
-                  {/* Grid de Fotos */}
-                  {editFullFotos.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400">
-                      Nenhuma foto cadastrada. Faça upload de imagens no Cloudflare R2 acima.
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                      {editFullFotos.map((foto, idx) => {
-                        const isCover = editFullCoverIndex === idx;
-                        return (
-                          <div
-                            key={idx}
-                            className={`relative rounded-xl border-2 overflow-hidden bg-slate-100 group transition-all shadow-2xs ${
-                              isCover ? 'border-amber-500 ring-2 ring-amber-400/30' : 'border-slate-200'
-                            }`}
-                          >
-                            <div className="relative aspect-3/4 w-full">
-                              <Image
-                                src={foto.url}
-                                alt={`Foto ${idx + 1}`}
-                                fill
-                                sizes="160px"
-                                className="object-cover"
+
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-bold">
+                        Detalhes & Especificações (1 por linha)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editFullDetails}
+                        onChange={(e) => setEditFullDetails(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white"
+                        placeholder="Ex: Forro interno suave&#10;Fechamento por zíper invisível&#10;Acabamento com costura pespontada"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* SEÇÃO 2: FOTOS E VÍDEOS DA PEÇA */}
+                {(editViewMode === 'scroll' || activeEditTab === 'midias') && (
+                  <div id="dossie-sec-midias" className="space-y-4 scroll-mt-6 pt-4 border-t border-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {editViewMode === 'scroll' && (
+                            <div className="w-6 h-6 rounded-md bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-xs">
+                              2
+                            </div>
+                          )}
+                          <h4 className="font-bold text-slate-900 text-xs sm:text-sm font-serif-luxury">
+                            Fotos e Vídeos da Peça
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Gerencie a galeria, defina a capa principal e ordene as fotos e vídeos que aparecem no catálogo e provador virtual.
+                        </p>
+                      </div>
+
+                      <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingEditPhoto ? 'Enviando Mídia...' : 'Adicionar Foto / Vídeo'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          disabled={uploadingEditPhoto}
+                          onChange={handleUploadEditMedia}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Card Educativo: Orientação Visual 9:16 Vertical */}
+                    <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                        <Smartphone className="w-4 h-4 text-amber-700" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h5 className="font-bold text-slate-900 text-xs">
+                            📐 Formato Recomendado: 9:16 Vertical (1080×1920)
+                          </h5>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200/60 text-amber-900">
+                            Ideal para Celular
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Para fotos de catálogo e vídeos do provador virtual, prefira a proporção vertical <strong>9:16</strong> (estilo Reels e Stories). Vídeos e fotos verticais ocupam a tela inteira do cliente no smartphone, aumentando o engajamento e a conversão de vendas.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Grid de Fotos e Vídeos com Reordenação e Definição de Capa */}
+                    {editFullFotos.length === 0 ? (
+                      <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400">
+                        Nenhuma foto ou vídeo cadastrado. Clique no botão "Adicionar Foto / Vídeo" acima para carregar mídias da peça.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {editFullFotos.map((foto, idx) => {
+                          const isCover = editFullCoverIndex === idx || idx === 0;
+                          const isVideo = foto.tipo === 'video' || /\.(mp4|mov|webm)$/i.test(foto.url);
+                          return (
+                            <div
+                              key={idx}
+                              className={`relative rounded-xl border-2 overflow-hidden bg-slate-100 group transition-all shadow-2xs flex flex-col ${
+                                isCover ? 'border-amber-500 ring-2 ring-amber-400/30' : 'border-slate-200'
+                              }`}
+                            >
+                              <div className="relative aspect-3/4 w-full bg-slate-900">
+                                {isVideo ? (
+                                  <div className="w-full h-full relative flex items-center justify-center">
+                                    <video
+                                      src={foto.url}
+                                      className="w-full h-full object-cover"
+                                      muted
+                                      playsInline
+                                    />
+                                    <div className="absolute inset-0 bg-slate-950/20 flex items-center justify-center pointer-events-none">
+                                      <div className="w-8 h-8 rounded-full bg-slate-900/80 text-amber-400 flex items-center justify-center">
+                                        <Play className="w-4 h-4 ml-0.5 fill-amber-400" />
+                                      </div>
+                                    </div>
+                                    <span className="absolute bottom-1.5 left-1.5 bg-rose-600 text-white font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                      <Video className="w-2.5 h-2.5" />
+                                      Vídeo
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <Image
+                                    src={foto.url}
+                                    alt={`Mídia ${idx + 1}`}
+                                    fill
+                                    sizes="180px"
+                                    className="object-cover"
+                                  />
+                                )}
+
+                                {/* Badge de Posição / Capa */}
+                                {isCover ? (
+                                  <span className="absolute top-1.5 left-1.5 bg-amber-500 text-slate-950 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs">
+                                    ⭐ Capa Principal
+                                  </span>
+                                ) : (
+                                  <span className="absolute top-1.5 left-1.5 bg-slate-900/70 text-white font-bold text-[9px] px-1.5 py-0.5 rounded">
+                                    #{idx + 1}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Barra de Ações Rápidas: Reordenar e Capa */}
+                              <div className="p-2 bg-white border-t border-slate-100 flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveEditMedia(idx, 'left')}
+                                    className={`p-1 rounded text-slate-600 hover:bg-slate-100 transition-colors ${
+                                      idx === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                    title="Mover para esquerda / frente na exibição"
+                                  >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === editFullFotos.length - 1}
+                                    onClick={() => handleMoveEditMedia(idx, 'right')}
+                                    className={`p-1 rounded text-slate-600 hover:bg-slate-100 transition-colors ${
+                                      idx === editFullFotos.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                    title="Mover para direita / trás na exibição"
+                                  >
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  {!isCover && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetCoverMedia(idx)}
+                                      className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] rounded cursor-pointer transition-colors"
+                                      title="Definir esta mídia como capa principal da vitrine"
+                                    >
+                                      Tornar Capa
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteEditPhoto(idx)}
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    title="Excluir mídia da galeria"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SEÇÃO 3: GRADE DE CORES & TAMANHOS */}
+                {(editViewMode === 'scroll' || activeEditTab === 'grade') && (
+                  <div id="dossie-sec-grade" className="space-y-4 scroll-mt-6 pt-4 border-t border-slate-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {editViewMode === 'scroll' && (
+                            <div className="w-6 h-6 rounded-md bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-xs">
+                              3
+                            </div>
+                          )}
+                          <h4 className="font-bold text-slate-900 text-xs sm:text-sm font-serif-luxury">
+                            Grade de Cores & Tamanhos
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Altere diretamente o estoque digitando o número desejado ou cadastre novas cores com múltiplos tamanhos de uma só vez.
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg shrink-0">
+                        Total: {editFullVariacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0)} unidades
+                      </span>
+                    </div>
+
+                    {/* Lista de Variações Existentes com Input Numérico Direto */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white shadow-2xs">
+                      {editFullVariacoes.length === 0 ? (
+                        <div className="p-4 text-center text-slate-400 text-xs">
+                          Nenhuma variação cadastrada na grade desta peça.
+                        </div>
+                      ) : (
+                        editFullVariacoes.map((v, idx) => (
+                          <div key={idx} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                              <span
+                                className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0"
+                                style={{ backgroundColor: v.cor_hex || '#111' }}
                               />
+                              <div>
+                                <span className="font-bold text-slate-900 text-xs">
+                                  {v.tamanho} • {v.cor_nome}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono block">
+                                  SKU: {v.sku || 'N/A'}
+                                </span>
+                              </div>
                             </div>
 
-                            {/* Badge Capa */}
-                            {isCover && (
-                              <span className="absolute top-1.5 left-1.5 bg-amber-500 text-slate-950 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs">
-                                Capa Principal
-                              </span>
-                            )}
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-slate-500 font-semibold">Estoque:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={v.estoque}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                                    setEditFullVariacoes((prev) =>
+                                      prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
+                                    );
+                                  }}
+                                  className="w-20 bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-center font-bold text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
+                                />
+                                <span className="text-[11px] text-slate-400">un</span>
+                              </div>
 
-                            {/* Ações da Foto */}
-                            <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2">
-                              {!isCover && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditFullCoverIndex(idx)}
-                                  className="w-full py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] rounded cursor-pointer transition-colors"
-                                >
-                                  Tornar Capa
-                                </button>
-                              )}
                               <button
                                 type="button"
-                                onClick={() => handleDeleteEditPhoto(idx)}
-                                className="w-full py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] rounded cursor-pointer transition-colors flex items-center justify-center gap-1"
+                                onClick={() => handleRemoveVariationInFullEdit(idx)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Remover esta variação da grade"
                               >
-                                <Trash2 className="w-3 h-3" />
-                                <span>Remover</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </div>
-                        );
-                      })}
+                        ))
+                      )}
                     </div>
-                  )}
 
-                  {/* Vídeo de Provador Vertical (9:16) */}
-                  <div className="pt-4 border-t border-slate-100 space-y-2">
-                    <label className="block text-slate-700 font-bold">
-                      Vídeo de Provador Virtual (Reels / 9:16)
-                    </label>
-                    <p className="text-[11px] text-slate-500">
-                      Cole a URL do vídeo vertical (.mp4) hospedado no Cloudflare R2 ou na vitrine para exibição interativa.
-                    </p>
-                    <input
-                      type="text"
-                      value={editFullVideoProvador}
-                      onChange={(e) => setEditFullVideoProvador(e.target.value)}
-                      placeholder="Ex: /video/header_video.mp4 ou URL R2"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ABA 3: GRADE DE CORES & TAMANHOS */}
-              {activeEditTab === 'grade' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs">Variações de Grade Ativas</h4>
-                      <p className="text-[11px] text-slate-500">
-                        Adicione novas cores e tamanhos ou remova variações que não são mais fabricadas.
-                      </p>
-                    </div>
-                    <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg">
-                      Total: {editFullVariacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0)} unidades
-                    </span>
-                  </div>
-
-                  {/* Lista de Variações Existentes */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
-                    {editFullVariacoes.map((v, idx) => (
-                      <div key={idx} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/50">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs"
-                            style={{ backgroundColor: v.cor_hex || '#111' }}
-                          />
-                          <div>
-                            <span className="font-bold text-slate-900 text-xs">
-                              {v.tamanho} • {v.cor_nome}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono block">
-                              SKU: {v.sku || 'N/A'}
-                            </span>
-                          </div>
+                    {/* Construtor Dinâmico Multi-Tamanhos por Cor */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                        <div>
+                          <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                            <Plus className="w-3.5 h-3.5 text-amber-600" />
+                            Cadastrar Nova Cor com Múltiplos Tamanhos e Estoque
+                          </h5>
+                          <p className="text-[11px] text-slate-500">
+                            Defina a cor uma vez e configure vários tamanhos (ex: P com 15 un, M com 10 un, G com 5 un).
+                          </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] text-slate-500 font-semibold">Estoque:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={v.estoque}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setEditFullVariacoes((prev) =>
-                                  prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
-                                );
-                              }}
-                              className="w-16 bg-slate-50 border border-slate-300 rounded p-1 text-center font-bold text-slate-900 text-xs"
-                            />
-                            <span className="text-[11px] text-slate-400">un</span>
-                          </div>
-
+                        {/* Atalhos Rápidos de Grade */}
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleRemoveVariationInFullEdit(idx)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                            title="Remover esta variação da grade"
+                            onClick={() => handleApplySizePreset('pmg')}
+                            className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                            title="Carregar grade padrão P, M, G"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            ⚡ Grade P, M, G
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplySizePreset('numeros')}
+                            className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                            title="Carregar grade numerada 36 ao 44"
+                          >
+                            ⚡ Grade 36 ao 44
                           </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Formulário para Adicionar Nova Variação */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                    <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-amber-600" />
-                      Adicionar Nova Variação à Grade
-                    </h5>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      <div>
-                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Cor</label>
-                        <input
-                          type="text"
-                          value={newVarColorName}
-                          onChange={(e) => setNewVarColorName(e.target.value)}
-                          placeholder="Ex: Areia Nobre"
-                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Cor</label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="color"
-                            value={newVarColorHex}
-                            onChange={(e) => setNewVarColorHex(e.target.value)}
-                            className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5"
-                          />
+                      {/* Dados da Cor */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Cor</label>
                           <input
                             type="text"
-                            value={newVarColorHex}
-                            onChange={(e) => setNewVarColorHex(e.target.value)}
-                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-[11px]"
+                            value={newVarColorName}
+                            onChange={(e) => setNewVarColorName(e.target.value)}
+                            placeholder="Ex: Terracota Nobre, Off White, Preto..."
+                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold"
                           />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Cor</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={newVarColorHex}
+                              onChange={(e) => setNewVarColorHex(e.target.value)}
+                              className="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white shrink-0"
+                            />
+                            <input
+                              type="text"
+                              value={newVarColorHex}
+                              onChange={(e) => setNewVarColorHex(e.target.value)}
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs font-semibold"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Tamanho</label>
-                        <select
-                          value={newVarSize}
-                          onChange={(e) => setNewVarSize(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-bold"
-                        >
-                          {['PP', 'P', 'M', 'G', 'GG', 'Tamanho Único', '36', '38', '40', '42', '44'].map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
+                      {/* Lista de Tamanhos e Estoques para esta Cor */}
+                      <div className="space-y-2 pt-2 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <label className="text-slate-700 font-bold text-xs">
+                            Tamanhos e Quantidades em Estoque para "{newVarColorName || 'esta cor'}":
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleAddMultiSizeRow}
+                            className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Essa peça tem outro tamanho</span>
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {multiVarSizes.map((row) => (
+                            <div
+                              key={row.id}
+                              className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 shadow-2xs"
+                            >
+                              <div className="flex-1">
+                                <AdminCreatableSelect
+                                  label=""
+                                  value={row.tamanho}
+                                  options={storeAttributes?.tamanhos || ['PP', 'P', 'M', 'G', 'GG', 'Tamanho Único', '36', '38', '40', '42', '44']}
+                                  onChange={(val) => handleUpdateMultiSizeRow(row.id, 'tamanho', val)}
+                                  onCreateOption={(val) => handleCreateStoreAttribute('tamanhos', val)}
+                                  onDeleteOption={(val) => handleDeleteStoreAttribute('tamanhos', val)}
+                                  placeholder="Tamanho..."
+                                />
+                              </div>
+
+                              <div className="w-32">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={row.estoque}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) =>
+                                      handleUpdateMultiSizeRow(
+                                        row.id,
+                                        'estoque',
+                                        Math.max(0, parseInt(e.target.value) || 0)
+                                      )
+                                    }
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-center font-bold text-slate-900 text-xs focus:bg-white"
+                                    placeholder="Qtd..."
+                                  />
+                                  <span className="text-[11px] text-slate-400 font-semibold">un</span>
+                                </div>
+                              </div>
+
+                              {multiVarSizes.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMultiSizeRow(row.id)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors"
+                                  title="Remover tamanho"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           ))}
-                        </select>
+                        </div>
                       </div>
 
+                      {/* Botão de Concluir Adição da Grade */}
+                      <button
+                        type="button"
+                        onClick={handleFinishColorMultiSizes}
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                        <span>Concluir e Inserir Cor e Tamanhos na Grade da Peça</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* SEÇÃO 4: PREÇOS, CMV & CROSS-SELL */}
+                {(editViewMode === 'scroll' || activeEditTab === 'comercial') && (
+                  <div id="dossie-sec-comercial" className="space-y-4 scroll-mt-6 pt-4 border-t border-slate-200">
+                    {editViewMode === 'scroll' && (
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                        <div className="w-6 h-6 rounded-md bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-xs">
+                          4
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
+                          Preços, CMV & Cross-Sell
+                        </h4>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Estoque Inicial</label>
+                        <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$) *</label>
                         <input
                           type="number"
-                          min="0"
-                          value={newVarStock}
-                          onChange={(e) => setNewVarStock(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-bold text-center"
+                          step="0.01"
+                          value={editFullPrice}
+                          onChange={(e) => setEditFullPrice(Number(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-sm focus:bg-white"
                         />
                       </div>
 
-                      <div className="flex items-end">
+                      <div>
+                        <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Vazio para sem promoção"
+                          value={editFullPromoPrice}
+                          onChange={(e) => setEditFullPromoPrice(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Custo real da confecção"
+                          value={editFullCostPrice}
+                          onChange={(e) => setEditFullCostPrice(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Margem Bruta em Tempo Real */}
+                    {editFullPrice > 0 && editFullCostPrice && (
+                      <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                            Margem Bruta Estimada da Peça:
+                          </span>
+                          <span className="text-sm font-extrabold text-emerald-950 font-serif-luxury block mt-0.5">
+                            {(((editFullPrice - parseFloat(editFullCostPrice)) / editFullPrice) * 100).toFixed(1)}% de Margem
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-800">
+                          Lucro Bruto: {formatCurrency(editFullPrice - parseFloat(editFullCostPrice))} / un
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Cross-Sell Visual: "Monte o Look" / Peças Combinadas */}
+                    <div className="pt-2 border-t border-slate-100 space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="block text-slate-800 font-bold text-xs">
+                            👠 "Monte o Look" / Peças Combinadas (Cross-Sell com Fotos)
+                          </label>
+                          <p className="text-[11px] text-slate-500">
+                            Selecione visualmente uma ou mais peças complementares para sugerir na vitrine e elevar o Ticket Médio:
+                          </p>
+                        </div>
                         <button
                           type="button"
-                          onClick={handleAddVariationInFullEdit}
-                          className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                          onClick={() => setIsCrossSellModalOpen(true)}
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Adicionar</span>
+                          <span>{editFullPairedSlugs.length > 0 ? 'Modificar Peças do Look' : '+ Selecionar Peças do Look'}</span>
                         </button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* ABA 4: PREÇOS, CMV & CROSS-SELL */}
-              {activeEditTab === 'comercial' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$) *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editFullPrice}
-                        onChange={(e) => setEditFullPrice(Number(e.target.value))}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-sm focus:bg-white"
-                      />
+                      {/* Lista Visual de Peças do Look Selecionadas */}
+                      {editFullPairedSlugs.length === 0 ? (
+                        <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 text-xs">
+                          Nenhuma peça complementar vinculada a este produto. Clique no botão acima para escolher com fotos, filtros por categoria e busca.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                          {editFullPairedSlugs.map((slug) => {
+                            const pairedProd = products.find((p) => p.slug === slug || p.id === slug);
+                            if (!pairedProd) return null;
+                            return (
+                              <div
+                                key={slug}
+                                className="flex items-center gap-2.5 p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 relative group shadow-2xs"
+                              >
+                                <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                  {pairedProd.foto_principal ? (
+                                    <Image
+                                      src={pairedProd.foto_principal}
+                                      alt={pairedProd.nome}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                      <Package className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h6 className="font-bold text-slate-900 text-xs truncate">{pairedProd.nome}</h6>
+                                  <span className="text-[11px] text-amber-900 font-semibold block">
+                                    {formatCurrency(pairedProd.preco)}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = editFullPairedSlugs.filter((s) => s !== slug);
+                                    setEditFullPairedSlugs(updated);
+                                    setEditFullPairedSlug(updated.join(','));
+                                  }}
+                                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Remover peça do look combinado"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Vazio para sem promoção"
-                        value={editFullPromoPrice}
-                        onChange={(e) => setEditFullPromoPrice(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Custo real da confecção"
-                        value={editFullCostPrice}
-                        onChange={(e) => setEditFullCostPrice(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Margem Bruta em Tempo Real */}
-                  {editFullPrice > 0 && editFullCostPrice && (
-                    <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                      <div>
-                        <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
-                          Margem Bruta Estimada da Peça:
+                    {/* Sinalizadores Comerciais na Vitrine (Padrão + Customizados) */}
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                          Sinalizadores Comerciais na Vitrine:
                         </span>
-                        <span className="text-sm font-extrabold text-emerald-950 font-serif-luxury block mt-0.5">
-                          {(((editFullPrice - parseFloat(editFullCostPrice)) / editFullPrice) * 100).toFixed(1)}% de Margem
-                        </span>
+                        {!isAddingCustomBadge && (
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingCustomBadge(true)}
+                            className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Novo Sinalizador</span>
+                          </button>
+                        )}
                       </div>
-                      <span className="text-xs font-bold text-emerald-800">
-                        Lucro Bruto: {formatCurrency(editFullPrice - parseFloat(editFullCostPrice))} / un
-                      </span>
+
+                      {/* Mini Formulário Inline de Novo Sinalizador */}
+                      {isAddingCustomBadge && (
+                        <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-xl space-y-2.5">
+                          <h6 className="font-bold text-amber-950 text-xs">Criar Novo Sinalizador Comercial</h6>
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <div className="sm:col-span-2">
+                              <input
+                                type="text"
+                                value={newCustomBadgeName}
+                                onChange={(e) => setNewCustomBadgeName(e.target.value)}
+                                placeholder="Nome (Ex: Edição Limitada, Peça Exclusiva)..."
+                                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-900"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={newCustomBadgeColor}
+                                onChange={(e) => setNewCustomBadgeColor(e.target.value)}
+                                className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 shrink-0"
+                              />
+                              <input
+                                type="text"
+                                value={newCustomBadgeIcon}
+                                onChange={(e) => setNewCustomBadgeIcon(e.target.value)}
+                                placeholder="Emoji (✨)..."
+                                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-center font-bold"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={handleAddCustomBadge}
+                                className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg cursor-pointer"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsAddingCustomBadge(false);
+                                  setNewCustomBadgeName('');
+                                }}
+                                className="p-2 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Grade de Sinalizadores Padrão e Customizados */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editFullDestaque}
+                            onChange={(e) => setEditFullDestaque(e.target.checked)}
+                            className="accent-amber-600 rounded"
+                          />
+                          <span className="font-semibold text-slate-800">🌟 Destaque</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editFullMaisVendido}
+                            onChange={(e) => setEditFullMaisVendido(e.target.checked)}
+                            className="accent-purple-600 rounded"
+                          />
+                          <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editFullOutlet}
+                            onChange={(e) => setEditFullOutlet(e.target.checked)}
+                            className="accent-rose-600 rounded"
+                          />
+                          <span className="font-semibold text-slate-800">🏷️ Outlet</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editFullUltimasPecas}
+                            onChange={(e) => setEditFullUltimasPecas(e.target.checked)}
+                            className="accent-orange-600 rounded"
+                          />
+                          <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
+                        </label>
+
+                        {/* Sinalizadores Customizados da Loja */}
+                        {(storeAttributes?.sinalizadores || []).map((badge) => {
+                          const isSelected = customBadgesSelected.includes(badge.label);
+                          return (
+                            <label
+                              key={badge.id}
+                              className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'border-amber-400 bg-amber-50/60'
+                                  : 'border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setCustomBadgesSelected((prev) => [...prev, badge.label]);
+                                  } else {
+                                    setCustomBadgesSelected((prev) => prev.filter((b) => b !== badge.label));
+                                  }
+                                }}
+                                className="accent-amber-600 rounded"
+                              />
+                              <span className="font-semibold text-slate-800 flex items-center gap-1 truncate">
+                                <span>{badge.icon || '✨'}</span>
+                                <span className="truncate">{badge.label}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  )}
-
-                  {/* Cross-Sell / Monte o Look */}
-                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                    <label className="block text-slate-700 font-bold">
-                      👠 "Monte o Look" / Peça Combinada (Cross-Sell)
-                    </label>
-                    <p className="text-[11px] text-slate-500">
-                      Selecione uma peça complementar que combina perfeitamente com esta para sugerir na vitrine e elevar o Ticket Médio:
-                    </p>
-                    <select
-                      value={editFullPairedSlug}
-                      onChange={(e) => setEditFullPairedSlug(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white"
-                    >
-                      <option value="">Sem sugestão de look combinado</option>
-                      {products
-                        .filter((p) => p.id !== editingFullProduct.id)
-                        .map((p) => (
-                          <option key={p.id} value={p.slug}>
-                            {p.nome} ({formatCurrency(p.preco)})
-                          </option>
-                        ))}
-                    </select>
                   </div>
+                )}
+              </div>
 
-                  {/* Tags Comerciais */}
-                  <div className="pt-3 border-t border-slate-100 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                      Sinalizadores Comerciais na Vitrine:
-                    </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editFullDestaque}
-                          onChange={(e) => setEditFullDestaque(e.target.checked)}
-                          className="accent-amber-600 rounded"
-                        />
-                        <span className="font-semibold text-slate-800">🌟 Destaque</span>
-                      </label>
+              {/* Rodapé do Modal com Ações */}
+              <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  As alterações serão sincronizadas instantaneamente com o catálogo da boutique sem F5.
+                </span>
 
-                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editFullMaisVendido}
-                          onChange={(e) => setEditFullMaisVendido(e.target.checked)}
-                          className="accent-purple-600 rounded"
-                        />
-                        <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editFullOutlet}
-                          onChange={(e) => setEditFullOutlet(e.target.checked)}
-                          className="accent-rose-600 rounded"
-                        />
-                        <span className="font-semibold text-slate-800">🏷️ Outlet</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editFullUltimasPecas}
-                          onChange={(e) => setEditFullUltimasPecas(e.target.checked)}
-                          className="accent-orange-600 rounded"
-                        />
-                        <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
-                      </label>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setEditingFullProduct(null)}
+                    disabled={isSavingFullEdit}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveFullEdit}
+                    disabled={isSavingFullEdit}
+                    className="px-5 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    {isSavingFullEdit ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Salvando Peça no Banco...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Salvar Cadastro Completo</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Rodapé do Modal com Ações */}
-            <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
-              <span className="text-[11px] text-slate-500 hidden sm:inline">
-                As alterações serão refletidas instantaneamente na vitrine pública.
-              </span>
-
-              <div className="flex items-center gap-2.5 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setEditingFullProduct(null)}
-                  disabled={isSavingFullEdit}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveFullEdit}
-                  disabled={isSavingFullEdit}
-                  className="px-5 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
-                >
-                  {isSavingFullEdit ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Salvando Peça no Banco...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Salvar Cadastro Completo</span>
-                    </>
-                  )}
-                </button>
               </div>
             </div>
+
+            {/* Modal de Seleção Visual de Peças do Look Combinado (Cross-Sell) */}
+            {isCrossSellModalOpen && (
+              <CrossSellPickerModal
+                isOpen={isCrossSellModalOpen}
+                onClose={() => setIsCrossSellModalOpen(false)}
+                currentProduct={editingFullProduct}
+                allProducts={products}
+                selectedSlugs={editFullPairedSlugs}
+                onConfirm={(newSlugs: string[]) => {
+                  setEditFullPairedSlugs(newSlugs);
+                  setEditFullPairedSlug(newSlugs.join(','));
+                  setIsCrossSellModalOpen(false);
+                  showToast(`${newSlugs.length} peça(s) selecionada(s) para o Compre o Look!`);
+                }}
+              />
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      
 
       {/* MINI MODAL: DESCONTO EM MASSA */}
       {showBulkDiscountModal && (

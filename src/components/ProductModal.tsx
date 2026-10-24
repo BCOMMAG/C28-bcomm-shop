@@ -158,28 +158,42 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const isCurrentSelectionOutOfStock = currentVariationStock <= 0;
   const isCartLimitReached = !isCurrentSelectionOutOfStock && effectiveAvailableStock <= 0 && quantityInCart > 0;
 
-  // Produtos que combinam para "Compre o Look"
+  // Produtos que combinam para "Compre o Look" (suporta 1 slug ou múltiplos separados por vírgula)
   const matchingProducts = useMemo(() => {
     if (!product) return [];
     const matches: Product[] = [];
 
-    // 1. Sugestão emparelhada direta da peça
+    // 1. Sugestões emparelhadas diretas da peça configuradas no admin
     if (product.pairedWithId) {
-      const directPair = sourceProducts.find((p) => p.id === product.pairedWithId && p.id !== product.id);
-      if (directPair) matches.push(directPair);
+      const pairedKeys = String(product.pairedWithId)
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+
+      for (const key of pairedKeys) {
+        const directPair = sourceProducts.find(
+          (p) =>
+            (p.id.toLowerCase() === key || (p.slug && p.slug.toLowerCase() === key)) &&
+            p.id !== product.id &&
+            !matches.some((m) => m.id === p.id)
+        );
+        if (directPair) matches.push(directPair);
+      }
     }
 
-    // 2. Se houver menos de 2 sugestões, complementar com produtos de categorias distintas
-    const others = sourceProducts.filter(
-      (p) => p.id !== product.id && !matches.some((m) => m.id === p.id)
-    );
+    // 2. Se nenhuma peça estiver configurada manualmente, complementar com produtos de categorias distintas
+    if (matches.length === 0) {
+      const others = sourceProducts.filter(
+        (p) => p.id !== product.id && !matches.some((m) => m.id === p.id)
+      );
 
-    const complementary = others.filter((p) => p.category !== product.category);
-    const candidates = complementary.length > 0 ? complementary : others;
+      const complementary = others.filter((p) => p.category !== product.category);
+      const candidates = complementary.length > 0 ? complementary : others;
 
-    for (const cand of candidates) {
-      if (matches.length >= 2) break;
-      matches.push(cand);
+      for (const cand of candidates) {
+        if (matches.length >= 2) break;
+        matches.push(cand);
+      }
     }
 
     return matches;

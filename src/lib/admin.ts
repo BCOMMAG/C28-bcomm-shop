@@ -3174,3 +3174,286 @@ export async function getAdminPendingNotifications(
   }
 }
 
+/* ========================================================================== */
+/* ATRIBUTOS DINÂMICOS DA LOJA (TECIDOS, MODELAGENS, COLEÇÕES, SINALIZADORES) */
+/* ========================================================================== */
+
+export interface CustomSinalizador {
+  id: string;
+  nome: string;
+  cor: string;
+  icone?: string;
+  label?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface StoreCustomAttributes {
+  subcategorias?: string[];
+  tecidos: string[];
+  modelagens: string[];
+  colecoes: string[];
+  tamanhos: string[];
+  sinalizadores: CustomSinalizador[];
+}
+
+export const DEFAULT_STORE_ATTRIBUTES: StoreCustomAttributes = {
+  subcategorias: [
+    'Alfaiataria',
+    'Casual Chic',
+    'Vestidos & Macacões',
+    'Conjuntos Nobres',
+    'Blazers & Casacos',
+    'Calças & Bermudas',
+    'Blusas & Camisas',
+    'Saias',
+    'Acessórios Nobres'
+  ],
+  tecidos: [
+    'Cetim de Seda',
+    'Tricot Biamar',
+    'Crepe Alfaiataria',
+    'Couro Premium',
+    'Metal Nobre Banho 18k',
+    'Lã & Fios Nobres',
+    'Linho Puro',
+    'Algodão Egípcio'
+  ],
+  modelagens: [
+    'Fluida / Evasê',
+    'Ajustada / Slim',
+    'Ampla / Oversized',
+    'Reta Clássica',
+    'Alfaiataria Estruturada'
+  ],
+  colecoes: [
+    'Festa & Noite',
+    'Casual Chic',
+    'Trabalho & Alfaiataria',
+    'Resort & Elegância',
+    'Inverno Biamar',
+    'Primavera'
+  ],
+  tamanhos: [
+    'PP',
+    'P',
+    'M',
+    'G',
+    'GG',
+    'Tamanho Único',
+    '36',
+    '38',
+    '40',
+    '42',
+    '44',
+    '46'
+  ],
+  sinalizadores: [
+    { id: 'destaque', nome: 'Destaque', cor: '#d97706', icone: '🌟', label: 'Destaque', color: '#d97706', icon: '🌟' },
+    { id: 'mais_vendido', nome: 'Mais Vendido', cor: '#9333ea', icone: '🔥', label: 'Mais Vendido', color: '#9333ea', icon: '🔥' },
+    { id: 'outlet', nome: 'Outlet', cor: '#e11d48', icone: '🏷️', label: 'Outlet', color: '#e11d48', icon: '🏷️' },
+    { id: 'ultimas_pecas', nome: 'Últimas Peças', cor: '#ea580c', icone: '⏳', label: 'Últimas Peças', color: '#ea580c', icon: '⏳' }
+  ]
+};
+
+/**
+ * Consulta os atributos dinâmicos da loja (mescla defaults com o cadastrado no banco).
+ */
+export async function getStoreCustomAttributes(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<StoreCustomAttributes> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = visuais.atributos_pecas || {};
+
+    const subcategorias = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.subcategorias || []), ...(attrs.subcategorias || [])]));
+    const tecidos = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.tecidos), ...(attrs.tecidos || [])]));
+    const modelagens = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.modelagens), ...(attrs.modelagens || [])]));
+    const colecoes = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.colecoes), ...(attrs.colecoes || [])]));
+    const tamanhos = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.tamanhos), ...(attrs.tamanhos || [])]));
+
+    const defaultSinalizadoresMap = new Map(DEFAULT_STORE_ATTRIBUTES.sinalizadores.map((s) => [s.id, {
+      ...s,
+      label: s.label || s.nome,
+      color: s.color || s.cor,
+      icon: s.icon || s.icone
+    }]));
+
+    (attrs.sinalizadores || []).forEach((s: any) => {
+      if (s && s.id) {
+        defaultSinalizadoresMap.set(s.id, {
+          id: s.id,
+          nome: s.nome || s.label || s.id,
+          cor: s.cor || s.color || '#d97706',
+          icone: s.icone || s.icon || '✨',
+          label: s.label || s.nome || s.id,
+          color: s.color || s.cor || '#d97706',
+          icon: s.icon || s.icone || '✨'
+        });
+      }
+    });
+
+    return {
+      subcategorias,
+      tecidos,
+      modelagens,
+      colecoes,
+      tamanhos,
+      sinalizadores: Array.from(defaultSinalizadoresMap.values())
+    };
+  } catch (err) {
+    console.error('Falha ao carregar atributos dinâmicos da loja:', err);
+    return DEFAULT_STORE_ATTRIBUTES;
+  }
+}
+
+/**
+ * Salva ou remove um atributo customizado de estilo ou sinalizador comercial na loja.
+ */
+export async function saveStoreCustomAttribute(
+  lojaId: string = DEFAULT_TENANT_ID,
+  tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos' | 'sinalizadores',
+  item: string | CustomSinalizador,
+  acao: 'adicionar' | 'remover' | 'add' | 'remove' = 'adicionar'
+): Promise<StoreCustomAttributes> {
+  const supabase = getSupabaseBrowserClient();
+  const isAdd = acao === 'adicionar' || acao === 'add';
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+
+    if (tipo === 'sinalizadores') {
+      const currentList: CustomSinalizador[] = Array.isArray(attrs.sinalizadores)
+        ? [...attrs.sinalizadores]
+        : [...DEFAULT_STORE_ATTRIBUTES.sinalizadores];
+
+      let targetSinalizador: CustomSinalizador;
+      if (typeof item === 'object') {
+        targetSinalizador = {
+          id: item.id || `badge_${Date.now()}`,
+          nome: item.nome || item.label || 'Sinalizador',
+          cor: item.cor || item.color || '#d97706',
+          icone: item.icone || item.icon || '✨',
+          label: item.label || item.nome || 'Sinalizador',
+          color: item.color || item.cor || '#d97706',
+          icon: item.icon || item.icone || '✨'
+        };
+      } else {
+        targetSinalizador = {
+          id: String(item).toLowerCase().replace(/\s+/g, '_'),
+          nome: String(item),
+          cor: '#d97706',
+          icone: '✨',
+          label: String(item),
+          color: '#d97706',
+          icon: '✨'
+        };
+      }
+
+      let updatedList: CustomSinalizador[];
+      if (isAdd) {
+        updatedList = [...currentList.filter((s) => s.id !== targetSinalizador.id), targetSinalizador];
+      } else {
+        updatedList = currentList.filter((s) => s.id !== targetSinalizador.id);
+      }
+      attrs.sinalizadores = updatedList;
+    } else {
+      const currentArray: string[] = Array.isArray(attrs[tipo])
+        ? [...attrs[tipo]]
+        : [...(DEFAULT_STORE_ATTRIBUTES[tipo] || [])];
+
+      const stringItem = String(item).trim();
+      if (!stringItem) return await getStoreCustomAttributes(lojaId);
+
+      let updatedArray: string[];
+      if (isAdd) {
+        if (!currentArray.some((x) => x.toLowerCase() === stringItem.toLowerCase())) {
+          updatedArray = [...currentArray, stringItem];
+        } else {
+          updatedArray = currentArray;
+        }
+      } else {
+        updatedArray = currentArray.filter((x) => x.toLowerCase() !== stringItem.toLowerCase());
+      }
+      attrs[tipo] = updatedArray;
+    }
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo, lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return await getStoreCustomAttributes(lojaId);
+  } catch (err) {
+    console.error(`Falha ao ${acao} atributo ${tipo}:`, err);
+    return await getStoreCustomAttributes(lojaId);
+  }
+}
+
+/**
+ * Atualiza diretamente o estoque de uma variação para um valor absoluto digitado pelo lojista.
+ */
+export async function updateAdminVariationStockDirect(
+  variationId: string,
+  productId: string,
+  novoEstoque: number,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{ success: boolean; novoEstoqueTotal?: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const validStock = Math.max(0, Math.floor(novoEstoque));
+
+    const { error: varErr } = await supabase
+      .from('variacoes_produto')
+      .update({ estoque: validStock })
+      .eq('id', variationId);
+
+    if (varErr) throw varErr;
+
+    // Recalcula estoque total do produto no banco
+    const { data: allVars } = await supabase
+      .from('variacoes_produto')
+      .select('estoque')
+      .eq('produto_id', productId);
+
+    const totalEstoque = (allVars || []).reduce((acc, v) => acc + Number(v.estoque || 0), 0);
+
+    await supabase
+      .from('produtos')
+      .update({ estoque_total: totalEstoque })
+      .eq('id', productId);
+
+    return { success: true, novoEstoqueTotal: totalEstoque };
+  } catch (err: any) {
+    console.error('Falha ao atualizar estoque direto:', err);
+    return { success: false, error: err?.message || 'Erro ao atualizar estoque.' };
+  }
+}
+
