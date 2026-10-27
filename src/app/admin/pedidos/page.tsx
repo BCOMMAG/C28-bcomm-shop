@@ -282,7 +282,8 @@ export default function AdminPedidosPage() {
   const handleScrollKanban = (direction: 'left' | 'right') => {
     const el = kanbanScrollRef.current;
     if (!el) return;
-    const step = 325; // 310px de coluna + 15px de gap
+    // Avança ou retrocede proporcionalmente a 1 coluna (1/5 da largura visível + gap de 14px)
+    const step = Math.round(el.clientWidth / 5) + 14;
     el.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
     setTimeout(updateKanbanScrollBounds, 350);
   };
@@ -2616,11 +2617,11 @@ export default function AdminPedidosPage() {
                     </button>
                   )}
 
-                  {/* Esteira Horizontal com Colunas de Largura Fixa de 310px */}
+                  {/* Esteira Horizontal com Colunas Proporcionais (5 colunas por tela) */}
                   <div
                     ref={kanbanScrollRef}
                     onScroll={updateKanbanScrollBounds}
-                    className="flex items-start gap-4 overflow-x-auto pb-4 scroll-smooth"
+                    className="flex items-start gap-3.5 overflow-x-auto pb-4 scroll-smooth"
                     style={{ scrollbarWidth: 'thin' }}
                   >
                     {visibleKanbanColumns.map((column) => {
@@ -2632,25 +2633,23 @@ export default function AdminPedidosPage() {
                       });
                       const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
+                      // Se houver mais de 5 colunas, cada coluna ocupa exatamente 1/5 da viewport (cabendo 5 por tela)
+                      // Se houver 5 ou menos, distribuem-se igualmente ocupando 100% da largura
+                      const colWidthStyle = visibleKanbanColumns.length > 5
+                        ? 'w-[calc((100%-56px)/5)] min-w-[180px] shrink-0'
+                        : 'flex-1 min-w-[180px] shrink-0';
+
                       return (
                         <div
                           key={column.id}
                           data-kanban-col-id={column.id}
-                          className="w-[310px] min-w-[310px] max-w-[310px] shrink-0 bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[500px] shadow-2xs"
+                          className={`${colWidthStyle} bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[500px] shadow-2xs`}
                         >
-                        {/* Header da Coluna */}
-                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 gap-1.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs font-bold text-slate-800 truncate" title={column.label}>
+                        {/* Header da Coluna em 2 Linhas Limpas */}
+                        <div className="pb-2 mb-2 border-b border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between gap-1 min-w-0">
+                            <span className="text-[11px] font-extrabold text-slate-800 tracking-tight truncate" title={column.label}>
                               {column.label}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white border border-slate-200 text-slate-700 shrink-0">
-                              {columnOrders.length}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] font-bold text-slate-500">
-                              {formatCurrency(columnTotal)}
                             </span>
                             <button
                               onClick={(e) => {
@@ -2658,11 +2657,19 @@ export default function AdminPedidosPage() {
                                 handleToggleHideColumn(column.id);
                               }}
                               data-kanban-hide-btn={column.id}
-                              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                              className="p-0.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer shrink-0"
                               title={`Ocultar coluna "${column.label}"`}
                             >
                               <EyeOff className="w-3.5 h-3.5" />
                             </button>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] pt-0.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-700 shrink-0">
+                              {columnOrders.length} {columnOrders.length === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-500 font-mono shrink-0">
+                              {formatCurrency(columnTotal)}
+                            </span>
                           </div>
                         </div>
 
