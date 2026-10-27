@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -17,6 +17,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   Calendar,
   DollarSign,
@@ -132,6 +134,9 @@ export default function AdminPedidosPage() {
   const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
   const [hiddenKanbanColumns, setHiddenKanbanColumns] = useState<string[]>([]);
   const [isColumnsPopoverOpen, setIsColumnsPopoverOpen] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const kanbanScrollRef = useRef<HTMLDivElement>(null);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
   const periodDropdownRef = useRef<HTMLDivElement>(null);
   const columnsPopoverRef = useRef<HTMLDivElement>(null);
@@ -264,6 +269,38 @@ export default function AdminPedidosPage() {
       localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify([]));
     } catch {}
   };
+
+  // Controle de Rolagem Horizontal Suave do Kanban
+  const updateKanbanScrollBounds = useCallback(() => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 15);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 15);
+  }, []);
+
+  const handleScrollKanban = (direction: 'left' | 'right') => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    const step = 325; // 310px de coluna + 15px de gap
+    el.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
+    setTimeout(updateKanbanScrollBounds, 350);
+  };
+
+  useEffect(() => {
+    if (viewMode !== 'kanban') return;
+    const timer = setTimeout(updateKanbanScrollBounds, 120);
+    const el = kanbanScrollRef.current;
+    if (!el) return () => clearTimeout(timer);
+
+    el.addEventListener('scroll', updateKanbanScrollBounds);
+    window.addEventListener('resize', updateKanbanScrollBounds);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('scroll', updateKanbanScrollBounds);
+      window.removeEventListener('resize', updateKanbanScrollBounds);
+    };
+  }, [viewMode, hiddenKanbanColumns, orders, updateKanbanScrollBounds]);
 
   // Carrega Pedidos e Reservas Provisórias do Supabase
   const fetchOrdersAndReservations = async () => {
@@ -409,6 +446,22 @@ export default function AdminPedidosPage() {
         handleChangeViewMode('lista');
       } else if (e.key === '3') {
         handleChangeViewMode('kanban');
+      } else if (
+        viewMode === 'kanban' &&
+        !releaseModalOrder &&
+        !statusModalOrder &&
+        !printModalOrder &&
+        !trackingModalOrder &&
+        !bulkStatusModalOpen &&
+        !detailsModalOrder
+      ) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleScrollKanban('right');
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handleScrollKanban('left');
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -420,7 +473,9 @@ export default function AdminPedidosPage() {
     trackingModalOrder,
     bulkStatusModalOpen,
     detailsModalOrder,
-    isProcessingRelease
+    isProcessingRelease,
+    viewMode,
+    handleScrollKanban
   ]);
 
   // Formatadores
@@ -564,6 +619,17 @@ export default function AdminPedidosPage() {
       setSelectedStatuses([]);
     } else {
       setSelectedStatuses([statusId]);
+    }
+
+    // Se estiver no modo Kanban, rola suavemente até a coluna correspondente
+    if (viewMode === 'kanban') {
+      setTimeout(() => {
+        const targetId = statusId === 'aguardando_whatsapp' ? 'pendente' : statusId;
+        const colEl = document.querySelector(`[data-kanban-col-id="${targetId}"]`);
+        if (colEl) {
+          colEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      }, 100);
     }
   };
 
@@ -1737,6 +1803,32 @@ export default function AdminPedidosPage() {
             </div>
           )}
 
+          {/* Botões de Navegação Horizontal do Kanban na Toolbar */}
+          {viewMode === 'kanban' && (
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+              <button
+                type="button"
+                id="btn-kanban-scroll-left"
+                onClick={() => handleScrollKanban('left')}
+                disabled={!canScrollLeft}
+                className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                title="Rolar esteira para a esquerda (Atalho: Seta Esquerda)"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                id="btn-kanban-scroll-right"
+                onClick={() => handleScrollKanban('right')}
+                disabled={!canScrollRight}
+                className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                title="Rolar esteira para a direita (Atalho: Seta Direita)"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Alternador de Modos de Visualização (Cards, Lista e Kanban) */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
           <button
@@ -2494,27 +2586,6 @@ export default function AdminPedidosPage() {
 
           return (
             <div className="space-y-3">
-              {/* Barra de Aviso e Recuperação quando houver colunas ocultas */}
-              {hiddenKanbanColumns.length > 0 && (
-                <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <EyeOff className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>
-                      <strong>{hiddenKanbanColumns.length}</strong> {hiddenKanbanColumns.length === 1 ? 'coluna oculta' : 'colunas ocultas'}:{' '}
-                      <span className="font-semibold text-amber-800">
-                        {ALL_KANBAN_COLUMNS.filter((c) => hiddenKanbanColumns.includes(c.id)).map((c) => c.label).join(', ')}
-                      </span>
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleShowAllColumns}
-                    className="font-bold text-amber-800 hover:text-amber-950 underline hover:no-underline cursor-pointer ml-3 shrink-0"
-                  >
-                    Restaurar Todas
-                  </button>
-                </div>
-              )}
-
               {/* Estado Vazio caso todas as colunas tenham sido ocultadas */}
               {visibleKanbanColumns.length === 0 ? (
                 <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-white space-y-3 shadow-2xs">
@@ -2532,22 +2603,41 @@ export default function AdminPedidosPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-flow-col md:auto-cols-[minmax(270px,1fr)] gap-3.5 overflow-x-auto pb-4">
-                  {visibleKanbanColumns.map((column) => {
-                    const columnOrders = filteredOrders.filter((o) => {
-                      if (column.id === 'pendente') {
-                        return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
-                      }
-                      return o.status === column.id;
-                    });
-                    const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
+                <div className="relative group">
+                  {/* Botão Flutuante Esquerdo */}
+                  {canScrollLeft && (
+                    <button
+                      type="button"
+                      onClick={() => handleScrollKanban('left')}
+                      className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/95 border border-slate-200 shadow-xl text-slate-700 hover:text-slate-950 hover:bg-white flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95 backdrop-blur-xs"
+                      title="Rolar para colunas anteriores"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
 
-                    return (
-                      <div
-                        key={column.id}
-                        data-kanban-col-id={column.id}
-                        className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[480px] shadow-2xs"
-                      >
+                  {/* Esteira Horizontal com Colunas de Largura Fixa de 310px */}
+                  <div
+                    ref={kanbanScrollRef}
+                    onScroll={updateKanbanScrollBounds}
+                    className="flex items-start gap-4 overflow-x-auto pb-4 scroll-smooth"
+                    style={{ scrollbarWidth: 'thin' }}
+                  >
+                    {visibleKanbanColumns.map((column) => {
+                      const columnOrders = filteredOrders.filter((o) => {
+                        if (column.id === 'pendente') {
+                          return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
+                        }
+                        return o.status === column.id;
+                      });
+                      const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
+
+                      return (
+                        <div
+                          key={column.id}
+                          data-kanban-col-id={column.id}
+                          className="w-[310px] min-w-[310px] max-w-[310px] shrink-0 bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 flex flex-col min-h-[500px] shadow-2xs"
+                        >
                         {/* Header da Coluna */}
                         <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 gap-1.5">
                           <div className="flex items-center gap-2 min-w-0">
@@ -2785,11 +2875,24 @@ export default function AdminPedidosPage() {
                 );
               })}
             </div>
-          )}
-        </div>
-      );
-    })()
-  )}
+
+            {/* Botão Flutuante Direito */}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => handleScrollKanban('right')}
+                className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/95 border border-slate-200 shadow-xl text-slate-700 hover:text-slate-950 hover:bg-white flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95 backdrop-blur-xs"
+                title="Avançar para próximas colunas"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  })()
+)}
 
       {/* 5. BARRA FLUTUANTE DE AÇÕES EM MASSA (BULK ACTIONS TOOLBAR) */}
       {selectedOrderIds.length > 0 && (
