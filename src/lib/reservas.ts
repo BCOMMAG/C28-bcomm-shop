@@ -2,6 +2,11 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { logStoreAuditAction } from '@/lib/team';
 
+const isValidUUID = (id?: string | null) => {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
 export interface ReservaEstoque {
   id: string;
   loja_id: string;
@@ -49,12 +54,33 @@ export async function getActiveReservations(lojaId: string = DEFAULT_TENANT_ID):
     const nowIso = new Date().toISOString();
 
     // 1. Marca como 'expirada' APENAS reservas com status 'ativa' cujo prazo já venceu
-    await supabase
+    const { data: expiredList } = await supabase
       .from('reservas_estoque')
       .update({ status: 'expirada' })
       .eq('loja_id', lojaId)
       .eq('status', 'ativa')
-      .lt('expira_em', nowIso);
+      .lt('expira_em', nowIso)
+      .select('id, motivo');
+
+    // Se houver pedidos de provador atrelados a essas reservas expiradas, move-os para cancelado
+    if (expiredList && expiredList.length > 0) {
+      for (const exp of expiredList) {
+        if (exp.motivo && exp.motivo.includes('PROV-')) {
+          const match = exp.motivo.match(/PROV-\d+/);
+          if (match) {
+            await supabase
+              .from('pedidos')
+              .update({
+                status: 'cancelado',
+                observacoes: '👗 Provador Expirado (Peça Devolvida à Vitrine)'
+              })
+              .eq('loja_id', lojaId)
+              .eq('numero_pedido', match[0])
+              .eq('status', 'aguardando_whatsapp');
+          }
+        }
+      }
+    }
 
     // 2. Busca reservas ativas vigentes OU pausadas (congeladas)
     const { data, error } = await supabase
@@ -116,7 +142,7 @@ export async function createReservation(
       tamanho: input.tamanho || null,
       cor: input.cor || null,
       quantidade: input.quantidade || 1,
-      vendedora_id: input.vendedora_id || null,
+      vendedora_id: isValidUUID(input.vendedora_id) ? input.vendedora_id : null,
       vendedora_nome: input.vendedora_nome || 'Vendedora',
       cliente_nome: input.cliente_nome || null,
       cliente_telefone: input.cliente_telefone || null,
@@ -165,6 +191,144 @@ export async function createReservation(
   }
 }
 
+export interface CreateFittingRoomOrderInput {
+  produto_id: string;
+  produto_nome: string;
+  preco: number;
+  foto_url?: string;
+  variacao_id?: string;
+  tamanho?: string;
+  cor?: string;
+  quantidade?: number;
+  vendedora_id?: string;
+  vendedora_nome: string;
+  cliente_nome?: string;
+  cliente_telefone?: string;
+  duracaoMinutos?: number;
+}
+
+/**
+ * Cria a Reserva de Estoque E gera simultaneamente um Pedido Provisório no Kanban (#PROV-XXXX)
+ */
+export async function createFittingRoomOrderAndReservation(
+  lojaId: string = DEFAULT_TENANT_ID,
+  input: CreateFittingRoomOrderInput
+): Promise<{ success: boolean; pedido?: any; reserva?: ReservaEstoque; numeroPedido?: string; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const duracao = input.duracaoMinutos || 30;
+    const expiraEm = new Date(Date.now() + duracao * 60 * 1000).toISOString();
+    const numeroProv = `PROV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const qtd = input.quantidade || 1;
+    const preco = input.preco || 0;
+    const total = preco * qtd;
+
+    // 1. Cria o Pedido Provisório na Esteira Kanban
+    const novoPedido = {
+      loja_id: lojaId,
+      numero_pedido: numeroProv,
+      status: 'aguardando_whatsapp',
+      canal_venda: 'provador',
+      subtotal: total,
+      total: total,
+      valor_frete: 0,
+      valor_desconto: 0,
+      metodo_pagamento: 'balcao',
+      endereco_entrega: {
+        destinatario: input.cliente_nome?.trim() || 'Cliente no Provador',
+        telefone: input.cliente_telefone?.trim() || ''
+      },
+      observacoes: `👗 Atendimento de Provador (Loja Física) • Vendedora: ${input.vendedora_nome || 'Balcão'}`,
+      vendedora_id: isValidUUID(input.vendedora_id) ? input.vendedora_id : null
+    };
+
+    const { data: pedidoData, error: pedidoError } = await supabase
+      .from('pedidos')
+      .insert([novoPedido])
+      .select('*')
+      .single();
+
+    if (pedidoError || !pedidoData) {
+      console.warn('Alerta ao gerar pedido de provador:', pedidoError?.message);
+    }
+
+    // 2. Cria item na tabela itens_pedido se o pedido foi criado
+    if (pedidoData) {
+      await supabase.from('itens_pedido').insert([
+        {
+          pedido_id: pedidoData.id,
+          loja_id: lojaId,
+          produto_id: input.produto_id,
+          nome_produto: input.produto_nome,
+          cor: input.cor || 'Única',
+          tamanho: input.tamanho || 'Único',
+          preco_unitario: preco,
+          quantidade: qtd,
+          imagem_url: input.foto_url || null
+        }
+      ]);
+    }
+
+    // 3. Cria a Reserva de Estoque bloqueando a vitrine online
+    const newReserva = {
+      loja_id: lojaId,
+      produto_id: input.produto_id,
+      variacao_id: input.variacao_id || null,
+      produto_nome: input.produto_nome,
+      tamanho: input.tamanho || null,
+      cor: input.cor || null,
+      quantidade: qtd,
+      vendedora_id: isValidUUID(input.vendedora_id) ? input.vendedora_id : null,
+      vendedora_nome: input.vendedora_nome || 'Vendedora',
+      cliente_nome: input.cliente_nome?.trim() || 'Cliente no Provador',
+      cliente_telefone: input.cliente_telefone?.trim() || null,
+      motivo: `provador:${numeroProv}`,
+      expira_em: expiraEm,
+      status: 'ativa'
+    };
+
+    const { data: reservaData, error: reservaError } = await supabase
+      .from('reservas_estoque')
+      .insert([newReserva])
+      .select('*')
+      .single();
+
+    if (reservaError) {
+      return { success: false, error: reservaError.message };
+    }
+
+    // Registra auditoria
+    await logStoreAuditAction(lojaId, {
+      colaborador_id: input.vendedora_id,
+      colaborador_nome: input.vendedora_nome,
+      cargo: 'atendente',
+      acao: 'criou_reserva_provador',
+      entidade: 'produtos',
+      entidade_id: input.produto_id,
+      dados_novos: {
+        pedido: numeroProv,
+        produto: input.produto_nome,
+        tamanho: input.tamanho,
+        quantidade: qtd,
+        minutos: duracao
+      },
+      motivo: `Peça reservada no provador com pedido #${numeroProv} por ${duracao} min`
+    });
+
+    return {
+      success: true,
+      pedido: pedidoData,
+      reserva: {
+        ...reservaData,
+        minutos_restantes: duracao
+      },
+      numeroPedido: numeroProv
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro inesperado ao criar reserva de provador' };
+  }
+}
+
 /**
  * Libera a reserva antecipadamente (a cliente devolveu a peça na arara)
  */
@@ -175,13 +339,30 @@ export async function cancelReservation(
 ): Promise<boolean> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase
+    const { data: resObj, error } = await supabase
       .from('reservas_estoque')
       .update({ status: 'liberada' })
       .eq('id', reservaId)
-      .eq('loja_id', lojaId);
+      .eq('loja_id', lojaId)
+      .select('motivo')
+      .maybeSingle();
 
     if (error) return false;
+
+    // Se houver pedido provisório atrelado, move para cancelado
+    if (resObj?.motivo && resObj.motivo.includes('PROV-')) {
+      const match = resObj.motivo.match(/PROV-\d+/);
+      if (match) {
+        await supabase
+          .from('pedidos')
+          .update({
+            status: 'cancelado',
+            observacoes: '👗 Peça Devolvida do Provador à Vitrine'
+          })
+          .eq('loja_id', lojaId)
+          .eq('numero_pedido', match[0]);
+      }
+    }
 
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
@@ -208,13 +389,30 @@ export async function convertReservationToSale(
 ): Promise<boolean> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase
+    const { data: resObj, error } = await supabase
       .from('reservas_estoque')
       .update({ status: 'convertida_venda' })
       .eq('id', reservaId)
-      .eq('loja_id', lojaId);
+      .eq('loja_id', lojaId)
+      .select('motivo')
+      .maybeSingle();
 
     if (error) return false;
+
+    // Se houver pedido provisório atrelado, move para pago (confirmado)
+    if (resObj?.motivo && resObj.motivo.includes('PROV-')) {
+      const match = resObj.motivo.match(/PROV-\d+/);
+      if (match) {
+        await supabase
+          .from('pedidos')
+          .update({
+            status: 'pago',
+            observacoes: 'Venda de Balcão Concluída no Provador'
+          })
+          .eq('loja_id', lojaId)
+          .eq('numero_pedido', match[0]);
+      }
+    }
 
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,

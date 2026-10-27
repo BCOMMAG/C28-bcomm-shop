@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Clock, Check, AlertCircle, ShoppingBag, User, Phone, Sparkles, Trash2, ArrowRight } from 'lucide-react';
-import { ReservaEstoque, createReservation, cancelReservation, convertReservationToSale, getActiveReservations } from '@/lib/reservas';
+import Link from 'next/link';
+import { X, Clock, Check, AlertCircle, ShoppingBag, User, Phone, Sparkles, Trash2, ArrowRight, ExternalLink } from 'lucide-react';
+import {
+  ReservaEstoque,
+  createReservation,
+  createFittingRoomOrderAndReservation,
+  cancelReservation,
+  convertReservationToSale,
+  getActiveReservations
+} from '@/lib/reservas';
 import { AdminProductItem } from '@/lib/admin';
 
 interface ProductFittingRoomModalProps {
@@ -29,6 +37,7 @@ export function ProductFittingRoomModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [lastCreatedOrderNum, setLastCreatedOrderNum] = useState<string | null>(null);
 
   // Identifica vendedora ativa
   const getActiveColab = () => {
@@ -75,10 +84,12 @@ export function ProductFittingRoomModal({
     const colab = getActiveColab();
     const selectedVar = product.variacoes?.find((v) => v.id === selectedVariationId);
 
-    const res = await createReservation(lojaId, {
+    const res = await createFittingRoomOrderAndReservation(lojaId, {
       produto_id: product.id,
-      variacao_id: selectedVariationId || undefined,
       produto_nome: product.nome,
+      preco: product.preco,
+      foto_url: product.foto_principal || undefined,
+      variacao_id: selectedVariationId || undefined,
       tamanho: selectedVar?.tamanho || undefined,
       cor: selectedVar?.cor_nome || undefined,
       quantidade: 1,
@@ -86,14 +97,14 @@ export function ProductFittingRoomModal({
       vendedora_nome: colab.nome,
       cliente_nome: clienteNome.trim() || undefined,
       cliente_telefone: clienteTelefone.trim() || undefined,
-      motivo,
       duracaoMinutos
     });
 
     setLoading(false);
 
     if (res.success) {
-      setSuccessMsg('Peça reservada no provador com sucesso! Estoque travado na vitrine.');
+      setSuccessMsg('Peça reservada no provador com sucesso! Atendimento criado na Central de Pedidos.');
+      setLastCreatedOrderNum(res.numeroPedido || null);
       setClienteNome('');
       setClienteTelefone('');
       await loadReservations();
@@ -154,9 +165,25 @@ export function ProductFittingRoomModal({
           )}
 
           {successMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
+            <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs rounded-xl space-y-2">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span className="font-semibold">{successMsg}</span>
+              </div>
+              {lastCreatedOrderNum && (
+                <div className="pt-2 border-t border-emerald-200 flex items-center justify-between">
+                  <span className="font-mono text-xs font-black text-emerald-950">
+                    Pedido: #{lastCreatedOrderNum}
+                  </span>
+                  <Link
+                    href="/admin/pedidos"
+                    className="inline-flex items-center gap-1 font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg text-[11px] transition-colors"
+                  >
+                    <span>Ver no Kanban de Pedidos</span>
+                    <ArrowRight className="w-3 h-3 text-amber-700" />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 

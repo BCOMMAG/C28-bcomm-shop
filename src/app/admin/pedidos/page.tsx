@@ -113,6 +113,7 @@ export default function AdminPedidosPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [reservations, setReservations] = useState<ReservaEstoque[]>([]);
   const [onlyPausedReservations, setOnlyPausedReservations] = useState(false);
+  const [onlyFittingRoomOrders, setOnlyFittingRoomOrders] = useState(false);
   const [reservaActionLoading, setReservaActionLoading] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -748,6 +749,15 @@ export default function AdminPedidosPage() {
     return reservations.filter((r) => r.status === 'pausada').length;
   }, [reservations]);
 
+  const fittingRoomOrdersCount = useMemo(() => {
+    return orders.filter(
+      (o) =>
+        o.canal_venda === 'provador' ||
+        o.numero_pedido?.startsWith('PROV-') ||
+        o.observacoes?.includes('Provador')
+    ).length;
+  }, [orders]);
+
   // Identifica se um pedido de WhatsApp está inativo/abandonado
   const isOrderInactive = useCallback((order: CustomerOrder) => {
     if (order.status !== 'pendente' && order.status !== 'aguardando_whatsapp') return false;
@@ -1050,6 +1060,15 @@ export default function AdminPedidosPage() {
         if (res?.status !== 'pausada') return false;
       }
 
+      // 4.2. Filtro por Atendimentos de Provador
+      if (onlyFittingRoomOrders) {
+        const isProv =
+          o.canal_venda === 'provador' ||
+          o.numero_pedido?.startsWith('PROV-') ||
+          o.observacoes?.includes('Provador');
+        if (!isProv) return false;
+      }
+
       // 5. Filtro por Período
       if (periodFilter !== 'todos' && o.created_at) {
         const orderDate = new Date(o.created_at);
@@ -1109,7 +1128,7 @@ export default function AdminPedidosPage() {
       }
       return 0;
     });
-  }, [orders, reservations, selectedStatuses, searchTerm, paymentFilter, onlyGifts, onlyPausedReservations, periodFilter, customStartDate, customEndDate, sortOrder]);
+  }, [orders, reservations, selectedStatuses, searchTerm, paymentFilter, onlyGifts, onlyPausedReservations, onlyFittingRoomOrders, periodFilter, customStartDate, customEndDate, sortOrder]);
 
   // Gestão de Seleção em Massa (Checkboxes)
   const isAllSelected = filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length;
@@ -1775,6 +1794,27 @@ export default function AdminPedidosPage() {
               onlyPausedReservations ? 'bg-sky-700 text-white' : 'bg-sky-100 text-sky-800'
             }`}>
               {pausedReservationsCount}
+            </span>
+          )}
+        </button>
+
+        {/* Chip Rápido de Provador na Loja Física */}
+        <button
+          onClick={() => setOnlyFittingRoomOrders(!onlyFittingRoomOrders)}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+            onlyFittingRoomOrders
+              ? 'bg-purple-100 text-purple-950 border-purple-400 font-bold shadow-2xs'
+              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+          title="Filtrar pedidos de Provador na Loja Física"
+        >
+          <Clock className={`w-3.5 h-3.5 ${onlyFittingRoomOrders ? 'text-purple-700' : 'text-slate-400'}`} />
+          <span className="hidden md:inline">Provador / Balcão</span>
+          {fittingRoomOrdersCount > 0 && (
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+              onlyFittingRoomOrders ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
+            }`}>
+              {fittingRoomOrdersCount}
             </span>
           )}
         </button>
@@ -2802,22 +2842,35 @@ export default function AdminPedidosPage() {
                       const cleanPhone = (order.cliente_telefone || '').replace(/\D/g, '');
                       const items = order.itens_pedido || [];
                       const giftDetails = getOrderGiftDetails(order);
+                      const isFittingRoom =
+                        order.canal_venda === 'provador' ||
+                        order.numero_pedido?.startsWith('PROV-') ||
+                        order.observacoes?.includes('Provador');
 
                       return (
                         <div
                           key={order.id}
                           onClick={() => setDetailsModalOrder(order)}
-                          className={`bg-white border rounded-xl p-3 shadow-2xs space-y-2 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer select-none group ${
-                            giftDetails.isGift ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
+                          className={`bg-white border rounded-xl p-3 shadow-2xs space-y-2 hover:shadow-md transition-all cursor-pointer select-none group ${
+                            isFittingRoom
+                              ? 'border-purple-300 ring-1 ring-purple-200/80 hover:border-purple-500'
+                              : giftDetails.isGift
+                              ? 'border-amber-300 ring-1 ring-amber-200 hover:border-amber-400'
+                              : 'border-slate-200 hover:border-amber-400'
                           }`}
                           title="Clique para abrir os detalhes completos deste pedido"
                         >
                           {/* Topo do mini-card */}
                           <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                               <span className="font-mono text-xs font-extrabold text-amber-800 group-hover:text-amber-950 transition-colors">
                                 #{order.numero_pedido}
                               </span>
+                              {isFittingRoom && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black text-purple-900 bg-purple-100 border border-purple-300 px-1.5 py-0.5 rounded-full shadow-2xs">
+                                  👗 Provador
+                                </span>
+                              )}
                               {giftDetails.isGift && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-full">
                                   <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente
@@ -2874,13 +2927,31 @@ export default function AdminPedidosPage() {
                             const isCancelado = order.status === 'cancelado';
 
                             if (isCancelado) {
+                              const isFromProvador =
+                                order.canal_venda === 'provador' ||
+                                order.numero_pedido?.startsWith('PROV-') ||
+                                order.observacoes?.includes('Provador');
+
                               return (
                                 <div
                                   onClick={(e) => e.stopPropagation()}
-                                  className="p-1.5 rounded-lg border border-rose-200/80 bg-rose-50/70 text-[10px] text-rose-800 flex items-center gap-1 font-semibold"
+                                  className={`p-1.5 rounded-lg border text-[10px] flex items-center gap-1.5 font-semibold ${
+                                    isFromProvador
+                                      ? 'border-purple-300 bg-purple-50 text-purple-900 font-bold'
+                                      : 'border-rose-200/80 bg-rose-50/70 text-rose-800'
+                                  }`}
                                 >
-                                  <CheckCircle2 className="w-3 h-3 text-rose-600 shrink-0" />
-                                  <span>Peças Devolvidas ao Estoque</span>
+                                  {isFromProvador ? (
+                                    <>
+                                      <Clock className="w-3 h-3 text-purple-700 shrink-0" />
+                                      <span>👗 Provador Expirado (Peça Devolvida à Vitrine)</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-rose-600 shrink-0" />
+                                      <span>Peças Devolvidas ao Estoque</span>
+                                    </>
+                                  )}
                                 </div>
                               );
                             }

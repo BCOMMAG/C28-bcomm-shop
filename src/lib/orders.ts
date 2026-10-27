@@ -503,6 +503,9 @@ export interface CustomerOrder {
   codigo_rastreio?: string | null;
   observacoes?: string | null;
   created_at: string;
+  canal_venda?: string | null;
+  origem?: string | null;
+  vendedora_id?: string | null;
   cliente_id?: string | null;
   cliente_nome?: string;
   cliente_telefone?: string;

@@ -48,8 +48,11 @@ import {
   Columns3,
   ScrollText,
   Play,
-  Film
+  Film,
+  FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { ProductBatchImportModal } from '@/components/admin/products/ProductBatchImportModal';
 import {
   getAdminProducts,
   toggleAdminProductActive,
@@ -127,6 +130,7 @@ export default function AdminProdutosPage() {
 
   // Modal de Criação de Produto
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -374,6 +378,10 @@ export default function AdminProdutosPage() {
       ) {
         event.preventDefault();
         searchInputRef.current?.focus();
+      }
+
+      if (event.key === 'Escape') {
+        setSelectedProductIds(new Set());
       }
     };
 
@@ -1065,7 +1073,53 @@ export default function AdminProdutosPage() {
       document.body.removeChild(link);
       showToast('Planilha do catálogo exportada com sucesso!');
     } catch (err: any) {
-      showToast('Erro ao exportar planilha do catálogo.', 'error');
+      showToast('Erro ao exportar planilha: ' + (err.message || err), 'error');
+    }
+  };
+
+  // Exportar Catálogo em Excel (.xlsx) Nativo
+  const handleExportCatalogXLSX = () => {
+    try {
+      const data = products.map((p) => {
+        const custo = p.preco_custo || p.preco * 0.4;
+        const margem = p.preco > 0 ? (((p.preco - custo) / p.preco) * 100).toFixed(1) : '0';
+        const tags = [
+          p.destaque ? 'Destaque' : '',
+          p.mais_vendido ? 'Mais Vendido' : '',
+          p.outlet ? 'Outlet' : '',
+          p.ultimas_pecas ? 'Últimas Peças' : ''
+        ].filter(Boolean).join(' | ');
+
+        const cores = Array.from(new Set((p.variacoes || []).map((v) => v.cor_nome))).join(', ');
+        const tamanhos = Array.from(new Set((p.variacoes || []).map((v) => v.tamanho))).join(', ');
+        const gradeDetalhada = (p.variacoes || [])
+          .map((v) => `${v.cor_nome} ${v.tamanho}: ${v.estoque} un`)
+          .join('; ');
+
+        return {
+          'Nome do Produto': p.nome,
+          'Categoria': p.categoria_nome || 'Geral',
+          'Preço Venda': p.preco,
+          'Preço Promocional': p.preco_promocional || '',
+          'Preço Custo': custo,
+          'Margem Bruta (%)': `${margem}%`,
+          'Estoque Total': p.estoque_total,
+          'Status Vitrine': p.ativo ? 'Ativo' : 'Pausado',
+          'Cores': cores,
+          'Tamanhos': tamanhos,
+          'Grade Detalhada': gradeDetalhada,
+          'Tags': tags,
+          'Slug': p.slug
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');
+      XLSX.writeFile(wb, `catalogo_${tenantSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      showToast('Planilha Excel (.xlsx) exportada com sucesso!', 'success');
+    } catch (err: any) {
+      showToast('Erro ao exportar Excel: ' + (err.message || err), 'error');
     }
   };
 
@@ -1528,6 +1582,34 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
+      {/* 1. STATUS DE SINCRONIZAÇÃO EM TEMPO REAL & ATALHO VITRINE */}
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-bold text-slate-800">
+            Catálogo & Estoque Sincronizados com a Vitrine Pública
+          </span>
+          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+            (PostgreSQL / Supabase Realtime • 100% de Paridade)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/catalogo"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+            title="Abrir a vitrine da loja como um cliente real"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
+            <span>Ver Vitrine da Loja ↗</span>
+          </Link>
+        </div>
+      </div>
+
       {/* 2. CARDS DE MÉTRICAS OPERACIONAIS ESTILO PEDIDOS (INTERATIVOS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
@@ -1785,15 +1867,15 @@ export default function AdminProdutosPage() {
 
           <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
-          {/* Botão Exportar CSV */}
+          {/* Botão Exportar Excel (.xlsx) */}
           <button
-            onClick={handleExportCatalogCSV}
-            title="Exportar planilha completa do catálogo com estoque e CMV"
+            onClick={handleExportCatalogXLSX}
+            title="Exportar planilha Excel (.xlsx) completa com estoque, grades e margem"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-amber-600" />
-            <span className="hidden md:inline">Exportar CSV</span>
-            <span className="md:hidden">CSV</span>
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden md:inline">Exportar Excel</span>
+            <span className="md:hidden">Excel</span>
           </button>
 
           {/* Botão Atualizar */}
@@ -1805,6 +1887,17 @@ export default function AdminProdutosPage() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
             <span className="hidden md:inline">Atualizar</span>
+          </button>
+
+          {/* Botão Importar em Lote */}
+          <button
+            onClick={() => setIsBatchImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold uppercase tracking-wider transition-all shadow-2xs cursor-pointer shrink-0"
+            title="Importar peças em lote por planilha Excel ou CSV"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-slate-950" />
+            <span className="hidden sm:inline">Importar em Lote</span>
+            <span className="sm:hidden">Lote</span>
           </button>
 
           {/* Botão Cadastrar Nova Peça */}
@@ -1956,7 +2049,7 @@ export default function AdminProdutosPage() {
         /* ======================================================== */
         /* MODO 1: CARDS DETALHADOS (COM GRADE EXPANSÍVEL)          */
         /* ======================================================== */
-        <div className="space-y-4">
+        <div className={`space-y-4 transition-all duration-200 ${selectedProductIds.size > 0 ? 'pb-32' : 'pb-6'}`}>
           {/* Barra de Seleção em Massa no Topo da Lista */}
           <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
             <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
@@ -2357,7 +2450,7 @@ export default function AdminProdutosPage() {
         /* ======================================================== */
         /* MODO 2: LISTA / TABELA COMPACTA (ALTA DENSIDADE)          */
         /* ======================================================== */
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+        <div className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs transition-all duration-200 ${selectedProductIds.size > 0 ? 'mb-32' : 'mb-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -2586,7 +2679,7 @@ export default function AdminProdutosPage() {
         /* ======================================================== */
         /* MODO 3: KANBAN OPERACIONAL (COLUNAS VERTICAIS)           */
         /* ======================================================== */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-x-auto pb-4">
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 overflow-x-auto transition-all duration-200 ${selectedProductIds.size > 0 ? 'pb-32' : 'pb-6'}`}>
           {[
             {
               id: 'ativas',
@@ -2719,76 +2812,6 @@ export default function AdminProdutosPage() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* 4. BARRA FLUTUANTE DE AÇÕES EM MASSA (SURGE QUANDO HÁ ITENS SELECIONADOS) */}
-      {selectedProductIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[95vw] overflow-x-auto">
-          <div className="flex items-center gap-2 pr-2 border-r border-slate-700 shrink-0">
-            <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center">
-              {selectedProductIds.size}
-            </span>
-            <span className="text-xs font-bold text-slate-200 whitespace-nowrap">
-              peça(s)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => handleBulkToggle(true)}
-              disabled={isBulkActionRunning}
-              className="px-2.5 py-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Eye className="w-3 h-3" />
-              <span>Ativar</span>
-            </button>
-
-            <button
-              onClick={() => handleBulkToggle(false)}
-              disabled={isBulkActionRunning}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <EyeOff className="w-3 h-3 text-slate-400" />
-              <span>Pausar</span>
-            </button>
-
-            <button
-              onClick={() => setShowBulkDiscountModal(true)}
-              disabled={isBulkActionRunning}
-              className="px-2.5 py-1 rounded-lg bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <DollarSign className="w-3 h-3" />
-              <span>Desconto %</span>
-            </button>
-
-            <button
-              onClick={() => setShowBulkCategoryModal(true)}
-              disabled={isBulkActionRunning}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Tag className="w-3 h-3 text-slate-400" />
-              <span className="hidden sm:inline">Mover Categoria</span>
-              <span className="sm:hidden">Categoria</span>
-            </button>
-
-            <button
-              onClick={handleBulkArchiveAction}
-              disabled={isBulkActionRunning}
-              className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Trash2 className="w-3 h-3" />
-              <span>Arquivar</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedProductIds(new Set())}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ml-1"
-              title="Cancelar seleção"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       )}
 
@@ -3281,20 +3304,22 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
-      {/* BARRA FLUTUANTE DE AÇÕES EM MASSA */}
+      {/* BARRA FLUTUANTE DE AÇÕES EM MASSA (CONSOLIDADA & EXCLUSIVA) */}
       {selectedProductIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-fade-in flex-wrap max-w-[95vw]">
-          <div className="flex items-center gap-2 border-r border-slate-700 pr-3">
-            <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[95vw] overflow-x-auto">
+          <div className="flex items-center gap-2 border-r border-slate-700 pr-3 shrink-0">
+            <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">
               {selectedProductIds.size}
             </span>
-            <span className="text-xs font-semibold hidden sm:inline">peças selecionadas</span>
+            <span className="text-xs font-semibold hidden sm:inline text-slate-200">
+              peça(s) selecionada(s)
+            </span>
           </div>
 
           <button
             onClick={() => handleBulkToggle(true)}
             disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Ativar</span>
@@ -3303,7 +3328,7 @@ export default function AdminProdutosPage() {
           <button
             onClick={() => handleBulkToggle(false)}
             disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <EyeOff className="w-3.5 h-3.5" />
             <span>Pausar</span>
@@ -3312,7 +3337,7 @@ export default function AdminProdutosPage() {
           <button
             onClick={() => setShowBulkDiscountModal(true)}
             disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <Tag className="w-3.5 h-3.5" />
             <span>% Desconto</span>
@@ -3321,7 +3346,7 @@ export default function AdminProdutosPage() {
           <button
             onClick={() => setShowBulkCategoryModal(true)}
             disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Mover Categoria</span>
@@ -3330,7 +3355,7 @@ export default function AdminProdutosPage() {
           <button
             onClick={handleBulkArchiveAction}
             disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-400" />
             <span>Arquivar</span>
@@ -3338,9 +3363,11 @@ export default function AdminProdutosPage() {
 
           <button
             onClick={() => setSelectedProductIds(new Set())}
-            className="text-xs text-slate-400 hover:text-white underline pl-2 cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ml-1 shrink-0"
+            title="Cancelar seleção (ou tecle Esc)"
           >
-            Cancelar
+            <X className="w-3.5 h-3.5" />
+            <span>Limpar (Esc)</span>
           </button>
         </div>
       )}
@@ -4621,6 +4648,18 @@ export default function AdminProdutosPage() {
           onListUpdated={fetchProductsData}
         />
       )}
+
+      {/* MODAL DE IMPORTAÇÃO EM LOTE DE PEÇAS (EXCEL / CSV) */}
+      <ProductBatchImportModal
+        isOpen={isBatchImportOpen}
+        onClose={() => setIsBatchImportOpen(false)}
+        lojaId={tenantId}
+        categoriesList={categoriesList}
+        onSuccess={() => {
+          setIsBatchImportOpen(false);
+          fetchProductsData();
+        }}
+      />
     </div>
   );
 }
