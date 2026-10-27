@@ -31,7 +31,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   id: 'e8b7f890-4e3a-4a89-9c56-8e1234567890',
   nome: 'Leidy Boutique',
   slug: 'leidy-boutique',
-  dominio_proprio: 'leidyboutique.com.br',
+  dominio_proprio: null,
   whatsapp: '554197347601',
   email: 'contato@leidyboutique.com.br',
   configuracoes_visuais: {
@@ -110,6 +110,36 @@ export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
+
+/**
+ * Resolve a loja pelo ID (UUID)
+ */
+export async function getTenantById(lojaId: string): Promise<Loja | null> {
+  if (!lojaId) return null;
+  const cached = tenantCache.get(`id:${lojaId}`);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.loja;
+  }
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from('lojas')
+      .select('*')
+      .eq('id', lojaId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    if (!error && data) {
+      const loja = data as Loja;
+      tenantCache.set(`id:${lojaId}`, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
+      tenantCache.set(`slug:${loja.slug}`, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
+      return loja;
+    }
+  } catch (e) {
+    console.warn(`Erro ao resolver tenant por ID ${lojaId}:`, e);
+  }
+  return null;
+}
 
 /**
  * Resolve a loja pelo hostname (domínio próprio ou subdomínio)

@@ -118,3 +118,35 @@ export function getStoreCheckoutUrl(slugOrTenant?: string | Loja | null): string
   const prefix = getTenantPathPrefix(slugOrTenant);
   return prefix ? `${prefix}/checkout/` : '/checkout/';
 }
+
+/**
+ * Retorna a URL canônica correta para abrir a vitrine da loja
+ * 1. Se a loja possui domínio próprio configurado (ex: www.minhaboutique.com.br):
+ *    Retorna 'https://www.minhaboutique.com.br' (sanitizado).
+ * 2. Se não possui domínio próprio:
+ *    - Em desenvolvimento local (localhost) sem forceAbsolute: retorna '/:slug'
+ *    - Em produção / links externos: retorna 'https://bcomm-shop.pages.dev/:slug'
+ */
+export function getStorefrontUrl(
+  tenant?: Partial<Loja> | null,
+  options?: { forceAbsolute?: boolean; path?: string }
+): string {
+  const customDomain = tenant?.dominio_proprio?.trim();
+  const subPath = options?.path ? (options.path.startsWith('/') ? options.path : `/${options.path}`) : '';
+
+  if (customDomain) {
+    // Sanitiza contra protocolos repetidos e barras finais
+    const cleanDomain = customDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    return `https://${cleanDomain}${subPath}`;
+  }
+
+  const slug = normalizeTenantSlug(tenant?.slug);
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (isLocal && !options?.forceAbsolute) {
+    return `/${slug}${subPath}`;
+  }
+
+  return `https://bcomm-shop.pages.dev/${slug}${subPath}`;
+}
+

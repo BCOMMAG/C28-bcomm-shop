@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { globalAdminSearch, GlobalSearchResult } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { getStorefrontUrl } from '@/lib/routes';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -330,7 +331,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                   {
                     title: 'Abrir Vitrine Pública',
                     desc: 'Visualizar loja aberta ao vivo',
-                    href: lojaSlug ? `/${lojaSlug}/` : '/',
+                    href: getStorefrontUrl({ slug: lojaSlug }),
                     external: true,
                     icon: Store,
                     color: 'text-amber-800 bg-amber-100/60 border-amber-300'

@@ -2396,6 +2396,7 @@ export async function saveStoreAnnouncementBar(
 export interface StoreSettingsData {
   nome: string;
   slug: string;
+  dominioProprio?: string | null;
   whatsapp: string;
   email: string;
 
@@ -2553,6 +2554,7 @@ export interface AdminCustomThemeConfig {
 
 export interface SaveStoreSettingsInput {
   nome?: string;
+  dominioProprio?: string | null;
   whatsapp?: string;
   email?: string;
 
@@ -2653,7 +2655,7 @@ export async function getStoreSettings(
   try {
     const { data: loja, error } = await supabase
       .from('lojas')
-      .select('nome, slug, whatsapp, email, configuracoes_visuais, configuracoes_financeiras')
+      .select('nome, slug, dominio_proprio, whatsapp, email, configuracoes_visuais, configuracoes_financeiras')
       .eq('id', lojaId)
       .single();
 
@@ -2665,6 +2667,7 @@ export async function getStoreSettings(
     return {
       nome: loja.nome || 'Leidy Boutique',
       slug: loja.slug || 'leidy-boutique',
+      dominioProprio: (loja as any)?.dominio_proprio || null,
       whatsapp: loja.whatsapp || '554197347601',
       email: loja.email || 'contato@leidyboutique.com.br',
 
@@ -2916,6 +2919,12 @@ export async function saveStoreGeneralSettings(
     if (input.nome !== undefined) updatePayload.nome = input.nome.trim();
     if (input.whatsapp !== undefined) updatePayload.whatsapp = input.whatsapp.replace(/\D/g, '');
     if (input.email !== undefined) updatePayload.email = input.email.trim();
+    if (input.dominioProprio !== undefined) {
+      const clean = input.dominioProprio
+        ? input.dominioProprio.trim().toLowerCase().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+        : null;
+      updatePayload.dominio_proprio = clean || null;
+    }
 
     const { error: updErr } = await supabase
       .from('lojas')

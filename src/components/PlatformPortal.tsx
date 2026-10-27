@@ -142,8 +142,8 @@ export function PlatformPortal() {
 
                 <div className="space-y-2 mb-6 text-xs text-zinc-300">
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
-                    <span className="text-zinc-500">Domínio Próprio:</span>
-                    <span className="font-mono text-zinc-200">leidyboutique.com.br</span>
+                    <span className="text-zinc-500">Endereço da Vitrine:</span>
+                    <span className="font-mono text-zinc-200">bcomm-shop.pages.dev/leidyboutique</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-zinc-500">Link Demonstração:</span>

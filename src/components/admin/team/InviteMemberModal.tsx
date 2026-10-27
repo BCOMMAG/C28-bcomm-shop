@@ -92,8 +92,9 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
     const cleanPhone = member.telefone.replace(/\D/g, '');
     const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const primeiroNome = member.nome.split(' ')[0];
+    const panelUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : 'https://bcomm-shop.pages.dev/admin/login';
     const msg = encodeURIComponent(
-      `Olá ${primeiroNome}! Seu acesso ao Painel da Leidy Boutique foi criado com sucesso com perfil de ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nPara acessar a qualquer momento, utilize o link: https://leidyboutique.com.br/admin/login`
+      `Olá ${primeiroNome}! Seu acesso ao Painel da Leidy Boutique foi criado com sucesso com perfil de ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nPara acessar a qualquer momento, utilize o link: ${panelUrl}`
     );
     return `https://wa.me/${phoneWithDDI}?text=${msg}`;
   };

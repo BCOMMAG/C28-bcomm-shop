@@ -6,7 +6,7 @@ import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja, BarraAvisoEstilo } from '@/types/database';
-import { getTenantBySlug, getTenantByHost, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
+import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -240,7 +240,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     refreshProducts();
     refreshReservations();
 
-    const handleUpdate = () => {
+    const handleUpdate = async (e?: Event) => {
+      const customEvt = e as CustomEvent;
+      const targetLojaId = customEvt?.detail?.lojaId || currentTenant?.id;
+      if (targetLojaId) {
+        try {
+          const freshTenant = await getTenantById(targetLojaId);
+          if (freshTenant) {
+            setCurrentTenant(freshTenant);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`bcomm_tenant_${freshTenant.slug}`, JSON.stringify(freshTenant));
+              localStorage.setItem('bcomm_tenant_last', JSON.stringify(freshTenant));
+            }
+          }
+        } catch (err) {
+          console.warn('Erro ao atualizar dados do tenant:', err);
+        }
+      }
       refreshProducts();
       refreshReservations();
     };

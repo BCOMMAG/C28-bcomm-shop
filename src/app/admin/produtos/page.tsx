@@ -90,6 +90,7 @@ import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatable
 import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { getReservedStockMap } from '@/lib/reservas';
 import { getAviseMeSummaryMap } from '@/lib/aviseme';
+import { getStorefrontUrl } from '@/lib/routes';
 
 type ViewMode = 'cards' | 'lista' | 'kanban';
 type SortOrder = 'recentes' | 'menor_estoque' | 'maior_estoque' | 'maior_preco' | 'menor_preco' | 'nome';
@@ -1599,7 +1600,7 @@ export default function AdminProdutosPage() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/catalogo"
+            href={getStorefrontUrl(currentTenant, { path: '/catalogo' })}
             target="_blank"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
             title="Abrir a vitrine da loja como um cliente real"

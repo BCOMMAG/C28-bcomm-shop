@@ -266,8 +266,8 @@ export default function IntegrationsSettingsPage() {
           <div className="pt-2">
             <span className="block text-slate-700 mb-2 font-bold text-[11px]">Prévia nos Resultados de Busca (Google)</span>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1 max-w-xl">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                <span>https://leidyboutique.com.br</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono">
+                <span>{currentTenant?.dominio_proprio ? `https://${currentTenant.dominio_proprio}` : `https://bcomm-shop.pages.dev/${currentTenant?.slug || 'leidy-boutique'}`}</span>
                 <span>› vitrine</span>
               </div>
               <h4 className="text-sm font-bold text-blue-700 hover:underline cursor-pointer truncate">
