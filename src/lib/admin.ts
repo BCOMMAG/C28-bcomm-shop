@@ -2455,6 +2455,11 @@ export interface StoreSettingsData {
   reservaEstoqueAtiva: boolean;
   tempoReservaMinutos: number;
 
+  // Inatividade e Limpeza de Pedidos no WhatsApp
+  autoDescartarInativosWhatsapp?: boolean;
+  prazoInatividadeWhatsappDias?: number;
+  destinoInativosWhatsapp?: 'cancelado' | 'coluna_inativos';
+
   // Marca & Identidade Visual
   logoUrl?: string;
   logoDarkUrl?: string;
@@ -2607,6 +2612,11 @@ export interface SaveStoreSettingsInput {
   reservaEstoqueAtiva?: boolean;
   tempoReservaMinutos?: number;
 
+  // Inatividade e Limpeza de Pedidos no WhatsApp
+  autoDescartarInativosWhatsapp?: boolean;
+  prazoInatividadeWhatsappDias?: number;
+  destinoInativosWhatsapp?: 'cancelado' | 'coluna_inativos';
+
   // Marca & Identidade Visual
   logoUrl?: string;
   logoDarkUrl?: string;
@@ -2713,6 +2723,11 @@ export async function getStoreSettings(
       pedidoMinimoValor: Number(vis.pedido_minimo_valor ?? 0),
       reservaEstoqueAtiva: vis.reserva_estoque_ativa ?? true,
       tempoReservaMinutos: Number(vis.tempo_reserva_minutos ?? 20),
+
+      // Inatividade de Pedidos no WhatsApp
+      autoDescartarInativosWhatsapp: vis.auto_descartar_inativos_whatsapp ?? true,
+      prazoInatividadeWhatsappDias: Number(vis.prazo_inatividade_whatsapp_dias ?? 7),
+      destinoInativosWhatsapp: vis.destino_inativos_whatsapp || 'cancelado',
 
       // Marca & Identidade Visual
       logoUrl: vis.logo_url || '',
@@ -2850,6 +2865,9 @@ export async function saveStoreGeneralSettings(
       ...(input.pedidoMinimoValor !== undefined ? { pedido_minimo_valor: Number(input.pedidoMinimoValor) } : {}),
       ...(input.reservaEstoqueAtiva !== undefined ? { reserva_estoque_ativa: Boolean(input.reservaEstoqueAtiva) } : {}),
       ...(input.tempoReservaMinutos !== undefined ? { tempo_reserva_minutos: Number(input.tempoReservaMinutos) } : {}),
+      ...(input.autoDescartarInativosWhatsapp !== undefined ? { auto_descartar_inativos_whatsapp: Boolean(input.autoDescartarInativosWhatsapp) } : {}),
+      ...(input.prazoInatividadeWhatsappDias !== undefined ? { prazo_inatividade_whatsapp_dias: Number(input.prazoInatividadeWhatsappDias) } : {}),
+      ...(input.destinoInativosWhatsapp !== undefined ? { destino_inativos_whatsapp: input.destinoInativosWhatsapp } : {}),
 
       // Marca
       ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl.trim() } : {}),

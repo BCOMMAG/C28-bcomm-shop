@@ -52,12 +52,15 @@ import {
   Pause,
   Play,
   Snowflake,
-  Timer
+  Timer,
+  Archive,
+  ShieldCheck
 } from 'lucide-react';
 import {
   getAdminOrders,
   updateAdminOrderStatusWithStock,
-  updateAdminOrderTracking
+  updateAdminOrderTracking,
+  getStoreSettings
 } from '@/lib/admin';
 import { CustomerOrder, isOrderGift, getOrderGiftDetails } from '@/lib/orders';
 import {
@@ -175,6 +178,15 @@ export default function AdminPedidosPage() {
   } | null>(null);
   const [isProcessingRelease, setIsProcessingRelease] = useState(false);
 
+  // Modal de Descarte Rápido / Retirar da Fila (WhatsApp)
+  const [discardModalOrder, setDiscardModalOrder] = useState<CustomerOrder | null>(null);
+  const [isDiscardingOrder, setIsDiscardingOrder] = useState(false);
+
+  // Regras de Inatividade de Pedidos no WhatsApp
+  const [autoDescartarInativosWhatsapp, setAutoDescartarInativosWhatsapp] = useState(true);
+  const [prazoInatividadeWhatsappDias, setPrazoInatividadeWhatsappDias] = useState(7);
+  const [destinoInativosWhatsapp, setDestinoInativosWhatsapp] = useState<'cancelado' | 'coluna_inativos'>('cancelado');
+
   // Toast de Notificação
   const [feedbackToast, setFeedbackToast] = useState<{
     type: 'success' | 'error' | 'warning' | 'info';
@@ -270,6 +282,23 @@ export default function AdminPedidosPage() {
     } catch {}
   };
 
+  // Lista dinâmica de colunas do Kanban (adiciona 'Não Finalizados' se configurado)
+  const allKanbanColumnsList = useMemo<KanbanColumnDef[]>(() => {
+    if (autoDescartarInativosWhatsapp && destinoInativosWhatsapp === 'coluna_inativos') {
+      return [
+        ...ALL_KANBAN_COLUMNS,
+        {
+          id: 'inativo' as any,
+          label: 'Não Finalizados',
+          next: null,
+          color: 'border-slate-400 bg-slate-50/40 text-slate-900',
+          badge: 'bg-slate-100 text-slate-800 border-slate-300'
+        }
+      ];
+    }
+    return ALL_KANBAN_COLUMNS;
+  }, [autoDescartarInativosWhatsapp, destinoInativosWhatsapp]);
+
   // Controle de Rolagem Horizontal Suave do Kanban
   const updateKanbanScrollBounds = useCallback(() => {
     const el = kanbanScrollRef.current;
@@ -307,12 +336,24 @@ export default function AdminPedidosPage() {
   const fetchOrdersAndReservations = async () => {
     setLoading(true);
     try {
-      const [ordersData, resData] = await Promise.all([
+      const [ordersData, resData, settingsData] = await Promise.all([
         getAdminOrders(tenantId),
-        getActiveReservations(tenantId)
+        getActiveReservations(tenantId),
+        getStoreSettings(tenantId)
       ]);
       setOrders(ordersData || []);
       setReservations(resData || []);
+      if (settingsData) {
+        if (settingsData.autoDescartarInativosWhatsapp !== undefined) {
+          setAutoDescartarInativosWhatsapp(settingsData.autoDescartarInativosWhatsapp);
+        }
+        if (settingsData.prazoInatividadeWhatsappDias !== undefined) {
+          setPrazoInatividadeWhatsappDias(settingsData.prazoInatividadeWhatsappDias);
+        }
+        if (settingsData.destinoInativosWhatsapp !== undefined) {
+          setDestinoInativosWhatsapp(settingsData.destinoInativosWhatsapp);
+        }
+      }
       setSelectedOrderIds([]);
     } catch (err) {
       console.error('Erro ao carregar pedidos e reservas:', err);
@@ -417,7 +458,9 @@ export default function AdminPedidosPage() {
       }
 
       if (e.key === 'Escape') {
-        if (releaseModalOrder) {
+        if (discardModalOrder) {
+          if (!isDiscardingOrder) setDiscardModalOrder(null);
+        } else if (releaseModalOrder) {
           if (!isProcessingRelease) setReleaseModalOrder(null);
         } else if (statusModalOrder) {
           setStatusModalOrder(null);
@@ -449,6 +492,7 @@ export default function AdminPedidosPage() {
         handleChangeViewMode('kanban');
       } else if (
         viewMode === 'kanban' &&
+        !discardModalOrder &&
         !releaseModalOrder &&
         !statusModalOrder &&
         !printModalOrder &&
@@ -468,6 +512,8 @@ export default function AdminPedidosPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
+    discardModalOrder,
+    isDiscardingOrder,
     releaseModalOrder,
     statusModalOrder,
     printModalOrder,
@@ -701,6 +747,65 @@ export default function AdminPedidosPage() {
   const pausedReservationsCount = useMemo(() => {
     return reservations.filter((r) => r.status === 'pausada').length;
   }, [reservations]);
+
+  // Identifica se um pedido de WhatsApp está inativo/abandonado
+  const isOrderInactive = useCallback((order: CustomerOrder) => {
+    if (order.status !== 'pendente' && order.status !== 'aguardando_whatsapp') return false;
+    if (!order.created_at) return false;
+
+    // Pedidos com reservas congeladas/pausadas (clientes VIP) são blindados!
+    const res = getOrderReservation(order);
+    if (res?.status === 'pausada') return false;
+
+    const diffDays = (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays >= prazoInatividadeWhatsappDias;
+  }, [prazoInatividadeWhatsappDias, reservations]);
+
+  // Executar Descarte Rápido Manual (Retirar da Fila de Atendimento)
+  const handleExecuteDiscard = async (order: CustomerOrder) => {
+    setIsDiscardingOrder(true);
+    try {
+      const authorName = activeMember?.nome || 'Atendente';
+      const phones = getCustomerPhoneList(order);
+      const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
+
+      // 1. Libera reserva se houver peças presas
+      try {
+        await releaseOrderReservationFull(tenantId, order.numero_pedido, phones, authorName);
+      } catch (err) {
+        console.warn('Erro ao liberar reserva no descarte:', err);
+      }
+
+      // 2. Atualiza status no Supabase
+      const res = await updateAdminOrderStatusWithStock(order.id, 'cancelado', tenantId);
+      if (res.success) {
+        showToast(`🗑️ Pedido #${displayNum} retirado da fila e marcado como cancelado.`, 'success');
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  status: 'cancelado',
+                  observacoes: (o.observacoes ? `${o.observacoes} | ` : '') + 'Descartado da fila de atendimento no WhatsApp'
+                }
+              : o
+          )
+        );
+        const freshRes = await getActiveReservations(tenantId);
+        setReservations(freshRes);
+        setDiscardModalOrder(null);
+        if (detailsModalOrder?.id === order.id) {
+          setDetailsModalOrder(null);
+        }
+      } else {
+        showToast(res.error || 'Erro ao descartar pedido.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao descartar pedido.', 'error');
+    } finally {
+      setIsDiscardingOrder(false);
+    }
+  };
 
   // Pausar Reserva do Pedido (Congelar Tempo)
   const handlePauseReservation = async (order: CustomerOrder, targetReservaId?: string) => {
@@ -1737,7 +1842,7 @@ export default function AdminPedidosPage() {
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  {ALL_KANBAN_COLUMNS.length - hiddenKanbanColumns.length}/{ALL_KANBAN_COLUMNS.length}
+                  {allKanbanColumnsList.length - hiddenKanbanColumns.length}/{allKanbanColumnsList.length}
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isColumnsPopoverOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -1750,12 +1855,12 @@ export default function AdminPedidosPage() {
                       <span>Colunas do Kanban</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">
-                      {ALL_KANBAN_COLUMNS.length - hiddenKanbanColumns.length} de {ALL_KANBAN_COLUMNS.length} ativas
+                      {allKanbanColumnsList.length - hiddenKanbanColumns.length} de {allKanbanColumnsList.length} ativas
                     </span>
                   </div>
 
                   <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {ALL_KANBAN_COLUMNS.map((col) => {
+                    {allKanbanColumnsList.map((col) => {
                       const isVisible = !hiddenKanbanColumns.includes(col.id);
                       return (
                         <label
@@ -2581,7 +2686,7 @@ export default function AdminPedidosPage() {
         /* MODO 3: KANBAN OPERACIONAL (ESTEIRA POR COLUNAS)          */
         /* ======================================================== */
         (() => {
-          const visibleKanbanColumns = ALL_KANBAN_COLUMNS.filter(
+          const visibleKanbanColumns = allKanbanColumnsList.filter(
             (col) => !hiddenKanbanColumns.includes(col.id)
           );
 
@@ -2626,9 +2731,22 @@ export default function AdminPedidosPage() {
                   >
                     {visibleKanbanColumns.map((column) => {
                       const columnOrders = filteredOrders.filter((o) => {
+                        const isInactive = autoDescartarInativosWhatsapp && isOrderInactive(o);
+
                         if (column.id === 'pendente') {
-                          return o.status === 'pendente' || o.status === 'aguardando_whatsapp';
+                          return (o.status === 'pendente' || o.status === 'aguardando_whatsapp') && !isInactive;
                         }
+
+                        if ((column.id as string) === 'inativo') {
+                          return isInactive;
+                        }
+
+                        if (column.id === 'cancelado') {
+                          if (o.status === 'cancelado') return true;
+                          if (destinoInativosWhatsapp === 'cancelado' && isInactive) return true;
+                          return false;
+                        }
+
                         return o.status === column.id;
                       });
                       const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
@@ -2696,13 +2814,30 @@ export default function AdminPedidosPage() {
                         >
                           {/* Topo do mini-card */}
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-mono text-xs font-extrabold text-amber-800 group-hover:text-amber-950 transition-colors">
-                              #{order.numero_pedido}
-                            </span>
-                            {giftDetails.isGift && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-full">
-                                <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono text-xs font-extrabold text-amber-800 group-hover:text-amber-950 transition-colors">
+                                #{order.numero_pedido}
                               </span>
+                              {giftDetails.isGift && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                                  <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente
+                                </span>
+                              )}
+                            </div>
+                            {/* Botão rápido de retirar da fila se for pendente */}
+                            {(order.status === 'pendente' || order.status === 'aguardando_whatsapp') && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDiscardModalOrder(order);
+                                }}
+                                data-btn-discard={order.id}
+                                className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                                title="Retirar da fila de atendimento (Descartar Pedido)"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             )}
                           </div>
 
@@ -2720,6 +2855,17 @@ export default function AdminPedidosPage() {
                               </span>
                             </div>
                           </div>
+
+                          {/* Tag de Inatividade Automática */}
+                          {autoDescartarInativosWhatsapp && isOrderInactive(order) && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 rounded-lg border border-amber-200/80 bg-amber-50/70 text-[10px] text-amber-900 flex items-center gap-1 font-semibold"
+                            >
+                              <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>Inativo (+{prazoInatividadeWhatsappDias}d no WhatsApp)</span>
+                            </div>
+                          )}
 
                           {/* Indicador de Reserva Provisória */}
                           {(() => {
@@ -3348,6 +3494,17 @@ export default function AdminPedidosPage() {
                     <Edit3 className="w-3.5 h-3.5 text-slate-500" />
                     <span>Alterar Status</span>
                   </button>
+
+                  {(detailsModalOrder.status === 'pendente' || detailsModalOrder.status === 'aguardando_whatsapp') && (
+                    <button
+                      onClick={() => setDiscardModalOrder(detailsModalOrder)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                      title="Retirar este pedido da fila de atendimento"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Retirar da Fila</span>
+                    </button>
+                  )}
                 </div>
 
                 <button
@@ -3361,6 +3518,72 @@ export default function AdminPedidosPage() {
           </div>
         );
       })()}
+
+      {/* MODAL DE CONFIRMAÇÃO DE RETIRADA DA FILA (DESCARTE MANUAL) */}
+      {discardModalOrder && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isDiscardingOrder) setDiscardModalOrder(null);
+          }}
+          style={{ zIndex: 70 }}
+          className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 border border-slate-100">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+                  Retirar Pedido #{discardModalOrder.numero_pedido} da Fila?
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Este pedido será retirado da esteira operacional ativa e marcado como <strong>Cancelado (Desistência / Inatividade)</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Liberação Automática de Peças:</span>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                Se ainda houver reserva temporária ativa prendendo peças deste pedido, o estoque será devolvido à vitrine imediatamente.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDiscardModalOrder(null)}
+                disabled={isDiscardingOrder}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteDiscard(discardModalOrder)}
+                disabled={isDiscardingOrder}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                {isDiscardingOrder ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Retirando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirmar Retirada da Fila</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL ALTERAR STATUS INDIVIDUAL (Nível 2: z-[60] para abrir na frente dos detalhes) */}
       {statusModalOrder && (

@@ -16,7 +16,10 @@ import {
   CreditCard,
   Clock,
   ShieldCheck,
-  Timer
+  Timer,
+  Archive,
+  UserX,
+  MessageSquareX
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -44,6 +47,11 @@ export default function CheckoutSettingsPage() {
   const [reservaEstoqueAtiva, setReservaEstoqueAtiva] = useState(true);
   const [tempoReservaMinutos, setTempoReservaMinutos] = useState(20);
 
+  // Limpeza de Pedidos Inativos no WhatsApp
+  const [autoDescartarInativosWhatsapp, setAutoDescartarInativosWhatsapp] = useState(true);
+  const [prazoInatividadeWhatsappDias, setPrazoInatividadeWhatsappDias] = useState(7);
+  const [destinoInativosWhatsapp, setDestinoInativosWhatsapp] = useState<'cancelado' | 'coluna_inativos'>('cancelado');
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -64,6 +72,9 @@ export default function CheckoutSettingsPage() {
           if (data.pedidoMinimoValor !== undefined) setPedidoMinimoValor(data.pedidoMinimoValor);
           if (data.reservaEstoqueAtiva !== undefined) setReservaEstoqueAtiva(data.reservaEstoqueAtiva);
           if (data.tempoReservaMinutos !== undefined) setTempoReservaMinutos(data.tempoReservaMinutos);
+          if (data.autoDescartarInativosWhatsapp !== undefined) setAutoDescartarInativosWhatsapp(data.autoDescartarInativosWhatsapp);
+          if (data.prazoInatividadeWhatsappDias !== undefined) setPrazoInatividadeWhatsappDias(data.prazoInatividadeWhatsappDias);
+          if (data.destinoInativosWhatsapp !== undefined) setDestinoInativosWhatsapp(data.destinoInativosWhatsapp);
         }
       } catch (err) {
         console.error('Erro ao buscar dados de checkout:', err);
@@ -86,7 +97,10 @@ export default function CheckoutSettingsPage() {
         permitirMensagemPresente,
         pedidoMinimoValor: Number(pedidoMinimoValor),
         reservaEstoqueAtiva,
-        tempoReservaMinutos: Number(tempoReservaMinutos)
+        tempoReservaMinutos: Number(tempoReservaMinutos),
+        autoDescartarInativosWhatsapp,
+        prazoInatividadeWhatsappDias: Number(prazoInatividadeWhatsappDias),
+        destinoInativosWhatsapp
       });
 
       if (res.success) {
@@ -370,6 +384,151 @@ export default function CheckoutSettingsPage() {
         ) : (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
             A reserva temporária está desativada. As peças não serão retidas provisoriamente ao direcionar clientes para o WhatsApp.
+          </div>
+        )}
+      </div>
+
+      {/* BLOCO 4: LIMPEZA DE PEDIDOS INATIVOS NO WHATSAPP */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+              <Archive className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Limpeza de Pedidos Inativos no WhatsApp
+              </h2>
+              <p className="text-xs text-slate-500">
+                Retira sacolas não pagas e abandonadas da coluna operacional ativa para manter a página rápida e sem poluição visual.
+              </p>
+            </div>
+          </div>
+
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={autoDescartarInativosWhatsapp}
+              onChange={(e) => setAutoDescartarInativosWhatsapp(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
+          </label>
+        </div>
+
+        {autoDescartarInativosWhatsapp ? (
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-700 mb-1.5 font-bold">
+                Prazo de Inatividade (Dias sem Pagamento)
+              </label>
+
+              {/* Botões Rápidos de Dias */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[
+                  { dias: 1, label: '24 horas (1 dia)' },
+                  { dias: 2, label: '48 horas (2 dias)' },
+                  { dias: 3, label: '3 dias' },
+                  { dias: 7, label: '7 dias (Padrão)' },
+                  { dias: 15, label: '15 dias' },
+                  { dias: 30, label: '30 dias' }
+                ].map((item) => (
+                  <button
+                    key={item.dias}
+                    type="button"
+                    onClick={() => setPrazoInatividadeWhatsappDias(item.dias)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      prazoInatividadeWhatsappDias === item.dias
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-w-xs relative">
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  value={prazoInatividadeWhatsappDias}
+                  onChange={(e) => setPrazoInatividadeWhatsappDias(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-xs">
+                  dias corridos
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Pedidos com mais de {prazoInatividadeWhatsappDias} {prazoInatividadeWhatsappDias === 1 ? 'dia' : 'dias'} no status &quot;Aguardando WhatsApp&quot; sem confirmação de pagamento serão tratados como inativos.
+              </span>
+            </div>
+
+            {/* Destino do Pedido Inativo */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <label className="block text-slate-700 font-bold">
+                Destino dos Pedidos Inativos
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  destinoInativosWhatsapp === 'cancelado'
+                    ? 'border-amber-500 bg-amber-50/50 text-amber-950'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                }`}>
+                  <input
+                    type="radio"
+                    name="destinoInativos"
+                    value="cancelado"
+                    checked={destinoInativosWhatsapp === 'cancelado'}
+                    onChange={() => setDestinoInativosWhatsapp('cancelado')}
+                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <span className="font-bold text-xs block">Mover para Coluna Cancelados (Recomendado)</span>
+                    <span className="text-[11px] text-slate-500 leading-relaxed block mt-0.5">
+                      Ganha a etiqueta &quot;⏱️ Inativo&quot; e vai para a coluna de Cancelados, mantendo o Kanban perfeito com 5 colunas por tela.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  destinoInativosWhatsapp === 'coluna_inativos'
+                    ? 'border-amber-500 bg-amber-50/50 text-amber-950'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                }`}>
+                  <input
+                    type="radio"
+                    name="destinoInativos"
+                    value="coluna_inativos"
+                    checked={destinoInativosWhatsapp === 'coluna_inativos'}
+                    onChange={() => setDestinoInativosWhatsapp('coluna_inativos')}
+                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <span className="font-bold text-xs block">Coluna Separada &quot;Não Finalizados&quot;</span>
+                    <span className="text-[11px] text-slate-500 leading-relaxed block mt-0.5">
+                      Cria uma coluna exclusiva no Kanban para pedidos abandonados, que pode ser ocultada ou exibida a qualquer momento.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Blindagem de Reservas Congeladas */}
+            <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-3.5 flex items-start gap-2.5 text-sky-900">
+              <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+              <div className="text-[11px] leading-relaxed">
+                <strong className="block font-bold">Blindagem Inteligente de Clientes VIP:</strong>
+                <span>Pedidos que possuem reserva pausada ou congelada pela atendente ficam <strong>100% protegidos</strong> e nunca são descartados automaticamente por inatividade.</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+            A limpeza automática de pedidos inativos está desativada. Todos os pedidos do WhatsApp permanecerão na coluna pendente indefinidamente.
           </div>
         )}
       </div>
