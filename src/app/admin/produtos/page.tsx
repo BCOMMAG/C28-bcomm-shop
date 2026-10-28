@@ -90,7 +90,6 @@ import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatable
 import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { getReservedStockMap } from '@/lib/reservas';
 import { getAviseMeSummaryMap } from '@/lib/aviseme';
-import { getStorefrontUrl } from '@/lib/routes';
 
 type ViewMode = 'cards' | 'lista' | 'kanban';
 type SortOrder = 'recentes' | 'menor_estoque' | 'maior_estoque' | 'maior_preco' | 'menor_preco' | 'nome';
@@ -1582,34 +1581,6 @@ export default function AdminProdutosPage() {
           <span>{toast.message}</span>
         </div>
       )}
-
-      {/* 1. STATUS DE SINCRONIZAÇÃO EM TEMPO REAL & ATALHO VITRINE */}
-      <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            Catálogo & Estoque Sincronizados com a Vitrine Pública
-          </span>
-          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
-            (PostgreSQL / Supabase Realtime • 100% de Paridade)
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href={getStorefrontUrl(currentTenant, { path: '/catalogo' })}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-            title="Abrir a vitrine da loja como um cliente real"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
-            <span>Ver Vitrine da Loja ↗</span>
-          </Link>
-        </div>
-      </div>
 
       {/* 2. CARDS DE MÉTRICAS OPERACIONAIS ESTILO PEDIDOS (INTERATIVOS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
