@@ -35,7 +35,8 @@ import {
   List,
   TrendingUp,
   Percent,
-  CheckSquare
+  CheckSquare,
+  Zap
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -798,6 +799,51 @@ export function ProductBatchImportModal({
     setTimeout(() => setSuccessGlobal(null), 3000);
   };
 
+  // Distribuir Total da Remessa igualmente entre as células ativas da grade
+  const handleDistributeTotalAcrossGrid = (rowId: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const totalAlocar = r.quantidade_total_lote || 0;
+        const cores = r.cores || [];
+        const tamanhos = r.tamanhos || [];
+        const totalCelulas = cores.length * tamanhos.length;
+
+        if (totalAlocar <= 0) {
+          setErrorGlobal('Defina uma quantidade no Total da Remessa antes de distribuir!');
+          setTimeout(() => setErrorGlobal(null), 3500);
+          return r;
+        }
+
+        if (totalCelulas === 0) {
+          setErrorGlobal('Selecione ao menos 1 cor e 1 tamanho para distribuir!');
+          setTimeout(() => setErrorGlobal(null), 3500);
+          return r;
+        }
+
+        const base = Math.floor(totalAlocar / totalCelulas);
+        let resto = totalAlocar % totalCelulas;
+
+        const newMatriz: Record<string, Record<string, number>> = {};
+        cores.forEach((cor) => {
+          newMatriz[cor] = { ...(r.matriz_estoque[cor] || {}) };
+          tamanhos.forEach((tam) => {
+            const add = resto > 0 ? 1 : 0;
+            if (resto > 0) resto--;
+            newMatriz[cor][tam] = base + add;
+          });
+        });
+
+        return {
+          ...r,
+          matriz_estoque: newMatriz
+        };
+      })
+    );
+    setSuccessGlobal('Total da remessa distribuído uniformemente na grade!');
+    setTimeout(() => setSuccessGlobal(null), 3000);
+  };
+
   // Zerar unidades de uma cor
   const handleZerarCor = (rowId: string, corNome: string) => {
     setGridRows((prev) =>
@@ -1262,7 +1308,14 @@ export function ProductBatchImportModal({
                             /* Se for Reposição: Card da Peça Selecionada com Foto, Nome, Estoque e Botão Catálogo */
                             <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2.5 bg-white p-2 border border-slate-200 rounded-xl shadow-2xs">
                               {/* Foto em miniatura (48x48px) com filtro estrito de vídeo */}
-                              <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                              <div
+                                className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
+                                title={prodOriginal ? `${prodOriginal.nome} · SKU: ${prodOriginal.id.slice(0, 8)} · Clique para ver no catálogo` : row.nome}
+                                onClick={() => {
+                                  setCatalogPickerRowId(row.id);
+                                  setCatalogSearch('');
+                                }}
+                              >
                                 {safeThumb ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
@@ -1280,7 +1333,10 @@ export function ProductBatchImportModal({
                               {/* Nome e Estoque Atual */}
                               <div className="min-w-0 flex-1 space-y-0.5">
                                 <div className="flex items-center gap-1.5">
-                                  <strong className="text-xs font-bold text-slate-900 truncate block">
+                                  <strong
+                                    className="text-xs font-bold text-slate-900 truncate block"
+                                    title={prodOriginal ? `${prodOriginal.nome} · Categoria: ${categoriaNome} · SKU: ${prodOriginal.id.slice(0, 8)}` : row.nome}
+                                  >
                                     {row.nome || 'Selecione uma peça...'}
                                   </strong>
                                   <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold shrink-0 border border-emerald-200">
@@ -1415,14 +1471,21 @@ export function ProductBatchImportModal({
                         </div>
                       </div>
 
-                      {/* NÍVEL 2: PAINEL FINANCEIRO & CENTRAL DE CONFERÊNCIA DA REMESSA (GRID DE 4 COLUNAS) */}
-                      <div className="p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
+                      {/* NÍVEL 2: PAINEL FINANCEIRO & CENTRAL DE CONFERÊNCIA DA REMESSA (GRID DE 4 COLUNAS PADRONIZADAS) */}
+                      <div className="p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-stretch">
                         {/* Coluna 1: Preço de Venda */}
-                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
-                            <span>Preço de Venda</span>
-                            <span className="text-[10px] font-mono text-slate-400">R$ {formatBRL(row.preco)}</span>
-                          </label>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 transition-all focus-within:border-amber-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:shadow-xs flex flex-col justify-between h-full space-y-2">
+                          {/* Header (h-6) */}
+                          <div className="flex items-center justify-between gap-1 h-6 shrink-0">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
+                              Preço de Venda
+                            </label>
+                            <span className="text-[10px] font-mono font-semibold text-slate-500 shrink-0">
+                              R$ {formatBRL(row.preco)}
+                            </span>
+                          </div>
+
+                          {/* Input (h-10) */}
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                             <input
@@ -1431,27 +1494,44 @@ export function ProductBatchImportModal({
                               min="0"
                               value={row.preco || ''}
                               onChange={(e) => handleUpdateRow(row.id, 'preco', parseFloat(e.target.value) || 0)}
-                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              className="w-full pl-8 pr-3 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
                               placeholder="0,00"
                             />
                           </div>
-                          <span className="text-[10px] text-slate-500 block truncate">
-                            Valor oficial praticado na vitrine
-                          </span>
+
+                          {/* Rodapé padronizado em 2 linhas (h-10) */}
+                          <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-0.5 shrink-0">
+                            <span className="text-slate-600 block truncate">Valor oficial da vitrine</span>
+                            {isReposicao && prodOriginal && prodOriginal.preco !== row.preco ? (
+                              <span
+                                className="text-amber-700 font-semibold truncate"
+                                title={`Preço original no catálogo: R$ ${formatBRL(prodOriginal.preco)}`}
+                              >
+                                Diverge da loja (era R$ {formatBRL(prodOriginal.preco)})
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 block truncate">Preço base de vitrine</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Coluna 2: Preço Promocional (Opcional) */}
-                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                              <span>Promoção (Opcional)</span>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 transition-all focus-within:border-amber-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:shadow-xs flex flex-col justify-between h-full space-y-2">
+                          {/* Header (h-6) */}
+                          <div className="flex items-center justify-between gap-1 h-6 shrink-0">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
+                              Promoção (Opcional)
                             </label>
-                            {descontoPct > 0 && (
-                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.2 rounded-md">
+                            {descontoPct > 0 ? (
+                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
                                 -{descontoPct}% OFF
                               </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 shrink-0">Opcional</span>
                             )}
                           </div>
+
+                          {/* Input (h-10) */}
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                             <input
@@ -1462,31 +1542,48 @@ export function ProductBatchImportModal({
                               onChange={(e) =>
                                 handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)
                               }
-                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              className="w-full pl-8 pr-3 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
                               placeholder="Opcional"
                             />
                           </div>
-                          {descontoPct > 0 ? (
-                            <span className="text-[10px] font-mono font-medium text-slate-600 block truncate">
-                              Economia de R$ {formatBRL(economiaCliente)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 block truncate">Sem desconto ativo</span>
-                          )}
-                        </div>
 
-                        {/* Coluna 3: Preço de Custo (Opcional, SEM botões +100%/+150%) */}
-                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                              <span>Preço de Custo (Opcional)</span>
-                            </label>
-                            {margemPct > 0 && (
-                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.2 rounded-md">
-                                {margemPct}% margem
-                              </span>
+                          {/* Rodapé padronizado em 2 linhas (h-10) */}
+                          <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-0.5 shrink-0">
+                            {descontoPct > 0 ? (
+                              <>
+                                <span className="font-mono font-medium text-slate-700 block truncate">
+                                  Economia de R$ {formatBRL(economiaCliente)}
+                                </span>
+                                <span className="text-emerald-700 font-semibold block truncate">
+                                  ✓ Tag OFERTA ativa na vitrine
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-400 block truncate">Sem desconto ativo</span>
+                                <span className="text-slate-400 block truncate">Preço cheio na vitrine</span>
+                              </>
                             )}
                           </div>
+                        </div>
+
+                        {/* Coluna 3: Preço de Custo (Opcional) */}
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 transition-all focus-within:border-amber-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:shadow-xs flex flex-col justify-between h-full space-y-2">
+                          {/* Header (h-6) */}
+                          <div className="flex items-center justify-between gap-1 h-6 shrink-0">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
+                              Preço de Custo
+                            </label>
+                            {margemPct > 0 ? (
+                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+                                {margemPct}% margem
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 shrink-0">Opcional</span>
+                            )}
+                          </div>
+
+                          {/* Input (h-10) */}
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                             <input
@@ -1495,32 +1592,61 @@ export function ProductBatchImportModal({
                               min="0"
                               value={row.preco_custo || ''}
                               onChange={(e) => handleUpdateRow(row.id, 'preco_custo', parseFloat(e.target.value) || 0)}
-                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              className="w-full pl-8 pr-3 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
                               placeholder="Opcional"
                             />
                           </div>
-                          <span className="text-[10px] text-slate-600 block truncate font-mono">
-                            {lucroUnitario > 0 ? `Lucro: R$ ${formatBRL(lucroUnitario)}/un` : 'Sem custo informado'}
-                          </span>
+
+                          {/* Rodapé padronizado em 2 linhas (h-10) */}
+                          <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-0.5 shrink-0">
+                            {lucroUnitario > 0 ? (
+                              <>
+                                <span className="font-mono text-slate-700 block truncate">
+                                  Lucro: R$ {formatBRL(lucroUnitario)}/un
+                                </span>
+                                <span className="font-mono text-slate-500 block truncate">
+                                  Markup: {row.preco_custo && row.preco_custo > 0 ? (row.preco / row.preco_custo).toFixed(1) : 0}x sobre custo
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-400 block truncate">Sem custo informado</span>
+                                <span className="text-slate-400 block truncate">Margem calculada no input</span>
+                              </>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Coluna 4: Central de Conferência da Remessa (Aproveitamento Pleno da Direita) */}
-                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
-                              <span>Total da Remessa</span>
+                        {/* Coluna 4: Central de Conferência da Remessa */}
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 transition-all focus-within:border-amber-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:shadow-xs flex flex-col justify-between h-full space-y-2">
+                          {/* Header (h-6) com botões Auto e Distribuir */}
+                          <div className="flex items-center justify-between gap-1 h-6 shrink-0">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
+                              Total da Remessa
                             </label>
-                            <button
-                              type="button"
-                              onClick={() => handleSyncTotalWithGrid(row.id)}
-                              className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs"
-                              title="Ajustar o total da remessa automaticamente pela soma da grade"
-                            >
-                              <RefreshCw className="w-2.5 h-2.5" />
-                              <span>Auto</span>
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleDistributeTotalAcrossGrid(row.id)}
+                                className="text-[10px] font-semibold text-slate-600 hover:text-amber-800 hover:border-amber-300 cursor-pointer flex items-center gap-0.5 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs transition-colors"
+                                title="Distribuir total da remessa igualmente entre as células da grade"
+                              >
+                                <Zap className="w-2.5 h-2.5 text-amber-600" />
+                                <span>Distribuir</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSyncTotalWithGrid(row.id)}
+                                className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer flex items-center gap-0.5 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs transition-colors"
+                                title="Ajustar o total da remessa automaticamente pela soma da grade"
+                              >
+                                <RefreshCw className="w-2.5 h-2.5" />
+                                <span>Auto</span>
+                              </button>
+                            </div>
                           </div>
 
+                          {/* Input (h-10) */}
                           <div className="relative">
                             <input
                               type="number"
@@ -1529,30 +1655,37 @@ export function ProductBatchImportModal({
                               onChange={(e) =>
                                 handleUpdateRow(row.id, 'quantidade_total_lote', parseInt(e.target.value, 10) || 0)
                               }
-                              className="w-full py-2 pl-3 pr-8 rounded-xl text-sm font-mono font-bold border border-slate-200 bg-white text-slate-900 text-left focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+                              className="w-full pl-3 pr-8 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
                               un
                             </span>
                           </div>
 
-                          {/* Régua de Status da Remessa */}
-                          <div className="pt-0.5">
-                            <div className="flex items-center justify-between text-[10px] font-mono font-semibold mb-1">
-                              <span className="text-slate-500">Alocado na grade:</span>
+                          {/* Rodapé padronizado em 2 linhas (h-10) */}
+                          <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-1.5 shrink-0">
+                            <div className="flex items-center justify-between font-mono">
+                              <span className="text-slate-600 font-semibold truncate">
+                                Alocado: {metrics.totalAlocado} / {metrics.totalLote} un
+                              </span>
                               <span
-                                className={
+                                className={`font-semibold shrink-0 ml-1 ${
                                   metrics.isLoteCompleto
-                                    ? 'text-emerald-700 font-bold'
+                                    ? 'text-emerald-700'
                                     : metrics.isLoteExcedido
-                                    ? 'text-rose-700 font-bold'
-                                    : 'text-amber-700 font-bold'
-                                }
+                                    ? 'text-rose-700'
+                                    : 'text-amber-700'
+                                }`}
                               >
-                                {metrics.totalAlocado} / {metrics.totalLote} un
+                                {metrics.isLoteCompleto
+                                  ? '✓ 100% OK'
+                                  : metrics.isLoteExcedido
+                                  ? `+${Math.abs(metrics.saldoRestante)} un`
+                                  : `Falta ${metrics.saldoRestante} un`}
                               </span>
                             </div>
 
+                            {/* Barra gráfica nivelada */}
                             <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                               <div
                                 className={`h-full transition-all duration-300 ${
@@ -1570,20 +1703,6 @@ export function ProductBatchImportModal({
                                   }%`
                                 }}
                               />
-                            </div>
-
-                            <div className="mt-1 text-[10px] font-medium truncate">
-                              {metrics.isLoteCompleto ? (
-                                <span className="text-emerald-700 font-semibold">✓ Remessa 100% equilibrada</span>
-                              ) : metrics.isLoteExcedido ? (
-                                <span className="text-rose-700 font-semibold">
-                                  ⚠ Excedeu em {Math.abs(metrics.saldoRestante)} un
-                                </span>
-                              ) : (
-                                <span className="text-amber-700 font-semibold">
-                                  Faltam alocar {metrics.saldoRestante} un
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
