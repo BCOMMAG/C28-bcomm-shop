@@ -4627,6 +4627,7 @@ export default function AdminProdutosPage() {
         onClose={() => setIsBatchImportOpen(false)}
         lojaId={tenantId}
         categoriesList={categoriesList}
+        existingProducts={products}
         onSuccess={() => {
           setIsBatchImportOpen(false);
           fetchProductsData();

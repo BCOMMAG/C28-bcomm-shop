@@ -21,11 +21,13 @@ import {
   DollarSign,
   Palette,
   Check,
-  ChevronDown
+  ChevronDown,
+  Package
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { AdminProductItem } from '@/lib/admin';
 
 export interface BatchCategoryOption {
   id: string;
@@ -39,10 +41,13 @@ interface ProductBatchImportModalProps {
   lojaId?: string;
   onSuccess: () => void;
   categoriesList: BatchCategoryOption[];
+  existingProducts?: AdminProductItem[];
 }
 
 export interface GridRowItem {
   id: string;
+  tipo: 'nova' | 'reposicao';
+  produto_existente_id?: string;
   nome: string;
   categoria_id: string;
   subcategoria: string;
@@ -84,7 +89,8 @@ export function ProductBatchImportModal({
   onClose,
   lojaId = DEFAULT_TENANT_ID,
   onSuccess,
-  categoriesList
+  categoriesList,
+  existingProducts = []
 }: ProductBatchImportModalProps) {
   const [activeTab, setActiveTab] = useState<'grade' | 'excel'>('grade');
   const [file, setFile] = useState<File | null>(null);
@@ -96,12 +102,17 @@ export function ProductBatchImportModal({
   const [successGlobal, setSuccessGlobal] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Inicializa as linhas da Grade Rápida com exemplos reais caso esteja vazio
-  const [gridRows, setGridRows] = useState<GridRowItem[]>(() => [
-    {
+  // Inicializa as linhas da Grade Rápida com opções
+  const [gridRows, setGridRows] = useState<GridRowItem[]>(() => {
+    const defaultCat = categoriesList[0]?.id || '';
+    const initialList: GridRowItem[] = [];
+
+    // Linha 1: Opção de Cadastrar Nova Peça
+    initialList.push({
       id: 'row-1',
+      tipo: 'nova',
       nome: 'Vestido Midi Fluido em Crepe',
-      categoria_id: categoriesList[0]?.id || '',
+      categoria_id: defaultCat,
       subcategoria: 'Vestidos & Macacões',
       cores: ['Branco Off-White', 'Preto Clássico'],
       tamanhos: ['P', 'M', 'G'],
@@ -109,22 +120,34 @@ export function ProductBatchImportModal({
       preco_promocional: 249.9,
       preco_custo: 110.0,
       estoque_por_variacao: 5
-    },
-    {
-      id: 'row-2',
-      nome: 'Blazer Alfaiataria Milão',
-      categoria_id: categoriesList.find((c) => c.nome.toLowerCase().includes('blazer'))?.id || categoriesList[0]?.id || '',
-      subcategoria: 'Alfaiataria',
-      cores: ['Bege Areia Nobre', 'Preto Clássico'],
-      tamanhos: ['38', '40', '42'],
-      preco: 399.0,
-      preco_promocional: 0,
-      preco_custo: 160.0,
-      estoque_por_variacao: 4
-    }
-  ]);
+    });
 
-  // Se a lista de categorias carregar depois, atualiza o default se necessário
+    // Se houver produtos já cadastrados, coloca a 2ª linha como exemplo de reposição
+    if (existingProducts.length > 0) {
+      const p = existingProducts[0];
+      const pCores = Array.from(new Set((p.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
+      const pTamanhos = Array.from(new Set((p.variacoes || []).map((v) => v.tamanho))).filter(Boolean);
+
+      initialList.push({
+        id: 'row-2',
+        tipo: 'reposicao',
+        produto_existente_id: p.id,
+        nome: p.nome,
+        categoria_id: p.categoria_id || defaultCat,
+        subcategoria: p.subcategoria || BOUTIQUE_SUBCATEGORIES[0],
+        cores: pCores.length > 0 ? pCores : ['Preto Clássico'],
+        tamanhos: pTamanhos.length > 0 ? pTamanhos : ['P', 'M', 'G'],
+        preco: p.preco,
+        preco_promocional: p.preco_promocional || 0,
+        preco_custo: p.preco_custo || 0,
+        estoque_por_variacao: 4
+      });
+    }
+
+    return initialList;
+  });
+
+  // Atualiza categorias se carregadas posteriormente
   useEffect(() => {
     if (categoriesList.length > 0) {
       setGridRows((prev) =>
@@ -143,6 +166,7 @@ export function ProductBatchImportModal({
       ...prev,
       {
         id: newId,
+        tipo: 'nova',
         nome: '',
         categoria_id: defaultCat,
         subcategoria: BOUTIQUE_SUBCATEGORIES[0],
@@ -156,6 +180,49 @@ export function ProductBatchImportModal({
     ]);
   };
 
+  // Seleção Inteligente: "Cadastrar nova peça" OU "Reposição de Peça Existente"
+  const handleSelectProductMode = (rowId: string, value: string) => {
+    if (value === '__NOVA__') {
+      setGridRows((prev) =>
+        prev.map((r) => {
+          if (r.id !== rowId) return r;
+          return {
+            ...r,
+            tipo: 'nova',
+            produto_existente_id: undefined,
+            nome: r.tipo === 'reposicao' ? '' : r.nome
+          };
+        })
+      );
+      return;
+    }
+
+    const prod = existingProducts.find((p) => p.id === value);
+    if (!prod) return;
+
+    const prodCores = Array.from(new Set((prod.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
+    const prodTamanhos = Array.from(new Set((prod.variacoes || []).map((v) => v.tamanho))).filter(Boolean);
+
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          tipo: 'reposicao',
+          produto_existente_id: prod.id,
+          nome: prod.nome,
+          categoria_id: prod.categoria_id || categoriesList[0]?.id || '',
+          subcategoria: prod.subcategoria || BOUTIQUE_SUBCATEGORIES[0],
+          cores: prodCores.length > 0 ? prodCores : r.cores,
+          tamanhos: prodTamanhos.length > 0 ? prodTamanhos : r.tamanhos,
+          preco: prod.preco,
+          preco_promocional: prod.preco_promocional || 0,
+          preco_custo: prod.preco_custo || 0
+        };
+      })
+    );
+  };
+
   // Botão Mágico: DUPLICAR PEÇA COM 1 CLIQUE
   const handleDuplicateRow = (index: number) => {
     const itemToClone = gridRows[index];
@@ -164,7 +231,7 @@ export function ProductBatchImportModal({
     const clonedItem: GridRowItem = {
       ...itemToClone,
       id: `clone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      nome: itemToClone.nome ? `${itemToClone.nome} (Cópia)` : ''
+      nome: itemToClone.tipo === 'nova' && itemToClone.nome ? `${itemToClone.nome} (Cópia)` : itemToClone.nome
     };
 
     const updated = [...gridRows];
@@ -263,13 +330,15 @@ export function ProductBatchImportModal({
 
   // Métricas Totais da Grade
   const totalModelos = gridRows.filter((r) => r.nome.trim() !== '').length;
+  const totalNovas = gridRows.filter((r) => r.tipo === 'nova' && r.nome.trim() !== '').length;
+  const totalReposicoes = gridRows.filter((r) => r.tipo === 'reposicao').length;
   const totalVariacoes = gridRows.reduce((acc, r) => acc + r.cores.length * r.tamanhos.length, 0);
   const totalEstoqueFisico = gridRows.reduce(
     (acc, r) => acc + r.cores.length * r.tamanhos.length * r.estoque_por_variacao,
     0
   );
 
-  // Download do Modelo Oficial Excel (.xlsx) com lista de categorias oficiais
+  // Download do Modelo Oficial Excel (.xlsx)
   const handleDownloadTemplate = () => {
     try {
       const templateData = [
@@ -319,7 +388,6 @@ export function ProductBatchImportModal({
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Modelo Importação');
 
-      // Aba auxiliar de categorias oficiais da loja
       const catData = categoriesList.map((c) => ({
         'Categorias Oficiais da Loja (Copie e Cole)': c.nome
       }));
@@ -327,7 +395,6 @@ export function ProductBatchImportModal({
       wsCat['!cols'] = [{ wch: 40 }];
       XLSX.utils.book_append_sheet(wb, wsCat, 'Categorias Válidas');
 
-      // Aba de cores oficiais
       const coresData = BOUTIQUE_OFFICIAL_COLORS.map((c) => ({
         'Cores Oficiais da Boutique': c.nome,
         'Código Hex': c.hex
@@ -363,38 +430,36 @@ export function ProductBatchImportModal({
         throw new Error('A planilha selecionada está vazia ou sem dados.');
       }
 
-      // Mapa de categorias por nome (case insensitive)
       const catMap = new Map<string, string>();
       categoriesList.forEach((c) => catMap.set(c.nome.toLowerCase().trim(), c.id));
 
+      const existingProdMap = new Map<string, AdminProductItem>();
+      existingProducts.forEach((p) => existingProdMap.set(p.nome.toLowerCase().trim(), p));
+
       const parsedGridRows: GridRowItem[] = [];
-      const invalidCategories: string[] = [];
 
       rawData.forEach((r, idx) => {
         const nome = String(r['Nome do Produto'] || r['Nome'] || r['nome'] || '').trim();
         if (!nome) return;
 
+        const matchedProd = existingProdMap.get(nome.toLowerCase());
+        const isReposicao = !!matchedProd;
+
         const rawCat = String(r['Categoria'] || r['categoria'] || '').trim();
-        const matchedCatId = catMap.get(rawCat.toLowerCase()) || categoriesList[0]?.id || '';
-
-        if (rawCat && !catMap.has(rawCat.toLowerCase())) {
-          invalidCategories.push(`Linha ${idx + 2}: "${rawCat}"`);
-        }
-
-        const subcategoria = String(r['Subcategoria'] || r['subcategoria'] || BOUTIQUE_SUBCATEGORIES[0]).trim();
-        const precoNum = parseFloat(String(r['Preço Venda'] || r['Preco Venda'] || r['Preço'] || r['preco'] || '0').replace(',', '.'));
+        const matchedCatId = catMap.get(rawCat.toLowerCase()) || matchedProd?.categoria_id || categoriesList[0]?.id || '';
+        const subcategoria = String(r['Subcategoria'] || r['subcategoria'] || matchedProd?.subcategoria || BOUTIQUE_SUBCATEGORIES[0]).trim();
+        
+        const precoNum = parseFloat(String(r['Preço Venda'] || r['Preco Venda'] || r['Preço'] || r['preco'] || matchedProd?.preco || '0').replace(',', '.'));
         const promoNum = parseFloat(String(r['Preço Promocional'] || r['Preco Promocional'] || r['preco_promocional'] || '0').replace(',', '.'));
         const custoNum = parseFloat(String(r['Preço Custo'] || r['Preco Custo'] || r['preco_custo'] || '0').replace(',', '.'));
         const estoquePadrao = parseInt(String(r['Estoque Padrão por Variação'] || r['Estoque'] || r['estoque'] || '5'), 10) || 5;
 
-        // Extrai cores
         const rawCores = String(r['Cores (separadas por vírgula)'] || r['Cores'] || r['cores'] || 'Preto Clássico');
         const cores = rawCores
           .split(/[,;\/]/)
           .map((c) => c.trim())
           .filter(Boolean);
 
-        // Extrai tamanhos
         const rawTamanhos = String(r['Tamanhos (separados por vírgula)'] || r['Tamanhos'] || r['tamanhos'] || 'P, M, G');
         const tamanhos = rawTamanhos
           .split(/[,;\/]/)
@@ -403,6 +468,8 @@ export function ProductBatchImportModal({
 
         parsedGridRows.push({
           id: `excel-row-${Date.now()}-${idx}`,
+          tipo: isReposicao ? 'reposicao' : 'nova',
+          produto_existente_id: matchedProd?.id,
           nome,
           categoria_id: matchedCatId,
           subcategoria,
@@ -422,14 +489,7 @@ export function ProductBatchImportModal({
 
       setGridRows(parsedGridRows);
       setActiveTab('grade');
-
-      if (invalidCategories.length > 0) {
-        setErrorGlobal(
-          `Atenção: Algumas categorias não eram oficiais (${invalidCategories.slice(0, 2).join(', ')}). Elas foram ajustadas para a categoria padrão. Revise os campos na grade antes de salvar.`
-        );
-      } else {
-        setSuccessGlobal(`Excelente! ${parsedGridRows.length} peça(s) da planilha foram carregadas na Grade Rápida.`);
-      }
+      setSuccessGlobal(`Excelente! ${parsedGridRows.length} peça(s) da planilha foram carregadas na Grade Rápida.`);
     } catch (err: any) {
       setErrorGlobal(err.message || 'Erro ao processar arquivo.');
     } finally {
@@ -441,7 +501,7 @@ export function ProductBatchImportModal({
   const handleExecuteSave = async () => {
     const validRows = gridRows.filter((r) => r.nome.trim() !== '');
     if (validRows.length === 0) {
-      setErrorGlobal('Preencha o nome de pelo menos uma peça antes de salvar.');
+      setErrorGlobal('Preencha ou selecione o nome de pelo menos uma peça antes de salvar.');
       return;
     }
 
@@ -450,8 +510,8 @@ export function ProductBatchImportModal({
     setSuccessGlobal(null);
 
     const supabase = getSupabaseBrowserClient();
-    let importadas = 0;
-    let atualizadas = 0;
+    let novasCriadas = 0;
+    let reposicoesFeitas = 0;
 
     try {
       for (let i = 0; i < validRows.length; i++) {
@@ -459,7 +519,7 @@ export function ProductBatchImportModal({
         setImportProgress({
           current: i + 1,
           total: validRows.length,
-          stage: `Salvando: ${row.nome} (${i + 1}/${validRows.length})`
+          stage: `Processando: ${row.nome} (${i + 1}/${validRows.length})`
         });
 
         const slugProduto = row.nome
@@ -472,7 +532,83 @@ export function ProductBatchImportModal({
         const totalVariacoesLinha = row.cores.length * row.tamanhos.length;
         const totalEstoqueLinha = totalVariacoesLinha * row.estoque_por_variacao;
 
-        // Verifica existência prévia
+        // CASO 1: REPOSIÇÃO DE PEÇA JÁ EXISTENTE
+        if (row.tipo === 'reposicao' && row.produto_existente_id) {
+          const prodId = row.produto_existente_id;
+
+          // Busca variações atuais do produto
+          const { data: currentVars } = await supabase
+            .from('variacoes_produto')
+            .select('id, cor_nome, tamanho, estoque')
+            .eq('produto_id', prodId);
+
+          const varsMap = new Map<string, { id: string; estoque: number }>();
+          (currentVars || []).forEach((v) => {
+            varsMap.set(`${v.cor_nome?.toLowerCase().trim()}_${v.tamanho?.toLowerCase().trim()}`, {
+              id: v.id,
+              estoque: v.estoque || 0
+            });
+          });
+
+          let addedStock = 0;
+          for (const cor of row.cores) {
+            const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
+              (c) => c.nome.toLowerCase() === cor.toLowerCase()
+            );
+            const hex = matchedColor ? matchedColor.hex : '#1A1918';
+
+            for (const tam of row.tamanhos) {
+              const key = `${cor.toLowerCase().trim()}_${tam.toLowerCase().trim()}`;
+              const existingVar = varsMap.get(key);
+
+              if (existingVar) {
+                // Soma ao estoque existente
+                await supabase
+                  .from('variacoes_produto')
+                  .update({
+                    estoque: existingVar.estoque + row.estoque_por_variacao
+                  })
+                  .eq('id', existingVar.id);
+              } else {
+                // Cria a nova combinação de variação para a peça
+                const varSku = `${slugProduto.slice(0, 10).toUpperCase()}-${cor.slice(0, 3).toUpperCase()}-${tam}`;
+                await supabase.from('variacoes_produto').insert({
+                  loja_id: lojaId,
+                  produto_id: prodId,
+                  cor_nome: cor,
+                  cor_hex: hex,
+                  tamanho: tam,
+                  estoque: row.estoque_por_variacao,
+                  sku: varSku
+                });
+              }
+              addedStock += row.estoque_por_variacao;
+            }
+          }
+
+          // Atualiza total de estoque e preços do produto
+          const { data: prodCurrent } = await supabase
+            .from('produtos')
+            .select('estoque_total')
+            .eq('id', prodId)
+            .single();
+
+          const novoTotal = (prodCurrent?.estoque_total || 0) + addedStock;
+          await supabase
+            .from('produtos')
+            .update({
+              estoque_total: novoTotal,
+              preco: row.preco,
+              preco_promocional: row.preco_promocional || null,
+              preco_custo: row.preco_custo || null
+            })
+            .eq('id', prodId);
+
+          reposicoesFeitas++;
+          continue;
+        }
+
+        // CASO 2: CADASTRO DE NOVA PEÇA
         const { data: existingProd } = await supabase
           .from('produtos')
           .select('id, estoque_total')
@@ -499,7 +635,7 @@ export function ProductBatchImportModal({
               })
               .eq('id', existingProd.id);
 
-            atualizadas++;
+            reposicoesFeitas++;
             continue;
           }
         }
@@ -570,10 +706,10 @@ export function ProductBatchImportModal({
           ]);
         }
 
-        importadas++;
+        novasCriadas++;
       }
 
-      setSuccessGlobal(`🎉 Sucesso! ${importadas} peça(s) cadastradas e ${atualizadas} atualizadas com grade completa.`);
+      setSuccessGlobal(`🎉 Sucesso! ${novasCriadas} nova(s) peça(s) criadas e ${reposicoesFeitas} reposição(ões) atualizadas no estoque.`);
       setTimeout(() => {
         onSuccess();
       }, 1500);
@@ -602,7 +738,7 @@ export function ProductBatchImportModal({
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Cadastre dezenas de modelos com grade completa de cores e tamanhos em segundos.
+                Selecione uma peça cadastrada para repor estoque ou cadastre uma nova peça com nome personalizado.
               </p>
             </div>
           </div>
@@ -710,22 +846,24 @@ export function ProductBatchImportModal({
 
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span className="font-semibold text-slate-700">Dica:</span>
-                  <span>Clique em <strong className="text-amber-800 font-bold">[📋 Duplicar]</strong> em qualquer linha para clonar toda a peça e alterar só os tamanhos!</span>
+                  <span>
+                    Escolha uma peça cadastrada para <strong>Reposição</strong> ou selecione <strong className="text-amber-800">&quot;Cadastrar nova peça&quot;</strong> para digitar um nome novo!
+                  </span>
                 </div>
               </div>
 
               {/* Tabela Interativa de Linhas */}
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
-                  <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+                  <table className="w-full text-left border-collapse text-xs min-w-[980px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-10 shadow-xs">
                       <tr>
-                        <th className="p-2.5 w-12 text-center">#</th>
-                        <th className="p-2.5 min-w-[200px]">Nome da Peça</th>
-                        <th className="p-2.5 min-w-[160px]">Categoria Oficial</th>
-                        <th className="p-2.5 min-w-[130px]">Subcategoria</th>
-                        <th className="p-2.5 min-w-[200px]">Cores Oficiais</th>
-                        <th className="p-2.5 min-w-[220px]">Tamanhos da Grade</th>
+                        <th className="p-2.5 w-10 text-center">#</th>
+                        <th className="p-2.5 min-w-[270px]">Peça / Modo (Reposição ou Nova)</th>
+                        <th className="p-2.5 min-w-[150px]">Categoria Oficial</th>
+                        <th className="p-2.5 min-w-[120px]">Subcategoria</th>
+                        <th className="p-2.5 min-w-[190px]">Cores Oficiais</th>
+                        <th className="p-2.5 min-w-[210px]">Tamanhos da Grade</th>
                         <th className="p-2.5 w-24">Preço (R$)</th>
                         <th className="p-2.5 w-24">Promo (R$)</th>
                         <th className="p-2.5 w-20 text-center">Estoque</th>
@@ -735,6 +873,8 @@ export function ProductBatchImportModal({
                     <tbody className="divide-y divide-slate-100 bg-white">
                       {gridRows.map((row, index) => {
                         const totalVarsLinha = row.cores.length * row.tamanhos.length;
+                        const isReposicao = row.tipo === 'reposicao' && row.produto_existente_id;
+
                         return (
                           <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
                             {/* Número da linha */}
@@ -742,19 +882,61 @@ export function ProductBatchImportModal({
                               {index + 1}
                             </td>
 
-                            {/* Nome do Produto */}
-                            <td className="p-2.5">
-                              <input
-                                type="text"
-                                required
-                                value={row.nome}
-                                onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
-                                placeholder="Ex: Vestido Chemise Seda"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white text-xs"
-                              />
+                            {/* Coluna Inteligente: NOME / REPOSIÇÃO DA PEÇA */}
+                            <td className="p-2.5 space-y-1.5">
+                              {/* Dropdown de Seleção: "Cadastrar nova peça" ou Lista de Peças Cadastradas */}
+                              <select
+                                value={isReposicao ? row.produto_existente_id : '__NOVA__'}
+                                onChange={(e) => handleSelectProductMode(row.id, e.target.value)}
+                                className={`w-full border rounded-lg p-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${
+                                  isReposicao
+                                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-bold'
+                                    : 'bg-slate-50 border-slate-200 text-slate-900'
+                                }`}
+                              >
+                                <option value="__NOVA__">✨ Cadastrar nova peça</option>
+                                {existingProducts && existingProducts.length > 0 && (
+                                  <optgroup label="--- Reposição de Peças Existentes ---">
+                                    {existingProducts.map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        📦 {p.nome} (Atual: {p.estoque_total} un)
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                              </select>
+
+                              {/* Se for Nova Peça: Campo de texto livre para o nome personalizado */}
+                              {!isReposicao ? (
+                                <div className="space-y-0.5">
+                                  <input
+                                    type="text"
+                                    required
+                                    value={row.nome}
+                                    onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
+                                    placeholder="Digite o nome da nova peça..."
+                                    className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs shadow-2xs"
+                                  />
+                                  <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-amber-600 inline shrink-0" />
+                                    <span>Nova peça a ser cadastrada no catálogo</span>
+                                  </span>
+                                </div>
+                              ) : (
+                                /* Se for Reposição: Indicador de Reposição */
+                                <div className="flex items-center justify-between px-2 py-1 bg-emerald-50/90 border border-emerald-200 rounded-md text-[10px] text-emerald-800 font-semibold">
+                                  <span className="flex items-center gap-1">
+                                    <Package className="w-3 h-3 text-emerald-600 inline shrink-0" />
+                                    <span>Reposição de estoque</span>
+                                  </span>
+                                  <span className="font-mono font-bold text-emerald-900">
+                                    +{row.cores.length * row.tamanhos.length * row.estoque_por_variacao} un
+                                  </span>
+                                </div>
+                              )}
                             </td>
 
-                            {/* Categoria Oficial (Dropdown estrito com as categorias da loja) */}
+                            {/* Categoria Oficial */}
                             <td className="p-2.5">
                               <select
                                 value={row.categoria_id}
@@ -784,9 +966,9 @@ export function ProductBatchImportModal({
                               </select>
                             </td>
 
-                            {/* Cores Oficiais (Multi-chip visual) */}
+                            {/* Cores Oficiais */}
                             <td className="p-2.5">
-                              <div className="flex flex-wrap gap-1 max-w-[220px]">
+                              <div className="flex flex-wrap gap-1 max-w-[200px]">
                                 {BOUTIQUE_OFFICIAL_COLORS.map((cor) => {
                                   const isSelected = row.cores.includes(cor.nome);
                                   return (
@@ -805,7 +987,7 @@ export function ProductBatchImportModal({
                                         className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
                                         style={{ backgroundColor: cor.hex }}
                                       />
-                                      <span className="truncate max-w-[70px]">{cor.nome.split(' ')[0]}</span>
+                                      <span className="truncate max-w-[65px]">{cor.nome.split(' ')[0]}</span>
                                       {isSelected && <Check className="w-2.5 h-2.5 text-amber-700" />}
                                     </button>
                                   );
@@ -813,7 +995,7 @@ export function ProductBatchImportModal({
                               </div>
                             </td>
 
-                            {/* Tamanhos Oficiais & Atalhos Rápidos */}
+                            {/* Tamanhos Oficiais & Atalhos */}
                             <td className="p-2.5">
                               <div className="space-y-1.5">
                                 <div className="flex flex-wrap gap-1">
@@ -836,7 +1018,6 @@ export function ProductBatchImportModal({
                                   })}
                                 </div>
 
-                                {/* Atalhos Rápidos de Grade */}
                                 <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
                                   <span>Atalhos:</span>
                                   <button
@@ -927,7 +1108,7 @@ export function ProductBatchImportModal({
 
               {/* Tratamento para peças repetidas */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="font-bold text-slate-700">Se o produto já existir no catálogo:</span>
+                <span className="font-bold text-slate-700">Comportamento de reposição:</span>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -1049,20 +1230,36 @@ export function ProductBatchImportModal({
         {/* Rodapé Dinâmico com Indicadores e Gravação */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
           {/* KPIs da Grade */}
-          <div className="flex items-center gap-3 text-xs">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-2xs font-semibold text-slate-800">
-              <span className="text-slate-400">Modelos:</span>
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-slate-800">
+              <span className="text-slate-400">Total:</span>
               <strong className="text-slate-900 font-mono">{totalModelos}</strong>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg shadow-2xs font-semibold text-amber-950">
-              <span className="text-amber-700">Grade:</span>
-              <strong className="text-amber-900 font-mono">{totalVariacoes} vars</strong>
+            {totalNovas > 0 && (
+              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-amber-950">
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span className="text-amber-700">Novas:</span>
+                <strong className="text-amber-900 font-mono">{totalNovas}</strong>
+              </div>
+            )}
+
+            {totalReposicoes > 0 && (
+              <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-emerald-950">
+                <Package className="w-3 h-3 text-emerald-600" />
+                <span className="text-emerald-700">Reposições:</span>
+                <strong className="text-emerald-900 font-mono">{totalReposicoes}</strong>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-slate-800">
+              <span className="text-slate-500">Grade:</span>
+              <strong className="text-slate-900 font-mono">{totalVariacoes} vars</strong>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg shadow-2xs font-semibold text-emerald-950">
-              <span className="text-emerald-700">Estoque:</span>
-              <strong className="text-emerald-900 font-mono">{totalEstoqueFisico} un</strong>
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-emerald-950">
+              <span className="text-emerald-700">Estoque Físico:</span>
+              <strong className="text-emerald-900 font-mono">+{totalEstoqueFisico} un</strong>
             </div>
           </div>
 
@@ -1089,7 +1286,7 @@ export function ProductBatchImportModal({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Publicar {totalModelos} Peça(s) no Catálogo</span>
+                  <span>Gravar e Atualizar Catálogo ({totalModelos})</span>
                 </>
               )}
             </button>
