@@ -128,6 +128,55 @@ interface LimitModalState {
   coresAlocadas: { cor: string; total: number }[];
 }
 
+/**
+ * Helper de alta performance: extrai estritamente fotos e imagens válidas,
+ * descartando QUALQUER arquivo de vídeo (.mp4, .webm, tipo video) ou links externos lentos.
+ */
+export function getSafeProductThumbnail(
+  fotoPrincipal?: string | null,
+  midias?: { tipo?: string; url?: string }[]
+): string | null {
+  const isVideo = (url?: string | null) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return (
+      lower.endsWith('.mp4') ||
+      lower.endsWith('.webm') ||
+      lower.endsWith('.mov') ||
+      lower.endsWith('.ogg') ||
+      lower.endsWith('.avi') ||
+      lower.includes('/video')
+    );
+  };
+
+  // 1. Testa a foto_principal
+  if (fotoPrincipal && !isVideo(fotoPrincipal)) {
+    return fotoPrincipal;
+  }
+
+  // 2. Se for nula ou vídeo, busca no array de mídias por imagem válida
+  if (midias && Array.isArray(midias)) {
+    const imgMedia = midias.find((m) => {
+      const url = m.url || '';
+      return (
+        m.tipo !== 'video' &&
+        !isVideo(url) &&
+        (url.endsWith('.jpg') ||
+          url.endsWith('.jpeg') ||
+          url.endsWith('.png') ||
+          url.endsWith('.webp') ||
+          url.startsWith('/') ||
+          url.startsWith('http'))
+      );
+    });
+    if (imgMedia?.url && !isVideo(imgMedia.url)) {
+      return imgMedia.url;
+    }
+  }
+
+  return null;
+}
+
 export function ProductBatchImportModal({
   isOpen,
   onClose,
@@ -179,7 +228,7 @@ export function ProductBatchImportModal({
       quantidade_total_lote: 30,
       matriz_estoque: row1Matriz,
       modo_seletor: 'simples',
-      foto_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80',
+      foto_url: '/products/03-conjunto-cetim/prata.jpg',
       aba_matriz: 'estoque'
     });
 
@@ -202,6 +251,8 @@ export function ProductBatchImportModal({
         });
       });
 
+      const safeFoto = getSafeProductThumbnail(p.foto_principal, p.midias) || '/products/01-casaco-tricot/marrom.jpg';
+
       initialList.push({
         id: 'row-2',
         tipo: 'reposicao',
@@ -217,7 +268,7 @@ export function ProductBatchImportModal({
         quantidade_total_lote: totalLoteInicial,
         matriz_estoque: row2Matriz,
         modo_seletor: 'detalhado',
-        foto_url: p.foto_principal || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80',
+        foto_url: safeFoto,
         aba_matriz: 'estoque'
       });
     }
@@ -375,6 +426,8 @@ export function ProductBatchImportModal({
       });
     });
 
+    const safeFoto = getSafeProductThumbnail(prod.foto_principal, prod.midias) || '/products/01-casaco-tricot/marrom.jpg';
+
     setGridRows((prev) =>
       prev.map((r) => {
         if (r.id !== rowId) return r;
@@ -392,7 +445,7 @@ export function ProductBatchImportModal({
           preco_custo: prod.preco_custo || 0,
           quantidade_total_lote: totalInicial,
           matriz_estoque: newMatriz,
-          foto_url: prod.foto_principal,
+          foto_url: safeFoto,
           modo_seletor: 'detalhado'
         };
       })
@@ -1136,402 +1189,402 @@ export function ProductBatchImportModal({
                       ? row.preco - row.preco_promocional
                       : 0;
 
-                  const modoSeletor = row.modo_seletor || (isReposicao ? 'detalhado' : 'simples');
+                  const safeThumb = getSafeProductThumbnail(
+                    row.foto_url || prodOriginal?.foto_principal,
+                    prodOriginal?.midias
+                  );
 
                   return (
                     <div
                       key={row.id}
                       className="border border-slate-200 hover:border-slate-300 rounded-2xl bg-white shadow-xs overflow-hidden transition-all divide-y divide-slate-100"
                     >
-                      {/* Nível 1: Cabeçalho da Peça, Identificação Dupla, Categorias & Display Financeiro Amplo */}
-                      <div className="p-4 bg-slate-50/70 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                        {/* Identificação da Peça (Modo Duplo: Simples vs Detalhado) */}
-                        <div className="flex items-start gap-3 flex-1 min-w-[320px]">
-                          <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs mt-1">
+                      {/* NÍVEL 1: IDENTIFICAÇÃO DA PEÇA, MODO OPERACIONAL E CATEGORIAS (100% DA LARGURA) */}
+                      <div className="p-3.5 sm:p-4 bg-slate-50/90 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+                        <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                          {/* Número da Linha */}
+                          <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
                             {index + 1}
                           </div>
 
-                          <div className="space-y-1.5 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                                <span>Peça / Modo de Operação</span>
-                              </label>
+                          {/* Seletor Semântico de Modo: Nova Peça vs Reposição */}
+                          <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleApplySelectedProduct(row.id, '__NOVA__')}
+                              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                row.tipo === 'nova'
+                                  ? 'bg-white text-slate-900 shadow-xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                              title="Cadastrar uma nova peça do zero"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Nova Peça</span>
+                            </button>
 
-                              {/* Toggle: Modo Simples vs Catálogo Visual Detalhado */}
-                              <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[10px]">
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateRow(row.id, 'modo_seletor', 'simples')}
-                                  className={`px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
-                                    modoSeletor === 'simples'
-                                      ? 'bg-white text-slate-800 shadow-2xs font-bold'
-                                      : 'text-slate-500 hover:text-slate-800'
-                                  }`}
-                                  title="Visualização compacta em dropdown"
-                                >
-                                  Simples
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateRow(row.id, 'modo_seletor', 'detalhado')}
-                                  className={`px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
-                                    modoSeletor === 'detalhado'
-                                      ? 'bg-white text-slate-800 shadow-2xs font-bold'
-                                      : 'text-slate-500 hover:text-slate-800'
-                                  }`}
-                                  title="Visualização detalhada com foto e estoque do catálogo"
-                                >
-                                  Detalhado
-                                </button>
-                              </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (row.tipo !== 'reposicao') {
+                                  if (existingProducts.length > 0) {
+                                    handleApplySelectedProduct(row.id, existingProducts[0].id);
+                                  } else {
+                                    handleUpdateRow(row.id, 'tipo', 'reposicao');
+                                  }
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                row.tipo === 'reposicao'
+                                  ? 'bg-white text-slate-900 shadow-xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                              title="Repor estoque de uma peça já cadastrada no catálogo"
+                            >
+                              <Package className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Reposição de Estoque</span>
+                            </button>
+                          </div>
+
+                          {/* Se for Nova Peça: Campo amplo de nome */}
+                          {row.tipo === 'nova' ? (
+                            <div className="flex-1 min-w-[200px]">
+                              <input
+                                type="text"
+                                required
+                                value={row.nome}
+                                onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
+                                placeholder="Digite o nome da nova peça..."
+                                className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-xs shadow-2xs"
+                              />
                             </div>
-
-                            {/* Renderização do Modo Selecionado */}
-                            {modoSeletor === 'simples' ? (
-                              /* Modo Simples: Dropdown rápido */
-                              <div className="space-y-1">
-                                <select
-                                  value={isReposicao ? row.produto_existente_id : '__NOVA__'}
-                                  onChange={(e) => handleApplySelectedProduct(row.id, e.target.value)}
-                                  className={`w-full border rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-2xs ${
-                                    isReposicao
-                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                                      : 'bg-white border-amber-300 text-slate-900'
-                                  }`}
-                                >
-                                  <option value="__NOVA__">✨ Cadastrar nova peça</option>
-                                  {existingProducts && existingProducts.length > 0 && (
-                                    <optgroup label="--- Reposição de Peças Existentes ---">
-                                      {existingProducts.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                          📦 {p.nome} (Atual: {p.estoque_total} un)
-                                        </option>
-                                      ))}
-                                    </optgroup>
-                                  )}
-                                </select>
-
-                                {!isReposicao && (
-                                  <input
-                                    type="text"
-                                    required
-                                    value={row.nome}
-                                    onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
-                                    placeholder="Digite o nome da nova peça..."
-                                    className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs shadow-2xs"
+                          ) : (
+                            /* Se for Reposição: Card da Peça Selecionada com Foto, Nome, Estoque e Botão Catálogo */
+                            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2.5 bg-white p-2 border border-slate-200 rounded-xl shadow-2xs">
+                              {/* Foto em miniatura (48x48px) com filtro estrito de vídeo */}
+                              <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                {safeThumb ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={safeThumb}
+                                    alt={row.nome}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="w-full h-full object-cover"
                                   />
+                                ) : (
+                                  <ImageIcon className="w-5 h-5 text-slate-400" />
                                 )}
                               </div>
-                            ) : (
-                              /* Modo Detalhado: Card Visual com Foto e Dados do Catálogo */
-                              <div className="p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  {/* Foto Real da Peça */}
-                                  <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
-                                    {row.foto_url ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img
-                                        src={row.foto_url}
-                                        alt={row.nome}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                        <ImageIcon className="w-6 h-6" />
-                                      </div>
-                                    )}
-                                  </div>
 
-                                  <div className="min-w-0 space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <strong className="text-xs font-bold text-slate-900 truncate block">
-                                        {row.nome || 'Nova Peça sem Nome'}
-                                      </strong>
-                                      {isReposicao && (
-                                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
-                                          Reposição
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {isReposicao && prodOriginal ? (
-                                      <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2">
-                                        <span
-                                          className={`font-semibold font-mono px-1.5 py-0.2 rounded ${
-                                            prodOriginal.estoque_total === 0
-                                              ? 'bg-rose-100 text-rose-800 font-bold'
-                                              : prodOriginal.estoque_total <= 3
-                                              ? 'bg-amber-100 text-amber-900 font-bold'
-                                              : 'bg-emerald-50 text-emerald-800'
-                                          }`}
-                                        >
-                                          Estoque atual: {prodOriginal.estoque_total} un
-                                        </span>
-                                        <span>•</span>
-                                        <span>Preço: R$ {formatBRL(prodOriginal.preco)}</span>
-                                        {prodOriginal.preco_promocional && (
-                                          <span className="text-rose-600 font-bold">
-                                            (Promo: R$ {formatBRL(prodOriginal.preco_promocional)})
-                                          </span>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <input
-                                        type="text"
-                                        required
-                                        value={row.nome}
-                                        onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
-                                        placeholder="Digite o nome da nova peça..."
-                                        className="w-full bg-slate-50 border border-amber-300 rounded-lg p-1.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
-                                      />
-                                    )}
-                                  </div>
+                              {/* Nome e Estoque Atual */}
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <strong className="text-xs font-bold text-slate-900 truncate block">
+                                    {row.nome || 'Selecione uma peça...'}
+                                  </strong>
+                                  <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold shrink-0 border border-emerald-200">
+                                    Reposição
+                                  </span>
                                 </div>
 
-                                {/* Botão para abrir o Catálogo Visual Picker */}
+                                <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                  {prodOriginal ? (
+                                    <span className="font-mono font-semibold text-slate-700">
+                                      Estoque atual: <strong>{prodOriginal.estoque_total} un</strong>
+                                    </span>
+                                  ) : null}
+                                  <span>•</span>
+                                  <span className="font-mono">R$ {formatBRL(row.preco)}</span>
+                                </div>
+                              </div>
+
+                              {/* Seletor dropdown rápido e Catálogo Visual */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <select
+                                  value={row.produto_existente_id || ''}
+                                  onChange={(e) => handleApplySelectedProduct(row.id, e.target.value)}
+                                  className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-700 max-w-[150px] sm:max-w-[180px] truncate focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                                >
+                                  {existingProducts.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.nome} ({p.estoque_total} un)
+                                    </option>
+                                  ))}
+                                </select>
+
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setCatalogPickerRowId(row.id);
                                     setCatalogSearch('');
                                   }}
-                                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
-                                  title="Abrir vitrine visual de produtos para selecionar do catálogo"
+                                  className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                                  title="Abrir vitrine com fotos para escolher a peça do catálogo"
                                 >
                                   <LayoutGrid className="w-3.5 h-3.5" />
                                   <span>Catálogo Visual</span>
                                 </button>
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Categorias: Bloqueadas na Reposição */}
-                        <div className="flex flex-wrap items-center gap-3">
-                          {/* Categoria Oficial */}
-                          <div className="space-y-1 min-w-[140px]">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                              {isReposicao && <Lock className="w-3 h-3 text-slate-400 inline" />}
-                              <span>Categoria Oficial</span>
-                            </label>
-                            {isReposicao ? (
-                              <div
-                                className="p-2.5 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 cursor-not-allowed flex items-center justify-between"
-                                title="Categoria vinculada ao produto cadastrado. Para alterar, acesse a edição mestre no catálogo."
-                              >
-                                <span className="truncate">{categoriaNome}</span>
-                                <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
-                              </div>
-                            ) : (
-                              <select
-                                value={row.categoria_id}
-                                onChange={(e) => handleUpdateRow(row.id, 'categoria_id', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs cursor-pointer shadow-2xs"
-                              >
-                                {categoriesList.map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.nome}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-
-                          {/* Subcategoria */}
-                          <div className="space-y-1 min-w-[130px]">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                              {isReposicao && <Lock className="w-3 h-3 text-slate-400 inline" />}
-                              <span>Subcategoria</span>
-                            </label>
-                            {isReposicao ? (
-                              <div
-                                className="p-2.5 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 cursor-not-allowed flex items-center justify-between"
-                                title="Subcategoria vinculada ao produto cadastrado. Para alterar, acesse a edição mestre no catálogo."
-                              >
-                                <span className="truncate">{row.subcategoria}</span>
-                                <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
-                              </div>
-                            ) : (
-                              <select
-                                value={row.subcategoria}
-                                onChange={(e) => handleUpdateRow(row.id, 'subcategoria', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-700 text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                              >
-                                {BOUTIQUE_SUBCATEGORIES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* DISPLAY FINANCEIRO ESPAÇOSO (Alta Legibilidade e Suporte a Grandes Valores) */}
-                        <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-                          {/* Preço de Venda */}
-                          <div className="space-y-1 min-w-[145px]">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Preço de Venda</span>
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={row.preco || ''}
-                                onChange={(e) => handleUpdateRow(row.id, 'preco', parseFloat(e.target.value) || 0)}
-                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
-                                placeholder="0,00"
-                              />
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-slate-500 block truncate">
-                              Exibição: R$ {formatBRL(row.preco)}
-                            </span>
-                          </div>
+                          )}
+                        </div>
 
-                          {/* Preço Promocional */}
-                          <div className="space-y-1 min-w-[145px]">
-                            <div className="flex items-center justify-between gap-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                                <Tag className="w-3.5 h-3.5 text-rose-500" />
-                                <span>Promoção</span>
+                        {/* Categorias (Lado Direito do Nível 1) e Ações de Linha */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          {/* Categorias: Bloqueadas com cadeado na Reposição, Editáveis na Nova Peça */}
+                          <div className="flex items-center gap-2">
+                            {/* Categoria Oficial */}
+                            <div className="space-y-0.5 min-w-[110px] max-w-[140px]">
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                {isReposicao && <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                                <span>Categoria</span>
                               </label>
-                              {descontoPct > 0 && (
-                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-full">
-                                  -{descontoPct}%
-                                </span>
+                              {isReposicao ? (
+                                <div
+                                  className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 truncate cursor-not-allowed flex items-center justify-between"
+                                  title="Categoria vinculada ao produto. Alterações devem ser feitas na edição do produto no catálogo."
+                                >
+                                  <span className="truncate">{categoriaNome}</span>
+                                  <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
+                                </div>
+                              ) : (
+                                <select
+                                  value={row.categoria_id}
+                                  onChange={(e) => handleUpdateRow(row.id, 'categoria_id', e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs truncate"
+                                >
+                                  {categoriesList.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.nome}
+                                    </option>
+                                  ))}
+                                </select>
                               )}
                             </div>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={row.preco_promocional || ''}
-                                onChange={(e) =>
-                                  handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)
-                                }
-                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
-                                placeholder="Opcional"
-                              />
-                            </div>
-                            {descontoPct > 0 ? (
-                              <span className="text-[10px] font-mono font-bold text-rose-600 block truncate">
-                                Economia: R$ {formatBRL(economiaCliente)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 block truncate">Sem desconto ativo</span>
-                            )}
-                          </div>
 
-                          {/* Preço de Custo & Margem */}
-                          <div className="space-y-1 min-w-[140px]">
-                            <div className="flex items-center justify-between gap-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Custo</span>
+                            {/* Subcategoria */}
+                            <div className="space-y-0.5 min-w-[110px] max-w-[140px]">
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                {isReposicao && <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                                <span>Subcategoria</span>
                               </label>
-                              {margemPct > 0 && (
-                                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
-                                  {margemPct}% margem
-                                </span>
+                              {isReposicao ? (
+                                <div
+                                  className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 truncate cursor-not-allowed flex items-center justify-between"
+                                  title="Subcategoria vinculada ao produto. Alterações devem ser feitas na edição do produto no catálogo."
+                                >
+                                  <span className="truncate">{row.subcategoria}</span>
+                                  <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
+                                </div>
+                              ) : (
+                                <select
+                                  value={row.subcategoria}
+                                  onChange={(e) => handleUpdateRow(row.id, 'subcategoria', e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs truncate"
+                                >
+                                  {BOUTIQUE_SUBCATEGORIES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
                               )}
                             </div>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={row.preco_custo || ''}
-                                onChange={(e) => handleUpdateRow(row.id, 'preco_custo', parseFloat(e.target.value) || 0)}
-                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
-                                placeholder="Opcional"
-                              />
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] text-slate-500">
-                              <span className="truncate">Lucro: R$ {formatBRL(lucroUnitario)}</span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMarginQuick(row.id, 1.0)}
-                                  className="text-[9px] font-bold text-amber-700 hover:underline cursor-pointer"
-                                  title="Calcular preço com 100% de margem sobre o custo"
-                                >
-                                  +100%
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMarginQuick(row.id, 1.5)}
-                                  className="text-[9px] font-bold text-amber-700 hover:underline cursor-pointer"
-                                  title="Calcular preço com 150% de margem sobre o custo"
-                                >
-                                  +150%
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Quantidade Total da Remessa & Ações */}
-                        <div className="flex items-center gap-3">
-                          <div className="space-y-1 min-w-[125px]">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                              <span>Total Lote</span>
-                              <button
-                                type="button"
-                                onClick={() => handleSyncTotalWithGrid(row.id)}
-                                className="text-[9px] text-amber-700 hover:underline cursor-pointer flex items-center gap-0.5"
-                                title="Sincronizar total com a soma das células da grade"
-                              >
-                                <RefreshCw className="w-2.5 h-2.5" />
-                                <span>Auto</span>
-                              </button>
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                value={row.quantidade_total_lote}
-                                onChange={(e) =>
-                                  handleUpdateRow(row.id, 'quantidade_total_lote', parseInt(e.target.value, 10) || 0)
-                                }
-                                className={`w-full py-2 px-2.5 rounded-xl text-xs font-mono font-bold border transition-all text-center focus:outline-none focus:ring-2 shadow-2xs ${
-                                  metrics.isLoteCompleto
-                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-950 focus:ring-emerald-500'
-                                    : metrics.isLoteExcedido
-                                    ? 'bg-rose-50 border-rose-400 text-rose-950 focus:ring-rose-500'
-                                    : 'bg-amber-50 border-amber-300 text-amber-950 focus:ring-amber-500'
-                                }`}
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
-                                un
-                              </span>
-                            </div>
                           </div>
 
-                          {/* Ações da Peça */}
-                          <div className="flex items-center gap-1 mt-4">
+                          {/* Ações da Linha: Duplicar e Excluir */}
+                          <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
                             <button
                               type="button"
                               onClick={() => handleDuplicateRow(index)}
-                              className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors cursor-pointer shadow-2xs"
-                              title="Duplicar esta peça para criar outra com 1 clique"
+                              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              title="Duplicar esta peça"
                             >
                               <Copy className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveRow(row.id)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Remover peça da grade"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* NÍVEL 2: PAINEL FINANCEIRO & CENTRAL DE CONFERÊNCIA DA REMESSA (GRID DE 4 COLUNAS) */}
+                      <div className="p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
+                        {/* Coluna 1: Preço de Venda */}
+                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                            <span>Preço de Venda</span>
+                            <span className="text-[10px] font-mono text-slate-400">R$ {formatBRL(row.preco)}</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={row.preco || ''}
+                              onChange={(e) => handleUpdateRow(row.id, 'preco', parseFloat(e.target.value) || 0)}
+                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              placeholder="0,00"
+                            />
+                          </div>
+                          <span className="text-[10px] text-slate-500 block truncate">
+                            Valor oficial praticado na vitrine
+                          </span>
+                        </div>
+
+                        {/* Coluna 2: Preço Promocional (Opcional) */}
+                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                              <span>Promoção (Opcional)</span>
+                            </label>
+                            {descontoPct > 0 && (
+                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.2 rounded-md">
+                                -{descontoPct}% OFF
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={row.preco_promocional || ''}
+                              onChange={(e) =>
+                                handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)
+                              }
+                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              placeholder="Opcional"
+                            />
+                          </div>
+                          {descontoPct > 0 ? (
+                            <span className="text-[10px] font-mono font-medium text-slate-600 block truncate">
+                              Economia de R$ {formatBRL(economiaCliente)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 block truncate">Sem desconto ativo</span>
+                          )}
+                        </div>
+
+                        {/* Coluna 3: Preço de Custo (Opcional, SEM botões +100%/+150%) */}
+                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                              <span>Preço de Custo (Opcional)</span>
+                            </label>
+                            {margemPct > 0 && (
+                              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.2 rounded-md">
+                                {margemPct}% margem
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={row.preco_custo || ''}
+                              onChange={(e) => handleUpdateRow(row.id, 'preco_custo', parseFloat(e.target.value) || 0)}
+                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
+                              placeholder="Opcional"
+                            />
+                          </div>
+                          <span className="text-[10px] text-slate-600 block truncate font-mono">
+                            {lucroUnitario > 0 ? `Lucro: R$ ${formatBRL(lucroUnitario)}/un` : 'Sem custo informado'}
+                          </span>
+                        </div>
+
+                        {/* Coluna 4: Central de Conferência da Remessa (Aproveitamento Pleno da Direita) */}
+                        <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                              <span>Total da Remessa</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleSyncTotalWithGrid(row.id)}
+                              className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs"
+                              title="Ajustar o total da remessa automaticamente pela soma da grade"
+                            >
+                              <RefreshCw className="w-2.5 h-2.5" />
+                              <span>Auto</span>
+                            </button>
+                          </div>
+
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.quantidade_total_lote}
+                              onChange={(e) =>
+                                handleUpdateRow(row.id, 'quantidade_total_lote', parseInt(e.target.value, 10) || 0)
+                              }
+                              className="w-full py-2 pl-3 pr-8 rounded-xl text-sm font-mono font-bold border border-slate-200 bg-white text-slate-900 text-left focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                              un
+                            </span>
+                          </div>
+
+                          {/* Régua de Status da Remessa */}
+                          <div className="pt-0.5">
+                            <div className="flex items-center justify-between text-[10px] font-mono font-semibold mb-1">
+                              <span className="text-slate-500">Alocado na grade:</span>
+                              <span
+                                className={
+                                  metrics.isLoteCompleto
+                                    ? 'text-emerald-700 font-bold'
+                                    : metrics.isLoteExcedido
+                                    ? 'text-rose-700 font-bold'
+                                    : 'text-amber-700 font-bold'
+                                }
+                              >
+                                {metrics.totalAlocado} / {metrics.totalLote} un
+                              </span>
+                            </div>
+
+                            <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 ${
+                                  metrics.isLoteCompleto
+                                    ? 'bg-emerald-600'
+                                    : metrics.isLoteExcedido
+                                    ? 'bg-rose-600'
+                                    : 'bg-amber-500'
+                                }`}
+                                style={{
+                                  width: `${
+                                    metrics.totalLote > 0
+                                      ? Math.min(100, Math.round((metrics.totalAlocado / metrics.totalLote) * 100))
+                                      : 0
+                                  }%`
+                                }}
+                              />
+                            </div>
+
+                            <div className="mt-1 text-[10px] font-medium truncate">
+                              {metrics.isLoteCompleto ? (
+                                <span className="text-emerald-700 font-semibold">✓ Remessa 100% equilibrada</span>
+                              ) : metrics.isLoteExcedido ? (
+                                <span className="text-rose-700 font-semibold">
+                                  ⚠ Excedeu em {Math.abs(metrics.saldoRestante)} un
+                                </span>
+                              ) : (
+                                <span className="text-amber-700 font-semibold">
+                                  Faltam alocar {metrics.saldoRestante} un
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2309,6 +2362,7 @@ export function ProductBatchImportModal({
 
                     // Resumo das cores da peça
                     const coresList = Array.from(new Set((p.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
+                    const safeCatalogThumb = getSafeProductThumbnail(p.foto_principal, p.midias);
 
                     return (
                       <div
@@ -2320,13 +2374,15 @@ export function ProductBatchImportModal({
                         className="bg-white border border-slate-200 hover:border-amber-400 rounded-2xl p-3 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
                       >
                         <div className="space-y-2.5">
-                          {/* Foto e Badges */}
+                          {/* Foto e Badges (Filtro Estrito: Zero Vídeos + Lazy Load) */}
                           <div className="w-full h-36 rounded-xl bg-slate-100 overflow-hidden relative border border-slate-100">
-                            {p.foto_principal ? (
+                            {safeCatalogThumb ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={p.foto_principal}
+                                src={safeCatalogThumb}
                                 alt={p.nome}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                             ) : (
