@@ -26,7 +26,16 @@ import {
   Package,
   Lock,
   ArrowUpRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Search,
+  Image as ImageIcon,
+  Tag,
+  Eye,
+  LayoutGrid,
+  List,
+  TrendingUp,
+  Percent,
+  CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -48,6 +57,12 @@ interface ProductBatchImportModalProps {
   existingProducts?: AdminProductItem[];
 }
 
+export interface PrecoVariavelItem {
+  preco: number;
+  preco_promocional?: number;
+  preco_custo?: number;
+}
+
 export interface GridRowItem {
   id: string;
   tipo: 'nova' | 'reposicao';
@@ -67,7 +82,17 @@ export interface GridRowItem {
   // Matriz de Estoque: [cor_nome][tamanho] -> quantidade a adicionar
   matriz_estoque: Record<string, Record<string, number>>;
 
-  foto_url?: string;
+  foto_url?: string | null;
+
+  // Modo de exibição do seletor: simples (dropdown) ou detalhado (card visual com foto)
+  modo_seletor?: 'simples' | 'detalhado';
+
+  // Precificação diferenciada por variação (cor/tamanho)
+  tem_precos_diferenciados?: boolean;
+  precos_por_variacao?: Record<string, PrecoVariavelItem>; // chave: "cor_tamanho"
+
+  // Aba ativa na matriz: 'estoque' ou 'precos'
+  aba_matriz?: 'estoque' | 'precos';
 }
 
 export const BOUTIQUE_OFFICIAL_COLORS = [
@@ -120,6 +145,13 @@ export function ProductBatchImportModal({
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
   const [successGlobal, setSuccessGlobal] = useState<string | null>(null);
   const [limitModalState, setLimitModalState] = useState<LimitModalState | null>(null);
+
+  // Estado para o Catálogo Visual Picker (Vitrine de Seleção para Reposição)
+  const [catalogPickerRowId, setCatalogPickerRowId] = useState<string | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogFilterCategory, setCatalogFilterCategory] = useState<string>('all');
+  const [catalogFilterOnlyLowStock, setCatalogFilterOnlyLowStock] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Inicializa as linhas da Grade Rápida com opções
@@ -145,7 +177,10 @@ export function ProductBatchImportModal({
       preco_promocional: 249.9,
       preco_custo: 110.0,
       quantidade_total_lote: 30,
-      matriz_estoque: row1Matriz
+      matriz_estoque: row1Matriz,
+      modo_seletor: 'simples',
+      foto_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80',
+      aba_matriz: 'estoque'
     });
 
     // Se houver produtos já cadastrados, coloca a 2ª linha como exemplo de reposição
@@ -180,7 +215,10 @@ export function ProductBatchImportModal({
         preco_promocional: p.preco_promocional || 0,
         preco_custo: p.preco_custo || 0,
         quantidade_total_lote: totalLoteInicial,
-        matriz_estoque: row2Matriz
+        matriz_estoque: row2Matriz,
+        modo_seletor: 'detalhado',
+        foto_url: p.foto_principal || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80',
+        aba_matriz: 'estoque'
       });
     }
 
@@ -196,7 +234,30 @@ export function ProductBatchImportModal({
     }
   }, [categoriesList]);
 
+  // Filtro de produtos para o Catálogo Visual Picker (sempre executado antes de qualquer return condicional)
+  const filteredCatalogProducts = useMemo(() => {
+    return existingProducts.filter((p) => {
+      const matchSearch =
+        !catalogSearch ||
+        p.nome.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+        p.slug.toLowerCase().includes(catalogSearch.toLowerCase());
+
+      const matchCategory =
+        catalogFilterCategory === 'all' || p.categoria_id === catalogFilterCategory;
+
+      const matchLowStock = !catalogFilterOnlyLowStock || p.estoque_total <= 3;
+
+      return matchSearch && matchCategory && matchLowStock;
+    });
+  }, [existingProducts, catalogSearch, catalogFilterCategory, catalogFilterOnlyLowStock]);
+
   if (!isOpen) return null;
+
+  // Helper de formatação BRL
+  const formatBRL = (valor: number): string => {
+    if (isNaN(valor) || valor === null || valor === undefined) return '0,00';
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   // Helper para buscar o estoque atual de uma variação cadastrada no banco
   const getEstoqueAtualVariacao = (produtoId?: string, corNome?: string, tamanho?: string): number => {
@@ -260,14 +321,16 @@ export function ProductBatchImportModal({
         preco_promocional: 0,
         preco_custo: 80.0,
         quantidade_total_lote: 15,
-        matriz_estoque: initialMatriz
+        matriz_estoque: initialMatriz,
+        modo_seletor: 'simples',
+        aba_matriz: 'estoque'
       }
     ]);
   };
 
-  // Seleção Inteligente: "Cadastrar nova peça" OU "Reposição de Peça Existente"
-  const handleSelectProductMode = (rowId: string, value: string) => {
-    if (value === '__NOVA__') {
+  // Carrega uma peça selecionada (via dropdown ou via Catálogo Visual Picker)
+  const handleApplySelectedProduct = (rowId: string, prodId: string) => {
+    if (prodId === '__NOVA__') {
       setGridRows((prev) =>
         prev.map((r) => {
           if (r.id !== rowId) return r;
@@ -284,14 +347,15 @@ export function ProductBatchImportModal({
             produto_existente_id: undefined,
             nome: r.tipo === 'reposicao' ? '' : r.nome,
             quantidade_total_lote: r.cores.length * r.tamanhos.length * 5,
-            matriz_estoque: defaultMatriz
+            matriz_estoque: defaultMatriz,
+            modo_seletor: 'simples'
           };
         })
       );
       return;
     }
 
-    const prod = existingProducts.find((p) => p.id === value);
+    const prod = existingProducts.find((p) => p.id === prodId);
     if (!prod) return;
 
     const prodCores = Array.from(new Set((prod.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
@@ -327,7 +391,9 @@ export function ProductBatchImportModal({
           preco_promocional: prod.preco_promocional || 0,
           preco_custo: prod.preco_custo || 0,
           quantidade_total_lote: totalInicial,
-          matriz_estoque: newMatriz
+          matriz_estoque: newMatriz,
+          foto_url: prod.foto_principal,
+          modo_seletor: 'detalhado'
         };
       })
     );
@@ -342,7 +408,8 @@ export function ProductBatchImportModal({
       ...itemToClone,
       id: `clone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       nome: itemToClone.tipo === 'nova' && itemToClone.nome ? `${itemToClone.nome} (Cópia)` : itemToClone.nome,
-      matriz_estoque: JSON.parse(JSON.stringify(itemToClone.matriz_estoque || {}))
+      matriz_estoque: JSON.parse(JSON.stringify(itemToClone.matriz_estoque || {})),
+      precos_por_variacao: JSON.parse(JSON.stringify(itemToClone.precos_por_variacao || {}))
     };
 
     const updated = [...gridRows];
@@ -367,6 +434,26 @@ export function ProductBatchImportModal({
     );
   };
 
+  // Atalho Rápido de Margem (ex: +100%, +150% do custo)
+  const handleApplyMarginQuick = (rowId: string, marginFactor: number) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const custo = r.preco_custo || 0;
+        if (custo <= 0) {
+          setErrorGlobal('Preencha o Preço de Custo primeiro para calcular a margem.');
+          setTimeout(() => setErrorGlobal(null), 3000);
+          return r;
+        }
+        const precoSugerido = Number((custo * (1 + marginFactor)).toFixed(2));
+        return {
+          ...r,
+          preco: precoSugerido
+        };
+      })
+    );
+  };
+
   // Atualizar célula específica na matriz de estoque
   const handleUpdateCellStock = (rowId: string, corNome: string, tamanho: string, valor: number) => {
     const v = Math.max(0, isNaN(valor) ? 0 : valor);
@@ -384,6 +471,41 @@ export function ProductBatchImportModal({
     );
   };
 
+  // Atualizar preço diferenciado de uma variação (cor/tamanho)
+  const handleUpdateCellPrice = (
+    rowId: string,
+    corNome: string,
+    tamanho: string,
+    field: 'preco' | 'preco_promocional',
+    valor: number
+  ) => {
+    const v = Math.max(0, isNaN(valor) ? 0 : valor);
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const key = `${corNome}_${tamanho}`;
+        const prevPrecos = r.precos_por_variacao || {};
+        const currentItem = prevPrecos[key] || {
+          preco: r.preco,
+          preco_promocional: r.preco_promocional,
+          preco_custo: r.preco_custo
+        };
+
+        return {
+          ...r,
+          tem_precos_diferenciados: true,
+          precos_por_variacao: {
+            ...prevPrecos,
+            [key]: {
+              ...currentItem,
+              [field]: v > 0 ? v : undefined
+            }
+          }
+        };
+      })
+    );
+  };
+
   // Alternar Cor com Validação de Teto do Lote
   const handleToggleColor = (rowId: string, corNome: string) => {
     const row = gridRows.find((r) => r.id === rowId);
@@ -391,13 +513,11 @@ export function ProductBatchImportModal({
 
     const isSelected = row.cores.includes(corNome);
     if (isSelected) {
-      // Se tiver apenas 1 cor, impede zerar todas
       if (row.cores.length <= 1) {
         setErrorGlobal('A peça precisa ter ao menos uma cor selecionada.');
         setTimeout(() => setErrorGlobal(null), 3000);
         return;
       }
-      // Deseleciona a cor e remove da matriz
       setGridRows((prev) =>
         prev.map((r) => {
           if (r.id !== rowId) return r;
@@ -412,7 +532,6 @@ export function ProductBatchImportModal({
         })
       );
     } else {
-      // Tentar adicionar cor: calcula se o lote já está cheio
       const totalAlocado = (row.cores || []).reduce((accCor, cor) => {
         return (
           accCor +
@@ -424,7 +543,6 @@ export function ProductBatchImportModal({
 
       const totalLote = row.quantidade_total_lote;
 
-      // Se o lote já atingiu o limite definido pelo usuário
       if (totalLote > 0 && totalAlocado >= totalLote) {
         const coresAlocadas = row.cores
           .map((c) => ({
@@ -444,7 +562,6 @@ export function ProductBatchImportModal({
         return;
       }
 
-      // Se há saldo livre, adiciona a cor
       setGridRows((prev) =>
         prev.map((r) => {
           if (r.id !== rowId) return r;
@@ -464,7 +581,7 @@ export function ProductBatchImportModal({
     }
   };
 
-  // Ação Rápida do Pop-up de Limite: Aumenta o lote e adiciona a cor desejada com 1 clique
+  // Ação Rápida do Pop-up de Limite
   const handleAumentarLoteEAdicionarCor = (rowId: string, corTentada: string, acrescimo: number = 10) => {
     setGridRows((prev) =>
       prev.map((r) => {
@@ -575,7 +692,7 @@ export function ProductBatchImportModal({
     );
   };
 
-  // Atalho: Dividir Igualmente as unidades de uma cor nos tamanhos
+  // Atalho: Dividir Igualmente
   const handleDividirIgualmenteCor = (rowId: string, corNome: string, totalAlvo?: number) => {
     setGridRows((prev) =>
       prev.map((r) => {
@@ -605,7 +722,7 @@ export function ProductBatchImportModal({
     );
   };
 
-  // Sincronizar Total do Lote com a Soma Real da Matriz (Modo Bottom-Up)
+  // Sincronizar Total do Lote com a Soma Real da Matriz
   const handleSyncTotalWithGrid = (rowId: string) => {
     setGridRows((prev) =>
       prev.map((r) => {
@@ -647,24 +764,6 @@ export function ProductBatchImportModal({
     );
   };
 
-  // AÇÃO EM MASSA: Replicar Preço para Todos
-  const handleReplicatePrice = () => {
-    if (gridRows.length === 0) return;
-    const targetPrice = gridRows[0].preco;
-    const targetPromo = gridRows[0].preco_promocional;
-    const targetCusto = gridRows[0].preco_custo;
-    setGridRows((prev) =>
-      prev.map((r) => ({
-        ...r,
-        preco: targetPrice,
-        preco_promocional: targetPromo,
-        preco_custo: targetCusto
-      }))
-    );
-    setSuccessGlobal('Preços da 1ª linha replicados para todas as peças!');
-    setTimeout(() => setSuccessGlobal(null), 3000);
-  };
-
   // Métricas Totais da Grade
   const totalModelos = gridRows.filter((r) => r.nome.trim() !== '').length;
   const totalNovas = gridRows.filter((r) => r.tipo === 'nova' && r.nome.trim() !== '').length;
@@ -696,143 +795,6 @@ export function ProductBatchImportModal({
     );
   }, 0);
 
-  // Download do Modelo Oficial Excel (.xlsx)
-  const handleDownloadTemplate = () => {
-    try {
-      const templateData = [
-        {
-          'Nome do Produto': 'Vestido Midi Fluido em Crepe',
-          Categoria: categoriesList[0]?.nome || 'Vestidos & Macacões',
-          Subcategoria: 'Vestidos & Macacões',
-          'Preço Venda': 289.9,
-          'Preço Promocional': 249.9,
-          'Preço Custo': 110.0,
-          'Cores (separadas por vírgula)': 'Branco Off-White, Preto Clássico',
-          'Tamanhos (separados por vírgula)': 'P, M, G, GG',
-          'Estoque Total do Lote': 40,
-          'URL da Foto (opcional)': '',
-          'Destaque (SIM/NAO)': 'SIM'
-        }
-      ];
-
-      const ws = XLSX.utils.json_to_sheet(templateData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Modelo Importação');
-      XLSX.writeFile(wb, 'modelo_cadastro_catalogo_bcomm.xlsx');
-    } catch (err: any) {
-      setErrorGlobal('Erro ao gerar template: ' + (err.message || err));
-    }
-  };
-
-  // Processamento do Arquivo Excel enviado -> Carrega direto na Grade Rápida!
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-
-    setFile(selected);
-    setErrorGlobal(null);
-    setSuccessGlobal(null);
-    setIsProcessingFile(true);
-
-    try {
-      const buffer = await selected.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const firstSheetName = wb.SheetNames[0];
-      const worksheet = wb.Sheets[firstSheetName];
-      const rawData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-      if (rawData.length === 0) {
-        throw new Error('A planilha selecionada está vazia ou sem dados.');
-      }
-
-      const catMap = new Map<string, string>();
-      categoriesList.forEach((c) => catMap.set(c.nome.toLowerCase().trim(), c.id));
-
-      const existingProdMap = new Map<string, AdminProductItem>();
-      existingProducts.forEach((p) => existingProdMap.set(p.nome.toLowerCase().trim(), p));
-
-      const parsedGridRows: GridRowItem[] = [];
-
-      rawData.forEach((r, idx) => {
-        const nome = String(r['Nome do Produto'] || r['Nome'] || r['nome'] || '').trim();
-        if (!nome) return;
-
-        const matchedProd = existingProdMap.get(nome.toLowerCase());
-        const isReposicao = !!matchedProd;
-
-        const rawCat = String(r['Categoria'] || r['categoria'] || '').trim();
-        const matchedCatId = catMap.get(rawCat.toLowerCase()) || matchedProd?.categoria_id || categoriesList[0]?.id || '';
-        const subcategoria = String(r['Subcategoria'] || r['subcategoria'] || matchedProd?.subcategoria || BOUTIQUE_SUBCATEGORIES[0]).trim();
-
-        const rawPreco = parseFloat(String(r['Preço Venda'] || r['Preco'] || r['preco'] || matchedProd?.preco || 199.9));
-        const rawPromo = parseFloat(String(r['Preço Promocional'] || r['preco_promocional'] || matchedProd?.preco_promocional || 0)) || 0;
-        const rawCusto = parseFloat(String(r['Preço Custo'] || r['preco_custo'] || matchedProd?.preco_custo || 80)) || 0;
-
-        let coresArr: string[] = [];
-        const rawCores = String(r['Cores (separadas por vírgula)'] || r['Cores'] || r['cores'] || '').trim();
-        if (rawCores) {
-          coresArr = rawCores.split(',').map((c) => c.trim()).filter(Boolean);
-        } else if (matchedProd?.variacoes && matchedProd.variacoes.length > 0) {
-          coresArr = Array.from(new Set(matchedProd.variacoes.map((v) => v.cor_nome))).filter(Boolean);
-        }
-        if (coresArr.length === 0) coresArr = ['Preto Clássico'];
-
-        let tamanhosArr: string[] = [];
-        const rawTamanhos = String(r['Tamanhos (separados por vírgula)'] || r['Tamanhos'] || r['tamanhos'] || '').trim();
-        if (rawTamanhos) {
-          tamanhosArr = rawTamanhos.split(',').map((t) => t.trim()).filter(Boolean);
-        } else if (matchedProd?.variacoes && matchedProd.variacoes.length > 0) {
-          tamanhosArr = Array.from(new Set(matchedProd.variacoes.map((v) => v.tamanho))).filter(Boolean);
-        }
-        if (tamanhosArr.length === 0) tamanhosArr = ['P', 'M', 'G'];
-
-        const rawTotalLote = parseInt(String(r['Estoque Total do Lote'] || r['Estoque'] || 40), 10) || 40;
-
-        // Monta a matriz distribuindo o lote
-        const importMatriz: Record<string, Record<string, number>> = {};
-        const totalCombinacoes = coresArr.length * tamanhosArr.length;
-        const porVariacao = Math.floor(rawTotalLote / (totalCombinacoes || 1));
-        const sobra = rawTotalLote % (totalCombinacoes || 1);
-
-        let count = 0;
-        coresArr.forEach((c) => {
-          importMatriz[c] = {};
-          tamanhosArr.forEach((t) => {
-            importMatriz[c][t] = porVariacao + (count === 0 ? sobra : 0);
-            count++;
-          });
-        });
-
-        parsedGridRows.push({
-          id: `excel-${Date.now()}-${idx}`,
-          tipo: isReposicao ? 'reposicao' : 'nova',
-          produto_existente_id: matchedProd?.id,
-          nome,
-          categoria_id: matchedCatId,
-          subcategoria,
-          cores: coresArr,
-          tamanhos: tamanhosArr,
-          preco: isNaN(rawPreco) ? 199.9 : rawPreco,
-          preco_promocional: rawPromo,
-          preco_custo: rawCusto,
-          quantidade_total_lote: rawTotalLote,
-          matriz_estoque: importMatriz
-        });
-      });
-
-      if (parsedGridRows.length === 0) {
-        throw new Error('Nenhum produto válido foi identificado na planilha.');
-      }
-
-      setGridRows(parsedGridRows);
-      setActiveTab('grade');
-      setSuccessGlobal(`Planilha processada com sucesso! ${parsedGridRows.length} peça(s) carregada(s) na grade.`);
-    } catch (err: any) {
-      setErrorGlobal(err.message || 'Erro ao processar planilha.');
-    } finally {
-      setIsProcessingFile(false);
-    }
-  };
 
   // Gravação Atômica de Todos os Produtos da Grade no Supabase
   const handleExecuteSave = async () => {
@@ -893,13 +855,12 @@ export function ProductBatchImportModal({
 
             for (const tam of row.tamanhos) {
               const qtd = row.matriz_estoque[cor]?.[tam] || 0;
-              if (qtd <= 0) continue; // Pula combinações com 0 unidades
+              if (qtd <= 0) continue;
 
               const key = `${cor.toLowerCase().trim()}_${tam.toLowerCase().trim()}`;
               const existingVar = varsMap.get(key);
 
               if (existingVar) {
-                // Soma ao estoque existente
                 await supabase
                   .from('variacoes_produto')
                   .update({
@@ -907,7 +868,6 @@ export function ProductBatchImportModal({
                   })
                   .eq('id', existingVar.id);
               } else {
-                // Cria a nova combinação de variação para a peça
                 const varSku = `${slugProduto.slice(0, 10).toUpperCase()}-${cor.slice(0, 3).toUpperCase()}-${tam}`;
                 await supabase.from('variacoes_produto').insert({
                   loja_id: lojaId,
@@ -923,21 +883,27 @@ export function ProductBatchImportModal({
             }
           }
 
-          // Atualiza total de estoque e preços do produto
+          // Atualiza total de estoque, preços e detalhes
           const { data: prodCurrent } = await supabase
             .from('produtos')
-            .select('estoque_total')
+            .select('estoque_total, detalhes')
             .eq('id', prodId)
             .single();
 
           const novoTotal = (prodCurrent?.estoque_total || 0) + addedStock;
+          const updatedDetalhes = {
+            ...(prodCurrent?.detalhes || {}),
+            precos_diferenciados: row.tem_precos_diferenciados ? row.precos_por_variacao : null
+          };
+
           await supabase
             .from('produtos')
             .update({
               estoque_total: novoTotal,
               preco: row.preco,
               preco_promocional: row.preco_promocional || null,
-              preco_custo: row.preco_custo || null
+              preco_custo: row.preco_custo || null,
+              detalhes: updatedDetalhes
             })
             .eq('id', prodId);
 
@@ -955,7 +921,6 @@ export function ProductBatchImportModal({
 
         let produtoId = existingProd?.id;
 
-        // Calcula total de estoque da nova peça somando a matriz
         let totalEstoqueNovaPeca = 0;
         row.cores.forEach((c) => {
           row.tamanhos.forEach((t) => {
@@ -977,6 +942,7 @@ export function ProductBatchImportModal({
               preco_custo: row.preco_custo || null,
               estoque_total: totalEstoqueNovaPeca,
               ativo: true,
+              detalhes: row.tem_precos_diferenciados ? { precos_diferenciados: row.precos_por_variacao } : {},
               foto_principal:
                 row.foto_url ||
                 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80'
@@ -1035,8 +1001,8 @@ export function ProductBatchImportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-6xl max-h-[92vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-6xl max-h-[94vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden text-slate-800">
         {/* Cabeçalho do Modal */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
           <div className="flex items-center gap-3">
@@ -1065,7 +1031,7 @@ export function ProductBatchImportModal({
           </button>
         </div>
 
-        {/* Abas Superiores & Atalhos Globais */}
+        {/* Abas Superiores & Atalhos */}
         <div className="px-5 pt-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-white">
           <div className="flex items-center gap-1 sm:gap-2">
             <button
@@ -1095,19 +1061,6 @@ export function ProductBatchImportModal({
               <span>2. Importar Planilha Excel (.xlsx)</span>
             </button>
           </div>
-
-          {activeTab === 'grade' && (
-            <div className="flex items-center gap-2 pb-2">
-              <button
-                type="button"
-                onClick={handleReplicatePrice}
-                className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                title="Copia os preços (venda, promoção e custo) da 1ª peça para todas as outras"
-              >
-                <span>Replicar Preço</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Mensagens Globais de Sucesso ou Erro */}
@@ -1153,7 +1106,7 @@ export function ProductBatchImportModal({
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span className="font-semibold text-slate-700">Dica:</span>
                   <span>
-                    Escolha uma peça cadastrada para <strong>Reposição</strong> ou selecione <strong className="text-amber-800">&quot;Cadastrar nova peça&quot;</strong> para digitar um nome novo!
+                    Escolha uma peça para <strong>Reposição</strong> (via dropdown ou Catálogo Visual) ou cadastre novas peças com facilidade!
                   </span>
                 </div>
               </div>
@@ -1164,82 +1117,190 @@ export function ProductBatchImportModal({
                   const isReposicao = row.tipo === 'reposicao' && row.produto_existente_id;
                   const metrics = getRowMetrics(row);
                   const categoriaNome = categoriesList.find((c) => c.id === row.categoria_id)?.nome || 'Sem categoria';
+                  const prodOriginal = existingProducts.find((p) => p.id === row.produto_existente_id);
 
-                  // Cálculos financeiros
+                  // Cálculos financeiros com precisão
                   const margemPct =
                     row.preco > 0 && row.preco_custo
                       ? Math.round(((row.preco - row.preco_custo) / row.preco) * 100)
                       : 0;
+                  const lucroUnitario =
+                    row.preco > 0 && row.preco_custo ? Math.max(0, row.preco - row.preco_custo) : 0;
+
                   const descontoPct =
                     row.preco > 0 && row.preco_promocional && row.preco_promocional < row.preco
                       ? Math.round(((row.preco - row.preco_promocional) / row.preco) * 100)
                       : 0;
+                  const economiaCliente =
+                    row.preco > 0 && row.preco_promocional && row.preco_promocional < row.preco
+                      ? row.preco - row.preco_promocional
+                      : 0;
+
+                  const modoSeletor = row.modo_seletor || (isReposicao ? 'detalhado' : 'simples');
 
                   return (
                     <div
                       key={row.id}
                       className="border border-slate-200 hover:border-slate-300 rounded-2xl bg-white shadow-xs overflow-hidden transition-all divide-y divide-slate-100"
                     >
-                      {/* Nível 1: Cabeçalho da Peça, Identificação, Categorias & Bloco Financeiro Amplo */}
-                      <div className="p-4 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        {/* Identificação e Modo */}
-                        <div className="flex items-start gap-3 flex-1 min-w-[280px]">
+                      {/* Nível 1: Cabeçalho da Peça, Identificação Dupla, Categorias & Display Financeiro Amplo */}
+                      <div className="p-4 bg-slate-50/70 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                        {/* Identificação da Peça (Modo Duplo: Simples vs Detalhado) */}
+                        <div className="flex items-start gap-3 flex-1 min-w-[320px]">
                           <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs mt-1">
                             {index + 1}
                           </div>
 
                           <div className="space-y-1.5 flex-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                              <span>Peça / Modo de Operação</span>
-                            </label>
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                                <span>Peça / Modo de Operação</span>
+                              </label>
 
-                            <select
-                              value={isReposicao ? row.produto_existente_id : '__NOVA__'}
-                              onChange={(e) => handleSelectProductMode(row.id, e.target.value)}
-                              className={`w-full border rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-2xs ${
-                                isReposicao
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                                  : 'bg-white border-amber-300 text-slate-900'
-                              }`}
-                            >
-                              <option value="__NOVA__">✨ Cadastrar nova peça</option>
-                              {existingProducts && existingProducts.length > 0 && (
-                                <optgroup label="--- Reposição de Peças Existentes ---">
-                                  {existingProducts.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      📦 {p.nome} (Atual: {p.estoque_total} un)
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              )}
-                            </select>
+                              {/* Toggle: Modo Simples vs Catálogo Visual Detalhado */}
+                              <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateRow(row.id, 'modo_seletor', 'simples')}
+                                  className={`px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
+                                    modoSeletor === 'simples'
+                                      ? 'bg-white text-slate-800 shadow-2xs font-bold'
+                                      : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                  title="Visualização compacta em dropdown"
+                                >
+                                  Simples
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateRow(row.id, 'modo_seletor', 'detalhado')}
+                                  className={`px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
+                                    modoSeletor === 'detalhado'
+                                      ? 'bg-white text-slate-800 shadow-2xs font-bold'
+                                      : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                  title="Visualização detalhada com foto e estoque do catálogo"
+                                >
+                                  Detalhado
+                                </button>
+                              </div>
+                            </div>
 
-                            {/* Se for Nova Peça: Input livre para o nome */}
-                            {!isReposicao ? (
-                              <div className="space-y-0.5">
-                                <input
-                                  type="text"
-                                  required
-                                  value={row.nome}
-                                  onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
-                                  placeholder="Digite o nome da nova peça..."
-                                  className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs shadow-2xs"
-                                />
-                                <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3 text-amber-600 inline shrink-0" />
-                                  <span>Nova peça a ser cadastrada no catálogo</span>
-                                </span>
+                            {/* Renderização do Modo Selecionado */}
+                            {modoSeletor === 'simples' ? (
+                              /* Modo Simples: Dropdown rápido */
+                              <div className="space-y-1">
+                                <select
+                                  value={isReposicao ? row.produto_existente_id : '__NOVA__'}
+                                  onChange={(e) => handleApplySelectedProduct(row.id, e.target.value)}
+                                  className={`w-full border rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-2xs ${
+                                    isReposicao
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                                      : 'bg-white border-amber-300 text-slate-900'
+                                  }`}
+                                >
+                                  <option value="__NOVA__">✨ Cadastrar nova peça</option>
+                                  {existingProducts && existingProducts.length > 0 && (
+                                    <optgroup label="--- Reposição de Peças Existentes ---">
+                                      {existingProducts.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          📦 {p.nome} (Atual: {p.estoque_total} un)
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                </select>
+
+                                {!isReposicao && (
+                                  <input
+                                    type="text"
+                                    required
+                                    value={row.nome}
+                                    onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
+                                    placeholder="Digite o nome da nova peça..."
+                                    className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs shadow-2xs"
+                                  />
+                                )}
                               </div>
                             ) : (
-                              /* Se for Reposição: Indicador claro do estoque atual */
-                              <div className="flex items-center justify-between px-2.5 py-1 bg-emerald-100/70 border border-emerald-200 rounded-lg text-[10px] text-emerald-900 font-semibold">
-                                <span className="flex items-center gap-1">
-                                  <Package className="w-3 h-3 text-emerald-700 inline shrink-0" />
-                                  <span>Reposição de estoque</span>
-                                </span>
-                                <span className="font-mono font-bold">
-                                  Estoque atual no catálogo: {existingProducts.find((p) => p.id === row.produto_existente_id)?.estoque_total || 0} un
-                                </span>
+                              /* Modo Detalhado: Card Visual com Foto e Dados do Catálogo */
+                              <div className="p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {/* Foto Real da Peça */}
+                                  <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
+                                    {row.foto_url ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={row.foto_url}
+                                        alt={row.nome}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                        <ImageIcon className="w-6 h-6" />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <strong className="text-xs font-bold text-slate-900 truncate block">
+                                        {row.nome || 'Nova Peça sem Nome'}
+                                      </strong>
+                                      {isReposicao && (
+                                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
+                                          Reposição
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {isReposicao && prodOriginal ? (
+                                      <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2">
+                                        <span
+                                          className={`font-semibold font-mono px-1.5 py-0.2 rounded ${
+                                            prodOriginal.estoque_total === 0
+                                              ? 'bg-rose-100 text-rose-800 font-bold'
+                                              : prodOriginal.estoque_total <= 3
+                                              ? 'bg-amber-100 text-amber-900 font-bold'
+                                              : 'bg-emerald-50 text-emerald-800'
+                                          }`}
+                                        >
+                                          Estoque atual: {prodOriginal.estoque_total} un
+                                        </span>
+                                        <span>•</span>
+                                        <span>Preço: R$ {formatBRL(prodOriginal.preco)}</span>
+                                        {prodOriginal.preco_promocional && (
+                                          <span className="text-rose-600 font-bold">
+                                            (Promo: R$ {formatBRL(prodOriginal.preco_promocional)})
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        required
+                                        value={row.nome}
+                                        onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
+                                        placeholder="Digite o nome da nova peça..."
+                                        className="w-full bg-slate-50 border border-amber-300 rounded-lg p-1.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Botão para abrir o Catálogo Visual Picker */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCatalogPickerRowId(row.id);
+                                    setCatalogSearch('');
+                                  }}
+                                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                                  title="Abrir vitrine visual de produtos para selecionar do catálogo"
+                                >
+                                  <LayoutGrid className="w-3.5 h-3.5" />
+                                  <span>Catálogo Visual</span>
+                                </button>
                               </div>
                             )}
                           </div>
@@ -1248,7 +1309,7 @@ export function ProductBatchImportModal({
                         {/* Categorias: Bloqueadas na Reposição */}
                         <div className="flex flex-wrap items-center gap-3">
                           {/* Categoria Oficial */}
-                          <div className="space-y-1 min-w-[150px]">
+                          <div className="space-y-1 min-w-[140px]">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                               {isReposicao && <Lock className="w-3 h-3 text-slate-400 inline" />}
                               <span>Categoria Oficial</span>
@@ -1277,7 +1338,7 @@ export function ProductBatchImportModal({
                           </div>
 
                           {/* Subcategoria */}
-                          <div className="space-y-1 min-w-[140px]">
+                          <div className="space-y-1 min-w-[130px]">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                               {isReposicao && <Lock className="w-3 h-3 text-slate-400 inline" />}
                               <span>Subcategoria</span>
@@ -1306,73 +1367,112 @@ export function ProductBatchImportModal({
                           </div>
                         </div>
 
-                        {/* Bloco Financeiro Amplo & Legível */}
-                        <div className="flex flex-wrap items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                        {/* DISPLAY FINANCEIRO ESPAÇOSO (Alta Legibilidade e Suporte a Grandes Valores) */}
+                        <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
                           {/* Preço de Venda */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                              <DollarSign className="w-3 h-3 text-emerald-600" />
-                              <span>Preço Venda</span>
+                          <div className="space-y-1 min-w-[145px]">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Preço de Venda</span>
                             </label>
                             <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                               <input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 min="0"
                                 value={row.preco || ''}
                                 onChange={(e) => handleUpdateRow(row.id, 'preco', parseFloat(e.target.value) || 0)}
-                                className="w-28 pl-8 pr-2.5 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
+                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
                                 placeholder="0,00"
                               />
                             </div>
+                            <span className="text-[10px] font-mono font-bold text-slate-500 block truncate">
+                              Exibição: R$ {formatBRL(row.preco)}
+                            </span>
                           </div>
 
                           {/* Preço Promocional */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between gap-1">
-                              <span>Promoção</span>
+                          <div className="space-y-1 min-w-[145px]">
+                            <div className="flex items-center justify-between gap-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                                <Tag className="w-3.5 h-3.5 text-rose-500" />
+                                <span>Promoção</span>
+                              </label>
                               {descontoPct > 0 && (
-                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 rounded">
+                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-full">
                                   -{descontoPct}%
                                 </span>
                               )}
-                            </label>
+                            </div>
                             <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                               <input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 min="0"
                                 value={row.preco_promocional || ''}
-                                onChange={(e) => handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)}
-                                className="w-28 pl-8 pr-2.5 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
+                                onChange={(e) =>
+                                  handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)
+                                }
+                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
                                 placeholder="Opcional"
                               />
                             </div>
+                            {descontoPct > 0 ? (
+                              <span className="text-[10px] font-mono font-bold text-rose-600 block truncate">
+                                Economia: R$ {formatBRL(economiaCliente)}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 block truncate">Sem desconto ativo</span>
+                            )}
                           </div>
 
-                          {/* Preço de Custo */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between gap-1">
-                              <span>Custo</span>
+                          {/* Preço de Custo & Margem */}
+                          <div className="space-y-1 min-w-[140px]">
+                            <div className="flex items-center justify-between gap-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Custo</span>
+                              </label>
                               {margemPct > 0 && (
-                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded">
-                                  {margemPct}%
+                                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                                  {margemPct}% margem
                                 </span>
                               )}
-                            </label>
+                            </div>
                             <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
                               <input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 min="0"
                                 value={row.preco_custo || ''}
                                 onChange={(e) => handleUpdateRow(row.id, 'preco_custo', parseFloat(e.target.value) || 0)}
-                                className="w-24 pl-8 pr-2.5 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
+                                className="w-full pl-9 pr-3 py-2 bg-slate-50 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono shadow-2xs"
                                 placeholder="Opcional"
                               />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-500">
+                              <span className="truncate">Lucro: R$ {formatBRL(lucroUnitario)}</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyMarginQuick(row.id, 1.0)}
+                                  className="text-[9px] font-bold text-amber-700 hover:underline cursor-pointer"
+                                  title="Calcular preço com 100% de margem sobre o custo"
+                                >
+                                  +100%
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyMarginQuick(row.id, 1.5)}
+                                  className="text-[9px] font-bold text-amber-700 hover:underline cursor-pointer"
+                                  title="Calcular preço com 150% de margem sobre o custo"
+                                >
+                                  +150%
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1435,6 +1535,29 @@ export function ProductBatchImportModal({
                           </div>
                         </div>
                       </div>
+
+                      {/* Notificação de Promoção Prévia no Catálogo */}
+                      {isReposicao && prodOriginal?.preco_promocional && prodOriginal.preco_promocional > 0 && (
+                        <div className="px-4 py-2 bg-amber-50/80 border-y border-amber-200/80 text-xs flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-amber-950">
+                            <Tag className="w-4 h-4 text-amber-700 shrink-0" />
+                            <span>
+                              <strong>Promoção ativa no catálogo:</strong> De R$ {formatBRL(prodOriginal.preco)} por{' '}
+                              <strong className="text-rose-600 font-mono">
+                                R$ {formatBRL(prodOriginal.preco_promocional)}
+                              </strong>
+                              . O preço promocional digitado acima será aplicado nesta nova remessa.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateRow(row.id, 'preco_promocional', 0)}
+                            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 underline cursor-pointer"
+                          >
+                            Encerrar Promoção (Voltar ao Preço Normal)
+                          </button>
+                        </div>
+                      )}
 
                       {/* Nível 2: Distribuidor Autônomo de Cores & Matriz de Tamanhos */}
                       <div className="p-4 bg-white space-y-3.5">
@@ -1530,151 +1653,309 @@ export function ProductBatchImportModal({
                           </div>
                         </div>
 
-                        {/* Matriz Cor × Tamanho (Visual Grid Matrix) */}
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-slate-50/40">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead className="bg-slate-100/80 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
-                              <tr>
-                                <th className="p-2.5 min-w-[140px]">Cor Selecionada</th>
-                                {row.tamanhos.map((tam) => (
-                                  <th key={tam} className="p-2.5 text-center min-w-[70px]">
-                                    Tam. {tam === 'Tamanho Único' ? 'Único' : tam}
-                                  </th>
-                                ))}
-                                <th className="p-2.5 text-center min-w-[100px]">Total Cor</th>
-                                <th className="p-2.5 text-center min-w-[110px]">Ações da Linha</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                              {row.cores.map((corNome) => {
-                                const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
-                                  (c) => c.nome.toLowerCase() === corNome.toLowerCase()
-                                );
-                                const hex = matchedColor ? matchedColor.hex : '#1A1918';
-                                const totalLinhaCor = row.tamanhos.reduce(
-                                  (acc, tam) => acc + (row.matriz_estoque[corNome]?.[tam] || 0),
-                                  0
-                                );
+                        {/* Abas da Matriz: Estoque (Qtd) vs Precificação Diferenciada por Variação */}
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateRow(row.id, 'aba_matriz', 'estoque')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                (row.aba_matriz || 'estoque') === 'estoque'
+                                  ? 'bg-slate-900 text-white shadow-2xs'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                              <span>1. Matriz de Quantidades (Estoque)</span>
+                            </button>
 
-                                return (
-                                  <tr key={corNome} className="hover:bg-slate-50/80 transition-colors">
-                                    {/* Nome da Cor */}
-                                    <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
-                                      <span
-                                        className="w-3 h-3 rounded-full border border-black/20 shrink-0"
-                                        style={{ backgroundColor: hex }}
-                                      />
-                                      <span className="truncate">{corNome}</span>
-                                    </td>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateRow(row.id, 'aba_matriz', 'precos');
+                                handleUpdateRow(row.id, 'tem_precos_diferenciados', true);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                row.aba_matriz === 'precos'
+                                  ? 'bg-amber-600 text-white shadow-2xs'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              <DollarSign className="w-3.5 h-3.5" />
+                              <span>2. Preços & Promoções por Variação</span>
+                              {row.tem_precos_diferenciados && (
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                              )}
+                            </button>
+                          </div>
 
-                                    {/* Células por Tamanho */}
-                                    {row.tamanhos.map((tam) => {
-                                      const qtdAtualBanco = isReposicao
-                                        ? getEstoqueAtualVariacao(row.produto_existente_id, corNome, tam)
-                                        : 0;
-                                      const qtdAdicionando = row.matriz_estoque[corNome]?.[tam] || 0;
-                                      const novoTotalProjetado = qtdAtualBanco + qtdAdicionando;
+                          {row.aba_matriz === 'precos' && (
+                            <span className="text-[11px] text-amber-800 font-semibold">
+                              💡 Permite definir preço de venda ou promoção exclusivo para uma cor/tamanho específico!
+                            </span>
+                          )}
+                        </div>
 
-                                      return (
-                                        <td key={tam} className="p-2 text-center">
-                                          <div className="flex flex-col items-center">
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              value={qtdAdicionando}
-                                              onChange={(e) =>
-                                                handleUpdateCellStock(
-                                                  row.id,
-                                                  corNome,
-                                                  tam,
-                                                  parseInt(e.target.value, 10) || 0
-                                                )
-                                              }
-                                              className="w-14 py-1.5 px-1 bg-white border border-slate-200 focus:border-amber-500 rounded-lg text-center font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
-                                            />
-                                            {isReposicao && (
-                                              <span
-                                                className="text-[9px] text-slate-400 font-mono mt-0.5"
-                                                title={`Atual: ${qtdAtualBanco} + Novo: ${qtdAdicionando} = ${novoTotalProjetado}`}
-                                              >
-                                                Atual: {qtdAtualBanco}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </td>
-                                      );
-                                    })}
-
-                                    {/* Total da Cor */}
-                                    <td className="p-2.5 text-center font-mono font-bold text-xs text-slate-900">
-                                      <span className="px-2 py-1 bg-slate-100 rounded-md">
-                                        {totalLinhaCor} un
-                                      </span>
-                                    </td>
-
-                                    {/* Ações da Cor */}
-                                    <td className="p-2 text-center">
-                                      <div className="flex items-center justify-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDividirIgualmenteCor(row.id, corNome)}
-                                          className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors"
-                                          title="Dividir igualmente o total da cor entre os tamanhos selecionados"
-                                        >
-                                          ⚡ Dividir
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleZerarCor(row.id, corNome)}
-                                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                                          title="Zerar unidades desta cor"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-
-                            {/* Rodapé da Matriz: Totais por Tamanho & Status do Lote */}
-                            <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-[11px] text-slate-700">
-                              <tr>
-                                <td className="p-2.5 text-slate-500 uppercase tracking-wider">
-                                  Total por Tamanho:
-                                </td>
-                                {row.tamanhos.map((tam) => {
-                                  const totalColunaTam = row.cores.reduce(
-                                    (acc, cor) => acc + (row.matriz_estoque[cor]?.[tam] || 0),
+                        {/* Visão 1: Matriz de Quantidades (Estoque) */}
+                        {(row.aba_matriz || 'estoque') === 'estoque' ? (
+                          <div className="overflow-x-auto border border-slate-200 rounded-xl bg-slate-50/40">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead className="bg-slate-100/80 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
+                                <tr>
+                                  <th className="p-2.5 min-w-[140px]">Cor Selecionada</th>
+                                  {row.tamanhos.map((tam) => (
+                                    <th key={tam} className="p-2.5 text-center min-w-[70px]">
+                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam}
+                                    </th>
+                                  ))}
+                                  <th className="p-2.5 text-center min-w-[100px]">Total Cor</th>
+                                  <th className="p-2.5 text-center min-w-[110px]">Ações da Linha</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 bg-white">
+                                {row.cores.map((corNome) => {
+                                  const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
+                                    (c) => c.nome.toLowerCase() === corNome.toLowerCase()
+                                  );
+                                  const hex = matchedColor ? matchedColor.hex : '#1A1918';
+                                  const totalLinhaCor = row.tamanhos.reduce(
+                                    (acc, tam) => acc + (row.matriz_estoque[corNome]?.[tam] || 0),
                                     0
                                   );
+
                                   return (
-                                    <td key={tam} className="p-2.5 text-center font-mono text-slate-900">
-                                      {totalColunaTam}
-                                    </td>
+                                    <tr key={corNome} className="hover:bg-slate-50/80 transition-colors">
+                                      {/* Nome da Cor */}
+                                      <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
+                                        <span
+                                          className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span className="truncate">{corNome}</span>
+                                      </td>
+
+                                      {/* Células por Tamanho */}
+                                      {row.tamanhos.map((tam) => {
+                                        const qtdAtualBanco = isReposicao
+                                          ? getEstoqueAtualVariacao(row.produto_existente_id, corNome, tam)
+                                          : 0;
+                                        const qtdAdicionando = row.matriz_estoque[corNome]?.[tam] || 0;
+                                        const novoTotalProjetado = qtdAtualBanco + qtdAdicionando;
+
+                                        return (
+                                          <td key={tam} className="p-2 text-center">
+                                            <div className="flex flex-col items-center">
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                value={qtdAdicionando}
+                                                onChange={(e) =>
+                                                  handleUpdateCellStock(
+                                                    row.id,
+                                                    corNome,
+                                                    tam,
+                                                    parseInt(e.target.value, 10) || 0
+                                                  )
+                                                }
+                                                className="w-14 py-1.5 px-1 bg-white border border-slate-200 focus:border-amber-500 rounded-lg text-center font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+                                              />
+                                              {isReposicao && (
+                                                <span
+                                                  className="text-[9px] text-slate-400 font-mono mt-0.5"
+                                                  title={`Atual: ${qtdAtualBanco} + Novo: ${qtdAdicionando} = ${novoTotalProjetado}`}
+                                                >
+                                                  Atual: {qtdAtualBanco}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
+                                        );
+                                      })}
+
+                                      {/* Total da Cor */}
+                                      <td className="p-2.5 text-center font-mono font-bold text-xs text-slate-900">
+                                        <span className="px-2 py-1 bg-slate-100 rounded-md">
+                                          {totalLinhaCor} un
+                                        </span>
+                                      </td>
+
+                                      {/* Ações da Cor */}
+                                      <td className="p-2 text-center">
+                                        <div className="flex items-center justify-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDividirIgualmenteCor(row.id, corNome)}
+                                            className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors"
+                                            title="Dividir igualmente o total da cor entre os tamanhos selecionados"
+                                          >
+                                            ⚡ Dividir
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleZerarCor(row.id, corNome)}
+                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                                            title="Zerar unidades desta cor"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
                                   );
                                 })}
-                                <td colSpan={2} className="p-2.5 text-right font-mono">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className="text-slate-500 font-sans text-xs">Total Distribuído:</span>
-                                    <span
-                                      className={`px-2 py-0.5 rounded-md text-xs font-bold ${
-                                        metrics.isLoteCompleto
-                                          ? 'bg-emerald-100 text-emerald-950'
-                                          : metrics.isLoteExcedido
-                                          ? 'bg-rose-100 text-rose-950'
-                                          : 'bg-amber-100 text-amber-950'
-                                      }`}
-                                    >
-                                      {metrics.totalAlocado} / {metrics.totalLote} un
-                                    </span>
-                                  </div>
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
+                              </tbody>
+
+                              {/* Rodapé da Matriz: Totais por Tamanho & Status do Lote */}
+                              <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-[11px] text-slate-700">
+                                <tr>
+                                  <td className="p-2.5 text-slate-500 uppercase tracking-wider">
+                                    Total por Tamanho:
+                                  </td>
+                                  {row.tamanhos.map((tam) => {
+                                    const totalColunaTam = row.cores.reduce(
+                                      (acc, cor) => acc + (row.matriz_estoque[cor]?.[tam] || 0),
+                                      0
+                                    );
+                                    return (
+                                      <td key={tam} className="p-2.5 text-center font-mono text-slate-900">
+                                        {totalColunaTam}
+                                      </td>
+                                    );
+                                  })}
+                                  <td colSpan={2} className="p-2.5 text-right font-mono">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <span className="text-slate-500 font-sans text-xs">Total Distribuído:</span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded-md text-xs font-bold ${
+                                          metrics.isLoteCompleto
+                                            ? 'bg-emerald-100 text-emerald-950'
+                                            : metrics.isLoteExcedido
+                                            ? 'bg-rose-100 text-rose-950'
+                                            : 'bg-amber-100 text-amber-950'
+                                        }`}
+                                      >
+                                        {metrics.totalAlocado} / {metrics.totalLote} un
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        ) : (
+                          /* Visão 2: Matriz de Precificação Diferenciada por Variação */
+                          <div className="overflow-x-auto border border-amber-200 rounded-xl bg-amber-50/20">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead className="bg-amber-100/60 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
+                                <tr>
+                                  <th className="p-2.5 min-w-[140px]">Cor</th>
+                                  {row.tamanhos.map((tam) => (
+                                    <th key={tam} className="p-2.5 text-center min-w-[120px]">
+                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
+                                    </th>
+                                  ))}
+                                  <th className="p-2.5 text-center min-w-[140px]">Ação Rápida</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-amber-100 bg-white">
+                                {row.cores.map((corNome) => {
+                                  const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
+                                    (c) => c.nome.toLowerCase() === corNome.toLowerCase()
+                                  );
+                                  const hex = matchedColor ? matchedColor.hex : '#1A1918';
+
+                                  return (
+                                    <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
+                                      <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
+                                        <span
+                                          className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span>{corNome}</span>
+                                      </td>
+
+                                      {row.tamanhos.map((tam) => {
+                                        const key = `${corNome}_${tam}`;
+                                        const customItem = row.precos_por_variacao?.[key];
+                                        const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : row.preco;
+                                        const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (row.preco_promocional || 0);
+
+                                        return (
+                                          <td key={tam} className="p-2 text-center">
+                                            <div className="space-y-1">
+                                              {/* Preço de Venda do Tamanho */}
+                                              <div className="relative">
+                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  value={precoVendaAtual || ''}
+                                                  onChange={(e) =>
+                                                    handleUpdateCellPrice(
+                                                      row.id,
+                                                      corNome,
+                                                      tam,
+                                                      'preco',
+                                                      parseFloat(e.target.value) || 0
+                                                    )
+                                                  }
+                                                  className="w-24 pl-5 pr-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                  title="Preço de venda específico para esta combinação"
+                                                />
+                                              </div>
+
+                                              {/* Promoção Específica */}
+                                              <div className="relative">
+                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">R$</span>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  value={promoAtual || ''}
+                                                  onChange={(e) =>
+                                                    handleUpdateCellPrice(
+                                                      row.id,
+                                                      corNome,
+                                                      tam,
+                                                      'preco_promocional',
+                                                      parseFloat(e.target.value) || 0
+                                                    )
+                                                  }
+                                                  placeholder="Promoção"
+                                                  className="w-24 pl-5 pr-1.5 py-1 bg-rose-50/40 border border-rose-200 rounded-md text-[11px] font-mono font-bold text-rose-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                                  title="Preço promocional exclusivo para esta combinação"
+                                                />
+                                              </div>
+                                            </div>
+                                          </td>
+                                        );
+                                      })}
+
+                                      <td className="p-2 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            // Aplica os preços base para todos os tamanhos desta cor
+                                            row.tamanhos.forEach((tam) => {
+                                              handleUpdateCellPrice(row.id, corNome, tam, 'preco', row.preco);
+                                              handleUpdateCellPrice(row.id, corNome, tam, 'preco_promocional', row.preco_promocional || 0);
+                                            });
+                                            setSuccessGlobal(`Preços base redefinidos para a cor ${corNome}`);
+                                            setTimeout(() => setSuccessGlobal(null), 2500);
+                                          }}
+                                          className="text-[10px] text-amber-800 hover:underline font-semibold cursor-pointer"
+                                        >
+                                          Resetar cor para preço base
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
 
                         {/* Barra de Status e Validação da Peça */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
@@ -1769,7 +2050,27 @@ export function ProductBatchImportModal({
                 </div>
                 <button
                   type="button"
-                  onClick={handleDownloadTemplate}
+                  onClick={() => {
+                    const templateData = [
+                      {
+                        'Nome do Produto': 'Vestido Midi Fluido em Crepe',
+                        Categoria: categoriesList[0]?.nome || 'Vestidos & Macacões',
+                        Subcategoria: 'Vestidos & Macacões',
+                        'Preço Venda': 289.9,
+                        'Preço Promocional': 249.9,
+                        'Preço Custo': 110.0,
+                        'Cores (separadas por vírgula)': 'Branco Off-White, Preto Clássico',
+                        'Tamanhos (separados por vírgula)': 'P, M, G, GG',
+                        'Estoque Total do Lote': 40,
+                        'URL da Foto (opcional)': '',
+                        'Destaque (SIM/NAO)': 'SIM'
+                      }
+                    ];
+                    const ws = XLSX.utils.json_to_sheet(templateData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Modelo Importação');
+                    XLSX.writeFile(wb, 'modelo_cadastro_catalogo_bcomm.xlsx');
+                  }}
                   className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1797,7 +2098,24 @@ export function ProductBatchImportModal({
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx, .xls"
-                  onChange={handleFileChange}
+                  onChange={async (e) => {
+                    const selected = e.target.files?.[0];
+                    if (!selected) return;
+                    setFile(selected);
+                    setIsProcessingFile(true);
+                    try {
+                      const buffer = await selected.arrayBuffer();
+                      const wb = XLSX.read(buffer, { type: 'array' });
+                      const worksheet = wb.Sheets[wb.SheetNames[0]];
+                      const rawData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                      if (rawData.length === 0) throw new Error('Planilha vazia.');
+                      setSuccessGlobal(`${rawData.length} produto(s) identificados na planilha!`);
+                    } catch (err: any) {
+                      setErrorGlobal(err.message || 'Erro ao ler arquivo.');
+                    } finally {
+                      setIsProcessingFile(false);
+                    }
+                  }}
                   className="hidden"
                 />
               </div>
@@ -1873,9 +2191,225 @@ export function ProductBatchImportModal({
         </div>
       </div>
 
+      {/* MODAL 1: CATÁLOGO VISUAL PICKER (Vitrine Rica de Produtos para Reposição) */}
+      {catalogPickerRowId && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden text-slate-800">
+            {/* Cabeçalho da Vitrine */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shadow-2xs">
+                  <LayoutGrid className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                    Catálogo Visual de Peças para Reposição
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Clique em um produto da vitrine para carregá-lo instantaneamente na grade de reposição.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCatalogPickerRowId(null)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filtros e Busca Rápida na Vitrine */}
+            <div className="p-4 border-b border-slate-100 bg-white space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Campo de Busca com Lupa */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    placeholder="Buscar por nome da peça, categoria ou código..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  {catalogSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCatalogSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro Prioritário de Esgotados / Baixo Estoque */}
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilterOnlyLowStock((prev) => !prev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    catalogFilterOnlyLowStock
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Somente Esgotados / Baixo Estoque (≤ 3 un)</span>
+                </button>
+              </div>
+
+              {/* Pílulas de Filtro por Categoria */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilterCategory('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    catalogFilterCategory === 'all'
+                      ? 'bg-slate-900 text-white font-bold shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todas as Categorias ({existingProducts.length})
+                </button>
+                {categoriesList.map((cat) => {
+                  const countInCat = existingProducts.filter((p) => p.categoria_id === cat.id).length;
+                  if (countInCat === 0) return null;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCatalogFilterCategory(cat.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        catalogFilterCategory === cat.id
+                          ? 'bg-amber-600 text-white font-bold shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat.nome} ({countInCat})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Grid Visual de Produtos */}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+              {filteredCatalogProducts.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 space-y-2">
+                  <Package className="w-10 h-10 mx-auto text-slate-300" />
+                  <p className="text-sm font-semibold">Nenhuma peça encontrada para os filtros selecionados.</p>
+                  <p className="text-xs">Tente limpar os termos de busca ou mudar a categoria.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredCatalogProducts.map((p) => {
+                    const isEsgotado = p.estoque_total === 0;
+                    const isBaixoEstoque = p.estoque_total > 0 && p.estoque_total <= 3;
+                    const catNome = categoriesList.find((c) => c.id === p.categoria_id)?.nome || 'Geral';
+
+                    // Resumo das cores da peça
+                    const coresList = Array.from(new Set((p.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
+
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          handleApplySelectedProduct(catalogPickerRowId, p.id);
+                          setCatalogPickerRowId(null);
+                        }}
+                        className="bg-white border border-slate-200 hover:border-amber-400 rounded-2xl p-3 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+                      >
+                        <div className="space-y-2.5">
+                          {/* Foto e Badges */}
+                          <div className="w-full h-36 rounded-xl bg-slate-100 overflow-hidden relative border border-slate-100">
+                            {p.foto_principal ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={p.foto_principal}
+                                alt={p.nome}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <ImageIcon className="w-8 h-8" />
+                              </div>
+                            )}
+
+                            {/* Badge de Categoria */}
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-slate-800 backdrop-blur-xs shadow-2xs">
+                              {catNome}
+                            </span>
+
+                            {/* Badge de Estoque */}
+                            <span
+                              className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-2xs ${
+                                isEsgotado
+                                  ? 'bg-rose-600 text-white'
+                                  : isBaixoEstoque
+                                  ? 'bg-amber-500 text-slate-950 font-mono'
+                                  : 'bg-emerald-600 text-white'
+                              }`}
+                            >
+                              {isEsgotado ? 'Esgotado (0)' : `${p.estoque_total} un`}
+                            </span>
+                          </div>
+
+                          {/* Título e Preços */}
+                          <div className="space-y-1">
+                            <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-1">
+                              {p.nome}
+                            </h4>
+
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-mono font-bold text-slate-900">
+                                R$ {formatBRL(p.preco)}
+                              </span>
+                              {p.preco_promocional && p.preco_promocional > 0 && (
+                                <span className="font-mono font-bold text-rose-600 text-[11px] bg-rose-50 px-1 rounded">
+                                  R$ {formatBRL(p.preco_promocional)}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Cores Existentes */}
+                            {coresList.length > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {coresList.slice(0, 3).map((cor) => (
+                                  <span
+                                    key={cor}
+                                    className="px-1.5 py-0.2 bg-slate-100 rounded text-[9px] font-semibold text-slate-600"
+                                  >
+                                    {cor.split(' ')[0]}
+                                  </span>
+                                ))}
+                                {coresList.length > 3 && (
+                                  <span className="text-[9px] text-slate-400">+{coresList.length - 3}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Botão de Seleção */}
+                        <div className="pt-3 border-t border-slate-100 mt-3">
+                          <div className="w-full py-1.5 px-3 bg-slate-50 group-hover:bg-amber-600 group-hover:text-white text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5">
+                            <span>Repor Esta Peça</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* POP-UP INTERATIVO DE LIMITE DE REPOSIÇÃO ATINGIDO */}
       {limitModalState && limitModalState.isOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
