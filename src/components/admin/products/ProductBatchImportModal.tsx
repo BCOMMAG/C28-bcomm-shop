@@ -31,22 +31,28 @@ import {
   Image as ImageIcon,
   Tag,
   Eye,
+  EyeOff,
+  Star,
   LayoutGrid,
   List,
   TrendingUp,
   Percent,
   CheckSquare,
-  Zap
+  Zap,
+  FolderPlus,
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { AdminProductItem } from '@/lib/admin';
+import { uploadBrowserFileToR2 } from '@/lib/r2';
 
 export interface BatchCategoryOption {
   id: string;
   nome: string;
-  slug: string;
+  slug?: string;
 }
 
 interface ProductBatchImportModalProps {
@@ -64,6 +70,15 @@ export interface PrecoVariavelItem {
   preco_custo?: number;
 }
 
+export interface BatchPhotoItem {
+  id?: string;
+  url: string;
+  label?: string;
+  is_cover: boolean;
+  oculto: boolean;
+  cor_vinculada?: string;
+}
+
 export interface GridRowItem {
   id: string;
   tipo: 'nova' | 'reposicao';
@@ -71,6 +86,8 @@ export interface GridRowItem {
   nome: string;
   categoria_id: string;
   subcategoria: string;
+  tecido?: string;
+  descricao?: string;
   cores: string[];
   tamanhos: string[];
   preco: number;
@@ -94,7 +111,27 @@ export interface GridRowItem {
 
   // Aba ativa na matriz: 'estoque' ou 'precos'
   aba_matriz?: 'estoque' | 'precos';
+
+  // Galeria de fotos da peça (Upload via R2, Capa, Ocultar/Exibir, Excluir)
+  fotos: BatchPhotoItem[];
+
+  // Controle de gaveta retrátil da linha ('nenhuma' | 'fotos' | 'detalhes')
+  gaveta_ativa?: 'nenhuma' | 'fotos' | 'detalhes';
 }
+
+export const BOUTIQUE_FABRIC_SUGGESTIONS = [
+  'Crepe Alfaiataria',
+  'Linho Puro',
+  'Algodão Egípcio',
+  'Seda Pura',
+  'Viscose Premium',
+  'Tricot Nobre',
+  'Lã Batida Deluxe',
+  'Chiffon Fluido',
+  'Couro Legítimo',
+  'Tweed Parisiense',
+  'Cetim de Seda'
+];
 
 export const BOUTIQUE_OFFICIAL_COLORS = [
   { nome: 'Preto Clássico', hex: '#1A1918' },
@@ -202,6 +239,15 @@ export function ProductBatchImportModal({
   const [catalogFilterCategory, setCatalogFilterCategory] = useState<string>('all');
   const [catalogFilterOnlyLowStock, setCatalogFilterOnlyLowStock] = useState(false);
 
+  // Estados locais para categorias, subcategorias e criação rápida inline
+  const [localCategories, setLocalCategories] = useState<BatchCategoryOption[]>(categoriesList);
+  const [localSubcategories, setLocalSubcategories] = useState<string[]>(BOUTIQUE_SUBCATEGORIES);
+  const [creatingCategoryForRowId, setCreatingCategoryForRowId] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingSubcategoryForRowId, setCreatingSubcategoryForRowId] = useState<string | null>(null);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [uploadingPhotoRowId, setUploadingPhotoRowId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Inicializa as linhas da Grade Rápida com opções
@@ -221,6 +267,8 @@ export function ProductBatchImportModal({
       nome: 'Vestido Midi Fluido em Crepe',
       categoria_id: defaultCat,
       subcategoria: 'Vestidos & Macacões',
+      tecido: 'Crepe Alfaiataria',
+      descricao: 'Vestido midi fluido de alta costura em crepe com toque de seda.',
       cores: ['Branco Off-White', 'Preto Clássico'],
       tamanhos: ['P', 'M', 'G'],
       preco: 289.9,
@@ -230,7 +278,16 @@ export function ProductBatchImportModal({
       matriz_estoque: row1Matriz,
       modo_seletor: 'simples',
       foto_url: '/products/03-conjunto-cetim/prata.jpg',
-      aba_matriz: 'estoque'
+      aba_matriz: 'estoque',
+      fotos: [
+        {
+          url: '/products/03-conjunto-cetim/prata.jpg',
+          label: 'Capa Principal',
+          is_cover: true,
+          oculto: false
+        }
+      ],
+      gaveta_ativa: 'nenhuma'
     });
 
     // Se houver produtos já cadastrados, coloca a 2ª linha como exemplo de reposição
@@ -254,6 +311,17 @@ export function ProductBatchImportModal({
 
       const safeFoto = getSafeProductThumbnail(p.foto_principal, p.midias) || '/products/01-casaco-tricot/marrom.jpg';
 
+      const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => ({
+        id: m.id,
+        url: m.url,
+        label: (m.label || '').replace(/\[OCULTO\]/g, '').trim() || `Foto ${idx + 1}`,
+        is_cover: p.foto_principal === m.url || idx === 0,
+        oculto: Boolean(m.label && m.label.includes('[OCULTO]'))
+      }));
+      if (pFotos.length === 0 && safeFoto) {
+        pFotos.push({ url: safeFoto, label: 'Capa Principal', is_cover: true, oculto: false });
+      }
+
       initialList.push({
         id: 'row-2',
         tipo: 'reposicao',
@@ -261,6 +329,8 @@ export function ProductBatchImportModal({
         nome: p.nome,
         categoria_id: p.categoria_id || defaultCat,
         subcategoria: p.subcategoria || BOUTIQUE_SUBCATEGORIES[0],
+        tecido: p.tecido || '',
+        descricao: p.descricao || '',
         cores: activeCores,
         tamanhos: activeTams,
         preco: p.preco,
@@ -270,19 +340,25 @@ export function ProductBatchImportModal({
         matriz_estoque: row2Matriz,
         modo_seletor: 'detalhado',
         foto_url: safeFoto,
-        aba_matriz: 'estoque'
+        aba_matriz: 'estoque',
+        fotos: pFotos,
+        gaveta_ativa: 'nenhuma'
       });
     }
 
     return initialList;
   });
 
-  // Atualiza categorias se carregadas posteriormente
+  // Sincroniza categorias se carregadas posteriormente
   useEffect(() => {
-    if (categoriesList.length > 0) {
-      setGridRows((prev) =>
-        prev.map((r) => (!r.categoria_id ? { ...r, categoria_id: categoriesList[0].id } : r))
-      );
+    if (categoriesList && categoriesList.length > 0) {
+      setLocalCategories((prev) => {
+        const merged = [...prev];
+        categoriesList.forEach((c) => {
+          if (!merged.some((m) => m.id === c.id)) merged.push(c);
+        });
+        return merged;
+      });
     }
   }, [categoriesList]);
 
@@ -354,7 +430,6 @@ export function ProductBatchImportModal({
   // Adicionar Nova Peça na Grade
   const handleAddRow = () => {
     const newId = `row-${Date.now()}`;
-    const defaultCat = categoriesList[0]?.id || '';
     const initialMatriz: Record<string, Record<string, number>> = {
       'Preto Clássico': { P: 5, M: 5, G: 5 }
     };
@@ -365,8 +440,10 @@ export function ProductBatchImportModal({
         id: newId,
         tipo: 'nova',
         nome: '',
-        categoria_id: defaultCat,
-        subcategoria: BOUTIQUE_SUBCATEGORIES[0],
+        categoria_id: '',
+        subcategoria: '',
+        tecido: '',
+        descricao: '',
         cores: ['Preto Clássico'],
         tamanhos: ['P', 'M', 'G'],
         preco: 199.9,
@@ -375,7 +452,9 @@ export function ProductBatchImportModal({
         quantidade_total_lote: 15,
         matriz_estoque: initialMatriz,
         modo_seletor: 'simples',
-        aba_matriz: 'estoque'
+        aba_matriz: 'estoque',
+        fotos: [],
+        gaveta_ativa: 'nenhuma'
       }
     ]);
   };
@@ -398,9 +477,15 @@ export function ProductBatchImportModal({
             tipo: 'nova',
             produto_existente_id: undefined,
             nome: r.tipo === 'reposicao' ? '' : r.nome,
+            categoria_id: '',
+            subcategoria: '',
+            tecido: '',
+            descricao: '',
             quantidade_total_lote: r.cores.length * r.tamanhos.length * 5,
             matriz_estoque: defaultMatriz,
-            modo_seletor: 'simples'
+            modo_seletor: 'simples',
+            fotos: [],
+            gaveta_ativa: 'nenhuma'
           };
         })
       );
@@ -429,6 +514,29 @@ export function ProductBatchImportModal({
 
     const safeFoto = getSafeProductThumbnail(prod.foto_principal, prod.midias) || '/products/01-casaco-tricot/marrom.jpg';
 
+    // Mapeia fotos existentes do produto com suporte a [OCULTO]
+    const fotosExistentes: BatchPhotoItem[] = (prod.midias || []).map((m: any, idx: number) => {
+      const isOculto = Boolean(m.label && m.label.includes('[OCULTO]'));
+      const isCover = prod.foto_principal === m.url || idx === 0;
+      const cleanLabel = (m.label || '').replace(/\[OCULTO\]/g, '').trim();
+      return {
+        id: m.id,
+        url: m.url,
+        label: cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+        is_cover: isCover,
+        oculto: isOculto
+      };
+    });
+
+    if (prod.foto_principal && !fotosExistentes.some((f) => f.url === prod.foto_principal)) {
+      fotosExistentes.unshift({
+        url: prod.foto_principal,
+        label: 'Capa Principal',
+        is_cover: true,
+        oculto: false
+      });
+    }
+
     setGridRows((prev) =>
       prev.map((r) => {
         if (r.id !== rowId) return r;
@@ -437,8 +545,10 @@ export function ProductBatchImportModal({
           tipo: 'reposicao',
           produto_existente_id: prod.id,
           nome: prod.nome,
-          categoria_id: prod.categoria_id || categoriesList[0]?.id || '',
-          subcategoria: prod.subcategoria || BOUTIQUE_SUBCATEGORIES[0],
+          categoria_id: prod.categoria_id || '',
+          subcategoria: prod.subcategoria || '',
+          tecido: prod.tecido || '',
+          descricao: prod.descricao || '',
           cores: activeCores,
           tamanhos: activeTams,
           preco: prod.preco,
@@ -447,7 +557,9 @@ export function ProductBatchImportModal({
           quantidade_total_lote: totalInicial,
           matriz_estoque: newMatriz,
           foto_url: safeFoto,
-          modo_seletor: 'detalhado'
+          modo_seletor: 'detalhado',
+          fotos: fotosExistentes,
+          gaveta_ativa: 'nenhuma'
         };
       })
     );
@@ -463,7 +575,8 @@ export function ProductBatchImportModal({
       id: `clone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       nome: itemToClone.tipo === 'nova' && itemToClone.nome ? `${itemToClone.nome} (Cópia)` : itemToClone.nome,
       matriz_estoque: JSON.parse(JSON.stringify(itemToClone.matriz_estoque || {})),
-      precos_por_variacao: JSON.parse(JSON.stringify(itemToClone.precos_por_variacao || {}))
+      precos_por_variacao: JSON.parse(JSON.stringify(itemToClone.precos_por_variacao || {})),
+      fotos: JSON.parse(JSON.stringify(itemToClone.fotos || []))
     };
 
     const updated = [...gridRows];
@@ -844,6 +957,218 @@ export function ProductBatchImportModal({
     setTimeout(() => setSuccessGlobal(null), 3000);
   };
 
+  // Criar categoria rápida inline
+  const handleCreateCategoryInline = async (rowId: string, nome: string) => {
+    const clean = nome.trim();
+    if (!clean) return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const slug = clean
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      const { data, error } = await supabase
+        .from('categorias')
+        .insert({
+          loja_id: lojaId,
+          nome: clean,
+          slug: slug || `cat-${Date.now()}`,
+          display_order: 99
+        })
+        .select('id, nome')
+        .single();
+
+      if (error) throw error;
+
+      const newCat: BatchCategoryOption = {
+        id: data.id,
+        nome: data.nome
+      };
+
+      setLocalCategories((prev) => [...prev, newCat]);
+      handleUpdateRow(rowId, 'categoria_id', data.id);
+      setSuccessGlobal(`Categoria "${clean}" criada e selecionada com sucesso!`);
+      setTimeout(() => setSuccessGlobal(null), 3000);
+    } catch (err: any) {
+      setErrorGlobal(err?.message || 'Erro ao criar categoria.');
+      setTimeout(() => setErrorGlobal(null), 4000);
+    } finally {
+      setCreatingCategoryForRowId(null);
+      setNewCategoryName('');
+    }
+  };
+
+  // Criar subcategoria rápida inline (somente com categoria pai ativa)
+  const handleCreateSubcategoryInline = (rowId: string, nome: string) => {
+    const clean = nome.trim();
+    if (!clean) return;
+    if (!localSubcategories.includes(clean)) {
+      setLocalSubcategories((prev) => [...prev, clean]);
+    }
+    handleUpdateRow(rowId, 'subcategoria', clean);
+    setSuccessGlobal(`Subcategoria "${clean}" adicionada e selecionada!`);
+    setTimeout(() => setSuccessGlobal(null), 3000);
+    setCreatingSubcategoryForRowId(null);
+    setNewSubcategoryName('');
+  };
+
+  // Alternar gaveta retrátil da linha ('fotos' ou 'detalhes')
+  const handleToggleRowDrawer = (rowId: string, drawer: 'fotos' | 'detalhes') => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          gaveta_ativa: r.gaveta_ativa === drawer ? 'nenhuma' : drawer
+        };
+      })
+    );
+  };
+
+  // Alternar status Oculto / Visível de uma foto
+  const handleTogglePhotoOculto = (rowId: string, photoIdx: number) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const currentFotos = [...(r.fotos || [])];
+        const target = currentFotos[photoIdx];
+        if (!target) return r;
+
+        const newOculto = !target.oculto;
+        target.oculto = newOculto;
+
+        // Se ocultou a capa atual, elege automaticamente a próxima foto visível como capa
+        if (newOculto && target.is_cover) {
+          target.is_cover = false;
+          const nextVisible = currentFotos.find((f, idx) => idx !== photoIdx && !f.oculto);
+          if (nextVisible) {
+            nextVisible.is_cover = true;
+          }
+        } else if (!newOculto && !currentFotos.some((f) => f.is_cover && !f.oculto)) {
+          // Se reativou e não havia nenhuma capa visível, esta se torna a capa
+          target.is_cover = true;
+        }
+
+        return {
+          ...r,
+          fotos: currentFotos
+        };
+      })
+    );
+  };
+
+  // Definir foto como Capa Principal
+  const handleSetCoverPhoto = (rowId: string, photoIdx: number) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const currentFotos = (r.fotos || []).map((f, idx) => ({
+          ...f,
+          is_cover: idx === photoIdx,
+          oculto: idx === photoIdx ? false : f.oculto // Se virou capa, garante que fica visível
+        }));
+        return {
+          ...r,
+          fotos: currentFotos,
+          foto_url: currentFotos[photoIdx]?.url || r.foto_url
+        };
+      })
+    );
+  };
+
+  // Excluir foto da linha
+  const handleDeletePhoto = (rowId: string, photoIdx: number) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const wasCover = r.fotos?.[photoIdx]?.is_cover;
+        const updatedFotos = (r.fotos || []).filter((_, idx) => idx !== photoIdx);
+
+        // Se deletou a capa, elege a primeira visível remanescente como capa
+        if (wasCover && updatedFotos.length > 0) {
+          const firstVisible = updatedFotos.find((f) => !f.oculto) || updatedFotos[0];
+          firstVisible.is_cover = true;
+        }
+
+        return {
+          ...r,
+          fotos: updatedFotos,
+          foto_url: updatedFotos.find((f) => f.is_cover)?.url || updatedFotos[0]?.url || null
+        };
+      })
+    );
+  };
+
+  // Upload múltiplo de fotos para o Cloudflare R2
+  const handleUploadRowPhotos = async (rowId: string, files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+    setUploadingPhotoRowId(rowId);
+    try {
+      const fileArray = Array.from(files);
+      for (const file of fileArray) {
+        const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
+        if (res.success && res.url) {
+          setGridRows((prev) =>
+            prev.map((r) => {
+              if (r.id !== rowId) return r;
+              const currentFotos = [...(r.fotos || [])];
+              const isFirst = currentFotos.length === 0;
+              currentFotos.push({
+                url: res.url,
+                label: file.name.replace(/\.[^/.]+$/, ''),
+                is_cover: isFirst,
+                oculto: false
+              });
+              return {
+                ...r,
+                fotos: currentFotos,
+                foto_url: isFirst ? res.url : r.foto_url
+              };
+            })
+          );
+        } else {
+          setErrorGlobal(res.error || `Falha no upload do arquivo ${file.name}`);
+        }
+      }
+      setSuccessGlobal('Fotos enviadas com sucesso para o Cloudflare R2!');
+      setTimeout(() => setSuccessGlobal(null), 3000);
+    } catch (err: any) {
+      setErrorGlobal(err?.message || 'Erro durante o upload das fotos.');
+      setTimeout(() => setErrorGlobal(null), 4000);
+    } finally {
+      setUploadingPhotoRowId(null);
+    }
+  };
+
+  // Adicionar foto por URL
+  const handleAddPhotoUrl = (rowId: string, url: string) => {
+    const clean = url.trim();
+    if (!clean) return;
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const currentFotos = [...(r.fotos || [])];
+        const isFirst = currentFotos.length === 0;
+        currentFotos.push({
+          url: clean,
+          label: `Foto ${currentFotos.length + 1}`,
+          is_cover: isFirst,
+          oculto: false
+        });
+        return {
+          ...r,
+          fotos: currentFotos,
+          foto_url: isFirst ? clean : r.foto_url
+        };
+      })
+    );
+    setSuccessGlobal('Link de imagem adicionado com sucesso!');
+    setTimeout(() => setSuccessGlobal(null), 2500);
+  };
+
   // Zerar unidades de uma cor
   const handleZerarCor = (rowId: string, corNome: string) => {
     setGridRows((prev) =>
@@ -982,7 +1307,30 @@ export function ProductBatchImportModal({
             }
           }
 
-          // Atualiza total de estoque, preços e detalhes
+          // Se houver fotos manipuladas pelo usuário na reposição, sincroniza midias_produto
+          if (row.fotos && row.fotos.length > 0) {
+            await supabase.from('midias_produto').delete().eq('produto_id', prodId);
+            const midiasToInsert = row.fotos.map((f, idx) => ({
+              loja_id: lojaId,
+              produto_id: prodId,
+              tipo: 'image',
+              url: f.url,
+              label: f.oculto
+                ? `[OCULTO] ${f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`)}`
+                : f.is_cover
+                ? 'Capa Principal'
+                : f.label || `Foto ${idx + 1}`,
+              display_order: idx
+            }));
+            await supabase.from('midias_produto').insert(midiasToInsert);
+          }
+
+          // Atualiza total de estoque, preços, detalhes, tecido, descrição e foto_principal
+          const activeCover =
+            (row.fotos || []).find((f) => f.is_cover && !f.oculto) ||
+            (row.fotos || []).find((f) => !f.oculto) ||
+            (row.fotos || [])[0];
+
           const { data: prodCurrent } = await supabase
             .from('produtos')
             .select('estoque_total, detalhes')
@@ -995,15 +1343,21 @@ export function ProductBatchImportModal({
             precos_diferenciados: row.tem_precos_diferenciados ? row.precos_por_variacao : null
           };
 
+          const prodUpdatePayload: any = {
+            estoque_total: novoTotal,
+            preco: row.preco,
+            preco_promocional: row.preco_promocional || null,
+            preco_custo: row.preco_custo || null,
+            detalhes: updatedDetalhes
+          };
+
+          if (row.tecido !== undefined) prodUpdatePayload.tecido = row.tecido || null;
+          if (row.descricao !== undefined) prodUpdatePayload.descricao = row.descricao || null;
+          if (activeCover?.url) prodUpdatePayload.foto_principal = activeCover.url;
+
           await supabase
             .from('produtos')
-            .update({
-              estoque_total: novoTotal,
-              preco: row.preco,
-              preco_promocional: row.preco_promocional || null,
-              preco_custo: row.preco_custo || null,
-              detalhes: updatedDetalhes
-            })
+            .update(prodUpdatePayload)
             .eq('id', prodId);
 
           reposicoesFeitas++;
@@ -1028,23 +1382,28 @@ export function ProductBatchImportModal({
         });
 
         if (!produtoId) {
+          const activeCover =
+            (row.fotos || []).find((f) => f.is_cover && !f.oculto) ||
+            (row.fotos || []).find((f) => !f.oculto) ||
+            (row.fotos || [])[0];
+
           const { data: newProd, error: prodErr } = await supabase
             .from('produtos')
             .insert({
               loja_id: lojaId,
               nome: row.nome,
               slug: slugProduto,
-              categoria_id: row.categoria_id,
-              subcategoria: row.subcategoria,
+              categoria_id: row.categoria_id || null,
+              subcategoria: row.subcategoria || null,
+              tecido: row.tecido || null,
+              descricao: row.descricao || null,
               preco: row.preco,
               preco_promocional: row.preco_promocional || null,
               preco_custo: row.preco_custo || null,
               estoque_total: totalEstoqueNovaPeca,
               ativo: true,
               detalhes: row.tem_precos_diferenciados ? { precos_diferenciados: row.precos_por_variacao } : {},
-              foto_principal:
-                row.foto_url ||
-                'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80'
+              foto_principal: activeCover?.url || row.foto_url || null
             })
             .select('id')
             .single();
@@ -1054,6 +1413,23 @@ export function ProductBatchImportModal({
           }
           produtoId = newProd.id;
           novasCriadas++;
+
+          // Insere fotos na tabela midias_produto
+          if (row.fotos && row.fotos.length > 0) {
+            const midiasToInsert = row.fotos.map((f, idx) => ({
+              loja_id: lojaId,
+              produto_id: produtoId,
+              tipo: 'image',
+              url: f.url,
+              label: f.oculto
+                ? `[OCULTO] ${f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`)}`
+                : f.is_cover
+                ? 'Capa Principal'
+                : f.label || `Foto ${idx + 1}`,
+              display_order: idx
+            }));
+            await supabase.from('midias_produto').insert(midiasToInsert);
+          }
         }
 
         // Insere as variações da nova peça
@@ -1245,9 +1621,10 @@ export function ProductBatchImportModal({
                       key={row.id}
                       className="border border-slate-200 hover:border-slate-300 rounded-2xl bg-white shadow-xs overflow-hidden transition-all divide-y divide-slate-100"
                     >
-                      {/* NÍVEL 1: IDENTIFICAÇÃO DA PEÇA, MODO OPERACIONAL E CATEGORIAS (100% DA LARGURA) */}
-                      <div className="p-3.5 sm:p-4 bg-slate-50/90 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-                        <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                      {/* NÍVEL 1: IDENTIFICAÇÃO DA PEÇA, MODO OPERACIONAL E CONFIGURAÇÕES */}
+                      <div className="p-3.5 sm:p-4 bg-slate-50/90 space-y-3">
+                        {/* Linha Superior: Switcher Modo, Identificação da Peça (Input amplo ou Card de Reposição) e Ações (Duplicar/Excluir) */}
+                        <div className="flex items-center gap-3">
                           {/* Número da Linha */}
                           <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
                             {index + 1}
@@ -1294,73 +1671,72 @@ export function ProductBatchImportModal({
 
                           {/* Se for Nova Peça: Campo amplo de nome */}
                           {row.tipo === 'nova' ? (
-                            <div className="flex-1 min-w-[200px]">
+                            <div className="flex-1 min-w-[220px]">
                               <input
                                 type="text"
                                 required
                                 value={row.nome}
                                 onChange={(e) => handleUpdateRow(row.id, 'nome', e.target.value)}
-                                placeholder="Digite o nome da nova peça..."
+                                placeholder="Digite o nome completo da nova peça..."
                                 className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-xs shadow-2xs"
                               />
                             </div>
                           ) : (
                             /* Se for Reposição: Card da Peça Selecionada com Foto, Nome, Estoque e Botão Catálogo */
-                            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2.5 bg-white p-2 border border-slate-200 rounded-xl shadow-2xs">
-                              {/* Foto em miniatura (48x48px) com filtro estrito de vídeo */}
-                              <div
-                                className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
-                                title={prodOriginal ? `${prodOriginal.nome} · SKU: ${prodOriginal.id.slice(0, 8)} · Clique para ver no catálogo` : row.nome}
-                                onClick={() => {
-                                  setCatalogPickerRowId(row.id);
-                                  setCatalogSearch('');
-                                }}
-                              >
-                                {safeThumb ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    src={safeThumb}
-                                    alt={row.nome}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <ImageIcon className="w-5 h-5 text-slate-400" />
-                                )}
-                              </div>
-
-                              {/* Nome e Estoque Atual */}
-                              <div className="min-w-0 flex-1 space-y-0.5">
-                                <div className="flex items-center gap-1.5">
-                                  <strong
-                                    className="text-xs font-bold text-slate-900 truncate block"
-                                    title={prodOriginal ? `${prodOriginal.nome} · Categoria: ${categoriaNome} · SKU: ${prodOriginal.id.slice(0, 8)}` : row.nome}
-                                  >
-                                    {row.nome || 'Selecione uma peça...'}
-                                  </strong>
-                                  <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold shrink-0 border border-emerald-200">
-                                    Reposição
-                                  </span>
+                            <div className="flex-1 min-w-0 flex items-center justify-between gap-3 bg-white p-2 border border-slate-200 rounded-xl shadow-2xs">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div
+                                  className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
+                                  title={prodOriginal ? `${prodOriginal.nome} · SKU: ${prodOriginal.id.slice(0, 8)} · Clique para ver no catálogo` : row.nome}
+                                  onClick={() => {
+                                    setCatalogPickerRowId(row.id);
+                                    setCatalogSearch('');
+                                  }}
+                                >
+                                  {safeThumb ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={safeThumb}
+                                      alt={row.nome}
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <ImageIcon className="w-5 h-5 text-slate-400" />
+                                  )}
                                 </div>
 
-                                <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                                  {prodOriginal ? (
-                                    <span className="font-mono font-semibold text-slate-700">
-                                      Estoque atual: <strong>{prodOriginal.estoque_total} un</strong>
+                                <div className="min-w-0 flex-1 space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <strong
+                                      className="text-xs font-bold text-slate-900 truncate block"
+                                      title={prodOriginal ? `${prodOriginal.nome} · Categoria: ${categoriaNome} · SKU: ${prodOriginal.id.slice(0, 8)}` : row.nome}
+                                    >
+                                      {row.nome || 'Selecione uma peça...'}
+                                    </strong>
+                                    <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold shrink-0 border border-emerald-200">
+                                      Reposição
                                     </span>
-                                  ) : null}
-                                  <span>•</span>
-                                  <span className="font-mono">R$ {formatBRL(row.preco)}</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                    {prodOriginal ? (
+                                      <span className="font-mono font-semibold text-slate-700">
+                                        Estoque atual: <strong>{prodOriginal.estoque_total} un</strong>
+                                      </span>
+                                    ) : null}
+                                    <span>•</span>
+                                    <span className="font-mono">R$ {formatBRL(row.preco)}</span>
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Seletor dropdown rápido e Catálogo Visual */}
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <select
                                   value={row.produto_existente_id || ''}
                                   onChange={(e) => handleApplySelectedProduct(row.id, e.target.value)}
-                                  className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-700 max-w-[150px] sm:max-w-[180px] truncate focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                                  className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-700 max-w-[200px] truncate focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
                                 >
                                   {existingProducts.map((p) => (
                                     <option key={p.id} value={p.id}>
@@ -1384,73 +1760,9 @@ export function ProductBatchImportModal({
                               </div>
                             </div>
                           )}
-                        </div>
-
-                        {/* Categorias (Lado Direito do Nível 1) e Ações de Linha */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          {/* Categorias: Bloqueadas com cadeado na Reposição, Editáveis na Nova Peça */}
-                          <div className="flex items-center gap-2">
-                            {/* Categoria Oficial */}
-                            <div className="space-y-0.5 min-w-[110px] max-w-[140px]">
-                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                                {isReposicao && <Lock className="w-2.5 h-2.5 text-slate-400" />}
-                                <span>Categoria</span>
-                              </label>
-                              {isReposicao ? (
-                                <div
-                                  className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 truncate cursor-not-allowed flex items-center justify-between"
-                                  title="Categoria vinculada ao produto. Alterações devem ser feitas na edição do produto no catálogo."
-                                >
-                                  <span className="truncate">{categoriaNome}</span>
-                                  <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
-                                </div>
-                              ) : (
-                                <select
-                                  value={row.categoria_id}
-                                  onChange={(e) => handleUpdateRow(row.id, 'categoria_id', e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs truncate"
-                                >
-                                  {categoriesList.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.nome}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-
-                            {/* Subcategoria */}
-                            <div className="space-y-0.5 min-w-[110px] max-w-[140px]">
-                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                                {isReposicao && <Lock className="w-2.5 h-2.5 text-slate-400" />}
-                                <span>Subcategoria</span>
-                              </label>
-                              {isReposicao ? (
-                                <div
-                                  className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 truncate cursor-not-allowed flex items-center justify-between"
-                                  title="Subcategoria vinculada ao produto. Alterações devem ser feitas na edição do produto no catálogo."
-                                >
-                                  <span className="truncate">{row.subcategoria}</span>
-                                  <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
-                                </div>
-                              ) : (
-                                <select
-                                  value={row.subcategoria}
-                                  onChange={(e) => handleUpdateRow(row.id, 'subcategoria', e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs truncate"
-                                >
-                                  {BOUTIQUE_SUBCATEGORIES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {s}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-                          </div>
 
                           {/* Ações da Linha: Duplicar e Excluir */}
-                          <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+                          <div className="flex items-center gap-1 pl-2 border-l border-slate-200 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleDuplicateRow(index)}
@@ -1469,7 +1781,474 @@ export function ProductBatchImportModal({
                             </button>
                           </div>
                         </div>
+
+                        {/* Linha Inferior de Nível 1: Barra de Categorias Opcionais e Atalhos de Gavetas */}
+                        <div className="pt-2 border-t border-slate-200/60 flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-4">
+                            {/* Categoria Oficial */}
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1 shrink-0">
+                                {isReposicao && <Lock className="w-3 h-3 text-slate-400" />}
+                                <span>Categoria:</span>
+                              </label>
+                              {isReposicao ? (
+                                <div
+                                  className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 truncate cursor-not-allowed flex items-center gap-1.5"
+                                  title="Categoria vinculada ao produto existente."
+                                >
+                                  <span className="truncate">{categoriaNome || '(Sem categoria)'}</span>
+                                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                                </div>
+                              ) : creatingCategoryForRowId === row.id ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Nome da categoria..."
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleCreateCategoryInline(row.id, newCategoryName);
+                                      } else if (e.key === 'Escape') {
+                                        setCreatingCategoryForRowId(null);
+                                      }
+                                    }}
+                                    className="w-36 bg-white border border-amber-400 rounded-lg py-1 px-2 text-xs text-slate-900 focus:outline-hidden"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCreateCategoryInline(row.id, newCategoryName)}
+                                    className="p-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-md cursor-pointer"
+                                    title="Salvar Categoria"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCreatingCategoryForRowId(null)}
+                                    className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md cursor-pointer"
+                                    title="Cancelar"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={row.categoria_id || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      handleUpdateRow(row.id, 'categoria_id', val);
+                                      if (!val) {
+                                        handleUpdateRow(row.id, 'subcategoria', '');
+                                      }
+                                    }}
+                                    className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs max-w-[170px] truncate"
+                                  >
+                                    <option value="">(Sem categoria)</option>
+                                    {localCategories.map((c) => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.nome}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCreatingCategoryForRowId(row.id);
+                                      setNewCategoryName('');
+                                    }}
+                                    className="px-2 py-1 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 text-[10px] font-bold text-amber-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                    title="Criar nova categoria inline"
+                                  >
+                                    <Plus className="w-3 h-3" /> Nova
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Subcategoria */}
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1 shrink-0">
+                                {(isReposicao || !row.categoria_id) && <Lock className="w-3 h-3 text-slate-400" />}
+                                <span>Subcategoria:</span>
+                              </label>
+                              {isReposicao ? (
+                                <div
+                                  className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 truncate cursor-not-allowed flex items-center gap-1.5"
+                                  title="Subcategoria vinculada ao produto existente."
+                                >
+                                  <span className="truncate">{row.subcategoria || '(Sem subcategoria)'}</span>
+                                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                                </div>
+                              ) : !row.categoria_id ? (
+                                <div
+                                  className="px-2.5 py-1 bg-slate-100 border border-dashed border-slate-300 rounded-lg text-xs font-medium text-slate-400 truncate cursor-not-allowed flex items-center gap-1.5"
+                                  title="Selecione uma categoria primeiro para poder escolher ou criar uma subcategoria."
+                                >
+                                  <span>🔒 Requer categoria</span>
+                                </div>
+                              ) : creatingSubcategoryForRowId === row.id ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Nova subcategoria..."
+                                    value={newSubcategoryName}
+                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleCreateSubcategoryInline(row.id, newSubcategoryName);
+                                      } else if (e.key === 'Escape') {
+                                        setCreatingSubcategoryForRowId(null);
+                                      }
+                                    }}
+                                    className="w-36 bg-white border border-amber-400 rounded-lg py-1 px-2 text-xs text-slate-900 focus:outline-hidden"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCreateSubcategoryInline(row.id, newSubcategoryName)}
+                                    className="p-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-md cursor-pointer"
+                                    title="Salvar Subcategoria"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCreatingSubcategoryForRowId(null)}
+                                    className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md cursor-pointer"
+                                    title="Cancelar"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={row.subcategoria || ''}
+                                    onChange={(e) => handleUpdateRow(row.id, 'subcategoria', e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs max-w-[170px] truncate"
+                                  >
+                                    <option value="">(Sem subcategoria)</option>
+                                    {localSubcategories.map((s) => (
+                                      <option key={s} value={s}>
+                                        {s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCreatingSubcategoryForRowId(row.id);
+                                      setNewSubcategoryName('');
+                                    }}
+                                    className="px-2 py-1 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 text-[10px] font-bold text-amber-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                    title="Criar nova subcategoria inline"
+                                  >
+                                    <Plus className="w-3 h-3" /> Nova
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Gavetas Retráteis: Fotos e Detalhes */}
+                          <div className="flex items-center gap-2">
+                            {/* Gaveta de Fotos */}
+                            {(() => {
+                              const fotosCount = row.fotos?.length || 0;
+                              const fotosOcultas = (row.fotos || []).filter((f) => f.oculto).length;
+                              const isFotosOpen = row.gaveta_ativa === 'fotos';
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleRowDrawer(row.id, 'fotos')}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                                    isFotosOpen
+                                      ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-500/30'
+                                      : fotosCount > 0
+                                      ? 'bg-white border border-slate-200 hover:border-amber-400 text-slate-800'
+                                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                                  }`}
+                                  title="Gerenciar imagens: fazer upload, trocar capa e ocultar cores esgotadas"
+                                >
+                                  <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Galeria de Fotos ({fotosCount})</span>
+                                  {fotosOcultas > 0 && (
+                                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 text-[9px] rounded-md font-mono font-bold" title={`${fotosOcultas} foto(s) oculta(s) do catálogo`}>
+                                      {fotosOcultas} 🚫
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })()}
+
+                            {/* Gaveta de Detalhes (Tecido & Descrição) */}
+                            {(() => {
+                              const isDetalhesOpen = row.gaveta_ativa === 'detalhes';
+                              const hasDetalhes = Boolean(row.tecido || row.descricao);
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleRowDrawer(row.id, 'detalhes')}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                                    isDetalhesOpen
+                                      ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-500/30'
+                                      : hasDetalhes
+                                      ? 'bg-white border border-emerald-300 text-emerald-800'
+                                      : 'bg-white border border-slate-200 hover:border-slate-300 text-slate-700'
+                                  }`}
+                                  title="Configurar Tecido nobre e Descrição comercial da peça"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Tecido & Descrição</span>
+                                  {hasDetalhes && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  )}
+                                </button>
+                              );
+                            })()}
+                          </div>
+                        </div>
                       </div>
+
+                      {/* GAVETAS SANFONADAS EXPANSÍVEIS (FOTOS E DETALHES) */}
+                      {row.gaveta_ativa === 'fotos' && (
+                        <div className="p-3.5 bg-amber-50/40 border-b border-amber-200/60 animate-in fade-in duration-150 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+                                <ImageIcon className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                  <span>Galeria de Imagens da Peça</span>
+                                  <span className="text-[10px] font-normal text-slate-500">
+                                    • {row.fotos?.length || 0} foto(s) cadastradas
+                                  </span>
+                                </h5>
+                                <p className="text-[11px] text-slate-500">
+                                  Faça upload de fotos locais (R2) ou insira links. Use o botão <strong>Ocultar</strong> para pausar fotos de cores esgotadas sem precisar excluí-las.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Botão de Upload Local */}
+                              <label className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs">
+                                {uploadingPhotoRowId === row.id ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Enviando fotos...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>+ Carregar Fotos (R2)</span>
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={uploadingPhotoRowId === row.id}
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files.length > 0) {
+                                      handleUploadRowPhotos(row.id, e.target.files);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                              </label>
+
+                              {/* Fechar Gaveta */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleRowDrawer(row.id, 'fotos')}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                title="Fechar gaveta de fotos"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Grid de Fotos */}
+                          {(!row.fotos || row.fotos.length === 0) ? (
+                            <div className="py-6 border-2 border-dashed border-amber-200/80 rounded-xl text-center space-y-1.5 bg-white/60">
+                              <p className="text-xs font-semibold text-slate-600">Nenhuma foto adicionada ainda para esta peça.</p>
+                              <p className="text-[11px] text-slate-400">
+                                Clique em <strong>+ Carregar Fotos (R2)</strong> acima para selecionar fotos do seu computador.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                              {row.fotos.map((foto, fIdx) => (
+                                <div
+                                  key={foto.id || fIdx}
+                                  className={`relative group rounded-xl border overflow-hidden bg-white shadow-2xs transition-all ${
+                                    foto.oculto
+                                      ? 'border-slate-300 opacity-60 grayscale-50 bg-slate-100'
+                                      : foto.is_cover
+                                      ? 'border-amber-500 ring-2 ring-amber-500/20'
+                                      : 'border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  {/* Imagem */}
+                                  <div className="aspect-square w-full bg-slate-100 relative">
+                                    <img
+                                      src={foto.url}
+                                      alt={foto.label || `Foto ${fIdx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    {/* Badge Capa */}
+                                    {foto.is_cover && (
+                                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-amber-500 text-slate-950 font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
+                                        <Star className="w-2.5 h-2.5 fill-current" /> Capa
+                                      </span>
+                                    )}
+                                    {/* Badge Oculta */}
+                                    {foto.oculto && (
+                                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-rose-600 text-white font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
+                                        <EyeOff className="w-2.5 h-2.5" /> Oculta
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Barra de Ações Rápidas da Foto */}
+                                  <div className="p-1.5 bg-white flex items-center justify-between gap-1 border-t border-slate-100">
+                                    {/* Botão Capa */}
+                                    {!foto.is_cover && !foto.oculto && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetCoverPhoto(row.id, fIdx)}
+                                        className="text-[10px] font-semibold text-slate-600 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-0.5"
+                                        title="Definir como Capa Principal"
+                                      >
+                                        <Star className="w-3 h-3" /> Tornar Capa
+                                      </button>
+                                    )}
+                                    {foto.is_cover && (
+                                      <span className="text-[10px] font-bold text-amber-600">⭐ Principal</span>
+                                    )}
+
+                                    <div className="flex items-center gap-0.5 ml-auto">
+                                      {/* Alternar Ocultar / Reexibir */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTogglePhotoOculto(row.id, fIdx)}
+                                        className={`p-1 rounded-md transition-colors cursor-pointer ${
+                                          foto.oculto
+                                            ? 'text-rose-600 hover:bg-rose-50'
+                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                                        }`}
+                                        title={
+                                          foto.oculto
+                                            ? 'Foto oculta do catálogo. Clique para reexibir na vitrine.'
+                                            : 'Ocultar foto do catálogo (ex: cor esgotada temporariamente).'
+                                        }
+                                      >
+                                        {foto.oculto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                      </button>
+
+                                      {/* Excluir Foto */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeletePhoto(row.id, fIdx)}
+                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                        title="Excluir foto permanentemente"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* GAVETA DE DETALHES (TECIDO & DESCRIÇÃO) */}
+                      {row.gaveta_ativa === 'detalhes' && (
+                        <div className="p-3.5 bg-slate-50/70 border-b border-slate-200 animate-in fade-in duration-150 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-700">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                  <span>Informações Complementares da Peça</span>
+                                  <span className="text-[10px] font-normal text-slate-500">• Totalmente opcionais</span>
+                                </h5>
+                                <p className="text-[11px] text-slate-500">
+                                  Preencha o tecido nobre e a descrição comercial se desejar enriquecer o catálogo da boutique.
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRowDrawer(row.id, 'detalhes')}
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                              title="Fechar gaveta de detalhes"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {/* Tecido */}
+                            <div className="space-y-1.5 md:col-span-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                                Tecido / Composição
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ex: Crepe Alfaiataria, Linho..."
+                                value={row.tecido || ''}
+                                onChange={(e) => handleUpdateRow(row.id, 'tecido', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                              />
+                              {/* Sugestões rápidas de tecido */}
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {BOUTIQUE_FABRIC_SUGGESTIONS.slice(0, 6).map((tec) => (
+                                  <button
+                                    key={tec}
+                                    type="button"
+                                    onClick={() => handleUpdateRow(row.id, 'tecido', tec)}
+                                    className={`px-1.5 py-0.5 text-[10px] rounded-md transition-colors cursor-pointer ${
+                                      row.tecido === tec
+                                        ? 'bg-amber-500 text-slate-950 font-bold'
+                                        : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-400'
+                                    }`}
+                                  >
+                                    {tec}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Descrição Comercial */}
+                            <div className="space-y-1.5 md:col-span-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                                Descrição Comercial do Produto (Opcional)
+                              </label>
+                              <textarea
+                                rows={3}
+                                placeholder="Descreva os diferenciais da peça, caimento, modelagem, ocasiões de uso..."
+                                value={row.descricao || ''}
+                                onChange={(e) => handleUpdateRow(row.id, 'descricao', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* NÍVEL 2: PAINEL FINANCEIRO & CENTRAL DE CONFERÊNCIA DA REMESSA (GRID DE 4 COLUNAS PADRONIZADAS) */}
                       <div className="p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-stretch">

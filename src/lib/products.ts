@@ -68,13 +68,17 @@ export function mapDbProductToProduct(dbProd: any): Product {
     return a.localeCompare(b);
   });
 
-  // Ordenação das Mídias (Fotos e Vídeos)
+  // Ordenação das Mídias (Fotos e Vídeos) - Filtra mídias ocultas da vitrine
   const mediaList: ProductMedia[] = [];
   if (Array.isArray(dbProd.midias_produto)) {
     const sortedMedia = [...dbProd.midias_produto].sort(
       (a: any, b: any) => (a.display_order || 0) - (b.display_order || 0)
     );
     sortedMedia.forEach((m: any) => {
+      // Mídias marcadas como ocultas são preservadas no acervo, mas não exibidas na vitrine
+      if (m.label && m.label.includes('[OCULTO]')) {
+        return;
+      }
       mediaList.push({
         type: m.tipo === 'video' ? 'video' : 'image',
         src: m.url,
@@ -83,8 +87,15 @@ export function mapDbProductToProduct(dbProd: any): Product {
     });
   }
 
+  // Se a foto principal estiver oculta nas mídias, faz fallback para a primeira mídia visível
+  const isMainPhotoHidden =
+    Array.isArray(dbProd.midias_produto) &&
+    dbProd.midias_produto.some(
+      (m: any) => m.url === dbProd.foto_principal && m.label && m.label.includes('[OCULTO]')
+    );
+
   const thumbnail =
-    dbProd.foto_principal ||
+    (!isMainPhotoHidden && dbProd.foto_principal) ||
     mediaList.find((m) => m.type === 'image')?.src ||
     '/placeholder-product.jpg';
 
