@@ -271,24 +271,68 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const currentMedia = product.media[activeMediaIndex];
   const pairedProduct = sourceProducts.find((p) => p.id === product.pairedWithId);
 
-  // Cálculo de desconto e economia (conforme o print do usuário)
-  const rawOriginalPrice = product.originalPrice ?? (product.formattedOriginalPrice ? parseFloat(product.formattedOriginalPrice.replace(/[^\d,]/g, '').replace(',', '.')) : null);
-  const rawCurrentPrice = product.price ?? parseFloat(product.formattedPrice.replace(/[^\d,]/g, '').replace(',', '.'));
+  // Identifica a variação específica (Cor x Tamanho) para precificação granular
+  const selectedVariation = useMemo(() => {
+    if (!product || !selectedColor || !selectedSize || !product.variations) return null;
+    return product.variations.find(
+      (v) =>
+        v.color?.toLowerCase().trim() === selectedColor.toLowerCase().trim() &&
+        v.size?.toLowerCase().trim() === selectedSize.toLowerCase().trim()
+    );
+  }, [product, selectedColor, selectedSize]);
+
+  // Preço atual efetivo (respeita preço diferenciado da variação se configurado)
+  const rawCurrentPrice = useMemo(() => {
+    if (selectedVariation?.promoPrice !== undefined && selectedVariation.promoPrice > 0) {
+      return selectedVariation.promoPrice;
+    }
+    if (selectedVariation?.price !== undefined && selectedVariation.price > 0) {
+      return selectedVariation.price;
+    }
+    return product.price ?? (product.formattedPrice ? parseFloat(product.formattedPrice.replace(/[^\d,]/g, '').replace(',', '.')) : 0);
+  }, [selectedVariation, product]);
+
+  // Preço original/de referência para desconto
+  const rawOriginalPrice = useMemo(() => {
+    if (selectedVariation?.promoPrice !== undefined && selectedVariation.promoPrice > 0 && selectedVariation.price) {
+      return selectedVariation.price;
+    }
+    return product.originalPrice ?? (product.formattedOriginalPrice ? parseFloat(product.formattedOriginalPrice.replace(/[^\d,]/g, '').replace(',', '.')) : null);
+  }, [selectedVariation, product]);
+
+  const formattedCurrentPrice = `R$ ${rawCurrentPrice.toFixed(2).replace('.', ',')}`;
+  const formattedOriginalPrice = rawOriginalPrice ? `R$ ${rawOriginalPrice.toFixed(2).replace('.', ',')}` : null;
 
   const hasDiscount = Boolean(rawOriginalPrice && rawOriginalPrice > rawCurrentPrice);
   const savingsAmount = hasDiscount && rawOriginalPrice ? rawOriginalPrice - rawCurrentPrice : 0;
   const discountPercent = hasDiscount && rawOriginalPrice ? Math.round((savingsAmount / rawOriginalPrice) * 100) : 0;
 
+  // Sincronização de mídia com suporte bidirecional à cor
+  const handleSelectMedia = (index: number) => {
+    setActiveMediaIndex(index);
+    const mediaItem = product.media[index];
+    if (mediaItem?.type === 'video') {
+      setIsPlaying(true);
+    }
+    // Se a foto tiver vínculo de cor, seleciona a cor correspondente
+    if (mediaItem?.colorName) {
+      const matched = product.colors.find((c) => c.name.toLowerCase() === mediaItem.colorName?.toLowerCase());
+      if (matched && matched.name !== selectedColor) {
+        setSelectedColor(matched.name);
+      }
+    }
+  };
+
   const goToPrevMedia = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setActiveMediaIndex((prev) => (prev > 0 ? prev - 1 : product.media.length - 1));
-    setIsPlaying(true);
+    const nextIdx = activeMediaIndex > 0 ? activeMediaIndex - 1 : product.media.length - 1;
+    handleSelectMedia(nextIdx);
   };
 
   const goToNextMedia = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setActiveMediaIndex((prev) => (prev < product.media.length - 1 ? prev + 1 : 0));
-    setIsPlaying(true);
+    const nextIdx = activeMediaIndex < product.media.length - 1 ? activeMediaIndex + 1 : 0;
+    handleSelectMedia(nextIdx);
   };
 
   // Suporte a deslizar (Swipe) para mobile
@@ -599,10 +643,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 return (
                   <button
                     key={index}
-                    onClick={() => {
-                      setActiveMediaIndex(index);
-                      if (item.type === 'video') setIsPlaying(true);
-                    }}
+                    onClick={() => handleSelectMedia(index)}
                     className={`relative w-14 h-16 sm:w-16 sm:h-20 rounded-none overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
                       isSelected
                         ? 'border-[#C5A059] shadow-md ring-2 ring-[#C5A059]/40 scale-105'
@@ -674,13 +715,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     {/* Valor Original em Cinza com Risco à Esquerda (quando houver desconto) */}
                     {hasDiscount && (
                       <span className="text-base sm:text-lg text-[#78716C] dark:text-[#A8A29E] line-through font-normal">
-                        {product.formattedOriginalPrice || `R$ ${rawOriginalPrice?.toFixed(2).replace('.', ',')}`}
+                        {formattedOriginalPrice || product.formattedOriginalPrice}
                       </span>
                     )}
                     {/* Valor Atual em Negrito de Destaque */}
                     <span className="text-2xl sm:text-3xl font-extrabold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight">
-                      {product.formattedPrice}
+                      {formattedCurrentPrice}
                     </span>
+                    {/* Indicador de Preço Granular da Variação Selecionada */}
+                    {selectedVariation && selectedVariation.price && selectedVariation.price !== product.price && (
+                      <span className="text-[10px] font-bold text-[#C5A059] dark:text-[#DFBE76] bg-[#C5A059]/10 px-1.5 py-0.5 rounded-none border border-[#C5A059]/30">
+                        Preço exclusivo desta variação
+                      </span>
+                    )}
                   </div>
 
                   {/* Mensagem em Verde de Economia quando houver desconto */}
@@ -692,7 +739,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                   {!hasDiscount && (
                     <span className="text-[11px] text-[#C5A059] dark:text-[#DFBE76] font-medium block mt-0.5">
-                      Peça Exclusiva &bull; Em até 3x sem juros
+                      Peça Exclusiva &bull; Em até 3x de R$ {(rawCurrentPrice / 3).toFixed(2).replace('.', ',')} sem juros
                     </span>
                   )}
                 </div>
@@ -727,10 +774,31 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         key={idx}
                         onClick={() => {
                           setSelectedColor(color.name);
-                          if (color.imageSrc) {
-                            const mediaIdx = product.media.findIndex((m) => m.src === color.imageSrc);
-                            if (mediaIdx !== -1) setActiveMediaIndex(mediaIdx);
+
+                          // Encontra a melhor foto correspondente a esta cor na galeria
+                          // 1. Prioridade: Foto marcada como Capa da Cor ([CAPA_COR])
+                          const coverIdx = product.media.findIndex(
+                            (m) =>
+                              m.type === 'image' &&
+                              m.colorName?.toLowerCase() === color.name.toLowerCase() &&
+                              m.isColorCover
+                          );
+                          // 2. Qualquer foto vinculada a esta cor ([COR: Nome])
+                          const linkedIdx = product.media.findIndex(
+                            (m) =>
+                              m.type === 'image' &&
+                              m.colorName?.toLowerCase() === color.name.toLowerCase()
+                          );
+                          // 3. Imagem direta do colorsMap
+                          const srcIdx = color.imageSrc
+                            ? product.media.findIndex((m) => m.src === color.imageSrc)
+                            : -1;
+
+                          const targetIndex = coverIdx !== -1 ? coverIdx : linkedIdx !== -1 ? linkedIdx : srcIdx;
+                          if (targetIndex !== -1) {
+                            setActiveMediaIndex(targetIndex);
                           }
+
                           // Se o tamanho atual não estiver disponível na nova cor, seleciona o primeiro disponível
                           const currentAvail = getVariationAvailability(product.id, color.name, selectedSize);
                           if (currentAvail.status !== 'disponivel') {

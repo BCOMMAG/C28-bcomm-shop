@@ -703,14 +703,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
       }
       const initialQty = Math.min(maxStock, quantity);
+
+      // Resolve preço específico da combinação (cor x tamanho) e foto da cor
+      const targetVar = product.variations?.find(
+        (v) =>
+          v.color.toLowerCase().trim() === color.toLowerCase().trim() &&
+          v.size.toLowerCase().trim() === size.toLowerCase().trim()
+      );
+      const effectivePrice = targetVar?.promoPrice ?? targetVar?.price ?? product.price;
+
+      const colorObj = product.colors?.find((c) => c.name.toLowerCase() === color.toLowerCase());
+      const effectiveImage = colorObj?.imageSrc || product.thumbnail;
+
       return [
         ...prev,
         {
           id: itemKey,
           productId: product.id,
           name: product.name,
-          price: product.price,
-          image: product.thumbnail,
+          price: effectivePrice,
+          image: effectiveImage,
           size,
           color,
           quantity: initialQty,

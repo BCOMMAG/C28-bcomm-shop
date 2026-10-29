@@ -49,7 +49,8 @@ import {
   ScrollText,
   Play,
   Film,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Lock
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ProductBatchImportModal } from '@/components/admin/products/ProductBatchImportModal';
@@ -2852,6 +2853,19 @@ export default function AdminProdutosPage() {
                   <div>
                     <label className="block text-slate-700 mb-1 font-bold">Subcategoria</label>
                     {(() => {
+                      const hasCat = Boolean(newProductCatId || newCustomCatName.trim());
+                      if (!hasCat) {
+                        return (
+                          <div
+                            className="w-full bg-slate-100 border border-dashed border-slate-300 rounded-lg px-3 py-2 text-slate-400 text-xs flex items-center gap-1.5 cursor-not-allowed"
+                            title="Selecione ou crie uma categoria antes de escolher uma subcategoria."
+                          >
+                            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>🔒 Requer categoria selecionada</span>
+                          </div>
+                        );
+                      }
+
                       const selCat = categoriesList.find((c) => c.id === newProductCatId);
                       const availableSubs = selCat?.subcategorias || [];
                       return availableSubs.length > 0 ? (
@@ -2870,7 +2884,7 @@ export default function AdminProdutosPage() {
                       ) : (
                         <input
                           type="text"
-                          placeholder="Ex: Blazers, Cenoura, Tricots..."
+                          placeholder="Ex: Blazers, Alfaiataria, Tricots..."
                           value={newProductSubcat}
                           onChange={(e) => setNewProductSubcat(e.target.value)}
                           className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -2894,11 +2908,27 @@ export default function AdminProdutosPage() {
                     <label className="block text-slate-700 mb-1 font-bold">Tecido</label>
                     <input
                       type="text"
-                      placeholder="Ex: Seda Pura, Linho Cru"
+                      placeholder="Ex: Crepe Alfaiataria, Linho..."
                       value={newProductFabric}
                       onChange={(e) => setNewProductFabric(e.target.value)}
                       className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {['Crepe Alfaiataria', 'Linho Puro', 'Seda Acetinada', 'Tricot Modal', 'Algodão Pima'].map((tec) => (
+                        <button
+                          key={tec}
+                          type="button"
+                          onClick={() => setNewProductFabric(tec)}
+                          className={`px-1.5 py-0.5 text-[10px] rounded transition-colors cursor-pointer ${
+                            newProductFabric === tec
+                              ? 'bg-amber-500 text-slate-950 font-bold'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-400'
+                          }`}
+                        >
+                          {tec}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div>

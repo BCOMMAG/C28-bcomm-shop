@@ -46,7 +46,7 @@ export interface AdminProductItem {
     label?: string | null;
   }>;
   paired_with_slug?: string | null;
-  detalhes?: string[] | null;
+  detalhes?: any;
   variacoes: Array<{
     id: string;
     cor_nome: string;
@@ -54,6 +54,8 @@ export interface AdminProductItem {
     tamanho: string;
     estoque: number;
     sku?: string | null;
+    preco?: number | null;
+    preco_promocional?: number | null;
   }>;
 }
 
@@ -1267,7 +1269,7 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       categoria_nome: p.categorias?.nome || 'Geral',
       subcategoria: p.subcategoria || null,
       paired_with_slug: p.paired_with_slug || null,
-      detalhes: Array.isArray(p.detalhes) ? p.detalhes : null,
+      detalhes: p.detalhes || null,
       midias: (p.midias_produto || []).map((m: any) => ({
         id: m.id,
         url: m.url,
@@ -1281,7 +1283,9 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
         cor_hex: v.cor_hex,
         tamanho: v.tamanho,
         estoque: v.estoque,
-        sku: v.sku
+        sku: v.sku,
+        preco: v.preco ? Number(v.preco) : null,
+        preco_promocional: v.preco_promocional ? Number(v.preco_promocional) : null
       }))
     }));
   } catch (err) {

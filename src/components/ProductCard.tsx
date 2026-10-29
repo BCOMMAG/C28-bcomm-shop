@@ -31,9 +31,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   columnsCount = 4
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [hoverColorImage, setHoverColorImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const videoSrc = product.media.find((m) => m.type === 'video')?.src;
+
+  // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores)
+  const currentThumbnail = hoverColorImage || product.thumbnail;
+
+  // Analisa se há preços diferenciados entre as variações cadastradas
+  const variablePricesInfo = useMemo(() => {
+    if (!product.variations || product.variations.length === 0) return null;
+    const validPrices = product.variations
+      .map((v) => (v.promoPrice && v.promoPrice > 0 ? v.promoPrice : v.price))
+      .filter((p): p is number => p !== undefined && p > 0);
+    if (validPrices.length === 0) return null;
+    const minPrice = Math.min(...validPrices);
+    const maxPrice = Math.max(...validPrices);
+    const isDivergent = minPrice !== maxPrice;
+    return { minPrice, maxPrice, isDivergent };
+  }, [product.variations]);
 
   // Variações de estilo baseadas na densidade de colunas
   const isCompact = columnsCount === 5;
@@ -113,11 +130,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       >
         {/* Imagem do Produto */}
         <Image
-          src={product.thumbnail}
+          key={currentThumbnail}
+          src={currentThumbnail}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          className={`object-cover object-top transition-all duration-700 ${
+          className={`object-cover object-top transition-all duration-500 ${
             isHovered && videoSrc ? 'opacity-0' : 'opacity-100 group-hover:scale-105'
           }`}
         />
@@ -298,11 +316,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="flex items-center gap-1 min-w-0">
               <div className="flex items-center gap-1 shrink-0">
                 {product.colors.slice(0, 3).map((color, idx) => (
-                  <span
+                  <button
                     key={idx}
-                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-none border border-black/20 dark:border-white/20 shadow-2xs block shrink-0"
+                    type="button"
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                      if (color.imageSrc) setHoverColorImage(color.imageSrc);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.stopPropagation();
+                      setHoverColorImage(null);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (color.imageSrc) setHoverColorImage(color.imageSrc);
+                    }}
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-none border border-black/20 dark:border-white/20 shadow-2xs block shrink-0 transition-transform hover:scale-125 cursor-pointer"
                     style={{ backgroundColor: color.hex }}
-                    title={color.name}
+                    title={`${color.name}${color.imageSrc ? ' (Passe o mouse para ver a foto)' : ''}`}
                   />
                 ))}
               </div>
@@ -343,7 +374,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </div>
               ) : (
                 <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
-                  Valor da Peça
+                  {variablePricesInfo?.isDivergent ? 'A partir de' : 'Valor da Peça'}
                 </span>
               )}
               {/* Valor numérico */}
@@ -351,7 +382,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
                   isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
                 }`}>
-                  {product.formattedPrice}
+                  {variablePricesInfo?.isDivergent
+                    ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
+                    : product.formattedPrice}
                 </span>
               </div>
             </div>

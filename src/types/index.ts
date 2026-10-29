@@ -2,6 +2,8 @@ export interface ProductMedia {
   type: 'video' | 'image';
   src: string;
   label: string;
+  colorName?: string;
+  isColorCover?: boolean;
 }
 
 export interface ProductVariation {
@@ -11,6 +13,7 @@ export interface ProductVariation {
   stock: number;
   sku?: string;
   price?: number;
+  promoPrice?: number;
 }
 
 export interface Product {

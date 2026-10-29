@@ -13,6 +13,29 @@ export function formatPrice(value: number): string {
 }
 
 /**
+ * Utilitário para interpretar tags de metadados embutidas no label da mídia
+ * Ex: "[COR: Marrom Caramelo] [CAPA_COR] [OCULTO] Foto 1"
+ */
+export function parseMediaColor(label?: string): {
+  colorName?: string;
+  isColorCover: boolean;
+  isHidden: boolean;
+  cleanLabel: string;
+} {
+  if (!label) return { isColorCover: false, isHidden: false, cleanLabel: '' };
+  const isHidden = label.includes('[OCULTO]');
+  const isColorCover = label.includes('[CAPA_COR]') || label.toLowerCase().includes('capa');
+  const colorMatch = label.match(/\[COR:\s*([^\]]+)\]/i);
+  const colorName = colorMatch ? colorMatch[1].trim() : undefined;
+  const cleanLabel = label
+    .replace(/\[OCULTO\]/gi, '')
+    .replace(/\[CAPA_COR\]/gi, '')
+    .replace(/\[COR:\s*[^\]]+\]/gi, '')
+    .trim();
+  return { colorName, isColorCover, isHidden, cleanLabel };
+}
+
+/**
  * Converte o registro bruto do banco de dados (PostgreSQL/Supabase)
  * no formato tipado Product consumido pela vitrine e componentes.
  */
@@ -28,7 +51,36 @@ export function mapDbProductToProduct(dbProd: any): Product {
     discountBadge = `OUTLET ${discountPercent}% OFF`;
   }
 
-  // Agrupamento de Variações de Cores e Estoque por Grade
+  // 1. Processamento e Ordenação das Mídias (Fotos e Vídeos) - Filtra mídias ocultas da vitrine
+  const mediaList: ProductMedia[] = [];
+  if (Array.isArray(dbProd.midias_produto)) {
+    const sortedMedia = [...dbProd.midias_produto].sort(
+      (a: any, b: any) => (a.display_order || 0) - (b.display_order || 0)
+    );
+    sortedMedia.forEach((m: any) => {
+      const parsed = parseMediaColor(m.label);
+      // Mídias marcadas como ocultas são preservadas no acervo, mas não exibidas na vitrine
+      if (parsed.isHidden) {
+        return;
+      }
+      mediaList.push({
+        type: m.tipo === 'video' ? 'video' : 'image',
+        src: m.url,
+        label: parsed.cleanLabel || m.label || '',
+        colorName: parsed.colorName,
+        isColorCover: parsed.isColorCover
+      });
+    });
+  }
+
+  // Dicionário de preços granulares por variação (se gravado em detalhes.precos_diferenciados)
+  const detalhesObj =
+    typeof dbProd.detalhes === 'object' && !Array.isArray(dbProd.detalhes) && dbProd.detalhes !== null
+      ? dbProd.detalhes
+      : {};
+  const precosDiferenciados = detalhesObj.precos_diferenciados || {};
+
+  // 2. Agrupamento de Variações de Cores e Estoque por Grade
   const colorsMap = new Map<string, { name: string; hex: string; imageSrc?: string }>();
   const sizesSet = new Set<string>();
   const variations: ProductVariation[] = [];
@@ -38,20 +90,34 @@ export function mapDbProductToProduct(dbProd: any): Product {
       const cor = (v.cor_nome || '').trim();
       const tam = (v.tamanho || '').trim();
       const stock = Number(v.estoque ?? 0);
+
+      // Preço específico da variação (busca na matriz de detalhes ou na coluna v.preco)
+      const customPriceItem = precosDiferenciados[`${cor}_${tam}`];
+      const customPrice = customPriceItem?.preco !== undefined ? customPriceItem.preco : v.preco ? Number(v.preco) : undefined;
+      const customPromoPrice = customPriceItem?.preco_promocional !== undefined ? customPriceItem.preco_promocional : v.preco_promocional ? Number(v.preco_promocional) : undefined;
+
       variations.push({
         id: v.id,
         color: cor,
         size: tam,
         stock,
         sku: v.sku || undefined,
-        price: v.preco ? Number(v.preco) : undefined
+        price: customPrice,
+        promoPrice: customPromoPrice
       });
+
       if (tam) sizesSet.add(tam);
+
       if (cor && !colorsMap.has(cor)) {
+        // Encontra a melhor foto para esta cor (preferência para capa da cor, ou primeira foto da cor)
+        const colorCoverPhoto = mediaList.find((m) => m.type === 'image' && m.colorName?.toLowerCase() === cor.toLowerCase() && m.isColorCover);
+        const colorFirstPhoto = mediaList.find((m) => m.type === 'image' && m.colorName?.toLowerCase() === cor.toLowerCase());
+        const resolvedImageSrc = colorCoverPhoto?.src || colorFirstPhoto?.src || v.imagem_url || undefined;
+
         colorsMap.set(cor, {
           name: cor,
           hex: v.cor_hex || '#000000',
-          imageSrc: v.imagem_url || undefined
+          imageSrc: resolvedImageSrc
         });
       }
     });
@@ -67,25 +133,6 @@ export function mapDbProductToProduct(dbProd: any): Product {
     if (idxB !== -1) return 1;
     return a.localeCompare(b);
   });
-
-  // Ordenação das Mídias (Fotos e Vídeos) - Filtra mídias ocultas da vitrine
-  const mediaList: ProductMedia[] = [];
-  if (Array.isArray(dbProd.midias_produto)) {
-    const sortedMedia = [...dbProd.midias_produto].sort(
-      (a: any, b: any) => (a.display_order || 0) - (b.display_order || 0)
-    );
-    sortedMedia.forEach((m: any) => {
-      // Mídias marcadas como ocultas são preservadas no acervo, mas não exibidas na vitrine
-      if (m.label && m.label.includes('[OCULTO]')) {
-        return;
-      }
-      mediaList.push({
-        type: m.tipo === 'video' ? 'video' : 'image',
-        src: m.url,
-        label: m.label || ''
-      });
-    });
-  }
 
   // Se a foto principal estiver oculta nas mídias, faz fallback para a primeira mídia visível
   const isMainPhotoHidden =

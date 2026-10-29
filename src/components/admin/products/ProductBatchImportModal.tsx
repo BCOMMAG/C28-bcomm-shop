@@ -41,11 +41,15 @@ import {
   Zap,
   FolderPlus,
   Link as LinkIcon,
-  Loader2
+  Loader2,
+  BarChart3,
+  Activity,
+  Flame,
+  ShieldAlert
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { DEFAULT_TENANT_ID, parseMediaColor } from '@/lib/products';
 import { AdminProductItem } from '@/lib/admin';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 
@@ -77,6 +81,7 @@ export interface BatchPhotoItem {
   is_cover: boolean;
   oculto: boolean;
   cor_vinculada?: string;
+  is_color_cover?: boolean;
 }
 
 export interface GridRowItem {
@@ -115,8 +120,8 @@ export interface GridRowItem {
   // Galeria de fotos da peça (Upload via R2, Capa, Ocultar/Exibir, Excluir)
   fotos: BatchPhotoItem[];
 
-  // Controle de gaveta retrátil da linha ('nenhuma' | 'fotos' | 'detalhes')
-  gaveta_ativa?: 'nenhuma' | 'fotos' | 'detalhes';
+  // Controle de gaveta retrátil da linha ('nenhuma' | 'fotos' | 'detalhes' | 'raiox')
+  gaveta_ativa?: 'nenhuma' | 'fotos' | 'detalhes' | 'raiox';
 }
 
 export const BOUTIQUE_FABRIC_SUGGESTIONS = [
@@ -247,6 +252,7 @@ export function ProductBatchImportModal({
   const [creatingSubcategoryForRowId, setCreatingSubcategoryForRowId] = useState<string | null>(null);
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [uploadingPhotoRowId, setUploadingPhotoRowId] = useState<string | null>(null);
+  const [photoFilterColorByRow, setPhotoFilterColorByRow] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -311,16 +317,28 @@ export function ProductBatchImportModal({
 
       const safeFoto = getSafeProductThumbnail(p.foto_principal, p.midias) || '/products/01-casaco-tricot/marrom.jpg';
 
-      const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => ({
-        id: m.id,
-        url: m.url,
-        label: (m.label || '').replace(/\[OCULTO\]/g, '').trim() || `Foto ${idx + 1}`,
-        is_cover: p.foto_principal === m.url || idx === 0,
-        oculto: Boolean(m.label && m.label.includes('[OCULTO]'))
-      }));
+      const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => {
+        const parsed = parseMediaColor(m.label);
+        const isCover = p.foto_principal === m.url || idx === 0;
+        return {
+          id: m.id,
+          url: m.url,
+          label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+          is_cover: isCover,
+          oculto: parsed.isHidden,
+          cor_vinculada: parsed.colorName,
+          is_color_cover: parsed.isColorCover
+        };
+      });
       if (pFotos.length === 0 && safeFoto) {
         pFotos.push({ url: safeFoto, label: 'Capa Principal', is_cover: true, oculto: false });
       }
+
+      const pPrecosDiff =
+        p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes)
+          ? (p.detalhes.precos_diferenciados || {})
+          : {};
+      const temPrecosDiff = Object.keys(pPrecosDiff).length > 0;
 
       initialList.push({
         id: 'row-2',
@@ -342,6 +360,8 @@ export function ProductBatchImportModal({
         foto_url: safeFoto,
         aba_matriz: 'estoque',
         fotos: pFotos,
+        tem_precos_diferenciados: temPrecosDiff,
+        precos_por_variacao: pPrecosDiff,
         gaveta_ativa: 'nenhuma'
       });
     }
@@ -361,6 +381,71 @@ export function ProductBatchImportModal({
       });
     }
   }, [categoriesList]);
+
+  // Sincroniza produtos existentes se carregados após a montagem inicial
+  useEffect(() => {
+    if (existingProducts && existingProducts.length > 0) {
+      setGridRows((prev) => {
+        if (prev.some((r) => r.tipo === 'reposicao' && r.produto_existente_id)) return prev;
+        const p = existingProducts[0];
+        const pCores = Array.from(new Set((p.variacoes || []).map((v) => v.cor_nome))).filter(Boolean);
+        const pTamanhos = Array.from(new Set((p.variacoes || []).map((v) => v.tamanho))).filter(Boolean);
+        const activeCores = pCores.length > 0 ? pCores.slice(0, 2) : ['Preto Clássico'];
+        const activeTams = pTamanhos.length > 0 ? pTamanhos.slice(0, 3) : ['P', 'M', 'G'];
+        const row2Matriz: Record<string, Record<string, number>> = {};
+        let totalLoteInicial = 0;
+        activeCores.forEach((c) => {
+          row2Matriz[c] = {};
+          activeTams.forEach((t) => {
+            row2Matriz[c][t] = 5;
+            totalLoteInicial += 5;
+          });
+        });
+        const safeFoto = getSafeProductThumbnail(p.foto_principal, p.midias) || '/products/01-casaco-tricot/marrom.jpg';
+        const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => {
+          const parsed = parseMediaColor(m.label);
+          const isCover = p.foto_principal === m.url || idx === 0;
+          return {
+            id: m.id,
+            url: m.url,
+            label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+            is_cover: isCover,
+            oculto: parsed.isHidden,
+            cor_vinculada: parsed.colorName,
+            is_color_cover: parsed.isColorCover
+          };
+        });
+        const pPrecosDiff = (p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes)) ? (p.detalhes.precos_diferenciados || {}) : {};
+        return [
+          ...prev,
+          {
+            id: 'row-2',
+            tipo: 'reposicao',
+            produto_existente_id: p.id,
+            nome: p.nome,
+            categoria_id: p.categoria_id || categoriesList[0]?.id || '',
+            subcategoria: p.subcategoria || BOUTIQUE_SUBCATEGORIES[0],
+            tecido: p.tecido || '',
+            descricao: p.descricao || '',
+            cores: activeCores,
+            tamanhos: activeTams,
+            preco: p.preco,
+            preco_promocional: p.preco_promocional || 0,
+            preco_custo: p.preco_custo || 0,
+            quantidade_total_lote: totalLoteInicial,
+            matriz_estoque: row2Matriz,
+            modo_seletor: 'detalhado',
+            foto_url: safeFoto,
+            aba_matriz: 'estoque',
+            fotos: pFotos,
+            tem_precos_diferenciados: Object.keys(pPrecosDiff).length > 0,
+            precos_por_variacao: pPrecosDiff,
+            gaveta_ativa: 'nenhuma'
+          }
+        ];
+      });
+    }
+  }, [existingProducts, categoriesList]);
 
   // Filtro de produtos para o Catálogo Visual Picker (sempre executado antes de qualquer return condicional)
   const filteredCatalogProducts = useMemo(() => {
@@ -514,17 +599,18 @@ export function ProductBatchImportModal({
 
     const safeFoto = getSafeProductThumbnail(prod.foto_principal, prod.midias) || '/products/01-casaco-tricot/marrom.jpg';
 
-    // Mapeia fotos existentes do produto com suporte a [OCULTO]
+    // Mapeia fotos existentes do produto com suporte a [OCULTO], [COR: ...] e [CAPA_COR]
     const fotosExistentes: BatchPhotoItem[] = (prod.midias || []).map((m: any, idx: number) => {
-      const isOculto = Boolean(m.label && m.label.includes('[OCULTO]'));
+      const parsed = parseMediaColor(m.label);
       const isCover = prod.foto_principal === m.url || idx === 0;
-      const cleanLabel = (m.label || '').replace(/\[OCULTO\]/g, '').trim();
       return {
         id: m.id,
         url: m.url,
-        label: cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+        label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
         is_cover: isCover,
-        oculto: isOculto
+        oculto: parsed.isHidden,
+        cor_vinculada: parsed.colorName,
+        is_color_cover: parsed.isColorCover
       };
     });
 
@@ -536,6 +622,12 @@ export function ProductBatchImportModal({
         oculto: false
       });
     }
+
+    const precosDiff =
+      prod.detalhes && typeof prod.detalhes === 'object' && !Array.isArray(prod.detalhes)
+        ? (prod.detalhes.precos_diferenciados || {})
+        : {};
+    const temPrecosDiff = Object.keys(precosDiff).length > 0;
 
     setGridRows((prev) =>
       prev.map((r) => {
@@ -559,6 +651,8 @@ export function ProductBatchImportModal({
           foto_url: safeFoto,
           modo_seletor: 'detalhado',
           fotos: fotosExistentes,
+          tem_precos_diferenciados: temPrecosDiff,
+          precos_por_variacao: precosDiff,
           gaveta_ativa: 'nenhuma'
         };
       })
@@ -1015,8 +1109,8 @@ export function ProductBatchImportModal({
     setNewSubcategoryName('');
   };
 
-  // Alternar gaveta retrátil da linha ('fotos' ou 'detalhes')
-  const handleToggleRowDrawer = (rowId: string, drawer: 'fotos' | 'detalhes') => {
+  // Alternar gaveta retrátil da linha ('fotos', 'detalhes' ou 'raiox')
+  const handleToggleRowDrawer = (rowId: string, drawer: 'fotos' | 'detalhes' | 'raiox') => {
     setGridRows((prev) =>
       prev.map((r) => {
         if (r.id !== rowId) return r;
@@ -1026,6 +1120,157 @@ export function ProductBatchImportModal({
         };
       })
     );
+  };
+
+  // Definir cor vinculada a uma foto
+  const handleSetPhotoColor = (rowId: string, photoIdx: number, corNome?: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const currentFotos = [...(r.fotos || [])];
+        if (!currentFotos[photoIdx]) return r;
+        currentFotos[photoIdx] = {
+          ...currentFotos[photoIdx],
+          cor_vinculada: corNome || undefined,
+          is_color_cover: corNome ? currentFotos[photoIdx].is_color_cover : false
+        };
+        return {
+          ...r,
+          fotos: currentFotos
+        };
+      })
+    );
+  };
+
+  // Definir foto como Capa da Cor específica
+  const handleSetColorCoverPhoto = (rowId: string, photoIdx: number) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const currentFotos = [...(r.fotos || [])];
+        const target = currentFotos[photoIdx];
+        if (!target || !target.cor_vinculada) return r;
+        const cor = target.cor_vinculada;
+
+        const updated = currentFotos.map((f, idx) => {
+          if (f.cor_vinculada !== cor) return f;
+          return {
+            ...f,
+            is_color_cover: idx === photoIdx
+          };
+        });
+
+        return {
+          ...r,
+          fotos: updated
+        };
+      })
+    );
+  };
+
+  // Replicar Preço Base para todas as variações da peça
+  const handleReplicarPrecoBaseParaTodos = (rowId: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const newPrecos: Record<string, PrecoVariavelItem> = {};
+        r.cores.forEach((cor) => {
+          r.tamanhos.forEach((tam) => {
+            const key = `${cor}_${tam}`;
+            newPrecos[key] = {
+              preco: r.preco,
+              preco_promocional: r.preco_promocional || undefined,
+              preco_custo: r.preco_custo || undefined
+            };
+          });
+        });
+        return {
+          ...r,
+          tem_precos_diferenciados: true,
+          precos_por_variacao: newPrecos
+        };
+      })
+    );
+    setSuccessGlobal('Preço base replicado para todas as combinações de cor e tamanho!');
+    setTimeout(() => setSuccessGlobal(null), 3000);
+  };
+
+  // Limpar Diferenciações de Preço (todas as variações herdam o preço base)
+  const handleLimparPrecosDiferenciados = (rowId: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          tem_precos_diferenciados: false,
+          precos_por_variacao: {}
+        };
+      })
+    );
+    setSuccessGlobal('Preços diferenciados limpos. Todas as variações agora herdam o preço base.');
+    setTimeout(() => setSuccessGlobal(null), 3000);
+  };
+
+  // Replicar Preço do 1º tamanho de uma cor para todos os tamanhos daquela cor
+  const handleReplicarPrecoNaCor = (rowId: string, corNome: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const primeiroTam = r.tamanhos[0];
+        if (!primeiroTam) return r;
+        const sourceKey = `${corNome}_${primeiroTam}`;
+        const sourceItem = r.precos_por_variacao?.[sourceKey] || {
+          preco: r.preco,
+          preco_promocional: r.preco_promocional,
+          preco_custo: r.preco_custo
+        };
+
+        const newPrecos = { ...(r.precos_por_variacao || {}) };
+        r.tamanhos.forEach((tam) => {
+          const key = `${corNome}_${tam}`;
+          newPrecos[key] = { ...sourceItem };
+        });
+
+        return {
+          ...r,
+          tem_precos_diferenciados: true,
+          precos_por_variacao: newPrecos
+        };
+      })
+    );
+    setSuccessGlobal(`Preços do primeiro tamanho aplicados a todos os tamanhos da cor ${corNome}!`);
+    setTimeout(() => setSuccessGlobal(null), 3000);
+  };
+
+  // Replicar Preço de um tamanho específico para todas as cores
+  const handleReplicarPrecoNoTamanho = (rowId: string, tamanho: string) => {
+    setGridRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const primeiraCor = r.cores[0];
+        if (!primeiraCor) return r;
+        const sourceKey = `${primeiraCor}_${tamanho}`;
+        const sourceItem = r.precos_por_variacao?.[sourceKey] || {
+          preco: r.preco,
+          preco_promocional: r.preco_promocional,
+          preco_custo: r.preco_custo
+        };
+
+        const newPrecos = { ...(r.precos_por_variacao || {}) };
+        r.cores.forEach((cor) => {
+          const key = `${cor}_${tamanho}`;
+          newPrecos[key] = { ...sourceItem };
+        });
+
+        return {
+          ...r,
+          tem_precos_diferenciados: true,
+          precos_por_variacao: newPrecos
+        };
+      })
+    );
+    setSuccessGlobal(`Preço do tamanho ${tamanho} replicado em todas as cores!`);
+    setTimeout(() => setSuccessGlobal(null), 3000);
   };
 
   // Alternar status Oculto / Visível de uma foto
@@ -1307,21 +1552,39 @@ export function ProductBatchImportModal({
             }
           }
 
+          // Mapeia fotos por cor para acesso ultrarrápido na vitrine pública
+          const fotosPorCorReposicao: Record<string, string> = {};
+          (row.fotos || []).forEach((f) => {
+            if (f.cor_vinculada && !f.oculto) {
+              if (!fotosPorCorReposicao[f.cor_vinculada] || f.is_color_cover) {
+                fotosPorCorReposicao[f.cor_vinculada] = f.url;
+              }
+            }
+          });
+
           // Se houver fotos manipuladas pelo usuário na reposição, sincroniza midias_produto
           if (row.fotos && row.fotos.length > 0) {
             await supabase.from('midias_produto').delete().eq('produto_id', prodId);
-            const midiasToInsert = row.fotos.map((f, idx) => ({
-              loja_id: lojaId,
-              produto_id: prodId,
-              tipo: 'image',
-              url: f.url,
-              label: f.oculto
-                ? `[OCULTO] ${f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`)}`
-                : f.is_cover
-                ? 'Capa Principal'
-                : f.label || `Foto ${idx + 1}`,
-              display_order: idx
-            }));
+            const midiasToInsert = row.fotos.map((f, idx) => {
+              let cleanLabel = (f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`))
+                .replace(/\[OCULTO\]/gi, '')
+                .replace(/\[CAPA_COR\]/gi, '')
+                .replace(/\[COR:\s*[^\]]+\]/gi, '')
+                .trim();
+              let labelFinal = cleanLabel || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`);
+              if (f.oculto) labelFinal = `[OCULTO] ${labelFinal}`;
+              if (f.cor_vinculada) labelFinal = `[COR: ${f.cor_vinculada}] ${labelFinal}`;
+              if (f.is_color_cover) labelFinal = `[CAPA_COR] ${labelFinal}`;
+
+              return {
+                loja_id: lojaId,
+                produto_id: prodId,
+                tipo: 'image',
+                url: f.url,
+                label: labelFinal,
+                display_order: idx
+              };
+            });
             await supabase.from('midias_produto').insert(midiasToInsert);
           }
 
@@ -1340,7 +1603,8 @@ export function ProductBatchImportModal({
           const novoTotal = (prodCurrent?.estoque_total || 0) + addedStock;
           const updatedDetalhes = {
             ...(prodCurrent?.detalhes || {}),
-            precos_diferenciados: row.tem_precos_diferenciados ? row.precos_por_variacao : null
+            precos_diferenciados: row.tem_precos_diferenciados ? row.precos_por_variacao : null,
+            fotos_por_cor: Object.keys(fotosPorCorReposicao).length > 0 ? fotosPorCorReposicao : undefined
           };
 
           const prodUpdatePayload: any = {
@@ -1387,6 +1651,24 @@ export function ProductBatchImportModal({
             (row.fotos || []).find((f) => !f.oculto) ||
             (row.fotos || [])[0];
 
+          // Mapeia fotos por cor para acesso ultrarrápido na vitrine pública
+          const fotosPorCorNova: Record<string, string> = {};
+          (row.fotos || []).forEach((f) => {
+            if (f.cor_vinculada && !f.oculto) {
+              if (!fotosPorCorNova[f.cor_vinculada] || f.is_color_cover) {
+                fotosPorCorNova[f.cor_vinculada] = f.url;
+              }
+            }
+          });
+
+          const novaPecaDetalhes: any = {};
+          if (row.tem_precos_diferenciados) {
+            novaPecaDetalhes.precos_diferenciados = row.precos_por_variacao;
+          }
+          if (Object.keys(fotosPorCorNova).length > 0) {
+            novaPecaDetalhes.fotos_por_cor = fotosPorCorNova;
+          }
+
           const { data: newProd, error: prodErr } = await supabase
             .from('produtos')
             .insert({
@@ -1402,7 +1684,7 @@ export function ProductBatchImportModal({
               preco_custo: row.preco_custo || null,
               estoque_total: totalEstoqueNovaPeca,
               ativo: true,
-              detalhes: row.tem_precos_diferenciados ? { precos_diferenciados: row.precos_por_variacao } : {},
+              detalhes: novaPecaDetalhes,
               foto_principal: activeCover?.url || row.foto_url || null
             })
             .select('id')
@@ -1416,18 +1698,26 @@ export function ProductBatchImportModal({
 
           // Insere fotos na tabela midias_produto
           if (row.fotos && row.fotos.length > 0) {
-            const midiasToInsert = row.fotos.map((f, idx) => ({
-              loja_id: lojaId,
-              produto_id: produtoId,
-              tipo: 'image',
-              url: f.url,
-              label: f.oculto
-                ? `[OCULTO] ${f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`)}`
-                : f.is_cover
-                ? 'Capa Principal'
-                : f.label || `Foto ${idx + 1}`,
-              display_order: idx
-            }));
+            const midiasToInsert = row.fotos.map((f, idx) => {
+              let cleanLabel = (f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`))
+                .replace(/\[OCULTO\]/gi, '')
+                .replace(/\[CAPA_COR\]/gi, '')
+                .replace(/\[COR:\s*[^\]]+\]/gi, '')
+                .trim();
+              let labelFinal = cleanLabel || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`);
+              if (f.oculto) labelFinal = `[OCULTO] ${labelFinal}`;
+              if (f.cor_vinculada) labelFinal = `[COR: ${f.cor_vinculada}] ${labelFinal}`;
+              if (f.is_color_cover) labelFinal = `[CAPA_COR] ${labelFinal}`;
+
+              return {
+                loja_id: lojaId,
+                produto_id: produtoId,
+                tipo: 'image',
+                url: f.url,
+                label: labelFinal,
+                display_order: idx
+              };
+            });
             await supabase.from('midias_produto').insert(midiasToInsert);
           }
         }
@@ -1955,8 +2245,25 @@ export function ProductBatchImportModal({
                             </div>
                           </div>
 
-                          {/* Gavetas Retráteis: Fotos e Detalhes */}
+                          {/* Gavetas Retráteis: Fotos, Detalhes e Raio-X do Estoque */}
                           <div className="flex items-center gap-2">
+                            {/* Botão Raio-X do Estoque Atual (apenas para reposição de peça existente) */}
+                            {isReposicao && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleRowDrawer(row.id, 'raiox')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                                  row.gaveta_ativa === 'raiox'
+                                    ? 'bg-blue-600 text-white ring-2 ring-blue-500/30'
+                                    : 'bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200'
+                                }`}
+                                title="Visualizar Raio-X completo: estoque atual no banco por cor e tamanho, tags e projeção matemática com a remessa"
+                              >
+                                <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Raio-X Estoque ({prodOriginal?.estoque_total ?? 0} un)</span>
+                              </button>
+                            )}
+
                             {/* Gaveta de Fotos */}
                             {(() => {
                               const fotosCount = row.fotos?.length || 0;
@@ -2031,7 +2338,7 @@ export function ProductBatchImportModal({
                                   </span>
                                 </h5>
                                 <p className="text-[11px] text-slate-500">
-                                  Faça upload de fotos locais (R2) ou insira links. Use o botão <strong>Ocultar</strong> para pausar fotos de cores esgotadas sem precisar excluí-las.
+                                  Vincule fotos às cores específicas para que a vitrine troque a imagem automaticamente quando o cliente selecionar uma cor. Use <strong>Ocultar</strong> para pausar fotos sem excluí-las.
                                 </p>
                               </div>
                             </div>
@@ -2077,6 +2384,64 @@ export function ProductBatchImportModal({
                             </div>
                           </div>
 
+                          {/* Barra de Filtro de Fotos por Cor */}
+                          {row.fotos && row.fotos.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-amber-200/50">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 mr-1 flex items-center gap-1">
+                                🎨 Filtrar por Cor:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setPhotoFilterColorByRow((prev) => ({ ...prev, [row.id]: 'todas' }))}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                                  (photoFilterColorByRow[row.id] || 'todas') === 'todas'
+                                    ? 'bg-amber-600 text-white shadow-2xs'
+                                    : 'bg-white text-slate-700 hover:bg-amber-100/60 border border-amber-200'
+                                }`}
+                              >
+                                Todas ({row.fotos.length})
+                              </button>
+                              {row.cores.map((c) => {
+                                const countCor = (row.fotos || []).filter(
+                                  (f) => f.cor_vinculada?.toLowerCase() === c.toLowerCase()
+                                ).length;
+                                const isSelected = photoFilterColorByRow[row.id]?.toLowerCase() === c.toLowerCase();
+                                return (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setPhotoFilterColorByRow((prev) => ({ ...prev, [row.id]: c }))}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-amber-600 text-white shadow-2xs'
+                                        : 'bg-white text-slate-700 hover:bg-amber-100/60 border border-amber-200'
+                                    }`}
+                                  >
+                                    {c} ({countCor})
+                                  </button>
+                                );
+                              })}
+                              {(() => {
+                                const countSemCor = (row.fotos || []).filter((f) => !f.cor_vinculada).length;
+                                if (countSemCor === 0) return null;
+                                const isSelected = photoFilterColorByRow[row.id] === '__sem_cor__';
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPhotoFilterColorByRow((prev) => ({ ...prev, [row.id]: '__sem_cor__' }))}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-slate-700 text-white shadow-2xs'
+                                        : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'
+                                    }`}
+                                  >
+                                    Sem Cor ({countSemCor})
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          )}
+
                           {/* Grid de Fotos */}
                           {(!row.fotos || row.fotos.length === 0) ? (
                             <div className="py-6 border-2 border-dashed border-amber-200/80 rounded-xl text-center space-y-1.5 bg-white/60">
@@ -2087,87 +2452,153 @@ export function ProductBatchImportModal({
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-                              {row.fotos.map((foto, fIdx) => (
-                                <div
-                                  key={foto.id || fIdx}
-                                  className={`relative group rounded-xl border overflow-hidden bg-white shadow-2xs transition-all ${
-                                    foto.oculto
-                                      ? 'border-slate-300 opacity-60 grayscale-50 bg-slate-100'
-                                      : foto.is_cover
-                                      ? 'border-amber-500 ring-2 ring-amber-500/20'
-                                      : 'border-slate-200 hover:border-slate-300'
-                                  }`}
-                                >
-                                  {/* Imagem */}
-                                  <div className="aspect-square w-full bg-slate-100 relative">
-                                    <img
-                                      src={foto.url}
-                                      alt={foto.label || `Foto ${fIdx + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    {/* Badge Capa */}
-                                    {foto.is_cover && (
-                                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-amber-500 text-slate-950 font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
-                                        <Star className="w-2.5 h-2.5 fill-current" /> Capa
-                                      </span>
-                                    )}
-                                    {/* Badge Oculta */}
-                                    {foto.oculto && (
-                                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-rose-600 text-white font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
-                                        <EyeOff className="w-2.5 h-2.5" /> Oculta
-                                      </span>
-                                    )}
-                                  </div>
+                              {(() => {
+                                const activeFilter = photoFilterColorByRow[row.id] || 'todas';
+                                const filtered = (row.fotos || [])
+                                  .map((foto, originalIdx) => ({ foto, originalIdx }))
+                                  .filter(({ foto }) => {
+                                    if (activeFilter === 'todas') return true;
+                                    if (activeFilter === '__sem_cor__') return !foto.cor_vinculada;
+                                    return foto.cor_vinculada?.toLowerCase() === activeFilter.toLowerCase();
+                                  });
 
-                                  {/* Barra de Ações Rápidas da Foto */}
-                                  <div className="p-1.5 bg-white flex items-center justify-between gap-1 border-t border-slate-100">
-                                    {/* Botão Capa */}
-                                    {!foto.is_cover && !foto.oculto && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSetCoverPhoto(row.id, fIdx)}
-                                        className="text-[10px] font-semibold text-slate-600 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-0.5"
-                                        title="Definir como Capa Principal"
-                                      >
-                                        <Star className="w-3 h-3" /> Tornar Capa
-                                      </button>
-                                    )}
-                                    {foto.is_cover && (
-                                      <span className="text-[10px] font-bold text-amber-600">⭐ Principal</span>
-                                    )}
+                                if (filtered.length === 0) {
+                                  return (
+                                    <div className="col-span-full py-4 text-center text-xs text-slate-500 bg-white/50 rounded-lg">
+                                      Nenhuma foto vinculada à cor "{activeFilter}". Selecione "Todas" para ver o acervo completo.
+                                    </div>
+                                  );
+                                }
 
-                                    <div className="flex items-center gap-0.5 ml-auto">
-                                      {/* Alternar Ocultar / Reexibir */}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleTogglePhotoOculto(row.id, fIdx)}
-                                        className={`p-1 rounded-md transition-colors cursor-pointer ${
-                                          foto.oculto
-                                            ? 'text-rose-600 hover:bg-rose-50'
-                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                                        }`}
-                                        title={
-                                          foto.oculto
-                                            ? 'Foto oculta do catálogo. Clique para reexibir na vitrine.'
-                                            : 'Ocultar foto do catálogo (ex: cor esgotada temporariamente).'
-                                        }
-                                      >
-                                        {foto.oculto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                      </button>
+                                return filtered.map(({ foto, originalIdx }) => (
+                                  <div
+                                    key={foto.id || originalIdx}
+                                    className={`relative group rounded-xl border overflow-hidden bg-white shadow-2xs transition-all flex flex-col justify-between ${
+                                      foto.oculto
+                                        ? 'border-slate-300 opacity-60 grayscale-50 bg-slate-100'
+                                        : foto.is_cover
+                                        ? 'border-amber-500 ring-2 ring-amber-500/20'
+                                        : 'border-slate-200 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    {/* Imagem */}
+                                    <div className="aspect-square w-full bg-slate-100 relative">
+                                      <img
+                                        src={foto.url}
+                                        alt={foto.label || `Foto ${originalIdx + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      {/* Badge Capa Geral */}
+                                      {foto.is_cover && (
+                                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-amber-500 text-slate-950 font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
+                                          <Star className="w-2.5 h-2.5 fill-current" /> Capa Geral
+                                        </span>
+                                      )}
+                                      {/* Badge Oculta */}
+                                      {foto.oculto && (
+                                        <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-rose-600 text-white font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">
+                                          <EyeOff className="w-2.5 h-2.5" /> Oculta
+                                        </span>
+                                      )}
+                                      {/* Badge Cor Vinculada */}
+                                      {foto.cor_vinculada && (
+                                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-slate-900/80 backdrop-blur-xs text-white font-semibold text-[8.5px] rounded-md truncate max-w-[92%] flex items-center gap-1 shadow-xs">
+                                          <span>🎨 {foto.cor_vinculada}</span>
+                                          {foto.is_color_cover && <span className="text-amber-400">★</span>}
+                                        </span>
+                                      )}
+                                    </div>
 
-                                      {/* Excluir Foto */}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeletePhoto(row.id, fIdx)}
-                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                                        title="Excluir foto permanentemente"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
+                                    {/* Configuração de Vínculo de Cor & Capa da Cor */}
+                                    <div className="p-1.5 bg-slate-50/90 border-t border-slate-100 space-y-1">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[9px] font-bold text-slate-500 shrink-0">Cor:</span>
+                                        <select
+                                          value={foto.cor_vinculada || ''}
+                                          onChange={(e) =>
+                                            handleSetPhotoColor(row.id, originalIdx, e.target.value || undefined)
+                                          }
+                                          className="w-full text-[10px] py-0.5 px-1 bg-white border border-slate-200 rounded text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 truncate"
+                                        >
+                                          <option value="">(Geral / Todas)</option>
+                                          {row.cores.map((c) => (
+                                            <option key={c} value={c}>
+                                              {c}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+
+                                      {foto.cor_vinculada && (
+                                        <div className="flex items-center justify-between text-[9px] pt-0.5">
+                                          {foto.is_color_cover ? (
+                                            <span className="font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                                              ⭐ Capa da Cor
+                                            </span>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSetColorCoverPhoto(row.id, originalIdx)}
+                                              className="text-slate-600 hover:text-amber-700 hover:underline cursor-pointer flex items-center gap-0.5"
+                                              title={`Definir como a foto principal da cor ${foto.cor_vinculada} na vitrine`}
+                                            >
+                                              <Star className="w-2.5 h-2.5" /> Tornar Capa da Cor
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Barra de Ações Rápidas da Foto */}
+                                    <div className="p-1.5 bg-white flex items-center justify-between gap-1 border-t border-slate-100">
+                                      {/* Botão Capa Geral */}
+                                      {!foto.is_cover && !foto.oculto && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSetCoverPhoto(row.id, originalIdx)}
+                                          className="text-[10px] font-semibold text-slate-600 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-0.5"
+                                          title="Definir como Capa Geral Principal do produto"
+                                        >
+                                          <Star className="w-3 h-3" /> Capa Geral
+                                        </button>
+                                      )}
+                                      {foto.is_cover && (
+                                        <span className="text-[10px] font-bold text-amber-600">⭐ Principal</span>
+                                      )}
+
+                                      <div className="flex items-center gap-0.5 ml-auto">
+                                        {/* Alternar Ocultar / Reexibir */}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTogglePhotoOculto(row.id, originalIdx)}
+                                          className={`p-1 rounded-md transition-colors cursor-pointer ${
+                                            foto.oculto
+                                              ? 'text-rose-600 hover:bg-rose-50'
+                                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                                          }`}
+                                          title={
+                                            foto.oculto
+                                              ? 'Foto oculta do catálogo. Clique para reexibir na vitrine.'
+                                              : 'Ocultar foto do catálogo (ex: cor esgotada temporariamente).'
+                                          }
+                                        >
+                                          {foto.oculto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                        </button>
+
+                                        {/* Excluir Foto */}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeletePhoto(row.id, originalIdx)}
+                                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                          title="Excluir foto permanentemente"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ));
+                              })()}
                             </div>
                           )}
                         </div>
@@ -2246,6 +2677,190 @@ export function ProductBatchImportModal({
                                 className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"
                               />
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* GAVETA DE RAIO-X DO ESTOQUE ATUAL & HISTÓRICO NO BANCO */}
+                      {row.gaveta_ativa === 'raiox' && prodOriginal && (
+                        <div className="p-4 bg-blue-50/50 border-b border-blue-200/80 animate-in fade-in duration-150 space-y-3.5">
+                          {/* Cabeçalho do Raio-X */}
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                                <BarChart3 className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h5 className="text-xs font-bold text-slate-900 tracking-tight">
+                                    Raio-X de Estoque: {prodOriginal.nome}
+                                  </h5>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-100 text-blue-900">
+                                    {prodOriginal.estoque_total} un no banco
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-600">
+                                  Distribuição em tempo real das unidades por cor e tamanho, tags ativas e projeção com a remessa.
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRowDrawer(row.id, 'raiox')}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-blue-100/60 rounded-lg transition-colors cursor-pointer"
+                              title="Fechar painel Raio-X"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Pílulas de Status e Tags Ativas */}
+                          <div className="flex flex-wrap items-center gap-2 bg-white/80 p-2.5 rounded-xl border border-blue-200/60 text-xs">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1">
+                              <Activity className="w-3.5 h-3.5 text-blue-600" />
+                              Tags & Atributos Ativos:
+                            </span>
+
+                            {/* Tag de Estoque Crítico ou Saudável */}
+                            {prodOriginal.estoque_total <= 0 ? (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center gap-1">
+                                🚫 Esgotado no Banco
+                              </span>
+                            ) : prodOriginal.estoque_total <= 3 ? (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] flex items-center gap-1">
+                                ⚡ Últimas {prodOriginal.estoque_total} Peças
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-bold text-[10px] flex items-center gap-1">
+                                ✓ Estoque Saudável ({prodOriginal.estoque_total} un)
+                              </span>
+                            )}
+
+                            {/* Tag Promoção */}
+                            {prodOriginal.preco_promocional && prodOriginal.preco_promocional > 0 && (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[10px] flex items-center gap-1">
+                                🏷️ Em Promoção (R$ {formatBRL(prodOriginal.preco_promocional)})
+                              </span>
+                            )}
+
+                            {/* Tag Tecido */}
+                            {prodOriginal.tecido && (
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[10px] flex items-center gap-1">
+                                🧵 Tecido: {prodOriginal.tecido}
+                              </span>
+                            )}
+
+                            {/* Categoria / Subcategoria */}
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] flex items-center gap-1">
+                              📂 {prodOriginal.categoria_nome || 'Geral'} {prodOriginal.subcategoria ? `> ${prodOriginal.subcategoria}` : ''}
+                            </span>
+
+                            {/* Preço de Venda Base Cadastrado */}
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-900 font-mono font-bold text-[10px]">
+                              Preço Base Banco: R$ {formatBRL(prodOriginal.preco)}
+                            </span>
+                          </div>
+
+                          {/* Tabela de Alocação Atual × Projeção Matemática da Remessa */}
+                          <div className="overflow-x-auto border border-blue-200 rounded-xl bg-white shadow-2xs">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead className="bg-blue-100/70 text-blue-950 font-bold uppercase text-[10px] border-b border-blue-200">
+                                <tr>
+                                  <th className="p-2.5 min-w-[130px]">Cor Cadastrada</th>
+                                  {row.tamanhos.map((tam) => (
+                                    <th key={tam} className="p-2.5 text-center min-w-[90px]">
+                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam}
+                                    </th>
+                                  ))}
+                                  <th className="p-2.5 text-center min-w-[110px]">Saldo Atual</th>
+                                  <th className="p-2.5 text-center min-w-[120px]">Novo Saldo Final</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-blue-50">
+                                {row.cores.map((corNome) => {
+                                  let totalCorAtual = 0;
+                                  let totalCorRemessa = 0;
+
+                                  const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
+                                    (c) => c.nome.toLowerCase() === corNome.toLowerCase()
+                                  );
+                                  const hex = matchedColor ? matchedColor.hex : '#1A1918';
+
+                                  return (
+                                    <tr key={corNome} className="hover:bg-blue-50/30 transition-colors">
+                                      <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
+                                        <span
+                                          className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span className="truncate">{corNome}</span>
+                                      </td>
+
+                                      {row.tamanhos.map((tam) => {
+                                        const qtdAtual = getEstoqueAtualVariacao(prodOriginal.id, corNome, tam);
+                                        const qtdNova = row.matriz_estoque[corNome]?.[tam] || 0;
+                                        const saldoFinal = qtdAtual + qtdNova;
+
+                                        totalCorAtual += qtdAtual;
+                                        totalCorRemessa += qtdNova;
+
+                                        return (
+                                          <td key={tam} className="p-2 text-center font-mono">
+                                            <div className="flex flex-col items-center gap-0.5">
+                                              <span
+                                                className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                                  qtdAtual === 0
+                                                    ? 'bg-rose-100 text-rose-700'
+                                                    : qtdAtual <= 2
+                                                    ? 'bg-amber-100 text-amber-800'
+                                                    : 'bg-emerald-100 text-emerald-800'
+                                                }`}
+                                              >
+                                                Atual: {qtdAtual}
+                                              </span>
+                                              {qtdNova > 0 && (
+                                                <span className="text-[10px] font-bold text-blue-700">
+                                                  +{qtdNova} un
+                                                </span>
+                                              )}
+                                              <span className="text-[9px] text-slate-400 border-t border-slate-100 pt-0.5 w-full">
+                                                = {saldoFinal} un
+                                              </span>
+                                            </div>
+                                          </td>
+                                        );
+                                      })}
+
+                                      <td className="p-2.5 text-center font-mono font-bold text-xs text-slate-700">
+                                        <span className="px-2 py-0.5 bg-slate-100 rounded-md">
+                                          {totalCorAtual} un
+                                        </span>
+                                      </td>
+
+                                      <td className="p-2.5 text-center font-mono font-bold text-xs text-blue-900">
+                                        <span className="px-2 py-0.5 bg-blue-100 rounded-md">
+                                          {totalCorAtual + totalCorRemessa} un
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot className="bg-blue-50/80 border-t border-blue-200 font-bold text-[11px] text-blue-950">
+                                <tr>
+                                  <td className="p-2.5 text-slate-600 uppercase tracking-wider">
+                                    Totais Consolidados:
+                                  </td>
+                                  <td colSpan={row.tamanhos.length} className="p-2.5 text-right font-sans text-xs text-slate-600">
+                                    Estoque Atual no Banco: <strong>{prodOriginal.estoque_total} un</strong> | Nova Remessa: <strong>+{metrics.totalAlocado} un</strong>
+                                  </td>
+                                  <td colSpan={2} className="p-2.5 text-center font-mono text-xs text-emerald-900 bg-emerald-50">
+                                    Novo Estoque Projetado: <strong>{(prodOriginal.estoque_total || 0) + metrics.totalAlocado} un</strong>
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
                           </div>
                         </div>
                       )}
@@ -2795,116 +3410,197 @@ export function ProductBatchImportModal({
                           </div>
                         ) : (
                           /* Visão 2: Matriz de Precificação Diferenciada por Variação */
-                          <div className="overflow-x-auto border border-amber-200 rounded-xl bg-amber-50/20">
-                            <table className="w-full text-left border-collapse text-xs">
-                              <thead className="bg-amber-100/60 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
-                                <tr>
-                                  <th className="p-2.5 min-w-[140px]">Cor</th>
-                                  {row.tamanhos.map((tam) => (
-                                    <th key={tam} className="p-2.5 text-center min-w-[120px]">
-                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
-                                    </th>
-                                  ))}
-                                  <th className="p-2.5 text-center min-w-[140px]">Ação Rápida</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-amber-100 bg-white">
-                                {row.cores.map((corNome) => {
-                                  const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
-                                    (c) => c.nome.toLowerCase() === corNome.toLowerCase()
-                                  );
-                                  const hex = matchedColor ? matchedColor.hex : '#1A1918';
+                          <div className="space-y-2.5">
+                            {/* Barra de Ferramentas e Atalhos Globais de Preço */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-100/50 border border-amber-200 rounded-xl">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-amber-700" />
+                                <span className="text-xs font-bold text-amber-950">
+                                  Precificação Granular por Cor × Tamanho
+                                </span>
+                                <span className="text-[11px] text-amber-800">
+                                  (Altere individualmente ou use os botões rápidos abaixo)
+                                </span>
+                              </div>
 
-                                  return (
-                                    <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
-                                      <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
-                                        <span
-                                          className="w-3 h-3 rounded-full border border-black/20 shrink-0"
-                                          style={{ backgroundColor: hex }}
-                                        />
-                                        <span>{corNome}</span>
-                                      </td>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReplicarPrecoBaseParaTodos(row.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                                  title="Define o Preço Base da peça em todas as variações"
+                                >
+                                  ⚡ Replicar Base (R$ {formatBRL(row.preco)}) para Todos
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLimparPrecosDiferenciados(row.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                                  title="Remove todas as regras granulares e faz todos herdarem o preço base"
+                                >
+                                  🔄 Restaurar Herança Padrão
+                                </button>
+                              </div>
+                            </div>
 
-                                      {row.tamanhos.map((tam) => {
-                                        const key = `${corNome}_${tam}`;
-                                        const customItem = row.precos_por_variacao?.[key];
-                                        const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : row.preco;
-                                        const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (row.preco_promocional || 0);
+                            <div className="overflow-x-auto border border-amber-200 rounded-xl bg-amber-50/20">
+                              <table className="w-full text-left border-collapse text-xs">
+                                <thead className="bg-amber-100/70 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
+                                  <tr>
+                                    <th className="p-2.5 min-w-[140px]">Cor</th>
+                                    {row.tamanhos.map((tam) => (
+                                      <th key={tam} className="p-2.5 text-center min-w-[130px]">
+                                        Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
+                                      </th>
+                                    ))}
+                                    <th className="p-2.5 text-center min-w-[150px]">Ações da Cor</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-amber-100 bg-white">
+                                  {row.cores.map((corNome) => {
+                                    const matchedColor = BOUTIQUE_OFFICIAL_COLORS.find(
+                                      (c) => c.nome.toLowerCase() === corNome.toLowerCase()
+                                    );
+                                    const hex = matchedColor ? matchedColor.hex : '#1A1918';
 
-                                        return (
-                                          <td key={tam} className="p-2 text-center">
-                                            <div className="space-y-1">
-                                              {/* Preço de Venda do Tamanho */}
-                                              <div className="relative">
-                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  min="0"
-                                                  value={precoVendaAtual || ''}
-                                                  onChange={(e) =>
-                                                    handleUpdateCellPrice(
-                                                      row.id,
-                                                      corNome,
-                                                      tam,
-                                                      'preco',
-                                                      parseFloat(e.target.value) || 0
-                                                    )
-                                                  }
-                                                  className="w-24 pl-5 pr-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                                  title="Preço de venda específico para esta combinação"
-                                                />
+                                    return (
+                                      <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
+                                        <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
+                                          <span
+                                            className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                            style={{ backgroundColor: hex }}
+                                          />
+                                          <span className="truncate">{corNome}</span>
+                                        </td>
+
+                                        {row.tamanhos.map((tam) => {
+                                          const key = `${corNome}_${tam}`;
+                                          const customItem = row.precos_por_variacao?.[key];
+                                          const hasCustom = customItem?.preco !== undefined || customItem?.preco_promocional !== undefined;
+                                          const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : row.preco;
+                                          const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (row.preco_promocional || 0);
+
+                                          return (
+                                            <td key={tam} className="p-2 text-center">
+                                              <div className="space-y-1">
+                                                {/* Preço de Venda do Tamanho */}
+                                                <div className="relative">
+                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
+                                                  <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={precoVendaAtual || ''}
+                                                    onChange={(e) =>
+                                                      handleUpdateCellPrice(
+                                                        row.id,
+                                                        corNome,
+                                                        tam,
+                                                        'preco',
+                                                        parseFloat(e.target.value) || 0
+                                                      )
+                                                    }
+                                                    className={`w-24 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-2xs ${
+                                                      customItem?.preco !== undefined && customItem.preco !== row.preco
+                                                        ? 'bg-amber-100/60 border border-amber-400 text-amber-950 font-black'
+                                                        : 'bg-slate-50 border border-slate-200 text-slate-900'
+                                                    }`}
+                                                    title={`Preço de venda para ${corNome} Tam ${tam}`}
+                                                  />
+                                                </div>
+
+                                                {/* Promoção Específica */}
+                                                <div className="relative">
+                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">R$</span>
+                                                  <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={promoAtual || ''}
+                                                    onChange={(e) =>
+                                                      handleUpdateCellPrice(
+                                                        row.id,
+                                                        corNome,
+                                                        tam,
+                                                        'preco_promocional',
+                                                        parseFloat(e.target.value) || 0
+                                                      )
+                                                    }
+                                                    placeholder="Promoção"
+                                                    className="w-24 pl-5 pr-1.5 py-1 bg-rose-50/40 border border-rose-200 rounded-md text-[11px] font-mono font-bold text-rose-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                                    title={`Preço promocional para ${corNome} Tam ${tam}`}
+                                                  />
+                                                </div>
+
+                                                {/* Badge Herança vs Personalizado */}
+                                                <div className="text-[9px]">
+                                                  {hasCustom ? (
+                                                    <span className="text-amber-700 font-bold">★ Personalizado</span>
+                                                  ) : (
+                                                    <span className="text-slate-400">Herdando base</span>
+                                                  )}
+                                                </div>
                                               </div>
+                                            </td>
+                                          );
+                                        })}
 
-                                              {/* Promoção Específica */}
-                                              <div className="relative">
-                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">R$</span>
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  min="0"
-                                                  value={promoAtual || ''}
-                                                  onChange={(e) =>
-                                                    handleUpdateCellPrice(
-                                                      row.id,
-                                                      corNome,
-                                                      tam,
-                                                      'preco_promocional',
-                                                      parseFloat(e.target.value) || 0
-                                                    )
-                                                  }
-                                                  placeholder="Promoção"
-                                                  className="w-24 pl-5 pr-1.5 py-1 bg-rose-50/40 border border-rose-200 rounded-md text-[11px] font-mono font-bold text-rose-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                                  title="Preço promocional exclusivo para esta combinação"
-                                                />
-                                              </div>
-                                            </div>
-                                          </td>
-                                        );
-                                      })}
+                                        <td className="p-2 text-center">
+                                          <div className="flex flex-col items-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleReplicarPrecoNaCor(row.id, corNome)}
+                                              className="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors"
+                                              title={`Aplica o preço do primeiro tamanho (${row.tamanhos[0]}) em todos os tamanhos da cor ${corNome}`}
+                                            >
+                                              ⚡ Replicar nesta Cor
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                row.tamanhos.forEach((tam) => {
+                                                  handleUpdateCellPrice(row.id, corNome, tam, 'preco', row.preco);
+                                                  handleUpdateCellPrice(row.id, corNome, tam, 'preco_promocional', row.preco_promocional || 0);
+                                                });
+                                                setSuccessGlobal(`Preços base redefinidos para a cor ${corNome}`);
+                                                setTimeout(() => setSuccessGlobal(null), 2500);
+                                              }}
+                                              className="text-[10px] text-slate-500 hover:text-rose-600 hover:underline cursor-pointer"
+                                            >
+                                              Resetar cor para base
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
 
-                                      <td className="p-2 text-center">
+                                {/* Rodapé: Atalhos para Replicar no Tamanho em Todas as Cores */}
+                                <tfoot className="bg-amber-50/80 border-t border-amber-200 font-semibold text-[10px] text-amber-900">
+                                  <tr>
+                                    <td className="p-2.5 uppercase font-bold text-slate-600">
+                                      Atalho Tamanho:
+                                    </td>
+                                    {row.tamanhos.map((tam) => (
+                                      <td key={tam} className="p-2 text-center">
                                         <button
                                           type="button"
-                                          onClick={() => {
-                                            // Aplica os preços base para todos os tamanhos desta cor
-                                            row.tamanhos.forEach((tam) => {
-                                              handleUpdateCellPrice(row.id, corNome, tam, 'preco', row.preco);
-                                              handleUpdateCellPrice(row.id, corNome, tam, 'preco_promocional', row.preco_promocional || 0);
-                                            });
-                                            setSuccessGlobal(`Preços base redefinidos para a cor ${corNome}`);
-                                            setTimeout(() => setSuccessGlobal(null), 2500);
-                                          }}
-                                          className="text-[10px] text-amber-800 hover:underline font-semibold cursor-pointer"
+                                          onClick={() => handleReplicarPrecoNoTamanho(row.id, tam)}
+                                          className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition-colors"
+                                          title={`Replicar o valor do tamanho ${tam} em todas as cores`}
                                         >
-                                          Resetar cor para preço base
+                                          ⚡ Em Todas
                                         </button>
                                       </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                    ))}
+                                    <td className="p-2.5 text-center text-slate-400">
+                                      Coluna inteira
+                                    </td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
                           </div>
                         )}
 
