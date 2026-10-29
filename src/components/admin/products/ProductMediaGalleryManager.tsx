@@ -1,0 +1,578 @@
+'use client';
+
+import React, { useState } from 'react';
+import Image from 'next/image';
+import {
+  Upload,
+  Video,
+  Play,
+  ArrowLeft,
+  ArrowRight,
+  Trash2,
+  Eye,
+  EyeOff,
+  Star,
+  Palette,
+  Smartphone,
+  CheckCircle2,
+  Filter
+} from 'lucide-react';
+import { uploadBrowserFileToR2 } from '@/lib/r2';
+import { parseMediaColor } from '@/lib/products';
+
+export interface FormMediaItem {
+  id?: string;
+  url: string;
+  tipo: 'image' | 'video';
+  label?: string | null;
+  display_order: number;
+}
+
+export interface ProductMediaGalleryManagerProps {
+  mediaList: FormMediaItem[];
+  availableColors: Array<{ nome: string; hex?: string }>;
+  tenantSlug: string;
+  coverIndex?: number;
+  onCoverIndexChange?: (idx: number) => void;
+  onChange: (updated: FormMediaItem[]) => void;
+  onToast?: (msg: string, type?: 'success' | 'error') => void;
+}
+
+export function ProductMediaGalleryManager({
+  mediaList,
+  availableColors,
+  tenantSlug,
+  coverIndex = 0,
+  onCoverIndexChange,
+  onChange,
+  onToast
+}: ProductMediaGalleryManagerProps) {
+  const [uploading, setUploading] = useState(false);
+  const [selectedColorFilter, setSelectedColorFilter] = useState<string>('todas');
+
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
+    if (onToast) onToast(msg, type === 'info' ? 'success' : type);
+  };
+
+  // Helper para construir label preservando tags
+  const buildLabel = (clean: string, colorName?: string, isColorCover?: boolean, isHidden?: boolean) => {
+    let base = clean || 'Foto';
+    const tags: string[] = [];
+    if (colorName) tags.push(`[COR: ${colorName}]`);
+    if (isColorCover) tags.push(`[CAPA_COR]`);
+    if (isHidden) tags.push(`[OCULTO]`);
+    return tags.length > 0 ? `${tags.join(' ')} ${base}` : base;
+  };
+
+  // Upload para Cloudflare R2
+  const handleUploadFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    let successCount = 0;
+    const newItems: FormMediaItem[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(file.name);
+        const folder = isVideo ? 'videos' : 'produtos';
+        const tipo = isVideo ? ('video' as const) : ('image' as const);
+
+        const res = await uploadBrowserFileToR2(file, tenantSlug, folder);
+        if (res.success && res.url) {
+          successCount++;
+          newItems.push({
+            id: `media_${Date.now()}_${i}`,
+            url: res.url,
+            tipo: tipo,
+            label: mediaList.length === 0 && i === 0 ? 'Capa Principal' : `Foto ${mediaList.length + i + 1}`,
+            display_order: mediaList.length + i
+          });
+        }
+      }
+
+      if (newItems.length > 0) {
+        onChange([...mediaList, ...newItems]);
+        showToast(`${successCount} mídia(s) enviada(s) com sucesso para o Cloudflare R2!`);
+      } else {
+        showToast('Nenhuma mídia foi carregada.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado no upload.', 'error');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Reordenar
+  const handleMove = (index: number, direction: 'left' | 'right') => {
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= mediaList.length) return;
+
+    const updated = [...mediaList];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(targetIndex, 0, moved);
+
+    const reordered = updated.map((m, idx) => ({ ...m, display_order: idx }));
+    onChange(reordered);
+    if (onCoverIndexChange) {
+      if (coverIndex === index) onCoverIndexChange(targetIndex);
+      else if (coverIndex === targetIndex) onCoverIndexChange(index);
+    }
+  };
+
+  // Definir Capa Principal geral
+  const handleSetMainCover = (index: number) => {
+    if (onCoverIndexChange) onCoverIndexChange(index);
+
+    const updated = [...mediaList];
+    const [coverItem] = updated.splice(index, 1);
+    updated.unshift(coverItem);
+
+    const reordered = updated.map((m, idx) => ({
+      ...m,
+      display_order: idx
+    }));
+    onChange(reordered);
+    if (onCoverIndexChange) onCoverIndexChange(0);
+    showToast('Foto definida como Capa Principal da vitrine!');
+  };
+
+  // Definir ou Alterar Cor Vinculada
+  const handleSetColor = (index: number, newColor: string) => {
+    const updated = mediaList.map((m, idx) => {
+      if (idx !== index) return m;
+      const parsed = parseMediaColor(m.label || undefined);
+      const colorVal = newColor ? newColor : undefined;
+      // Se desvinculou da cor, remove também isColorCover
+      const isCover = colorVal ? parsed.isColorCover : false;
+      const newLabel = buildLabel(parsed.cleanLabel, colorVal, isCover, parsed.isHidden);
+      return { ...m, label: newLabel };
+    });
+    onChange(updated);
+    showToast(newColor ? `Foto vinculada à cor "${newColor}"!` : 'Vínculo de cor removido.');
+  };
+
+  // Definir Capa da Cor
+  const handleToggleColorCover = (index: number) => {
+    const targetItem = mediaList[index];
+    if (!targetItem) return;
+    const parsedTarget = parseMediaColor(targetItem.label || undefined);
+    if (!parsedTarget.colorName) {
+      showToast('Vincule a foto a uma cor antes de torná-la Capa da Cor.', 'info');
+      return;
+    }
+
+    const corAlvo = parsedTarget.colorName;
+    const nextIsCover = !parsedTarget.isColorCover;
+
+    // Se for se tornar capa, remove [CAPA_COR] das outras fotos da mesma cor
+    const updated = mediaList.map((m, idx) => {
+      const p = parseMediaColor(m.label || undefined);
+      if (idx === index) {
+        return {
+          ...m,
+          label: buildLabel(p.cleanLabel, p.colorName, nextIsCover, p.isHidden)
+        };
+      }
+      if (nextIsCover && p.colorName === corAlvo && p.isColorCover) {
+        return {
+          ...m,
+          label: buildLabel(p.cleanLabel, p.colorName, false, p.isHidden)
+        };
+      }
+      return m;
+    });
+
+    onChange(updated);
+    showToast(
+      nextIsCover
+        ? `Definida como Capa Oficial da cor ${corAlvo} na vitrine!`
+        : `Removido status de capa da cor ${corAlvo}.`
+    );
+  };
+
+  // Ocultar / Desocultar Foto
+  const handleToggleHide = (index: number) => {
+    const targetItem = mediaList[index];
+    if (!targetItem) return;
+    const p = parseMediaColor(targetItem.label || undefined);
+    const nextIsHidden = !p.isHidden;
+
+    const updated = mediaList.map((m, idx) => {
+      if (idx !== index) return m;
+      return {
+        ...m,
+        label: buildLabel(p.cleanLabel, p.colorName, p.isColorCover, nextIsHidden)
+      };
+    });
+    onChange(updated);
+    showToast(
+      nextIsHidden
+        ? 'Foto ocultada da vitrine! (Preservada no banco e Cloudflare R2)'
+        : 'Foto reativada na vitrine da loja!'
+    );
+  };
+
+  // Excluir mídia
+  const handleDelete = (index: number) => {
+    const updated = mediaList.filter((_, idx) => idx !== index).map((m, idx) => ({ ...m, display_order: idx }));
+    onChange(updated);
+    if (onCoverIndexChange && coverIndex >= updated.length) {
+      onCoverIndexChange(0);
+    }
+    showToast('Mídia removida da galeria.');
+  };
+
+  // Filtragem de fotos no acervo
+  const filteredListWithIndices = mediaList
+    .map((foto, idx) => ({ foto, originalIndex: idx }))
+    .filter(({ foto }) => {
+      if (selectedColorFilter === 'todas') return true;
+      const p = parseMediaColor(foto.label || undefined);
+      if (selectedColorFilter === 'sem_cor') return !p.colorName;
+      return p.colorName?.toLowerCase() === selectedColorFilter.toLowerCase();
+    });
+
+  return (
+    <div className="space-y-4">
+      {/* Barra de Ações Superiores: Upload e Métricas */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
+              Fotos e Vídeos da Peça ({mediaList.length} mídias)
+            </h4>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+              Cloudflare R2 Ilimitado
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Vincule fotos às cores da grade, eleja a capa de cada cor e oculte imagens sem precisar deletar.
+          </p>
+        </div>
+
+        <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm shrink-0">
+          <Upload className={`w-4 h-4 ${uploading ? 'animate-bounce' : ''}`} />
+          <span>{uploading ? 'Enviando para o R2...' : '+ Adicionar Fotos / Vídeos'}</span>
+          <input
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            disabled={uploading}
+            onChange={handleUploadFiles}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {/* Card Educativo 9:16 Vertical */}
+      <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 flex items-start gap-3">
+        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+          <Smartphone className="w-4 h-4 text-amber-700" />
+        </div>
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-slate-900 text-xs">
+              📐 Dica de Conversão: Proporção 9:16 Vertical (1080×1920)
+            </span>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200/70 text-amber-900">
+              Mobile First
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            Fotos verticais e Reels de provador ocupam a tela inteira das clientes no smartphone, destacando o caimento do tecido e aumentando a conversão.
+          </p>
+        </div>
+      </div>
+
+      {/* Filtros Rápidos por Cor no Acervo */}
+      {availableColors.length > 0 && mediaList.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mr-1 shrink-0">
+            <Filter className="w-3 h-3 text-amber-600" /> Filtrar Cor:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedColorFilter('todas')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+              selectedColorFilter === 'todas'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Todas ({mediaList.length})
+          </button>
+
+          {availableColors.map((c) => {
+            const count = mediaList.filter((m) => {
+              const p = parseMediaColor(m.label || undefined);
+              return p.colorName?.toLowerCase() === c.nome.toLowerCase();
+            }).length;
+
+            return (
+              <button
+                key={c.nome}
+                type="button"
+                onClick={() => setSelectedColorFilter(c.nome)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  selectedColorFilter.toLowerCase() === c.nome.toLowerCase()
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-black/20"
+                  style={{ backgroundColor: c.hex || '#1A1918' }}
+                />
+                <span>{c.nome}</span>
+                <span className="opacity-80">({count})</span>
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setSelectedColorFilter('sem_cor')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+              selectedColorFilter === 'sem_cor'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Sem Cor Vinculada (
+            {mediaList.filter((m) => !parseMediaColor(m.label || undefined).colorName).length}
+            )
+          </button>
+        </div>
+      )}
+
+      {/* Grid de Mídias */}
+      {mediaList.length === 0 ? (
+        <label className="p-10 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50 transition-colors text-center group">
+          <Upload className="w-8 h-8 text-slate-400 group-hover:text-amber-600 transition-colors" />
+          <span className="text-xs font-bold text-slate-700">
+            Nenhuma foto ou vídeo cadastrado nesta peça.
+          </span>
+          <span className="text-[11px] text-slate-500">
+            Clique aqui para subir múltiplas fotos ou arraste arquivos para o Cloudflare R2.
+          </span>
+          <input
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            disabled={uploading}
+            onChange={handleUploadFiles}
+            className="hidden"
+          />
+        </label>
+      ) : filteredListWithIndices.length === 0 ? (
+        <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs">
+          Nenhuma foto encontrada para o filtro de cor selecionado.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+          {filteredListWithIndices.map(({ foto, originalIndex }) => {
+            const parsed = parseMediaColor(foto.label || undefined);
+            const isMainCover = originalIndex === 0;
+            const isVideo = foto.tipo === 'video' || /\.(mp4|mov|webm)$/i.test(foto.url);
+
+            return (
+              <div
+                key={foto.id || originalIndex}
+                className={`relative rounded-xl border-2 overflow-hidden bg-white group transition-all shadow-2xs flex flex-col ${
+                  isMainCover
+                    ? 'border-amber-500 ring-2 ring-amber-400/30'
+                    : parsed.isColorCover
+                    ? 'border-amber-400'
+                    : 'border-slate-200'
+                } ${parsed.isHidden ? 'opacity-50 grayscale-40' : ''}`}
+              >
+                {/* Visual da Mídia */}
+                <div className="relative aspect-3/4 w-full bg-slate-900">
+                  {isVideo ? (
+                    <div className="w-full h-full relative flex items-center justify-center">
+                      <video src={foto.url} className="w-full h-full object-cover" muted playsInline />
+                      <div className="absolute inset-0 bg-slate-950/25 flex items-center justify-center pointer-events-none">
+                        <div className="w-8 h-8 rounded-full bg-slate-900/80 text-amber-400 flex items-center justify-center">
+                          <Play className="w-4 h-4 ml-0.5 fill-amber-400" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-1.5 left-1.5 bg-rose-600 text-white font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                        <Video className="w-2.5 h-2.5" />
+                        Vídeo Provador
+                      </span>
+                    </div>
+                  ) : (
+                    <Image
+                      src={foto.url}
+                      alt={parsed.cleanLabel || `Foto ${originalIndex + 1}`}
+                      fill
+                      sizes="220px"
+                      className="object-cover"
+                    />
+                  )}
+
+                  {/* Badges Superiores */}
+                  <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+                    {isMainCover ? (
+                      <span className="bg-amber-500 text-slate-950 font-black text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs">
+                        ⭐ Capa Principal
+                      </span>
+                    ) : parsed.isColorCover ? (
+                      <span className="bg-amber-400 text-slate-950 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 fill-slate-950" />
+                        Capa {parsed.colorName}
+                      </span>
+                    ) : (
+                      <span className="bg-slate-900/80 text-white font-bold text-[9px] px-1.5 py-0.5 rounded">
+                        #{originalIndex + 1}
+                      </span>
+                    )}
+
+                    {parsed.isHidden && (
+                      <span className="bg-rose-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded shadow-xs">
+                        Oculta
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Tag de Cor no Rodapé da Foto */}
+                  {parsed.colorName && (
+                    <span className="absolute bottom-1.5 right-1.5 bg-slate-900/90 text-amber-400 font-bold text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs pointer-events-none">
+                      <Palette className="w-2.5 h-2.5" />
+                      {parsed.colorName}
+                    </span>
+                  )}
+                </div>
+
+                {/* Controles de Configuração da Foto */}
+                <div className="p-2 space-y-1.5 bg-slate-50/80 border-t border-slate-100 text-xs">
+                  {/* Seletor de Vínculo de Cor */}
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">
+                      🎨 Vincular à Cor:
+                    </label>
+                    <select
+                      value={parsed.colorName || ''}
+                      onChange={(e) => handleSetColor(originalIndex, e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="">Sem cor vinculada</option>
+                      {availableColors.map((c) => (
+                        <option key={c.nome} value={c.nome}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Ações Rápidas: Capa da Cor, Ocultar e Capa Principal */}
+                  <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-200/60">
+                    {/* Botão Capa da Cor */}
+                    <button
+                      type="button"
+                      disabled={!parsed.colorName}
+                      onClick={() => handleToggleColorCover(originalIndex)}
+                      className={`px-1.5 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                        !parsed.colorName
+                          ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
+                          : parsed.isColorCover
+                          ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-900'
+                      }`}
+                      title={
+                        parsed.colorName
+                          ? 'Definir esta foto como a miniatura oficial da cor na vitrine'
+                          : 'Selecione uma cor para ativar'
+                      }
+                    >
+                      <Star className={`w-3 h-3 ${parsed.isColorCover ? 'fill-slate-950' : ''}`} />
+                      <span>{parsed.isColorCover ? 'Capa da Cor' : 'Tornar Capa'}</span>
+                    </button>
+
+                    {/* Botão Ocultar/Exibir */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleHide(originalIndex)}
+                      className={`px-1.5 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                        parsed.isHidden
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                      title={parsed.isHidden ? 'Reexibir foto no catálogo' : 'Ocultar foto do catálogo sem deletar'}
+                    >
+                      {parsed.isHidden ? (
+                        <>
+                          <Eye className="w-3 h-3 text-rose-600" />
+                          <span>Reexibir</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-3 h-3 text-slate-500" />
+                          <span>Ocultar</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Barra de Reordenação e Exclusão */}
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        disabled={originalIndex === 0}
+                        onClick={() => handleMove(originalIndex, 'left')}
+                        className={`p-1 rounded text-slate-500 hover:bg-slate-200 transition-colors ${
+                          originalIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title="Mover para esquerda"
+                      >
+                        <ArrowLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={originalIndex === mediaList.length - 1}
+                        onClick={() => handleMove(originalIndex, 'right')}
+                        className={`p-1 rounded text-slate-500 hover:bg-slate-200 transition-colors ${
+                          originalIndex === mediaList.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title="Mover para direita"
+                      >
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {!isMainCover && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetMainCover(originalIndex)}
+                          className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[9px] rounded cursor-pointer transition-colors"
+                          title="Tornar a Capa Principal #1 do catálogo"
+                        >
+                          Capa #1
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(originalIndex)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        title="Remover mídia da galeria"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

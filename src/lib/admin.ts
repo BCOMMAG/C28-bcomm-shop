@@ -78,9 +78,12 @@ export interface UpdateProductInput {
   outlet?: boolean;
   ultimas_pecas?: boolean;
   estoque_total?: number;
+  ativo?: boolean;
   foto_principal?: string | null;
   paired_with_slug?: string | null;
-  detalhes?: string[] | null;
+  detalhes?: any;
+  precos_diferenciados?: Record<string, { preco?: number; preco_promocional?: number }> | null;
+  fotos_por_cor?: Record<string, string[]> | null;
   fotos?: Array<{
     id?: string;
     url: string;
@@ -96,6 +99,8 @@ export interface UpdateProductInput {
     tamanho: string;
     estoque: number;
     sku?: string | null;
+    preco?: number | null;
+    preco_promocional?: number | null;
   }>;
 }
 
@@ -118,16 +123,30 @@ export interface CreateProductInput {
   outlet?: boolean;
   ultimas_pecas?: boolean;
   estoque_total: number;
+  ativo?: boolean;
+  paired_with_slug?: string | null;
+  detalhes?: any;
+  precos_diferenciados?: Record<string, { preco?: number; preco_promocional?: number }> | null;
+  fotos_por_cor?: Record<string, string[]> | null;
   foto_principal?: string;
-  fotos?: string[];
+  fotos?: Array<{
+    id?: string;
+    url: string;
+    tipo?: 'image' | 'video';
+    label?: string | null;
+    display_order?: number;
+  }> | string[];
   video_provador_url?: string;
   tem_grade: boolean;
   variacoes?: Array<{
+    id?: string;
     cor_nome: string;
     cor_hex: string;
     tamanho: string;
     estoque: number;
     sku?: string;
+    preco?: number | null;
+    preco_promocional?: number | null;
   }>;
 }
 
@@ -1335,6 +1354,24 @@ export async function createAdminProduct(
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
+    // Monta detalhes JSONB preservando especificações, badges, preços e fotos por cor
+    let detalhesFinal: any = {};
+    if (input.detalhes) {
+      if (typeof input.detalhes === 'object' && !Array.isArray(input.detalhes)) {
+        detalhesFinal = { ...input.detalhes };
+      } else if (Array.isArray(input.detalhes)) {
+        detalhesFinal.especificacoes = input.detalhes.filter((d: string) => !d.startsWith('[Badge] '));
+        detalhesFinal.badges = input.detalhes.filter((d: string) => d.startsWith('[Badge] '));
+      }
+    }
+    if (input.precos_diferenciados && Object.keys(input.precos_diferenciados).length > 0) {
+      detalhesFinal.precos_diferenciados = input.precos_diferenciados;
+    }
+    if (input.fotos_por_cor && Object.keys(input.fotos_por_cor).length > 0) {
+      detalhesFinal.fotos_por_cor = input.fotos_por_cor;
+    }
+    const hasDetalhesData = Object.keys(detalhesFinal).length > 0;
+
     // 1. Inserir produto principal
     const { data: product, error: prodErr } = await supabase
       .from('produtos')
@@ -1356,8 +1393,10 @@ export async function createAdminProduct(
         outlet: Boolean(input.outlet),
         ultimas_pecas: Boolean(input.ultimas_pecas),
         estoque_total: Number(input.estoque_total || 0),
-        foto_principal: input.foto_principal || (input.fotos && input.fotos[0]) || null,
-        ativo: true
+        paired_with_slug: input.paired_with_slug || null,
+        detalhes: hasDetalhesData ? detalhesFinal : null,
+        foto_principal: input.foto_principal || (Array.isArray(input.fotos) && input.fotos[0] ? (typeof input.fotos[0] === 'string' ? input.fotos[0] : (input.fotos[0] as any).url) : null),
+        ativo: input.ativo !== undefined ? Boolean(input.ativo) : true
       })
       .select()
       .single();
@@ -1373,7 +1412,9 @@ export async function createAdminProduct(
         cor_hex: v.cor_hex || '#000000',
         tamanho: v.tamanho || 'U',
         estoque: Number(v.estoque || 0),
-        sku: v.sku || `${slug}-${v.cor_nome}-${v.tamanho}`.toUpperCase()
+        sku: v.sku || `${slug}-${v.cor_nome}-${v.tamanho}`.toUpperCase(),
+        preco: v.preco !== undefined ? (v.preco ? Number(v.preco) : null) : null,
+        preco_promocional: v.preco_promocional !== undefined ? (v.preco_promocional ? Number(v.preco_promocional) : null) : null
       }));
 
       await supabase.from('variacoes_produto').insert(variacoesData);
@@ -1382,14 +1423,20 @@ export async function createAdminProduct(
     // 3. Inserir fotos e vídeos em midias_produto
     const midiasData: any[] = [];
     if (input.fotos && input.fotos.length > 0) {
-      input.fotos.forEach((url, idx) => {
+      input.fotos.forEach((item: any, idx) => {
+        const isObj = typeof item === 'object' && item !== null;
+        const mediaUrl = isObj ? item.url : item;
+        if (!mediaUrl) return;
+        const mediaLabel = isObj && item.label ? item.label : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`);
+        const mediaType = isObj && item.tipo ? item.tipo : 'image';
+        const displayOrder = isObj && item.display_order !== undefined ? item.display_order : idx;
         midiasData.push({
           loja_id: lojaId,
           produto_id: product.id,
-          tipo: 'image',
-          url: url,
-          label: idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`,
-          display_order: idx
+          tipo: mediaType,
+          url: mediaUrl,
+          label: mediaLabel,
+          display_order: displayOrder
         });
       });
     }
@@ -1509,9 +1556,38 @@ export async function updateAdminProductFull(
     if (input.mais_vendido !== undefined) updateFields.mais_vendido = Boolean(input.mais_vendido);
     if (input.outlet !== undefined) updateFields.outlet = Boolean(input.outlet);
     if (input.ultimas_pecas !== undefined) updateFields.ultimas_pecas = Boolean(input.ultimas_pecas);
+    if (input.ativo !== undefined) updateFields.ativo = Boolean(input.ativo);
     if (input.paired_with_slug !== undefined) updateFields.paired_with_slug = input.paired_with_slug;
-    if (input.detalhes !== undefined) updateFields.detalhes = input.detalhes;
     if (input.foto_principal !== undefined) updateFields.foto_principal = input.foto_principal;
+
+    // Preservação e mesclagem de detalhes JSONB (precos_diferenciados, fotos_por_cor, especificações, badges)
+    if (input.detalhes !== undefined || input.precos_diferenciados !== undefined || input.fotos_por_cor !== undefined) {
+      const { data: curProdData } = await supabase.from('produtos').select('detalhes').eq('id', input.id).single();
+      let mergedDetalhes: any = (curProdData?.detalhes && typeof curProdData.detalhes === 'object' && !Array.isArray(curProdData.detalhes))
+        ? { ...curProdData.detalhes }
+        : {};
+
+      if (input.detalhes !== undefined) {
+        if (typeof input.detalhes === 'object' && !Array.isArray(input.detalhes)) {
+          mergedDetalhes = { ...mergedDetalhes, ...input.detalhes };
+        } else if (Array.isArray(input.detalhes)) {
+          mergedDetalhes.especificacoes = input.detalhes.filter((d: string) => !d.startsWith('[Badge] '));
+          mergedDetalhes.badges = input.detalhes.filter((d: string) => d.startsWith('[Badge] '));
+        } else if (input.detalhes === null) {
+          mergedDetalhes.especificacoes = [];
+          mergedDetalhes.badges = [];
+        }
+      }
+
+      if (input.precos_diferenciados !== undefined) {
+        mergedDetalhes.precos_diferenciados = input.precos_diferenciados;
+      }
+      if (input.fotos_por_cor !== undefined) {
+        mergedDetalhes.fotos_por_cor = input.fotos_por_cor;
+      }
+
+      updateFields.detalhes = Object.keys(mergedDetalhes).length > 0 ? mergedDetalhes : null;
+    }
 
     const { data: updatedProd, error: prodErr } = await supabase
       .from('produtos')
@@ -1553,18 +1629,24 @@ export async function updateAdminProductFull(
             cor_hex: v.cor_hex || '#111111',
             tamanho: v.tamanho || 'U',
             estoque: est,
-            sku: v.sku || `${updatedProd.slug}-${v.cor_nome}-${v.tamanho}`.toUpperCase()
+            sku: v.sku || `${updatedProd.slug}-${v.cor_nome}-${v.tamanho}`.toUpperCase(),
+            preco: v.preco !== undefined ? (v.preco ? Number(v.preco) : null) : null,
+            preco_promocional: v.preco_promocional !== undefined ? (v.preco_promocional ? Number(v.preco_promocional) : null) : null
           });
         } else {
+          const varUpdatePayload: any = {
+            cor_nome: v.cor_nome,
+            cor_hex: v.cor_hex,
+            tamanho: v.tamanho,
+            estoque: est,
+            sku: v.sku || undefined
+          };
+          if (v.preco !== undefined) varUpdatePayload.preco = v.preco ? Number(v.preco) : null;
+          if (v.preco_promocional !== undefined) varUpdatePayload.preco_promocional = v.preco_promocional ? Number(v.preco_promocional) : null;
+
           await supabase
             .from('variacoes_produto')
-            .update({
-              cor_nome: v.cor_nome,
-              cor_hex: v.cor_hex,
-              tamanho: v.tamanho,
-              estoque: est,
-              sku: v.sku || undefined
-            })
+            .update(varUpdatePayload)
             .eq('id', v.id);
         }
       }
