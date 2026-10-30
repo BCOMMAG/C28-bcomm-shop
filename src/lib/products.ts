@@ -26,6 +26,25 @@ export function formatPrice(value: number): string {
 }
 
 /**
+ * Detecta de forma infalível se uma URL aponta para um arquivo de vídeo.
+ * Trata extensões modernas (.mp4, .mov, .webm, etc.) e limpa query strings e fragmentos de CDN/R2.
+ */
+export function isVideoUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const clean = url.split('?')[0].split('#')[0].toLowerCase().trim();
+  return /\.(mp4|mov|webm|m4v|ogv|avi)$/i.test(clean) || clean.includes('/videos/');
+}
+
+/**
+ * Heurística dupla para determinação de tipo de mídia (vídeo ou imagem).
+ */
+export function detectMediaType(tipo?: string | null, url?: string | null): 'video' | 'image' {
+  if (isVideoUrl(url)) return 'video';
+  if (tipo === 'video') return 'video';
+  return 'image';
+}
+
+/**
  * Utilitário para interpretar tags de metadados embutidas no label da mídia
  * Ex: "[COR: Marrom Caramelo] [CAPA_COR] [OCULTO] Foto 1"
  */
@@ -79,8 +98,9 @@ export function mapDbProductToProduct(dbProd: any): Product {
       if (parsed.isHidden) {
         return;
       }
+      const isVideo = detectMediaType(m.tipo, m.url) === 'video';
       mediaList.push({
-        type: m.tipo === 'video' ? 'video' : 'image',
+        type: isVideo ? 'video' : 'image',
         src: m.url,
         label: parsed.cleanLabel || m.label || '',
         colorName: parsed.colorName,
@@ -157,9 +177,12 @@ export function mapDbProductToProduct(dbProd: any): Product {
       (m: any) => m.url === dbProd.foto_principal && m.label && m.label.includes('[OCULTO]')
     );
 
+  // Garante que a foto principal e thumbnail NUNCA sejam um arquivo de vídeo
+  const firstRealPhoto = mediaList.find((m) => m.type === 'image' && !isVideoUrl(m.src))?.src;
+  const mainPhotoIsVideo = isVideoUrl(dbProd.foto_principal);
   const thumbnail =
-    (!isMainPhotoHidden && dbProd.foto_principal) ||
-    mediaList.find((m) => m.type === 'image')?.src ||
+    (!isMainPhotoHidden && !mainPhotoIsVideo && dbProd.foto_principal) ||
+    firstRealPhoto ||
     '/placeholder-product.jpg';
 
   const computedTotalStock = variations.length > 0

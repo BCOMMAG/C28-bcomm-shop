@@ -45,11 +45,12 @@ import {
   BarChart3,
   Activity,
   Flame,
-  ShieldAlert
+  ShieldAlert,
+  Play
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEFAULT_TENANT_ID, parseMediaColor } from '@/lib/products';
+import { DEFAULT_TENANT_ID, parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
 import { AdminProductItem } from '@/lib/admin';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
@@ -79,6 +80,7 @@ export interface BatchPhotoItem {
   id?: string;
   url: string;
   label?: string;
+  tipo?: 'image' | 'video';
   is_cover: boolean;
   oculto: boolean;
   cor_vinculada?: string;
@@ -320,11 +322,13 @@ export function ProductBatchImportModal({
 
       const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => {
         const parsed = parseMediaColor(m.label);
-        const isCover = p.foto_principal === m.url || idx === 0;
+        const isVideo = detectMediaType(m.tipo, m.url) === 'video';
+        const isCover = !isVideo && (p.foto_principal === m.url || idx === 0);
         return {
           id: m.id,
           url: m.url,
-          label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+          label: parsed.cleanLabel || (isVideo ? 'Vídeo do Produto' : isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+          tipo: isVideo ? 'video' : 'image',
           is_cover: isCover,
           oculto: parsed.isHidden,
           cor_vinculada: parsed.colorName,
@@ -405,11 +409,13 @@ export function ProductBatchImportModal({
         const safeFoto = getSafeProductThumbnail(p.foto_principal, p.midias) || '/products/01-casaco-tricot/marrom.jpg';
         const pFotos: BatchPhotoItem[] = (p.midias || []).map((m: any, idx: number) => {
           const parsed = parseMediaColor(m.label);
-          const isCover = p.foto_principal === m.url || idx === 0;
+          const isVideo = detectMediaType(m.tipo, m.url) === 'video';
+          const isCover = !isVideo && (p.foto_principal === m.url || idx === 0);
           return {
             id: m.id,
             url: m.url,
-            label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+            label: parsed.cleanLabel || (isVideo ? 'Vídeo do Produto' : isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+            tipo: isVideo ? 'video' : 'image',
             is_cover: isCover,
             oculto: parsed.isHidden,
             cor_vinculada: parsed.colorName,
@@ -613,11 +619,13 @@ export function ProductBatchImportModal({
     // Mapeia fotos existentes do produto com suporte a [OCULTO], [COR: ...] e [CAPA_COR]
     const fotosExistentes: BatchPhotoItem[] = (prod.midias || []).map((m: any, idx: number) => {
       const parsed = parseMediaColor(m.label);
-      const isCover = prod.foto_principal === m.url || idx === 0;
+      const isVideo = detectMediaType(m.tipo, m.url) === 'video';
+      const isCover = !isVideo && (prod.foto_principal === m.url || idx === 0);
       return {
         id: m.id,
         url: m.url,
-        label: parsed.cleanLabel || (isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+        label: parsed.cleanLabel || (isVideo ? 'Vídeo do Produto' : isCover ? 'Capa Principal' : `Foto ${idx + 1}`),
+        tipo: isVideo ? 'video' : 'image',
         is_cover: isCover,
         oculto: parsed.isHidden,
         cor_vinculada: parsed.colorName,
@@ -625,7 +633,7 @@ export function ProductBatchImportModal({
       };
     });
 
-    if (prod.foto_principal && !fotosExistentes.some((f) => f.url === prod.foto_principal)) {
+    if (prod.foto_principal && !isVideoUrl(prod.foto_principal) && !fotosExistentes.some((f) => f.url === prod.foto_principal)) {
       fotosExistentes.unshift({
         url: prod.foto_principal,
         label: 'Capa Principal',
@@ -1371,17 +1379,19 @@ export function ProductBatchImportModal({
             prev.map((r) => {
               if (r.id !== rowId) return r;
               const currentFotos = [...(r.fotos || [])];
+              const isVideo = file.type.startsWith('video/') || isVideoUrl(res.url);
               const isFirst = currentFotos.length === 0;
               currentFotos.push({
                 url: res.url,
                 label: file.name.replace(/\.[^/.]+$/, ''),
-                is_cover: isFirst,
+                tipo: isVideo ? 'video' : 'image',
+                is_cover: isFirst && !isVideo,
                 oculto: false
               });
               return {
                 ...r,
                 fotos: currentFotos,
-                foto_url: isFirst ? res.url : r.foto_url
+                foto_url: isFirst && !isVideo ? res.url : r.foto_url
               };
             })
           );
@@ -1596,10 +1606,11 @@ export function ProductBatchImportModal({
               if (f.cor_vinculada) labelFinal = `[COR: ${f.cor_vinculada}] ${labelFinal}`;
               if (f.is_color_cover) labelFinal = `[CAPA_COR] ${labelFinal}`;
 
+              const mediaType = f.tipo || detectMediaType(undefined, f.url);
               return {
                 loja_id: lojaId,
                 produto_id: prodId,
-                tipo: 'image',
+                tipo: mediaType,
                 url: f.url,
                 label: labelFinal,
                 display_order: idx
@@ -1609,10 +1620,11 @@ export function ProductBatchImportModal({
             if (inMidErr) throw new Error(`Falha ao atualizar mídias da reposição: ${inMidErr.message}`);
           }
 
-          // Atualiza total de estoque, preços, detalhes, tecido, descrição e foto_principal
+          // Atualiza total de estoque, preços, detalhes, tecido, descrição e foto_principal (garantindo que nunca seja vídeo)
           const activeCover =
-            (row.fotos || []).find((f) => f.is_cover && !f.oculto) ||
-            (row.fotos || []).find((f) => !f.oculto) ||
+            (row.fotos || []).find((f) => f.is_cover && !f.oculto && !isVideoUrl(f.url) && f.tipo !== 'video') ||
+            (row.fotos || []).find((f) => !f.oculto && !isVideoUrl(f.url) && f.tipo !== 'video') ||
+            (row.fotos || []).find((f) => !isVideoUrl(f.url) && f.tipo !== 'video') ||
             (row.fotos || [])[0];
 
           // Busca a soma real de todas as variações salvas no banco para garantir estoque_total 100% íntegro
@@ -1681,14 +1693,15 @@ export function ProductBatchImportModal({
 
         if (!produtoId) {
           const activeCover =
-            (row.fotos || []).find((f) => f.is_cover && !f.oculto) ||
-            (row.fotos || []).find((f) => !f.oculto) ||
+            (row.fotos || []).find((f) => f.is_cover && !f.oculto && !isVideoUrl(f.url) && f.tipo !== 'video') ||
+            (row.fotos || []).find((f) => !f.oculto && !isVideoUrl(f.url) && f.tipo !== 'video') ||
+            (row.fotos || []).find((f) => !isVideoUrl(f.url) && f.tipo !== 'video') ||
             (row.fotos || [])[0];
 
-          // Mapeia fotos por cor para acesso ultrarrápido na vitrine pública
+          // Mapeia fotos por cor para acesso ultrarrápido na vitrine pública (somente imagens)
           const fotosPorCorNova: Record<string, string> = {};
           (row.fotos || []).forEach((f) => {
-            if (f.cor_vinculada && !f.oculto) {
+            if (f.cor_vinculada && !f.oculto && !isVideoUrl(f.url) && f.tipo !== 'video') {
               if (!fotosPorCorNova[f.cor_vinculada] || f.is_color_cover) {
                 fotosPorCorNova[f.cor_vinculada] = f.url;
               }
@@ -1702,6 +1715,10 @@ export function ProductBatchImportModal({
           if (Object.keys(fotosPorCorNova).length > 0) {
             novaPecaDetalhes.fotos_por_cor = fotosPorCorNova;
           }
+
+          const safeNovaFotoPrincipal =
+            (activeCover && !isVideoUrl(activeCover.url) && activeCover.tipo !== 'video' ? activeCover.url : null) ||
+            (row.foto_url && !isVideoUrl(row.foto_url) ? row.foto_url : null);
 
           const { data: newProd, error: prodErr } = await supabase
             .from('produtos')
@@ -1719,7 +1736,7 @@ export function ProductBatchImportModal({
               estoque_total: totalEstoqueNovaPeca,
               ativo: true,
               detalhes: novaPecaDetalhes,
-              foto_principal: activeCover?.url || row.foto_url || null
+              foto_principal: safeNovaFotoPrincipal
             })
             .select('id')
             .single();
@@ -1743,10 +1760,11 @@ export function ProductBatchImportModal({
               if (f.cor_vinculada) labelFinal = `[COR: ${f.cor_vinculada}] ${labelFinal}`;
               if (f.is_color_cover) labelFinal = `[CAPA_COR] ${labelFinal}`;
 
+              const mediaType = f.tipo || detectMediaType(undefined, f.url);
               return {
                 loja_id: lojaId,
                 produto_id: produtoId,
-                tipo: 'image',
+                tipo: mediaType,
                 url: f.url,
                 label: labelFinal,
                 display_order: idx
@@ -2518,13 +2536,20 @@ export function ProductBatchImportModal({
                                         : 'border-slate-200 hover:border-slate-300'
                                     }`}
                                   >
-                                    {/* Imagem */}
+                                    {/* Mídia (Imagem ou Vídeo) */}
                                     <div className="aspect-square w-full bg-slate-100 relative">
-                                      <img
-                                        src={foto.url}
-                                        alt={foto.label || `Foto ${originalIdx + 1}`}
-                                        className="w-full h-full object-cover"
-                                      />
+                                      {foto.tipo === 'video' || isVideoUrl(foto.url) ? (
+                                        <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-2">
+                                          <Play className="w-6 h-6 text-amber-400 mb-1" />
+                                          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200">Vídeo</span>
+                                        </div>
+                                      ) : (
+                                        <img
+                                          src={foto.url}
+                                          alt={foto.label || `Foto ${originalIdx + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      )}
                                       {/* Badge Capa Geral */}
                                       {foto.is_cover && (
                                         <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-amber-500 text-slate-950 font-bold text-[9px] rounded-md shadow-xs flex items-center gap-1">

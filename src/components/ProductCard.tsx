@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Heart, Eye, ShoppingBag, Plus, Check, Clock } from 'lucide-react';
 import { Product } from '@/types';
 import { useStore } from '@/context/StoreContext';
+import { isVideoUrl } from '@/lib/products';
 
 interface ProductCardProps {
   product: Product;
@@ -34,10 +35,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [hoverColorImage, setHoverColorImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const videoSrc = product.media.find((m) => m.type === 'video')?.src;
+  const videoSrc = product.media.find((m) => m.type === 'video' || isVideoUrl(m.src))?.src;
 
-  // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores)
-  const currentThumbnail = hoverColorImage || product.thumbnail;
+  // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores, garantindo que nunca seja vídeo)
+  const safeThumbnail = !isVideoUrl(product.thumbnail) ? product.thumbnail : '/placeholder-product.jpg';
+  const currentThumbnail = (hoverColorImage && !isVideoUrl(hoverColorImage)) ? hoverColorImage : safeThumbnail;
 
   // Analisa se há preços diferenciados entre as variações cadastradas
   const variablePricesInfo = useMemo(() => {

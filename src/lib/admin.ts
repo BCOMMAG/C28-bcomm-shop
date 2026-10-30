@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
 import { BarraAvisoEstilo } from '@/types/database';
 import { clearTenantCache } from '@/lib/tenant';
@@ -1397,7 +1397,7 @@ export async function createAdminProduct(
         estoque_total: Number(input.estoque_total || 0),
         paired_with_slug: input.paired_with_slug || null,
         detalhes: hasDetalhesData ? detalhesFinal : null,
-        foto_principal: input.foto_principal || (Array.isArray(input.fotos) && input.fotos[0] ? (typeof input.fotos[0] === 'string' ? input.fotos[0] : (input.fotos[0] as any).url) : null),
+        foto_principal: (!isVideoUrl(input.foto_principal) && input.foto_principal) || (Array.isArray(input.fotos) ? (input.fotos.map((f: any) => typeof f === 'string' ? f : f?.url).find((u: string) => u && !isVideoUrl(u))) : null) || null,
         ativo: input.ativo !== undefined ? Boolean(input.ativo) : true
       })
       .select()
@@ -1429,8 +1429,9 @@ export async function createAdminProduct(
         const isObj = typeof item === 'object' && item !== null;
         const mediaUrl = isObj ? item.url : item;
         if (!mediaUrl) return;
-        const mediaLabel = isObj && item.label ? item.label : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`);
-        const mediaType = isObj && item.tipo ? item.tipo : 'image';
+        const isVid = detectMediaType(isObj ? item.tipo : undefined, mediaUrl) === 'video';
+        const mediaLabel = isObj && item.label ? item.label : (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`));
+        const mediaType = isVid ? 'video' : 'image';
         const displayOrder = isObj && item.display_order !== undefined ? item.display_order : idx;
         midiasData.push({
           loja_id: lojaId,
@@ -1665,14 +1666,17 @@ export async function updateAdminProductFull(
       // Remove mídias anteriores e insere a lista atualizada com a nova ordenação
       await supabase.from('midias_produto').delete().eq('produto_id', input.id);
 
-      const midiasToInsert = input.fotos.map((f, idx) => ({
-        loja_id: input.loja_id || updatedProd.loja_id,
-        produto_id: input.id,
-        tipo: f.tipo || 'image',
-        url: f.url,
-        label: f.label || (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`),
-        display_order: f.display_order !== undefined ? f.display_order : idx
-      }));
+      const midiasToInsert = input.fotos.map((f, idx) => {
+        const isVid = detectMediaType(f.tipo, f.url) === 'video';
+        return {
+          loja_id: input.loja_id || updatedProd.loja_id,
+          produto_id: input.id,
+          tipo: isVid ? 'video' : 'image',
+          url: f.url,
+          label: f.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
+          display_order: f.display_order !== undefined ? f.display_order : idx
+        };
+      });
 
       if (input.video_provador_url?.trim()) {
         midiasToInsert.push({
@@ -1688,8 +1692,8 @@ export async function updateAdminProductFull(
       if (midiasToInsert.length > 0) {
         await supabase.from('midias_produto').insert(midiasToInsert);
 
-        // Garante que a primeira foto válida vire a foto_principal
-        const firstPhoto = midiasToInsert.find((m) => m.tipo === 'image');
+        // Garante que a primeira foto estática válida vire a foto_principal (NUNCA vídeo)
+        const firstPhoto = midiasToInsert.find((m) => m.tipo === 'image' && !isVideoUrl(m.url));
         if (firstPhoto) {
           await supabase
             .from('produtos')

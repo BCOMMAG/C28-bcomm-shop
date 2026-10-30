@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 
 export interface StoreTenant {
   id: string;
@@ -301,12 +301,12 @@ export async function createStoreExpress(
               await supabase.from('variacoes_produto').insert(variationsToInsert);
             }
 
-            // Clona mídias
+            // Clona mídias com tipo validado e sanitizado
             if (prod.midias_produto && prod.midias_produto.length > 0) {
               const mediaToInsert = prod.midias_produto.map((m: any) => ({
                 loja_id: newLojaId,
                 produto_id: newProd.id,
-                tipo: m.tipo,
+                tipo: detectMediaType(m.tipo, m.url),
                 url: m.url,
                 label: m.label,
                 display_order: m.display_order

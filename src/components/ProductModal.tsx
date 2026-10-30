@@ -33,6 +33,7 @@ import { Product } from '@/types';
 import { PRODUCTS, STORE_INFO } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
 import { AviseMeModal } from '@/components/AviseMeModal';
+import { isVideoUrl } from '@/lib/products';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -105,6 +106,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [addedAnimation, setAddedAnimation] = useState<boolean>(false);
   const [isVideoBuffering, setIsVideoBuffering] = useState<boolean>(true);
+  const [videoError, setVideoError] = useState<boolean>(false);
   const [pairedAddedId, setPairedAddedId] = useState<string | null>(null);
   const [isAviseMeOpen, setIsAviseMeOpen] = useState<boolean>(false);
 
@@ -318,8 +320,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   // Sincronização de mídia com suporte bidirecional à cor
   const handleSelectMedia = (index: number) => {
     setActiveMediaIndex(index);
+    setVideoError(false);
     const mediaItem = product.media[index];
-    if (mediaItem?.type === 'video') {
+    if (mediaItem?.type === 'video' || isVideoUrl(mediaItem?.src)) {
       setIsPlaying(true);
     }
     // Se a foto tiver vínculo de cor, seleciona a cor correspondente
@@ -545,25 +548,46 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               onTouchEnd={handleTouchEnd}
               className="relative w-full aspect-[3/4] sm:aspect-auto sm:h-[380px] lg:h-[500px] rounded-none overflow-hidden bg-black shadow-lg mx-auto select-none touch-pan-y"
             >
-              {currentMedia && currentMedia.type === 'video' ? (
+              {currentMedia && (currentMedia.type === 'video' || isVideoUrl(currentMedia.src)) ? (
                 <div className="relative w-full h-full">
-                  <video
-                    ref={videoRef}
-                    src={currentMedia.src}
-                    poster={product.thumbnail}
-                    autoPlay
-                    loop
-                    muted={isMuted}
-                    playsInline
-                    preload="auto"
-                    onPlaying={() => setIsVideoBuffering(false)}
-                    onWaiting={() => setIsVideoBuffering(true)}
-                    onCanPlay={() => setIsVideoBuffering(false)}
-                    className="w-full h-full object-cover object-top"
-                  />
+                  {videoError ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 text-white p-6 text-center">
+                      <Play className="w-8 h-8 text-[#DFBE76] mb-2 opacity-60" />
+                      <span className="text-xs font-semibold text-neutral-300">Vídeo indisponível para este look</span>
+                      <button
+                        type="button"
+                        onClick={goToNextMedia}
+                        className="mt-3 px-3 py-1.5 bg-[#C5A059] text-white text-[11px] font-bold uppercase tracking-wider cursor-pointer hover:bg-[#b08d4b] transition-all"
+                      >
+                        Ver Próxima Foto
+                      </button>
+                    </div>
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      src={currentMedia.src}
+                      poster={product.thumbnail}
+                      autoPlay
+                      loop
+                      muted={isMuted}
+                      playsInline
+                      preload="auto"
+                      onError={() => {
+                        setIsVideoBuffering(false);
+                        setVideoError(true);
+                      }}
+                      onPlaying={() => {
+                        setIsVideoBuffering(false);
+                        setVideoError(false);
+                      }}
+                      onWaiting={() => setIsVideoBuffering(true)}
+                      onCanPlay={() => setIsVideoBuffering(false)}
+                      className="w-full h-full object-cover object-top"
+                    />
+                  )}
 
                   {/* Indicador Suave de Carregamento Inicial do Vídeo */}
-                  {isVideoBuffering && (
+                  {!videoError && isVideoBuffering && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none transition-opacity duration-300">
                       <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-none bg-black/75 text-white text-[11px] border border-[#C5A059]/40 shadow-xl backdrop-blur-xs">
                         <span className="w-2.5 h-2.5 rounded-none border-2 border-[#C5A059] border-t-transparent animate-spin" />
@@ -578,22 +602,24 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   </div>
 
                   {/* Controles de Som e Play */}
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-10">
-                    <button
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="p-1.5 rounded-none bg-black/60 text-white hover:bg-black/90 backdrop-blur-sm transition-all cursor-pointer"
-                      title={isMuted ? 'Ativar Som' : 'Silenciar'}
-                    >
-                      {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#DFBE76]" />}
-                    </button>
-                    <button
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="p-1.5 rounded-none bg-black/60 text-white hover:bg-black/90 backdrop-blur-sm transition-all cursor-pointer"
-                      title={isPlaying ? 'Pausar' : 'Play'}
-                    >
-                      {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-white" />}
-                    </button>
-                  </div>
+                  {!videoError && (
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-10">
+                      <button
+                        onClick={() => setIsMuted(!isMuted)}
+                        className="p-1.5 rounded-none bg-black/60 text-white hover:bg-black/90 backdrop-blur-sm transition-all cursor-pointer"
+                        title={isMuted ? 'Ativar Som' : 'Silenciar'}
+                      >
+                        {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#DFBE76]" />}
+                      </button>
+                      <button
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className="p-1.5 rounded-none bg-black/60 text-white hover:bg-black/90 backdrop-blur-sm transition-all cursor-pointer"
+                        title={isPlaying ? 'Pausar' : 'Play'}
+                      >
+                        {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-white" />}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="relative w-full h-full">
@@ -658,7 +684,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         : 'border-white/80 dark:border-white/20 opacity-70 hover:opacity-100 hover:border-[#C5A059]/50'
                     }`}
                   >
-                    {item.type === 'video' ? (
+                    {item.type === 'video' || isVideoUrl(item.src) ? (
                       <div className="w-full h-full bg-[#1A1918] flex flex-col items-center justify-center text-white p-1">
                         <div className="w-6 h-6 rounded-none bg-[#C5A059] flex items-center justify-center mb-0.5">
                           <Play className="w-3 h-3 fill-white ml-0.5" />
@@ -787,14 +813,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           // 1. Prioridade: Foto marcada como Capa da Cor ([CAPA_COR])
                           const coverIdx = product.media.findIndex(
                             (m) =>
-                              m.type === 'image' &&
+                              (m.type === 'image' && !isVideoUrl(m.src)) &&
                               m.colorName?.toLowerCase() === color.name.toLowerCase() &&
                               m.isColorCover
                           );
                           // 2. Qualquer foto vinculada a esta cor ([COR: Nome])
                           const linkedIdx = product.media.findIndex(
                             (m) =>
-                              m.type === 'image' &&
+                              (m.type === 'image' && !isVideoUrl(m.src)) &&
                               m.colorName?.toLowerCase() === color.name.toLowerCase()
                           );
                           // 3. Imagem direta do colorsMap

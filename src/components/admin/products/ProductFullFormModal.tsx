@@ -43,7 +43,7 @@ import { ProductVariationPriceMatrix, PrecoVariavelItem } from '@/components/adm
 import { ProductMediaGalleryManager, FormMediaItem } from '@/components/admin/products/ProductMediaGalleryManager';
 import { ProductCardPreviewDrawer } from '@/components/admin/products/ProductCardPreviewDrawer';
 import { BOUTIQUE_OFFICIAL_COLORS } from '@/components/admin/products/ProductBatchImportModal';
-import { parseMediaColor } from '@/lib/products';
+import { parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
 
 export interface ProductFullFormModalProps {
   isOpen: boolean;
@@ -225,16 +225,19 @@ export function ProductFullFormModal({
       setPrecosDiferenciados(precosDiff);
 
       // Mídias
-      const existingMidias: FormMediaItem[] = (product.midias || []).map((m, idx) => ({
-        id: m.id,
-        url: m.url,
-        tipo: m.tipo || 'image',
-        label: m.label || (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`),
-        display_order: m.display_order ?? idx
-      }));
+      const existingMidias: FormMediaItem[] = (product.midias || []).map((m, idx) => {
+        const isVid = detectMediaType(m.tipo, m.url) === 'video';
+        return {
+          id: m.id,
+          url: m.url,
+          tipo: isVid ? 'video' : 'image',
+          label: m.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
+          display_order: m.display_order ?? idx
+        };
+      });
 
-      // Se a foto_principal não estiver na lista de mídias, inclui no início
-      if (product.foto_principal && !existingMidias.some((m) => m.url === product.foto_principal)) {
+      // Se a foto_principal não estiver na lista de mídias e não for vídeo, inclui no início
+      if (product.foto_principal && !isVideoUrl(product.foto_principal) && !existingMidias.some((m) => m.url === product.foto_principal)) {
         existingMidias.unshift({
           id: 'capa_inicial',
           url: product.foto_principal,
@@ -533,7 +536,9 @@ export function ProductFullFormModal({
 
       const totalEstoqueGrade = variacoes.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0);
       const pairedSlugFinal = pairedSlugs.join(',') || null;
-      const firstVideo = orderedFotos.find((f) => f.tipo === 'video');
+      const firstVideo = orderedFotos.find((f) => f.tipo === 'video' || isVideoUrl(f.url));
+      const firstImage = orderedFotos.find((f) => f.tipo === 'image' && !isVideoUrl(f.url));
+      const safeFotoPrincipal = firstImage?.url || (product?.foto_principal && !isVideoUrl(product.foto_principal) ? product.foto_principal : null) || orderedFotos[0]?.url || '';
 
       if (isEdit && product) {
         // MODO EDIÇÃO
@@ -560,7 +565,7 @@ export function ProductFullFormModal({
           detalhes: detalhesPayload,
           precos_diferenciados: Object.keys(precosDiferenciados).length > 0 ? precosDiferenciados : null,
           fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : null,
-          foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : product.foto_principal,
+          foto_principal: safeFotoPrincipal,
           fotos: orderedFotos,
           video_provador_url: firstVideo ? firstVideo.url : null,
           variacoes: variacoes
@@ -642,7 +647,7 @@ export function ProductFullFormModal({
           detalhes: detalhesPayload,
           precos_diferenciados: Object.keys(precosDiferenciados).length > 0 ? precosDiferenciados : null,
           fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : null,
-          foto_principal: orderedFotos.length > 0 ? orderedFotos[0].url : '',
+          foto_principal: firstImage?.url || orderedFotos[0]?.url || '',
           fotos: orderedFotos,
           video_provador_url: firstVideo ? firstVideo.url : undefined,
           tem_grade: true,

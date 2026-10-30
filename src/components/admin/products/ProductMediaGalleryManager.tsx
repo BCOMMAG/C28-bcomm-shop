@@ -20,7 +20,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
-import { parseMediaColor } from '@/lib/products';
+import { parseMediaColor, isVideoUrl } from '@/lib/products';
 
 export interface FormMediaItem {
   id?: string;
@@ -81,12 +81,12 @@ export function ProductMediaGalleryManager({
     // 1. Gera preview local otimista instantaneamente
     const startIndex = mediaList.length;
     const tempItems: FormMediaItem[] = fileArray.map((file, i) => {
-      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(file.name);
+      const isVideo = file.type.startsWith('video/') || isVideoUrl(file.name);
       return {
         id: `temp_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
         url: URL.createObjectURL(file),
         tipo: isVideo ? ('video' as const) : ('image' as const),
-        label: startIndex === 0 && i === 0 ? 'Capa Principal' : `Foto ${startIndex + i + 1}`,
+        label: startIndex === 0 && i === 0 && !isVideo ? 'Capa Principal' : (isVideo ? 'Vídeo do Produto' : `Foto ${startIndex + i + 1}`),
         display_order: startIndex + i,
         isUploading: true,
         tempFile: file
@@ -222,6 +222,11 @@ export function ProductMediaGalleryManager({
 
   // Definir Capa Principal geral
   const handleSetMainCover = (index: number) => {
+    const targetItem = mediaList[index];
+    if (targetItem && (targetItem.tipo === 'video' || isVideoUrl(targetItem.url))) {
+      showToast('Um arquivo de vídeo não pode ser definido como Capa Principal da vitrine.', 'error');
+      return;
+    }
     if (onCoverIndexChange) onCoverIndexChange(index);
 
     const updated = [...mediaList];
@@ -485,7 +490,7 @@ export function ProductMediaGalleryManager({
           {filteredListWithIndices.map(({ foto, originalIndex }) => {
             const parsed = parseMediaColor(foto.label || undefined);
             const isMainCover = originalIndex === 0;
-            const isVideo = foto.tipo === 'video' || /\.(mp4|mov|webm)$/i.test(foto.url);
+            const isVideo = foto.tipo === 'video' || isVideoUrl(foto.url);
 
             return (
               <div
@@ -680,7 +685,7 @@ export function ProductMediaGalleryManager({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {!isMainCover && (
+                      {!isMainCover && !isVideo && (
                         <button
                           type="button"
                           onClick={() => handleSetMainCover(originalIndex)}
