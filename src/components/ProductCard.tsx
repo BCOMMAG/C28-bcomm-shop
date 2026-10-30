@@ -59,7 +59,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const [isJustAdded, setIsJustAdded] = useState(false);
   const router = useRouter();
-  const { cartCount, addToCart, getItemStock, activeReservations } = useStore();
+  const { cartCount, addToCart, getItemStock, activeReservations, currentTenant } = useStore();
+  const showStockQty = currentTenant?.configuracoes_visuais?.exibir_quantidade_estoque_consumidor ?? true;
 
   const isOutOfStock = product.totalStock === 0;
 
@@ -192,15 +193,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             return null;
           }
 
-          // 2. Seção "Últimas Peças" (somente entram quando restam 5 peças ou menos)
-          if (isLastPiecesSection || product.isLastPieces || (product.remainingPieces && product.remainingPieces <= 5)) {
-            const count = product.remainingPieces || 5;
-            const label =
-              product.badge && product.badge.includes('peça')
-                ? product.badge
-                : count === 1
-                ? 'Última peça'
-                : `Restam ${count} peças`;
+          // 2. Seção "Últimas Peças" (somente entram quando o estoque real for entre 1 e 5 peças)
+          const isRealCriticalStock = (product.totalStock ?? 0) > 0 && (product.totalStock ?? 0) <= 5;
+          if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces || (product.remainingPieces && product.remainingPieces <= 5))) {
+            const count = product.remainingPieces || product.totalStock || 5;
+            let label = 'Últimas peças';
+            if (showStockQty) {
+              label = count === 1 ? 'Última peça' : `Restam ${count} peças`;
+            } else {
+              label = count === 1 ? 'Última peça' : 'Últimas peças';
+            }
 
             return (
               <div
@@ -226,19 +228,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             );
           }
 
-          // 4. Badges de escassez padrão para outros cards
+          // 4. Badges de escassez padrão para outros cards (somente se estoque real for crítico)
           if (
-            product.badge?.includes('Restam') ||
-            product.badge?.includes('peça') ||
-            product.badge?.includes('Faltam')
+            isRealCriticalStock &&
+            (product.badge?.includes('Restam') ||
+              product.badge?.includes('peça') ||
+              product.badge?.includes('Faltam'))
           ) {
+            const label = showStockQty ? product.badge : 'Últimas peças';
             return (
               <div
                 className={`absolute top-2.5 left-2.5 bg-[#8B5A2B]/90 dark:bg-black/90 text-[#FAF8F5] uppercase tracking-wider font-semibold rounded-none backdrop-blur-sm border border-[#C5A059]/40 ${
                   isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
                 }`}
               >
-                {product.badge}
+                {label}
               </div>
             );
           }

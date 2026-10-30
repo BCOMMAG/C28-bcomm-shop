@@ -2543,6 +2543,7 @@ export interface StoreSettingsData {
   pedidoMinimoValor: number;
   reservaEstoqueAtiva: boolean;
   tempoReservaMinutos: number;
+  exibirQuantidadeEstoqueConsumidor?: boolean;
 
   // Inatividade e Limpeza de Pedidos no WhatsApp
   autoDescartarInativosWhatsapp?: boolean;
@@ -2701,6 +2702,7 @@ export interface SaveStoreSettingsInput {
   pedidoMinimoValor?: number;
   reservaEstoqueAtiva?: boolean;
   tempoReservaMinutos?: number;
+  exibirQuantidadeEstoqueConsumidor?: boolean;
 
   // Inatividade e Limpeza de Pedidos no WhatsApp
   autoDescartarInativosWhatsapp?: boolean;
@@ -2814,6 +2816,7 @@ export async function getStoreSettings(
       pedidoMinimoValor: Number(vis.pedido_minimo_valor ?? 0),
       reservaEstoqueAtiva: vis.reserva_estoque_ativa ?? true,
       tempoReservaMinutos: Number(vis.tempo_reserva_minutos ?? 20),
+      exibirQuantidadeEstoqueConsumidor: vis.exibir_quantidade_estoque_consumidor ?? true,
 
       // Inatividade de Pedidos no WhatsApp
       autoDescartarInativosWhatsapp: vis.auto_descartar_inativos_whatsapp ?? true,
@@ -2956,6 +2959,7 @@ export async function saveStoreGeneralSettings(
       ...(input.pedidoMinimoValor !== undefined ? { pedido_minimo_valor: Number(input.pedidoMinimoValor) } : {}),
       ...(input.reservaEstoqueAtiva !== undefined ? { reserva_estoque_ativa: Boolean(input.reservaEstoqueAtiva) } : {}),
       ...(input.tempoReservaMinutos !== undefined ? { tempo_reserva_minutos: Number(input.tempoReservaMinutos) } : {}),
+      ...(input.exibirQuantidadeEstoqueConsumidor !== undefined ? { exibir_quantidade_estoque_consumidor: Boolean(input.exibirQuantidadeEstoqueConsumidor) } : {}),
       ...(input.autoDescartarInativosWhatsapp !== undefined ? { auto_descartar_inativos_whatsapp: Boolean(input.autoDescartarInativosWhatsapp) } : {}),
       ...(input.prazoInatividadeWhatsappDias !== undefined ? { prazo_inatividade_whatsapp_dias: Number(input.prazoInatividadeWhatsappDias) } : {}),
       ...(input.destinoInativosWhatsapp !== undefined ? { destino_inativos_whatsapp: input.destinoInativosWhatsapp } : {}),

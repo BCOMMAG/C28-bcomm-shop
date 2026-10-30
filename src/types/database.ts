@@ -25,6 +25,7 @@ export interface LojaConfiguracoesVisuais {
   barra_aviso?: string;
   barra_aviso_ativa?: boolean;
   barra_aviso_estilo?: BarraAvisoEstilo;
+  exibir_quantidade_estoque_consumidor?: boolean;
   [key: string]: any;
 }
 

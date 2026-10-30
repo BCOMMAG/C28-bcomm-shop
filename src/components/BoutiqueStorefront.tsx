@@ -117,9 +117,9 @@ export function BoutiqueStorefront() {
     () =>
       products.filter(
         (p) =>
-          p.isLastPieces ||
-          (p.remainingPieces !== undefined && p.remainingPieces <= 5) ||
-          p.badge?.includes('peça')
+          (p.totalStock ?? 0) > 0 &&
+          (p.totalStock ?? 0) <= 5 &&
+          (p.isLastPieces || (p.remainingPieces !== undefined && p.remainingPieces <= 5))
       ),
     [products]
   );

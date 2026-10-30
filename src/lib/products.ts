@@ -58,10 +58,13 @@ export function mapDbProductToProduct(dbProd: any): Product {
   const currentPrice = precoPromo !== null ? precoPromo : precoBase;
   const originalPrice = precoPromo !== null ? precoBase : undefined;
 
+  const isOutlet = Boolean(dbProd.outlet);
   let discountBadge: string | undefined = undefined;
   if (originalPrice && originalPrice > currentPrice) {
     const discountPercent = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
-    discountBadge = `OUTLET ${discountPercent}% OFF`;
+    discountBadge = isOutlet ? `OUTLET ${discountPercent}% OFF` : `${discountPercent}% OFF`;
+  } else if (isOutlet) {
+    discountBadge = 'OUTLET';
   }
 
   // 1. Processamento e Ordenação das Mídias (Fotos e Vídeos) - Filtra mídias ocultas da vitrine
@@ -159,6 +162,28 @@ export function mapDbProductToProduct(dbProd: any): Product {
     mediaList.find((m) => m.type === 'image')?.src ||
     '/placeholder-product.jpg';
 
+  const computedTotalStock = variations.length > 0
+    ? variations.reduce((acc, v) => acc + v.stock, 0)
+    : Number(dbProd.estoque_total || 0);
+
+  // Escassez real: uma peça só é "últimas peças" se o estoque físico disponível for entre 1 e 5 unidades
+  const isCriticalStock = computedTotalStock > 0 && computedTotalStock <= 5;
+  const isLastPieces = Boolean(dbProd.ultimas_pecas) ? isCriticalStock : isCriticalStock;
+  const remainingPieces = isCriticalStock ? computedTotalStock : undefined;
+
+  // Sanitiza badges para evitar que produtos reabastecidos (> 5 un) exibam selos residuais de escassez
+  let resolvedBadge = Array.isArray(dbProd.status_badges) && dbProd.status_badges.length > 0 ? dbProd.status_badges[0] : undefined;
+  if (resolvedBadge && (resolvedBadge.includes('peça') || resolvedBadge.includes('Últimas')) && !isCriticalStock) {
+    resolvedBadge = undefined;
+  }
+
+  const sanitizedStatusList = Array.isArray(dbProd.status_badges)
+    ? dbProd.status_badges.filter((b: string) => {
+        if ((b.includes('peça') || b.includes('Últimas')) && !isCriticalStock) return false;
+        return true;
+      })
+    : [];
+
   return {
     id: dbProd.slug, // Mantém o slug como id para compatibilidade de rotas e carrinho
     slug: dbProd.slug || dbProd.id,
@@ -171,15 +196,15 @@ export function mapDbProductToProduct(dbProd: any): Product {
     isOutlet: Boolean(dbProd.outlet),
     isBestSeller: Boolean(dbProd.mais_vendido),
     isNewArrival: Boolean(dbProd.destaque),
-    isLastPieces: Boolean(dbProd.ultimas_pecas),
-    remainingPieces: dbProd.ultimas_pecas ? 3 : undefined,
-    badge: Array.isArray(dbProd.status_badges) && dbProd.status_badges.length > 0 ? dbProd.status_badges[0] : undefined,
+    isLastPieces,
+    remainingPieces,
+    badge: resolvedBadge,
     category: dbProd.categorias?.nome || 'Geral',
     subcategory: dbProd.subcategoria || undefined,
     fabric: dbProd.tecido || undefined,
     fit: dbProd.modelagem || undefined,
     line: dbProd.linha || undefined,
-    status: Array.isArray(dbProd.status_badges) ? dbProd.status_badges : [],
+    status: sanitizedStatusList,
     description: dbProd.descricao || '',
     details: Array.isArray(dbProd.detalhes)
       ? dbProd.detalhes
@@ -189,9 +214,7 @@ export function mapDbProductToProduct(dbProd: any): Product {
     sizes: sortedSizes.length > 0 ? sortedSizes : ['Tamanho Único'],
     colors: Array.from(colorsMap.values()),
     variations,
-    totalStock: variations.length > 0
-      ? variations.reduce((acc, v) => acc + v.stock, 0)
-      : Number(dbProd.estoque_total || 0),
+    totalStock: computedTotalStock,
     media: mediaList,
     thumbnail,
     rating: Number(dbProd.rating || 5.0),

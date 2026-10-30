@@ -140,6 +140,9 @@ export default function AppearanceSettingsPage() {
   const [secaoUltimasPecasSubtituloLight, setSecaoUltimasPecasSubtituloLight] = useState('#FAF8F5');
   const [secaoUltimasPecasSubtituloDark, setSecaoUltimasPecasSubtituloDark] = useState('#FAF8F5');
 
+  // Configuração Global de Visibilidade de Estoque para o Consumidor
+  const [exibirQuantidadeEstoqueConsumidor, setExibirQuantidadeEstoqueConsumidor] = useState(true);
+
   // BLOCO 7: Customização do Painel Administrativo
   const [adminPageBgLight, setAdminPageBgLight] = useState('#F8FAFC');
   const [adminPageBgDark, setAdminPageBgDark] = useState('#0B132B');
@@ -245,6 +248,10 @@ export default function AppearanceSettingsPage() {
               setSecaoUltimasPecasSubtituloLight(data.secoesVitrine.ultimasPecas.subtituloCorLight || '#FAF8F5');
               setSecaoUltimasPecasSubtituloDark(data.secoesVitrine.ultimasPecas.subtituloCorDark || '#FAF8F5');
             }
+          }
+
+          if (data.exibirQuantidadeEstoqueConsumidor !== undefined) {
+            setExibirQuantidadeEstoqueConsumidor(data.exibirQuantidadeEstoqueConsumidor);
           }
 
           if (data.adminCustom) {
@@ -419,7 +426,8 @@ export default function AppearanceSettingsPage() {
         planoFundoMenu,
         tipografiaMenu,
         secoesVitrine,
-        adminCustom
+        adminCustom,
+        exibirQuantidadeEstoqueConsumidor
       });
 
       if (res.success) {
@@ -1663,6 +1671,78 @@ export default function AppearanceSettingsPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* BLOCO: EXIBIÇÃO DE ESTOQUE PARA O CONSUMIDOR NA VITRINE & MODAL */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+              <Box className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Exibição de Estoque para o Consumidor
+                </h2>
+                <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                  Global
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Escolha se o catálogo e o modal de produtos devem expor a quantidade numérica exata de peças restantes aos clientes.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setExibirQuantidadeEstoqueConsumidor(!exibirQuantidadeEstoqueConsumidor)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer',
+              exibirQuantidadeEstoqueConsumidor
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+            )}
+          >
+            {exibirQuantidadeEstoqueConsumidor ? (
+              <>
+                <ToggleRight className="w-5 h-5 text-emerald-600" />
+                <span>Exibindo Quantidade Exata</span>
+              </>
+            ) : (
+              <>
+                <ToggleLeft className="w-5 h-5 text-slate-400" />
+                <span>Quantidade Oculta ao Cliente</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 text-xs text-slate-600 space-y-2">
+          <p className="font-semibold text-slate-800">
+            {exibirQuantidadeEstoqueConsumidor ? (
+              <span className="text-emerald-700">✓ Modo Transparente Ativo:</span>
+            ) : (
+              <span className="text-slate-700">🔒 Modo Sigilo Comercial Ativo:</span>
+            )}
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-500">
+            {exibirQuantidadeEstoqueConsumidor ? (
+              <>
+                <li>Quando restarem 5 peças ou menos no estoque real, o catálogo mostrará: <strong className="text-slate-700">&quot;Restam X peças&quot;</strong> ou <strong className="text-slate-700">&quot;Última peça&quot;</strong>.</li>
+                <li>No modal de produto, o cliente verá a contagem precisa da variação selecionada (ex: <strong className="text-slate-700">&quot;Últimas 2 unidades deste tamanho&quot;</strong>).</li>
+                <li>Peças com estoque abundante (mais de 5 unidades) não criam falsa urgência e exibem <strong className="text-slate-700">&quot;Disponível em estoque&quot;</strong>.</li>
+              </>
+            ) : (
+              <>
+                <li>O sistema <strong className="text-slate-700">nunca expõe números exatos</strong> aos visitantes. Não haverá selos de &quot;Restam 2 peças&quot;.</li>
+                <li>Quando a peça estiver com estoque baixo (&le; 5), o selo será apenas <strong className="text-slate-700">&quot;Últimas peças&quot;</strong> sem revelar quantidade.</li>
+                <li>No modal, informa com elegância apenas <strong className="text-slate-700">&quot;Disponível em estoque para envio imediato&quot;</strong> ou <strong className="text-slate-700">&quot;Últimas unidades em estoque&quot;</strong>.</li>
+              </>
+            )}
+          </ul>
+        </div>
       </div>
 
       {/* BLOCO 7: CUSTOMIZAÇÃO DO PAINEL ADMINISTRATIVO (PÁGINAS, FONTES, BOTÕES E SIDEBAR) */}

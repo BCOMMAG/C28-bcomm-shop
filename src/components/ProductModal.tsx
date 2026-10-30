@@ -86,6 +86,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     getColorAvailability
   } = useStore();
 
+  const showStockQty = currentTenant?.configuracoes_visuais?.exibir_quantidade_estoque_consumidor ?? true;
+
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
 
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
@@ -843,7 +845,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   })}
                 </div>
 
-                {/* Frase de Estoque Limitado (Conforme o print) */}
+                {/* Frase de Disponibilidade de Estoque Real */}
                 <p className="text-[11px] font-bold text-[#1A1918] dark:text-[#FAF8F5] mt-2 mb-2">
                   {isCombinationInReservation ? (
                     <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-bold">
@@ -851,13 +853,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       Última unidade desta combinação em reserva temporária no provador!
                     </span>
                   ) : currentVariationStock > 0 && currentVariationStock <= 5 ? (
-                    `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
-                  ) : product.remainingPieces && product.remainingPieces <= 5 ? (
-                    `Últimas ${product.remainingPieces} unidades em estoque com este preço!`
-                  ) : (product.isOutlet || hasDiscount) ? (
-                    'Últimas 3 unidades em estoque com este preço!'
+                    showStockQty ? (
+                      currentVariationStock === 1
+                        ? 'Última unidade deste tamanho em estoque!'
+                        : `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
+                    ) : (
+                      'Últimas unidades deste tamanho em estoque!'
+                    )
+                  ) : currentVariationStock > 5 ? (
+                    showStockQty ? (
+                      `Disponível em estoque (${currentVariationStock} unidades para envio imediato)`
+                    ) : (
+                      'Disponível em estoque para envio imediato!'
+                    )
+                  ) : currentVariationStock === 0 ? (
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      Tamanho esgotado no momento nesta cor
+                    </span>
                   ) : (
-                    'Peça exclusiva com poucas unidades no estoque!'
+                    'Disponível em estoque para envio imediato!'
                   )}
                 </p>
               </div>
@@ -898,7 +912,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             ? 'Tamanho em reserva temporária por outra cliente no WhatsApp'
                             : isOutOfStock
                             ? 'Tamanho esgotado nesta cor - Clique para ser avisada na reposição'
-                            : `Em estoque (${stock} unidades)`
+                            : showStockQty
+                            ? `Em estoque (${stock} unidades)`
+                            : 'Disponível em estoque'
                         }
                         className={`px-4 py-2.5 rounded-none text-xs font-bold transition-all border cursor-pointer ${
                           isReserved
@@ -1067,7 +1083,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     {/* Aviso de estoque baixo ou última unidade */}
                     {effectiveAvailableStock === 1 && (
                       <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                        ⚡ Atenção: Resta apenas 1 unidade disponível desta combinação!
+                        ⚡ {showStockQty ? 'Atenção: Resta apenas 1 unidade disponível desta combinação!' : 'Atenção: Última unidade disponível desta combinação!'}
                       </p>
                     )}
 

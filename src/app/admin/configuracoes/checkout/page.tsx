@@ -46,6 +46,7 @@ export default function CheckoutSettingsPage() {
   // Reserva Provisória de Estoque (WhatsApp & Balcão)
   const [reservaEstoqueAtiva, setReservaEstoqueAtiva] = useState(true);
   const [tempoReservaMinutos, setTempoReservaMinutos] = useState(20);
+  const [exibirQuantidadeEstoqueConsumidor, setExibirQuantidadeEstoqueConsumidor] = useState(true);
 
   // Limpeza de Pedidos Inativos no WhatsApp
   const [autoDescartarInativosWhatsapp, setAutoDescartarInativosWhatsapp] = useState(true);
@@ -72,6 +73,7 @@ export default function CheckoutSettingsPage() {
           if (data.pedidoMinimoValor !== undefined) setPedidoMinimoValor(data.pedidoMinimoValor);
           if (data.reservaEstoqueAtiva !== undefined) setReservaEstoqueAtiva(data.reservaEstoqueAtiva);
           if (data.tempoReservaMinutos !== undefined) setTempoReservaMinutos(data.tempoReservaMinutos);
+          if (data.exibirQuantidadeEstoqueConsumidor !== undefined) setExibirQuantidadeEstoqueConsumidor(data.exibirQuantidadeEstoqueConsumidor);
           if (data.autoDescartarInativosWhatsapp !== undefined) setAutoDescartarInativosWhatsapp(data.autoDescartarInativosWhatsapp);
           if (data.prazoInatividadeWhatsappDias !== undefined) setPrazoInatividadeWhatsappDias(data.prazoInatividadeWhatsappDias);
           if (data.destinoInativosWhatsapp !== undefined) setDestinoInativosWhatsapp(data.destinoInativosWhatsapp);
@@ -98,6 +100,7 @@ export default function CheckoutSettingsPage() {
         pedidoMinimoValor: Number(pedidoMinimoValor),
         reservaEstoqueAtiva,
         tempoReservaMinutos: Number(tempoReservaMinutos),
+        exibirQuantidadeEstoqueConsumidor,
         autoDescartarInativosWhatsapp,
         prazoInatividadeWhatsappDias: Number(prazoInatividadeWhatsappDias),
         destinoInativosWhatsapp
@@ -378,6 +381,45 @@ export default function CheckoutSettingsPage() {
               <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Enquanto a reserva estiver ativa, o sistema bloqueia tentativas de outros compradores na vitrine.</span>
+              </div>
+            </div>
+
+            {/* Configuração de Exibição de Quantidade de Estoque ao Consumidor */}
+            <div className="pt-4 border-t border-slate-200/80">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>Exibir Quantidade de Estoque para o Consumidor</span>
+                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-sm">
+                      Vitrine &amp; Modal
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Define se os clientes verão o número exato de peças restantes (ex: &quot;Restam 2 peças&quot;) ou se os números permanecerão ocultos.
+                  </p>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={exibirQuantidadeEstoqueConsumidor}
+                    onChange={(e) => setExibirQuantidadeEstoqueConsumidor(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+                </label>
+              </div>
+
+              <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                {exibirQuantidadeEstoqueConsumidor ? (
+                  <span className="text-emerald-700 font-medium">
+                    ✓ Transparente: Exibe o número real de unidades quando o estoque for &le; 5 peças. Peças com mais de 5 unidades exibem apenas &quot;Disponível em estoque&quot;.
+                  </span>
+                ) : (
+                  <span className="text-slate-600 font-medium">
+                    🔒 Sigilo comercial: Oculta a quantidade exata. Quando o estoque for baixo, informa apenas &quot;Últimas unidades&quot; sem expor números.
+                  </span>
+                )}
               </div>
             </div>
           </div>
