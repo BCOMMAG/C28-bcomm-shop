@@ -1001,7 +1001,7 @@ export default function AdminBannersPage() {
         </div>
 
         {/* SEÇÃO 3: BARRA DE AVISOS NO TOPO DA VITRINE */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
+        <div id="editor-barra-avisos" className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">

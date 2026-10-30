@@ -95,7 +95,7 @@ async function main() {
           "cor_primaria": "#E0A99A",
           "cor_secundaria": "#18181B",
           "cor_fundo": "#FAF8F5",
-          "logo_url": "https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png",
+          "logo_url": "/images/Logo sem fundo.png",
           "tagline": "Alta Costura & Alfaiataria Feminina Exclusiva",
           "frete_gratis_valor": 400.00
         }'::jsonb,

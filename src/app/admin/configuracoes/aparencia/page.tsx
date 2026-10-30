@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Palette,
   Check,
@@ -28,7 +29,9 @@ import {
   ToggleLeft,
   ToggleRight,
   Box,
-  CheckSquare
+  CheckSquare,
+  Megaphone,
+  ExternalLink
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
@@ -1072,6 +1075,60 @@ export default function AppearanceSettingsPage() {
               />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* BLOCO 4: FAIXA SUPERIOR DE AVISOS (ANNOUNCEMENT BAR) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+              <Megaphone className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                4. Faixa Superior de Avisos da Vitrine (Announcement Bar)
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                A faixa de destaque exibida no topo absoluto do site (frete grátis, avisos promocionais e atendimento).
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/admin/banners#editor-barra-avisos"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors w-fit"
+          >
+            <span>Personalizar Barra em Banners & Topo</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Prévia da Barra Atual */}
+        <div className="rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-3">
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <span className="font-semibold">Prévia da Barra Ativa na Vitrine:</span>
+            <span className="text-[10px] text-slate-400">Sincronizada em tempo real via Supabase</span>
+          </div>
+
+          <div
+            className="py-2 px-4 rounded-lg text-center text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition-all"
+            style={{
+              backgroundColor: currentTenant?.configuracoes_visuais?.barra_aviso_estilo?.bg_light || '#1A1918',
+              color: currentTenant?.configuracoes_visuais?.barra_aviso_estilo?.text_light || '#ffffff',
+              fontFamily: currentTenant?.configuracoes_visuais?.barra_aviso_estilo?.font_family || "'Montserrat', sans-serif"
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>
+              {currentTenant?.configuracoes_visuais?.barra_aviso ||
+                'Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp'}
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-500 italic">
+            💡 Dica: Você pode alterar a cor de fundo, cor do texto, fonte e escolher entre ícones como caminhão, presente ou coração diretamente no módulo de Banners & Topo.
+          </p>
         </div>
       </div>
 

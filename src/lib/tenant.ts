@@ -28,49 +28,126 @@ export function getCanonicalDbSlug(slug?: string | null): string {
 
 // Configuração padrão da Leidy Boutique (Tenant #1 Oficial)
 export const DEFAULT_LEIDY_TENANT: Loja = {
-  id: 'e8b7f890-4e3a-4a89-9c56-8e1234567890',
-  nome: 'Leidy Boutique',
-  slug: 'leidy-boutique',
-  dominio_proprio: null,
-  whatsapp: '554197347601',
-  email: 'contato@leidyboutique.com.br',
-  configuracoes_visuais: {
-    cor_primaria: '#C5A059',
-    cor_secundaria: '#1A1918',
-    cor_fundo: '#FAF8F5',
-    logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
-    tagline: 'Curadoria Exclusiva em Moda Feminina',
-    frete_gratis_valor: 350.00,
-    barra_aviso: 'Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp',
-    barra_aviso_ativa: true,
-    barra_aviso_estilo: {
-      modo: 'unificado',
-      icone: 'truck',
-      bg_light: '#1A1918',
-      text_light: '#b01717',
-      bg_dark: '#0D0C0B',
-      text_dark: '#EED59B',
-      font_family: "'Montserrat', sans-serif"
-    }
+  "id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
+  "nome": "Leidy Boutique",
+  "slug": "leidy-boutique",
+  "dominio_proprio": null,
+  "whatsapp": "554197347601",
+  "email": "contato@leidyboutique.com.br",
+  "configuracoes_visuais": {
+    "slogan": "Moda Feminina Autêntica & Elegância Diária",
+    "tagline": "Curadoria Exclusiva em Moda Feminina",
+    "logo_url": "/images/Logo sem fundo.png",
+    "cor_fundo": "#FAF8F5",
+    "barra_aviso": "Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp",
+    "favicon_url": "",
+    "admin_custom": {
+      "buttonBg": "#0F172A",
+      "sidebarBg": "#0B132B",
+      "buttonText": "#F59E0B",
+      "fontFamily": "Montserrat",
+      "pageBgDark": "#0B132B",
+      "pageBgLight": "#ffffff",
+      "sidebarText": "#94A3B8",
+      "buttonRadius": "rounded-xl"
+    },
+    "cor_primaria": "#DFBE76",
+    "og_image_url": "",
+    "logo_dark_url": "",
+    "cor_secundaria": "#1A1918",
+    "secoes_vitrine": {
+      "global": {
+        "ativo": true,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "outlet": {
+        "ativo": false,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "lancamentos": {
+        "ativo": false,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "maisVendidos": {
+        "ativo": false,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "ultimasPecas": {
+        "ativo": false,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "modoIndependente": false
+    },
+    "tipografia_menu": {
+      "fontSize": "12px",
+      "fontFamily": "Montserrat",
+      "corHoverDark": "#DFBE76",
+      "corTextoDark": "#FAF8F5",
+      "corHoverLight": "#C5A059",
+      "corTextoLight": "#1A1918"
+    },
+    "plano_fundo_menu": {
+      "tipo": "transparente",
+      "bg_dark": "#141312",
+      "bg_light": "#FAF8F5"
+    },
+    "plano_fundo_site": {
+      "tipo": "solido",
+      "bg_dark": "#121110",
+      "bg_light": "#FAF8F5",
+      "overlay_opacidade": 40
+    },
+    "barra_aviso_ativa": true,
+    "barra_aviso_estilo": {
+      "modo": "unificado",
+      "icone": "gift",
+      "bg_dark": "#0D0C0B",
+      "bg_light": "#1A1918",
+      "text_dark": "#EED59B",
+      "text_light": "#ffffff",
+      "font_family": "'Montserrat', sans-serif"
+    },
+    "frete_gratis_valor": 350,
+    "_teste_e2e_timestamp": 1792612811741
   },
-  configuracoes_financeiras: {
-    imposto_padrao: 4,
-    taxa_cartao_padrao: 3.5,
-    custo_embalagem_padrao: 8.0,
-    chave_pix: '554197347601',
-    tipo_chave_pix: 'telefone',
-    pix_titular: 'Leidyane Cristina Boutique',
-    pix_banco: 'Nubank'
+  "modulos_ativos": {
+    "frete_automatico": true,
+    "rastreio_whatsapp": false,
+    "recuperacao_carrinho": false,
+    "checkout_transparente": false
   },
-  modulos_ativos: {
-    frete_automatico: true,
-    rastreio_whatsapp: false,
-    recuperacao_carrinho: false,
-    checkout_transparente: false
-  },
-  ativo: true,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString()
+  "ativo": true,
+  "created_at": "2026-10-14T16:19:01.168355+00:00",
+  "updated_at": "2026-10-22T13:41:17.531+00:00",
+  "configuracoes_financeiras": {
+    "chave_pix": "554197347601",
+    "pix_banco": "Nu Pagamentos S.A. (Nubank)",
+    "pix_titular": "Leidyane Cristina da Silva",
+    "imposto_padrao": 4,
+    "tipo_chave_pix": "telefone",
+    "taxa_cartao_padrao": 3.5,
+    "custo_embalagem_padrao": 8
+  }
 };
 
 // Configuração padrão da Aura Privée (Tenant #2 Modelo / Prospecção)
@@ -85,7 +162,7 @@ export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {
     cor_primaria: '#E0A99A',
     cor_secundaria: '#18181B',
     cor_fundo: '#FAF8F5',
-    logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
+    logo_url: '/images/Logo sem fundo.png',
     tagline: 'Alta Costura & Alfaiataria Feminina Exclusiva',
     frete_gratis_valor: 400.00,
     barra_aviso: 'Lançamento Coleção Aura Privée: Peças exclusivas sob encomenda',
@@ -236,7 +313,7 @@ export async function getTenantBySlug(slug: string): Promise<Loja> {
       cor_primaria: '#DFBE76',
       cor_secundaria: '#1A1918',
       cor_fundo: '#FAF8F5',
-      logo_url: 'https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/images/logo.png',
+      logo_url: '/images/Logo sem fundo.png',
       tagline: 'Boutique & Moda Feminina Exclusiva',
       frete_gratis_valor: 350.00,
       barra_aviso: 'Atendimento VIP & Peças Exclusivas',

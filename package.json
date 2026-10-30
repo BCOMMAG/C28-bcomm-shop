@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:upload": "node scripts/upload_dev_server.js",
+    "prebuild": "node scripts/sync-tenant-defaults.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."

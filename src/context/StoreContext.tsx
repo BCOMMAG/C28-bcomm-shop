@@ -6,7 +6,7 @@ import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja, BarraAvisoEstilo } from '@/types/database';
-import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
+import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT, getCanonicalDbSlug } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -115,12 +115,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
         const firstSegment = pathSegments[0] || 'leidy-boutique';
+        const canonical = getCanonicalDbSlug(firstSegment);
+        const unhyphenated = canonical.replace(/-/g, '');
         const cached =
+          localStorage.getItem(`bcomm_tenant_${canonical}`) ||
           localStorage.getItem(`bcomm_tenant_${firstSegment}`) ||
+          (unhyphenated ? localStorage.getItem(`bcomm_tenant_${unhyphenated}`) : null) ||
           localStorage.getItem('bcomm_tenant_last');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed && parsed.id) return parsed;
+          if (parsed && parsed.id && parsed.configuracoes_visuais) return parsed;
         }
       } catch {}
     }
@@ -211,7 +215,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentTenant(tenant);
         if (typeof window !== 'undefined' && tenant) {
           try {
+            const canonical = getCanonicalDbSlug(tenant.slug);
+            const unhyphenated = canonical.replace(/-/g, '');
             localStorage.setItem(`bcomm_tenant_${tenant.slug}`, JSON.stringify(tenant));
+            localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(tenant));
+            if (firstSegment) {
+              localStorage.setItem(`bcomm_tenant_${firstSegment}`, JSON.stringify(tenant));
+            }
+            if (unhyphenated) {
+              localStorage.setItem(`bcomm_tenant_${unhyphenated}`, JSON.stringify(tenant));
+            }
             localStorage.setItem('bcomm_tenant_last', JSON.stringify(tenant));
           } catch {}
         }
@@ -249,7 +262,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (freshTenant) {
             setCurrentTenant(freshTenant);
             if (typeof window !== 'undefined') {
+              const canonical = getCanonicalDbSlug(freshTenant.slug);
+              const unhyphenated = canonical.replace(/-/g, '');
               localStorage.setItem(`bcomm_tenant_${freshTenant.slug}`, JSON.stringify(freshTenant));
+              localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(freshTenant));
+              if (unhyphenated) {
+                localStorage.setItem(`bcomm_tenant_${unhyphenated}`, JSON.stringify(freshTenant));
+              }
               localStorage.setItem('bcomm_tenant_last', JSON.stringify(freshTenant));
             }
           }
@@ -323,6 +342,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           refreshReservations();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lojas',
+          filter: `id=eq.${currentTenant.id}`
+        },
+        (payload: any) => {
+          if (payload.new && payload.new.id) {
+            const updated = payload.new as Loja;
+            setCurrentTenant(updated);
+            if (typeof window !== 'undefined') {
+              try {
+                const canonical = getCanonicalDbSlug(updated.slug);
+                const unhyphenated = canonical.replace(/-/g, '');
+                localStorage.setItem(`bcomm_tenant_${updated.slug}`, JSON.stringify(updated));
+                localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(updated));
+                if (unhyphenated) {
+                  localStorage.setItem(`bcomm_tenant_${unhyphenated}`, JSON.stringify(updated));
+                }
+                localStorage.setItem('bcomm_tenant_last', JSON.stringify(updated));
+              } catch {}
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'hero_banners',
+          filter: `loja_id=eq.${currentTenant.id}`
+        },
+        () => {
+          refreshProducts();
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`📡 [Realtime] Canal ${channelName} conectado com sucesso!`);
@@ -331,6 +389,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Camada 2: Sincronização Instantânea Entre Abas (Cross-Tab via BroadcastChannel e localStorage)
     let bc: BroadcastChannel | null = null;
+    let bcTenant: BroadcastChannel | null = null;
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel('bcomm_stock_sync');
@@ -340,12 +399,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             refreshProducts();
           }
         };
+
+        bcTenant = new BroadcastChannel('bcomm_tenant_sync');
+        bcTenant.onmessage = (event) => {
+          if (event.data?.tenant) {
+            const updated = event.data.tenant as Loja;
+            if (updated && updated.id === currentTenant.id) {
+              setCurrentTenant(updated);
+            }
+          } else if (event.data?.type === 'tenant_update') {
+            refreshProducts();
+          }
+        };
       }
     } catch {}
 
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'bcomm_stock_sync_tick') {
         refreshReservations();
+        refreshProducts();
+      }
+      if (e.key === 'bcomm_tenant_sync_tick') {
         refreshProducts();
       }
     };
@@ -374,6 +448,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       clearInterval(heartbeatTimer);
       if (bc) {
         try { bc.close(); } catch {}
+      }
+      if (bcTenant) {
+        try { bcTenant.close(); } catch {}
       }
       if (typeof window !== 'undefined') {
         window.removeEventListener('storage', handleStorageEvent);

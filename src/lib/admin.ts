@@ -2469,8 +2469,37 @@ export async function saveStoreAnnouncementBar(
     // Limpa o cache de tenants em memória para refletir na hora
     clearTenantCache();
 
-    // Dispara evento global no navegador caso em ambiente cliente
+    // Sincronização imediata no cache do localStorage e Cross-Tab BroadcastChannel
     if (typeof window !== 'undefined') {
+      try {
+        const { data: freshLoja } = await supabase
+          .from('lojas')
+          .select('*')
+          .eq('id', lojaId)
+          .single();
+
+        if (freshLoja) {
+          const canonical = (freshLoja.slug || '').replace(/[^a-z0-9-]/g, '');
+          const unhyphenated = canonical.replace(/-/g, '');
+          localStorage.setItem(`bcomm_tenant_${freshLoja.slug}`, JSON.stringify(freshLoja));
+          localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(freshLoja));
+          if (unhyphenated) {
+            localStorage.setItem(`bcomm_tenant_${unhyphenated}`, JSON.stringify(freshLoja));
+          }
+          localStorage.setItem('bcomm_tenant_last', JSON.stringify(freshLoja));
+          localStorage.setItem('bcomm_tenant_sync_tick', Date.now().toString());
+
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('bcomm_tenant_sync');
+            bc.postMessage({ type: 'tenant_update', tenant: freshLoja, timestamp: Date.now() });
+            setTimeout(() => bc.close(), 200);
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Erro ao atualizar cache local da loja:', cacheErr);
+      }
+
+      // Dispara evento global no navegador caso em ambiente cliente
       window.dispatchEvent(
         new CustomEvent('bcomm:tenant_updated', {
           detail: { lojaId, barra_aviso_ativa: barraAvisoAtiva }
@@ -3032,8 +3061,37 @@ export async function saveStoreGeneralSettings(
     // Limpa o cache de tenants em memória para refletir imediatamente na vitrine
     clearTenantCache();
 
-    // Dispara evento global no navegador para reatividade instantânea
+    // Sincronização imediata no cache do localStorage e Cross-Tab BroadcastChannel
     if (typeof window !== 'undefined') {
+      try {
+        const { data: freshLoja } = await supabase
+          .from('lojas')
+          .select('*')
+          .eq('id', lojaId)
+          .single();
+
+        if (freshLoja) {
+          const canonical = (freshLoja.slug || '').replace(/[^a-z0-9-]/g, '');
+          const unhyphenated = canonical.replace(/-/g, '');
+          localStorage.setItem(`bcomm_tenant_${freshLoja.slug}`, JSON.stringify(freshLoja));
+          localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(freshLoja));
+          if (unhyphenated) {
+            localStorage.setItem(`bcomm_tenant_${unhyphenated}`, JSON.stringify(freshLoja));
+          }
+          localStorage.setItem('bcomm_tenant_last', JSON.stringify(freshLoja));
+          localStorage.setItem('bcomm_tenant_sync_tick', Date.now().toString());
+
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('bcomm_tenant_sync');
+            bc.postMessage({ type: 'tenant_update', tenant: freshLoja, timestamp: Date.now() });
+            setTimeout(() => bc.close(), 200);
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Erro ao atualizar cache local da loja:', cacheErr);
+      }
+
+      // Dispara evento global no navegador para reatividade instantânea
       window.dispatchEvent(
         new CustomEvent('bcomm:tenant_updated', {
           detail: { lojaId }
