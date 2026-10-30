@@ -5,6 +5,19 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 export const DEFAULT_TENANT_ID =
   process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'e8b7f890-4e3a-4a89-9c56-8e1234567890';
 
+export const BOUTIQUE_OFFICIAL_COLORS = [
+  { nome: 'Preto Clássico', hex: '#1A1918' },
+  { nome: 'Branco Off-White', hex: '#FAF9F6' },
+  { nome: 'Rosa Quartz', hex: '#E8A598' },
+  { nome: 'Dourado Champagne', hex: '#DFBE76' },
+  { nome: 'Bege Areia Nobre', hex: '#E2D3B8' },
+  { nome: 'Marrom Caramelo', hex: '#8B5A2B' },
+  { nome: 'Terracota Nobre', hex: '#C05A46' },
+  { nome: 'Verde Esmeralda', hex: '#1B4D3E' },
+  { nome: 'Azul Serenity', hex: '#92A1CF' },
+  { nome: 'Lavanda Imperial', hex: '#967BB6' }
+];
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -168,11 +181,17 @@ export function mapDbProductToProduct(dbProd: any): Product {
     line: dbProd.linha || undefined,
     status: Array.isArray(dbProd.status_badges) ? dbProd.status_badges : [],
     description: dbProd.descricao || '',
-    details: Array.isArray(dbProd.detalhes) ? dbProd.detalhes : [],
+    details: Array.isArray(dbProd.detalhes)
+      ? dbProd.detalhes
+      : Array.isArray(dbProd.detalhes?.especificacoes)
+      ? dbProd.detalhes.especificacoes
+      : [],
     sizes: sortedSizes.length > 0 ? sortedSizes : ['Tamanho Único'],
     colors: Array.from(colorsMap.values()),
     variations,
-    totalStock: Number(dbProd.estoque_total ?? variations.reduce((acc, v) => acc + v.stock, 0)),
+    totalStock: variations.length > 0
+      ? variations.reduce((acc, v) => acc + v.stock, 0)
+      : Number(dbProd.estoque_total || 0),
     media: mediaList,
     thumbnail,
     rating: Number(dbProd.rating || 5.0),

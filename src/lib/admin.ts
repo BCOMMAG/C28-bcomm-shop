@@ -1281,7 +1281,9 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       mais_vendido: Boolean(p.mais_vendido),
       outlet: Boolean(p.outlet),
       ultimas_pecas: Boolean(p.ultimas_pecas),
-      estoque_total: p.estoque_total || 0,
+      estoque_total: (p.variacoes_produto || []).length > 0
+        ? (p.variacoes_produto || []).reduce((acc: number, v: any) => acc + Number(v.estoque || 0), 0)
+        : Number(p.estoque_total || 0),
       ativo: Boolean(p.ativo),
       foto_principal: p.foto_principal,
       categoria_id: p.categoria_id,

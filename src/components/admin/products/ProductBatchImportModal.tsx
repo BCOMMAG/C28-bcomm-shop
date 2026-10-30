@@ -448,6 +448,15 @@ export function ProductBatchImportModal({
     }
   }, [existingProducts, categoriesList]);
 
+  // Helper para obter o estoque real e íntegro do produto a partir de suas variações
+  const getProductRealStock = (prod: AdminProductItem | undefined | null): number => {
+    if (!prod) return 0;
+    if (prod.variacoes && prod.variacoes.length > 0) {
+      return prod.variacoes.reduce((acc: number, v: any) => acc + (v.estoque || 0), 0);
+    }
+    return Number(prod.estoque_total || 0);
+  };
+
   // Filtro de produtos para o Catálogo Visual Picker (sempre executado antes de qualquer return condicional)
   const filteredCatalogProducts = useMemo(() => {
     return existingProducts.filter((p) => {
@@ -459,7 +468,8 @@ export function ProductBatchImportModal({
       const matchCategory =
         catalogFilterCategory === 'all' || p.categoria_id === catalogFilterCategory;
 
-      const matchLowStock = !catalogFilterOnlyLowStock || p.estoque_total <= 3;
+      const realStock = getProductRealStock(p);
+      const matchLowStock = !catalogFilterOnlyLowStock || realStock <= 3;
 
       return matchSearch && matchCategory && matchLowStock;
     });
@@ -1468,6 +1478,11 @@ export function ProductBatchImportModal({
 
   // Gravação Atômica de Todos os Produtos da Grade no Supabase
   const handleExecuteSave = async () => {
+    if (uploadingPhotoRowId) {
+      setErrorGlobal('Aguarde a conclusão do envio das fotos para o Cloudflare R2 antes de salvar.');
+      return;
+    }
+
     const validRows = gridRows.filter((r) => r.nome.trim() !== '');
     if (validRows.length === 0) {
       setErrorGlobal('Preencha ou selecione o nome de pelo menos uma peça antes de salvar.');
@@ -1531,15 +1546,16 @@ export function ProductBatchImportModal({
               const existingVar = varsMap.get(key);
 
               if (existingVar) {
-                await supabase
+                const { error: upVarErr } = await supabase
                   .from('variacoes_produto')
                   .update({
                     estoque: existingVar.estoque + qtd
                   })
                   .eq('id', existingVar.id);
+                if (upVarErr) throw new Error(`Falha ao atualizar estoque da variação ${cor}/${tam}: ${upVarErr.message}`);
               } else {
                 const varSku = `${slugProduto.slice(0, 10).toUpperCase()}-${cor.slice(0, 3).toUpperCase()}-${tam}`;
-                await supabase.from('variacoes_produto').insert({
+                const { error: inVarErr } = await supabase.from('variacoes_produto').insert({
                   loja_id: lojaId,
                   produto_id: prodId,
                   cor_nome: cor,
@@ -1548,6 +1564,7 @@ export function ProductBatchImportModal({
                   estoque: qtd,
                   sku: varSku
                 });
+                if (inVarErr) throw new Error(`Falha ao inserir variação ${cor}/${tam}: ${inVarErr.message}`);
               }
               addedStock += qtd;
             }
@@ -1565,7 +1582,9 @@ export function ProductBatchImportModal({
 
           // Se houver fotos manipuladas pelo usuário na reposição, sincroniza midias_produto
           if (row.fotos && row.fotos.length > 0) {
-            await supabase.from('midias_produto').delete().eq('produto_id', prodId);
+            const { error: delMidErr } = await supabase.from('midias_produto').delete().eq('produto_id', prodId);
+            if (delMidErr) console.warn('Aviso ao limpar mídias anteriores:', delMidErr);
+
             const midiasToInsert = row.fotos.map((f, idx) => {
               let cleanLabel = (f.label || (f.is_cover ? 'Capa Principal' : `Foto ${idx + 1}`))
                 .replace(/\[OCULTO\]/gi, '')
@@ -1586,7 +1605,8 @@ export function ProductBatchImportModal({
                 display_order: idx
               };
             });
-            await supabase.from('midias_produto').insert(midiasToInsert);
+            const { error: inMidErr } = await supabase.from('midias_produto').insert(midiasToInsert);
+            if (inMidErr) throw new Error(`Falha ao atualizar mídias da reposição: ${inMidErr.message}`);
           }
 
           // Atualiza total de estoque, preços, detalhes, tecido, descrição e foto_principal
@@ -1595,17 +1615,28 @@ export function ProductBatchImportModal({
             (row.fotos || []).find((f) => !f.oculto) ||
             (row.fotos || [])[0];
 
+          // Busca a soma real de todas as variações salvas no banco para garantir estoque_total 100% íntegro
+          const { data: dbVars } = await supabase
+            .from('variacoes_produto')
+            .select('estoque')
+            .eq('produto_id', prodId);
+
+          const novoTotal = (dbVars || []).reduce((acc: number, v: any) => acc + (v.estoque || 0), 0);
+
           const { data: prodCurrent } = await supabase
             .from('produtos')
-            .select('estoque_total, detalhes')
+            .select('detalhes')
             .eq('id', prodId)
             .single();
 
-          const novoTotal = (prodCurrent?.estoque_total || 0) + addedStock;
+          const currentDetalhes = typeof prodCurrent?.detalhes === 'object' && prodCurrent.detalhes !== null && !Array.isArray(prodCurrent.detalhes)
+            ? prodCurrent.detalhes
+            : {};
+
           const updatedDetalhes = {
-            ...(prodCurrent?.detalhes || {}),
+            ...currentDetalhes,
             precos_diferenciados: row.tem_precos_diferenciados ? row.precos_por_variacao : null,
-            fotos_por_cor: Object.keys(fotosPorCorReposicao).length > 0 ? fotosPorCorReposicao : undefined
+            fotos_por_cor: Object.keys(fotosPorCorReposicao).length > 0 ? fotosPorCorReposicao : currentDetalhes.fotos_por_cor
           };
 
           const prodUpdatePayload: any = {
@@ -1620,10 +1651,12 @@ export function ProductBatchImportModal({
           if (row.descricao !== undefined) prodUpdatePayload.descricao = row.descricao || null;
           if (activeCover?.url) prodUpdatePayload.foto_principal = activeCover.url;
 
-          await supabase
+          const { error: prodUpErr } = await supabase
             .from('produtos')
             .update(prodUpdatePayload)
             .eq('id', prodId);
+
+          if (prodUpErr) throw new Error(`Falha ao atualizar produto ${row.nome}: ${prodUpErr.message}`);
 
           reposicoesFeitas++;
           continue;
@@ -1719,7 +1752,8 @@ export function ProductBatchImportModal({
                 display_order: idx
               };
             });
-            await supabase.from('midias_produto').insert(midiasToInsert);
+            const { error: inMidErr } = await supabase.from('midias_produto').insert(midiasToInsert);
+            if (inMidErr) throw new Error(`Falha ao salvar fotos da nova peça: ${inMidErr.message}`);
           }
         }
 
@@ -1747,7 +1781,8 @@ export function ProductBatchImportModal({
         });
 
         if (variacoesToInsert.length > 0) {
-          await supabase.from('variacoes_produto').insert(variacoesToInsert);
+          const { error: inVarErr } = await supabase.from('variacoes_produto').insert(variacoesToInsert);
+          if (inVarErr) throw new Error(`Falha ao inserir variações da peça: ${inVarErr.message}`);
         }
       }
 
@@ -2015,7 +2050,7 @@ export function ProductBatchImportModal({
                                   <div className="flex items-center gap-2 text-[11px] text-slate-500">
                                     {prodOriginal ? (
                                       <span className="font-mono font-semibold text-slate-700">
-                                        Estoque atual: <strong>{prodOriginal.estoque_total} un</strong>
+                                        Estoque atual: <strong>{getProductRealStock(prodOriginal)} un</strong>
                                       </span>
                                     ) : null}
                                     <span>•</span>
@@ -2032,7 +2067,7 @@ export function ProductBatchImportModal({
                                 >
                                   {existingProducts.map((p) => (
                                     <option key={p.id} value={p.id}>
-                                      {p.nome} ({p.estoque_total} un)
+                                      {p.nome} ({getProductRealStock(p)} un)
                                     </option>
                                   ))}
                                 </select>
@@ -2262,7 +2297,7 @@ export function ProductBatchImportModal({
                                 title="Visualizar Raio-X completo: estoque atual no banco por cor e tamanho, tags e projeção matemática com a remessa"
                               >
                                 <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Raio-X Estoque ({prodOriginal?.estoque_total ?? 0} un)</span>
+                                <span>Raio-X Estoque ({getProductRealStock(prodOriginal)} un)</span>
                               </button>
                             )}
 
@@ -2698,7 +2733,7 @@ export function ProductBatchImportModal({
                                     Raio-X de Estoque: {prodOriginal.nome}
                                   </h5>
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-100 text-blue-900">
-                                    {prodOriginal.estoque_total} un no banco
+                                    {getProductRealStock(prodOriginal)} un no banco
                                   </span>
                                 </div>
                                 <p className="text-[11px] text-slate-600">
@@ -2725,17 +2760,17 @@ export function ProductBatchImportModal({
                             </span>
 
                             {/* Tag de Estoque Crítico ou Saudável */}
-                            {prodOriginal.estoque_total <= 0 ? (
+                            {getProductRealStock(prodOriginal) <= 0 ? (
                               <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center gap-1">
                                 🚫 Esgotado no Banco
                               </span>
-                            ) : prodOriginal.estoque_total <= 3 ? (
+                            ) : getProductRealStock(prodOriginal) <= 3 ? (
                               <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] flex items-center gap-1">
-                                ⚡ Últimas {prodOriginal.estoque_total} Peças
+                                ⚡ Últimas {getProductRealStock(prodOriginal)} Peças
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-bold text-[10px] flex items-center gap-1">
-                                ✓ Estoque Saudável ({prodOriginal.estoque_total} un)
+                                ✓ Estoque Saudável ({getProductRealStock(prodOriginal)} un)
                               </span>
                             )}
 
@@ -2855,10 +2890,10 @@ export function ProductBatchImportModal({
                                     Totais Consolidados:
                                   </td>
                                   <td colSpan={row.tamanhos.length} className="p-2.5 text-right font-sans text-xs text-slate-600">
-                                    Estoque Atual no Banco: <strong>{prodOriginal.estoque_total} un</strong> | Nova Remessa: <strong>+{metrics.totalAlocado} un</strong>
+                                    Estoque Atual no Banco: <strong>{getProductRealStock(prodOriginal)} un</strong> | Nova Remessa: <strong>+{metrics.totalAlocado} un</strong>
                                   </td>
                                   <td colSpan={2} className="p-2.5 text-center font-mono text-xs text-emerald-900 bg-emerald-50">
-                                    Novo Estoque Projetado: <strong>{(prodOriginal.estoque_total || 0) + metrics.totalAlocado} un</strong>
+                                    Novo Estoque Projetado: <strong>{getProductRealStock(prodOriginal) + metrics.totalAlocado} un</strong>
                                   </td>
                                 </tr>
                               </tfoot>
@@ -3952,8 +3987,9 @@ export function ProductBatchImportModal({
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {filteredCatalogProducts.map((p) => {
-                    const isEsgotado = p.estoque_total === 0;
-                    const isBaixoEstoque = p.estoque_total > 0 && p.estoque_total <= 3;
+                    const realStock = getProductRealStock(p);
+                    const isEsgotado = realStock === 0;
+                    const isBaixoEstoque = realStock > 0 && realStock <= 3;
                     const catNome = categoriesList.find((c) => c.id === p.categoria_id)?.nome || 'Geral';
 
                     // Resumo das cores da peça
@@ -4002,7 +4038,7 @@ export function ProductBatchImportModal({
                                   : 'bg-emerald-600 text-white'
                               }`}
                             >
-                              {isEsgotado ? 'Esgotado (0)' : `${p.estoque_total} un`}
+                              {isEsgotado ? 'Esgotado (0)' : `${realStock} un`}
                             </span>
                           </div>
 

@@ -318,6 +318,12 @@ export function ProductFullFormModal({
         map.set(v.cor_nome, { nome: v.cor_nome, hex: v.cor_hex });
       }
     });
+    // Garante que as cores oficiais da boutique estejam sempre acessíveis para identificação de fotos
+    BOUTIQUE_OFFICIAL_COLORS.forEach((c) => {
+      if (!map.has(c.nome)) {
+        map.set(c.nome, { nome: c.nome, hex: c.hex });
+      }
+    });
     return Array.from(map.values());
   }, [variacoes]);
 
@@ -483,6 +489,14 @@ export function ProductFullFormModal({
       return;
     }
 
+    // Guarda Anti-Blob: Impede salvar fotos temporárias que ainda estão em upload
+    const pendingUploads = mediaList.filter((m) => m.isUploading || m.url.startsWith('blob:'));
+    if (pendingUploads.length > 0) {
+      showToast('Aguarde a conclusão do envio das fotos para o Cloudflare R2 antes de salvar.', 'error');
+      setActiveTab('midias');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const finalSlug = slug.trim().toLowerCase() || normalizeSlug(nome);
@@ -494,9 +508,10 @@ export function ProductFullFormModal({
         .filter(Boolean);
       const badgesArray = customBadgesSelected.map((b) => `[Badge] ${b}`);
 
-      // Mapeamento rápido de fotos por cor
+      // Mapeamento rápido de fotos por cor (apenas fotos reais com upload concluído)
+      const validMediaList = mediaList.filter((m) => !m.url.startsWith('blob:'));
       const fotosPorCorMap: Record<string, string[]> = {};
-      mediaList.forEach((m) => {
+      validMediaList.forEach((m) => {
         const p = parseMediaColor(m.label || undefined);
         if (p.colorName && !p.isHidden) {
           if (!fotosPorCorMap[p.colorName]) fotosPorCorMap[p.colorName] = [];
@@ -512,7 +527,7 @@ export function ProductFullFormModal({
         fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : undefined
       };
 
-      const orderedFotos = [...mediaList];
+      const orderedFotos = [...validMediaList];
       if (coverIndex > 0 && coverIndex < orderedFotos.length) {
         const [coverItem] = orderedFotos.splice(coverIndex, 1);
         orderedFotos.unshift(coverItem);
