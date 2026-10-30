@@ -95,7 +95,9 @@ export async function uploadToR2({
 
 /**
  * Helper para upload direto de arquivos selecionados no navegador (File)
- * Converte o arquivo para Uint8Array e envia diretamente para o Cloudflare R2.
+ * No cliente (browser), envia via FormData para a rota interna segura /api/upload,
+ * eliminando completamente problemas de CORS e exposição de chaves S3.
+ * No servidor (Node.js), realiza o envio direto via uploadToR2 como fallback.
  */
 export async function uploadBrowserFileToR2(
   file: File,
@@ -103,12 +105,50 @@ export async function uploadBrowserFileToR2(
   folder: 'produtos' | 'banners' | 'logos' | 'videos' | 'avatars' | 'og' | 'backgrounds' = 'produtos'
 ): Promise<{ success: boolean; url: string; error?: string }> {
   try {
+    // 1. Se estiver no Browser, envia para a API Route segura (local ou Cloudflare Pages)
+    if (typeof window !== 'undefined') {
+      const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1';
+
+      const uploadEndpoint = isLocalhost ? 'http://127.0.0.1:3005/api/upload' : '/api/upload';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('tenantSlug', tenantSlug);
+      formData.append('folder', folder);
+
+      const res = await fetch(uploadEndpoint, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        const errorMsg = data?.error || `Falha no upload do arquivo (HTTP ${res.status})`;
+        console.error('❌ [Upload API] Erro retornado pela rota /api/upload:', errorMsg);
+        return {
+          success: false,
+          url: '',
+          error: errorMsg
+        };
+      }
+
+      return {
+        success: true,
+        url: data.url
+      };
+    }
+
+    // 2. Se for invocado no ambiente do Servidor (Node.js)
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Higieniza o nome do arquivo
     const cleanFileName = file.name
       .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9.-]/g, '_')
       .replace(/_+/g, '_');
 
@@ -120,13 +160,52 @@ export async function uploadBrowserFileToR2(
       contentType: file.type || 'application/octet-stream',
     });
   } catch (err: any) {
-    console.error('❌ [Cloudflare R2] Erro ao ler arquivo no navegador:', err);
+    console.error('❌ [Cloudflare R2] Erro ao processar arquivo no upload:', err);
     return {
       success: false,
       url: '',
-      error: err?.message || 'Erro ao processar arquivo no navegador',
+      error: err?.message || 'Erro inesperado ao processar arquivo para upload',
     };
   }
+}
+
+/**
+ * Upload concorrente em lotes (batch) de múltiplos arquivos para o Cloudflare R2
+ * com controle de concorrência (padrão: 3 paralelos) e relatório de progresso.
+ */
+export async function uploadMultipleBrowserFilesToR2(
+  files: File[] | FileList,
+  tenantSlug: string = 'leidy-boutique',
+  folder: 'produtos' | 'banners' | 'logos' | 'videos' | 'avatars' | 'og' | 'backgrounds' = 'produtos',
+  concurrency = 3,
+  onProgress?: (completed: number, total: number, lastUploaded?: { name: string; url: string }) => void
+): Promise<Array<{ file: File; success: boolean; url: string; error?: string }>> {
+  const fileArray = Array.from(files);
+  const results: Array<{ file: File; success: boolean; url: string; error?: string }> = [];
+  let index = 0;
+  let completed = 0;
+
+  async function worker() {
+    while (index < fileArray.length) {
+      const currentIndex = index++;
+      const file = fileArray[currentIndex];
+      const res = await uploadBrowserFileToR2(file, tenantSlug, folder);
+      results[currentIndex] = {
+        file,
+        success: res.success,
+        url: res.url,
+        error: res.error
+      };
+      completed++;
+      if (onProgress) {
+        onProgress(completed, fileArray.length, res.success ? { name: file.name, url: res.url } : undefined);
+      }
+    }
+  }
+
+  const pool = Array.from({ length: Math.min(concurrency, fileArray.length) }, () => worker());
+  await Promise.all(pool);
+  return results;
 }
 
 /**

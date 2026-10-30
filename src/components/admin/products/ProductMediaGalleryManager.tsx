@@ -15,7 +15,9 @@ import {
   Palette,
   Smartphone,
   CheckCircle2,
-  Filter
+  Filter,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { parseMediaColor } from '@/lib/products';
@@ -26,6 +28,9 @@ export interface FormMediaItem {
   tipo: 'image' | 'video';
   label?: string | null;
   display_order: number;
+  isUploading?: boolean;
+  uploadError?: string | null;
+  tempFile?: File;
 }
 
 export interface ProductMediaGalleryManagerProps {
@@ -49,6 +54,7 @@ export function ProductMediaGalleryManager({
 }: ProductMediaGalleryManagerProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string>('todas');
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (onToast) onToast(msg, type === 'info' ? 'success' : type);
@@ -64,47 +70,137 @@ export function ProductMediaGalleryManager({
     return tags.length > 0 ? `${tags.join(' ')} ${base}` : base;
   };
 
-  // Upload para Cloudflare R2
-  const handleUploadFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Processamento com Preview Otimista Imediato e Upload Seguro
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
 
     setUploading(true);
     let successCount = 0;
-    const newItems: FormMediaItem[] = [];
+
+    // 1. Gera preview local otimista instantaneamente
+    const startIndex = mediaList.length;
+    const tempItems: FormMediaItem[] = fileArray.map((file, i) => {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(file.name);
+      return {
+        id: `temp_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+        url: URL.createObjectURL(file),
+        tipo: isVideo ? ('video' as const) : ('image' as const),
+        label: startIndex === 0 && i === 0 ? 'Capa Principal' : `Foto ${startIndex + i + 1}`,
+        display_order: startIndex + i,
+        isUploading: true,
+        tempFile: file
+      };
+    });
+
+    const currentListWithTemp = [...mediaList, ...tempItems];
+    onChange(currentListWithTemp);
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      let workingList = [...currentListWithTemp];
+
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+        const tempId = tempItems[i].id;
         const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(file.name);
         const folder = isVideo ? 'videos' : 'produtos';
-        const tipo = isVideo ? ('video' as const) : ('image' as const);
 
         const res = await uploadBrowserFileToR2(file, tenantSlug, folder);
-        if (res.success && res.url) {
-          successCount++;
-          newItems.push({
-            id: `media_${Date.now()}_${i}`,
-            url: res.url,
-            tipo: tipo,
-            label: mediaList.length === 0 && i === 0 ? 'Capa Principal' : `Foto ${mediaList.length + i + 1}`,
-            display_order: mediaList.length + i
-          });
+        const targetIdx = workingList.findIndex((m) => m.id === tempId);
+
+        if (targetIdx !== -1) {
+          if (res.success && res.url) {
+            successCount++;
+            workingList[targetIdx] = {
+              ...workingList[targetIdx],
+              url: res.url,
+              isUploading: false,
+              uploadError: null,
+              tempFile: undefined
+            };
+          } else {
+            workingList[targetIdx] = {
+              ...workingList[targetIdx],
+              isUploading: false,
+              uploadError: res.error || 'Falha no upload'
+            };
+          }
+          workingList = [...workingList];
+          onChange(workingList);
         }
       }
 
-      if (newItems.length > 0) {
-        onChange([...mediaList, ...newItems]);
+      if (successCount > 0) {
         showToast(`${successCount} mídia(s) enviada(s) com sucesso para o Cloudflare R2!`);
       } else {
-        showToast('Nenhuma mídia foi carregada.', 'error');
+        showToast('Nenhuma mídia foi salva no Cloudflare R2.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado no upload.', 'error');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUploadFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFiles(e.target.files);
       e.target.value = '';
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleRetryUpload = async (index: number) => {
+    const item = mediaList[index];
+    if (!item || !item.tempFile) return;
+
+    const updated = [...mediaList];
+    updated[index] = { ...item, isUploading: true, uploadError: null };
+    onChange(updated);
+
+    const isVideo = item.tempFile.type.startsWith('video/') || /\.(mp4|mov|webm|avi|m4v)$/i.test(item.tempFile.name);
+    const folder = isVideo ? 'videos' : 'produtos';
+
+    const res = await uploadBrowserFileToR2(item.tempFile, tenantSlug, folder);
+    const refreshed = [...mediaList];
+    if (res.success && res.url) {
+      refreshed[index] = {
+        ...refreshed[index],
+        url: res.url,
+        isUploading: false,
+        uploadError: null,
+        tempFile: undefined
+      };
+      showToast('Mídia enviada com sucesso para o Cloudflare R2!');
+    } else {
+      refreshed[index] = {
+        ...refreshed[index],
+        isUploading: false,
+        uploadError: res.error || 'Falha no upload'
+      };
+      showToast('Falha ao reenviar arquivo.', 'error');
+    }
+    onChange(refreshed);
   };
 
   // Reordenar
@@ -238,7 +334,12 @@ export function ProductMediaGalleryManager({
     });
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Barra de Ações Superiores: Upload e Métricas */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-3">
         <div>
@@ -352,10 +453,16 @@ export function ProductMediaGalleryManager({
 
       {/* Grid de Mídias */}
       {mediaList.length === 0 ? (
-        <label className="p-10 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50 transition-colors text-center group">
-          <Upload className="w-8 h-8 text-slate-400 group-hover:text-amber-600 transition-colors" />
+        <label
+          className={`p-10 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all text-center group ${
+            isDragOver
+              ? 'border-amber-500 bg-amber-50/70 ring-4 ring-amber-300/30'
+              : 'border-slate-300 hover:border-amber-500 bg-slate-50'
+          }`}
+        >
+          <Upload className={`w-8 h-8 text-slate-400 group-hover:text-amber-600 transition-colors ${uploading ? 'animate-bounce text-amber-600' : ''}`} />
           <span className="text-xs font-bold text-slate-700">
-            Nenhuma foto ou vídeo cadastrado nesta peça.
+            {isDragOver ? 'Solte as fotos ou vídeos aqui!' : 'Nenhuma foto ou vídeo cadastrado nesta peça.'}
           </span>
           <span className="text-[11px] text-slate-500">
             Clique aqui para subir múltiplas fotos ou arraste arquivos para o Cloudflare R2.
@@ -393,6 +500,31 @@ export function ProductMediaGalleryManager({
               >
                 {/* Visual da Mídia */}
                 <div className="relative aspect-3/4 w-full bg-slate-900">
+                  {/* Overlay de Uploading Otimista */}
+                  {foto.isUploading && (
+                    <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center text-white z-20 animate-fade-in">
+                      <Loader2 className="w-6 h-6 animate-spin text-amber-400 mb-1" />
+                      <span className="text-[10px] font-bold text-amber-200">Enviando R2...</span>
+                    </div>
+                  )}
+
+                  {/* Overlay de Erro com Retry */}
+                  {foto.uploadError && (
+                    <div className="absolute inset-0 bg-rose-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center text-white z-20 animate-fade-in">
+                      <span className="text-[10px] font-bold text-rose-200 mb-1.5 leading-tight px-1">
+                        {foto.uploadError}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRetryUpload(originalIndex)}
+                        className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Tentar Novamente</span>
+                      </button>
+                    </div>
+                  )}
+
                   {isVideo ? (
                     <div className="w-full h-full relative flex items-center justify-center">
                       <video src={foto.url} className="w-full h-full object-cover" muted playsInline />
@@ -411,6 +543,7 @@ export function ProductMediaGalleryManager({
                       src={foto.url}
                       alt={parsed.cleanLabel || `Foto ${originalIndex + 1}`}
                       fill
+                      unoptimized={foto.url.startsWith('blob:')}
                       sizes="220px"
                       className="object-cover"
                     />

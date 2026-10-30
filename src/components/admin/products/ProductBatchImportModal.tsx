@@ -52,6 +52,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, parseMediaColor } from '@/lib/products';
 import { AdminProductItem } from '@/lib/admin';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
+import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 
 export interface BatchCategoryOption {
   id: string;
@@ -1750,6 +1751,7 @@ export function ProductBatchImportModal({
         }
       }
 
+      notifyStockChangeCrossTab();
       setSuccessGlobal(
         `Operação concluída com sucesso! ${novasCriadas} nova(s) peça(s) cadastrada(s) e ${reposicoesFeitas} reposição(ões) de estoque atualizada(s).`
       );
