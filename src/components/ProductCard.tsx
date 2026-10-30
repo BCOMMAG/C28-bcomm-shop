@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, Eye, ShoppingBag, Plus, Check, Clock, Play } from 'lucide-react';
+import { Heart, Eye, ShoppingBag, Plus, Check, Clock } from 'lucide-react';
 import { Product } from '@/types';
 import { useStore } from '@/context/StoreContext';
 import { isVideoUrl } from '@/lib/products';
@@ -46,10 +46,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     );
     return realImages[0]?.src || null;
   }, [product.media, currentThumbnail]);
-
-  const hasVideoProvador = useMemo(() => {
-    return Boolean(product.media?.some((m) => m.type === 'video' || isVideoUrl(m.src)));
-  }, [product.media]);
 
   // Analisa se há preços diferenciados entre as variações cadastradas
   const variablePricesInfo = useMemo(() => {
@@ -164,17 +160,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
             }`}
           />
-        )}
-
-        {/* Indicador Elegante de que a Peça possui Vídeo de Provador */}
-        {hasVideoProvador && (
-          <div
-            className="absolute bottom-2.5 right-2.5 z-10 bg-black/60 backdrop-blur-xs text-white/90 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20 pointer-events-none shadow-xs"
-            title="Esta peça possui vídeo de provador (clique para assistir no detalhe)"
-          >
-            <Play className="w-2.5 h-2.5 fill-white text-white" />
-            <span>Vídeo</span>
-          </div>
         )}
 
         {/* Gradiente sutil inferior */}
