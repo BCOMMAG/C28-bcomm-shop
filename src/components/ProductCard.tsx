@@ -60,6 +60,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     return { minPrice, maxPrice, isDivergent };
   }, [product.variations]);
 
+  // Identifica se a peça possui um desconto promocional real cadastrado no sistema
+  const hasRealDiscount = useMemo(() => {
+    return Boolean(
+      product.originalPrice &&
+      product.price &&
+      product.originalPrice > product.price &&
+      product.savingsAmount &&
+      product.savingsAmount > 0
+    );
+  }, [product.originalPrice, product.price, product.savingsAmount]);
+
   // Variações de estilo baseadas na densidade de colunas
   const isCompact = columnsCount === 5;
   const isMedium = columnsCount === 4;
@@ -371,38 +382,60 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* SLOT 4: Preço e Botão de Ação (Empilhado verticalmente no mobile para nunca sobrepor) */}
         <div className="mt-2 sm:mt-2.5 pt-2 border-t border-[#C5A059]/15 flex flex-col gap-2">
-          <div className="w-full flex items-baseline justify-between gap-2 min-w-0">
-            <div className="min-w-0 flex-1">
-              {/* Rótulo de preço ou preço original de OUTLET */}
-              {isOutletSection && product.formattedOriginalPrice ? (
-                <div className="flex items-center gap-1.5 leading-none mb-1">
-                  <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
-                    {product.formattedOriginalPrice}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
-                    OUTLET
-                  </span>
-                </div>
+          <div className="w-full flex items-start justify-between gap-2 min-w-0 min-h-[58px]">
+            <div className="min-w-0 flex-1 flex flex-col justify-end">
+              {hasRealDiscount ? (
+                <>
+                  {/* Linha 1: Preço Original Riscado + Tag de Promoção/Outlet */}
+                  <div className="flex items-center gap-1.5 leading-none mb-1">
+                    <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
+                      {product.formattedOriginalPrice}
+                    </span>
+                    <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
+                      {product.isOutlet ? 'OUTLET' : 'PROMOÇÃO'}
+                    </span>
+                  </div>
+                  {/* Linha 2: Preço Promocional em Destaque */}
+                  <div className="flex items-baseline gap-1">
+                    <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
+                      isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
+                    }`}>
+                      {variablePricesInfo?.isDivergent
+                        ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
+                        : product.formattedPrice}
+                    </span>
+                  </div>
+                  {/* Linha 3: Economia em Verde de Alta Conversão */}
+                  <div className="text-[#16A34A] dark:text-[#22C55E] text-[10px] sm:text-[11px] font-bold uppercase tracking-tight mt-1 flex items-center gap-1">
+                    <span>Economia de R$ {product.savingsAmount?.toFixed(2).replace('.', ',')}!</span>
+                    {product.discountPercent && (
+                      <span className="text-[9px] bg-[#16A34A]/10 text-[#16A34A] dark:text-[#22C55E] px-1 py-0.2 rounded-none font-black">
+                        ({product.discountPercent}% OFF)
+                      </span>
+                    )}
+                  </div>
+                </>
               ) : (
-                <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
-                  {variablePricesInfo?.isDivergent ? 'A partir de' : 'Valor da Peça'}
-                </span>
+                <>
+                  <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
+                    {variablePricesInfo?.isDivergent ? 'A partir de' : 'Valor da Peça'}
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
+                      isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
+                    }`}>
+                      {variablePricesInfo?.isDivergent
+                        ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
+                        : product.formattedPrice}
+                    </span>
+                  </div>
+                </>
               )}
-              {/* Valor numérico */}
-              <div className="flex items-baseline gap-1">
-                <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
-                  isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
-                }`}>
-                  {variablePricesInfo?.isDivergent
-                    ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
-                    : product.formattedPrice}
-                </span>
-              </div>
             </div>
 
             {/* Indicador sutil de estoque baixo */}
             {product.remainingPieces && product.remainingPieces > 0 && product.remainingPieces <= 3 && !isOutOfStock && !isAllReserved && (
-              <span className="text-[9px] font-semibold text-[#8B5A2B] dark:text-[#DFBE76] bg-[#8B5A2B]/10 dark:bg-[#DFBE76]/10 px-1.5 py-0.5 rounded-none whitespace-nowrap shrink-0">
+              <span className="text-[9px] font-semibold text-[#8B5A2B] dark:text-[#DFBE76] bg-[#8B5A2B]/10 dark:bg-[#DFBE76]/10 px-1.5 py-0.5 rounded-none whitespace-nowrap shrink-0 mt-0.5">
                 Restam {product.remainingPieces}
               </span>
             )}

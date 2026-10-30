@@ -74,13 +74,16 @@ export function parseMediaColor(label?: string): {
 export function mapDbProductToProduct(dbProd: any): Product {
   const precoBase = Number(dbProd.preco || 0);
   const precoPromo = dbProd.preco_promocional ? Number(dbProd.preco_promocional) : null;
-  const currentPrice = precoPromo !== null ? precoPromo : precoBase;
-  const originalPrice = precoPromo !== null ? precoBase : undefined;
+  const hasRealDiscount = precoPromo !== null && precoPromo > 0 && precoPromo < precoBase;
+
+  const currentPrice = hasRealDiscount ? precoPromo! : precoBase;
+  const originalPrice = hasRealDiscount ? precoBase : undefined;
+  const savingsAmount = hasRealDiscount ? (precoBase - precoPromo!) : undefined;
+  const discountPercent = hasRealDiscount ? Math.round(((precoBase - precoPromo!) / precoBase) * 100) : undefined;
 
   const isOutlet = Boolean(dbProd.outlet);
   let discountBadge: string | undefined = undefined;
-  if (originalPrice && originalPrice > currentPrice) {
-    const discountPercent = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+  if (hasRealDiscount && discountPercent) {
     discountBadge = isOutlet ? `OUTLET ${discountPercent}% OFF` : `${discountPercent}% OFF`;
   } else if (isOutlet) {
     discountBadge = 'OUTLET';
@@ -215,6 +218,8 @@ export function mapDbProductToProduct(dbProd: any): Product {
     formattedPrice: formatPrice(currentPrice),
     originalPrice,
     formattedOriginalPrice: originalPrice ? formatPrice(originalPrice) : undefined,
+    savingsAmount,
+    discountPercent,
     discountBadge,
     isOutlet: Boolean(dbProd.outlet),
     isBestSeller: Boolean(dbProd.mais_vendido),

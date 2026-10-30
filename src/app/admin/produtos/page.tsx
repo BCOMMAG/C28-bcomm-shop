@@ -1258,7 +1258,10 @@ export default function AdminProdutosPage() {
           cor_nome: v.cor_nome,
           cor_hex: v.cor_hex,
           tamanho: v.tamanho,
-          estoque: v.estoque
+          estoque: v.estoque,
+          sku: `${generatedSlug}-${v.cor_nome}-${v.tamanho}`.toUpperCase(),
+          preco: product.preco,
+          preco_promocional: product.preco_promocional || null
         }))
       };
 

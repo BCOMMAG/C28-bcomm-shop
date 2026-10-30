@@ -24,6 +24,8 @@ export interface Product {
   formattedPrice: string;
   originalPrice?: number;
   formattedOriginalPrice?: string;
+  savingsAmount?: number;
+  discountPercent?: number;
   discountBadge?: string;
   isOutlet?: boolean;
   isBestSeller?: boolean;

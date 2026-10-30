@@ -555,6 +555,17 @@ export function ProductFullFormModal({
 
       if (isEdit && product) {
         // MODO EDIÇÃO
+        const variacoesPayload = variacoes.map((v) => {
+          const diff = precosDiferenciados[`${v.cor_nome}_${v.tamanho}`];
+          const varPreco = diff?.preco !== undefined ? diff.preco : preco;
+          const varPromo = diff?.preco_promocional !== undefined ? diff.preco_promocional : parsedPromo;
+          return {
+            ...v,
+            preco: varPreco,
+            preco_promocional: varPromo
+          };
+        });
+
         const updatePayload: UpdateProductInput = {
           id: product.id,
           loja_id: tenantId,
@@ -581,7 +592,7 @@ export function ProductFullFormModal({
           foto_principal: safeFotoPrincipal,
           fotos: orderedFotos,
           video_provador_url: firstVideo ? firstVideo.url : null,
-          variacoes: variacoes
+          variacoes: variacoesPayload
         };
 
         const res = await updateAdminProductFull(updatePayload);
