@@ -47,7 +47,8 @@ export async function onRequestPost(context: any) {
       Bucket: R2_BUCKET_NAME,
       Key: key,
       Body: new Uint8Array(buffer),
-      ContentType: file.type || 'application/octet-stream'
+      ContentType: file.type || 'application/octet-stream',
+      CacheControl: 'public, max-age=31536000, immutable'
     }));
 
     const publicUrl = `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;

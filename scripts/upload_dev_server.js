@@ -71,6 +71,7 @@ const server = http.createServer((req, res) => {
           Key: key,
           Body: Buffer.from(fileArrayBuf),
           ContentType: file.type || 'application/octet-stream',
+          CacheControl: 'public, max-age=31536000, immutable'
         }));
 
         const publicUrl = `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;

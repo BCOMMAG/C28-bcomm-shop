@@ -131,7 +131,7 @@ export function ProductMediaGalleryManager({
       }
 
       if (successCount > 0) {
-        showToast(`${successCount} mídia(s) enviada(s) com sucesso para o Cloudflare R2!`);
+        showToast(`${successCount} mídia(s) otimizada(s) em WebP e enviada(s) com sucesso para o Cloudflare R2!`);
       } else {
         showToast('Nenhuma mídia foi salva no Cloudflare R2.', 'error');
       }

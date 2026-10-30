@@ -1,4 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { compressImageFile, isProcessableImage, ImageTargetType } from '@/lib/image-compressor';
+import { extractVideoPoster, validateVideoMedia } from '@/lib/video-optimizer';
 
 // Variáveis de ambiente para o Cloudflare R2
 const R2_ACCOUNT_ID =
@@ -93,19 +95,76 @@ export async function uploadToR2({
   }
 }
 
+export interface BrowserUploadResult {
+  success: boolean;
+  url: string;
+  error?: string;
+  posterUrl?: string;
+  originalSize?: number;
+  compressedSize?: number;
+  savingsPercent?: number;
+  wasCompressed?: boolean;
+}
+
 /**
  * Helper para upload direto de arquivos selecionados no navegador (File)
- * No cliente (browser), envia via FormData para a rota interna segura /api/upload,
- * eliminando completamente problemas de CORS e exposição de chaves S3.
- * No servidor (Node.js), realiza o envio direto via uploadToR2 como fallback.
+ * Otimiza e comprime imagens automaticamente no cliente (WebP, downscaling proporcional,
+ * correção EXIF e preservação de canal alfa) e extrai Poster Frame para vídeos.
  */
 export async function uploadBrowserFileToR2(
   file: File,
   tenantSlug: string = 'leidy-boutique',
   folder: 'produtos' | 'banners' | 'logos' | 'videos' | 'avatars' | 'og' | 'backgrounds' = 'produtos'
-): Promise<{ success: boolean; url: string; error?: string }> {
+): Promise<BrowserUploadResult> {
   try {
-    // 1. Se estiver no Browser, envia para a API Route segura (local ou Cloudflare Pages)
+    // 1. Otimização Client-Side de Imagens
+    let fileToSend = file;
+    let originalSize = file.size;
+    let compressedSize = file.size;
+    let savingsPercent = 0;
+    let wasCompressed = false;
+    let posterUrl: string | undefined = undefined;
+
+    if (typeof window !== 'undefined' && isProcessableImage(file)) {
+      const targetMap: Record<string, ImageTargetType> = {
+        produtos: 'produto',
+        banners: 'banner_desktop',
+        logos: 'logo',
+        avatars: 'avatar',
+        og: 'og',
+        backgrounds: 'backgrounds'
+      };
+      const targetType = targetMap[folder] || 'produto';
+      const compRes = await compressImageFile(file, { targetType });
+      fileToSend = compRes.file;
+      originalSize = compRes.originalSize;
+      compressedSize = compRes.compressedSize;
+      savingsPercent = compRes.savingsPercent;
+      wasCompressed = compRes.wasCompressed;
+      if (wasCompressed) {
+        console.log(`⚡ [Compressor R2] ${file.name}: ${(originalSize / 1024).toFixed(1)} KB → ${(compressedSize / 1024).toFixed(1)} KB (-${savingsPercent}%)`);
+      }
+    } else if (typeof window !== 'undefined' && (file.type.startsWith('video/') || /\.(mp4|mov|webm)$/i.test(file.name))) {
+      // 1.1 Para Vídeos: extrai poster frame de carregamento instantâneo
+      const videoValidation = validateVideoMedia(file);
+      if (!videoValidation.isValid) {
+        return { success: false, url: '', error: videoValidation.error };
+      }
+      try {
+        const posterRes = await extractVideoPoster(file);
+        if (posterRes?.posterFile) {
+          const posterUpload = await uploadBrowserFileToR2(posterRes.posterFile, tenantSlug, 'produtos');
+          if (posterUpload.success) {
+            posterUrl = posterUpload.url;
+            console.log(`🎬 [Video Poster] Poster extraído e salvo com sucesso: ${posterUrl}`);
+          }
+        }
+      } catch (postErr) {
+        console.warn('⚠️ Falha secundária ao extrair poster do vídeo:', postErr);
+      }
+    }
+
+    // 2. Se estiver no Browser, envia para a API Route segura
     if (typeof window !== 'undefined') {
       const isLocalhost =
         window.location.hostname === 'localhost' ||
@@ -114,7 +173,7 @@ export async function uploadBrowserFileToR2(
       const uploadEndpoint = isLocalhost ? 'http://127.0.0.1:3005/api/upload' : '/api/upload';
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', fileToSend);
       formData.append('tenantSlug', tenantSlug);
       formData.append('folder', folder);
 
@@ -137,15 +196,20 @@ export async function uploadBrowserFileToR2(
 
       return {
         success: true,
-        url: data.url
+        url: data.url,
+        posterUrl,
+        originalSize,
+        compressedSize,
+        savingsPercent,
+        wasCompressed
       };
     }
 
-    // 2. Se for invocado no ambiente do Servidor (Node.js)
-    const arrayBuffer = await file.arrayBuffer();
+    // 3. Se for invocado no ambiente do Servidor (Node.js)
+    const arrayBuffer = await fileToSend.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    const cleanFileName = file.name
+    const cleanFileName = fileToSend.name
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -154,11 +218,21 @@ export async function uploadBrowserFileToR2(
 
     const key = `tenants/${tenantSlug}/${folder}/${Date.now()}-${cleanFileName}`;
 
-    return await uploadToR2({
+    const r2Res = await uploadToR2({
       key,
       fileBuffer: uint8Array,
-      contentType: file.type || 'application/octet-stream',
+      contentType: fileToSend.type || 'application/octet-stream',
     });
+
+    return {
+      success: r2Res.success,
+      url: r2Res.url,
+      error: r2Res.error,
+      originalSize,
+      compressedSize,
+      savingsPercent,
+      wasCompressed
+    };
   } catch (err: any) {
     console.error('❌ [Cloudflare R2] Erro ao processar arquivo no upload:', err);
     return {
@@ -178,10 +252,10 @@ export async function uploadMultipleBrowserFilesToR2(
   tenantSlug: string = 'leidy-boutique',
   folder: 'produtos' | 'banners' | 'logos' | 'videos' | 'avatars' | 'og' | 'backgrounds' = 'produtos',
   concurrency = 3,
-  onProgress?: (completed: number, total: number, lastUploaded?: { name: string; url: string }) => void
-): Promise<Array<{ file: File; success: boolean; url: string; error?: string }>> {
+  onProgress?: (completed: number, total: number, lastUploaded?: { name: string; url: string; savingsPercent?: number }) => void
+): Promise<Array<{ file: File; success: boolean; url: string; posterUrl?: string; error?: string; savingsPercent?: number; wasCompressed?: boolean }>> {
   const fileArray = Array.from(files);
-  const results: Array<{ file: File; success: boolean; url: string; error?: string }> = [];
+  const results: Array<{ file: File; success: boolean; url: string; posterUrl?: string; error?: string; savingsPercent?: number; wasCompressed?: boolean }> = [];
   let index = 0;
   let completed = 0;
 
@@ -194,11 +268,14 @@ export async function uploadMultipleBrowserFilesToR2(
         file,
         success: res.success,
         url: res.url,
+        posterUrl: res.posterUrl,
+        savingsPercent: res.savingsPercent,
+        wasCompressed: res.wasCompressed,
         error: res.error
       };
       completed++;
       if (onProgress) {
-        onProgress(completed, fileArray.length, res.success ? { name: file.name, url: res.url } : undefined);
+        onProgress(completed, fileArray.length, res.success ? { name: file.name, url: res.url, savingsPercent: res.savingsPercent } : undefined);
       }
     }
   }

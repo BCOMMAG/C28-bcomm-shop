@@ -42,3 +42,4 @@ next-env.d.ts
 
 # scratch scripts and temp files
 scratch/
+public/_backup_original/

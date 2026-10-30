@@ -1399,7 +1399,7 @@ export function ProductBatchImportModal({
           setErrorGlobal(res.error || `Falha no upload do arquivo ${file.name}`);
         }
       }
-      setSuccessGlobal('Fotos enviadas com sucesso para o Cloudflare R2!');
+      setSuccessGlobal('Fotos otimizadas em WebP e enviadas com sucesso para o Cloudflare R2!');
       setTimeout(() => setSuccessGlobal(null), 3000);
     } catch (err: any) {
       setErrorGlobal(err?.message || 'Erro durante o upload das fotos.');
