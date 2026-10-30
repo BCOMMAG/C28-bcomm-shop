@@ -225,16 +225,18 @@ export function ProductFullFormModal({
       setPrecosDiferenciados(precosDiff);
 
       // Mídias
-      const existingMidias: FormMediaItem[] = (product.midias || []).map((m, idx) => {
-        const isVid = detectMediaType(m.tipo, m.url) === 'video';
-        return {
-          id: m.id,
-          url: m.url,
-          tipo: isVid ? 'video' : 'image',
-          label: m.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
-          display_order: m.display_order ?? idx
-        };
-      });
+      let existingMidias: FormMediaItem[] = (product.midias || [])
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        .map((m, idx) => {
+          const isVid = detectMediaType(m.tipo, m.url) === 'video';
+          return {
+            id: m.id,
+            url: m.url,
+            tipo: isVid ? 'video' : 'image',
+            label: m.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
+            display_order: m.display_order ?? idx
+          };
+        });
 
       // Se a foto_principal não estiver na lista de mídias e não for vídeo, inclui no início
       if (product.foto_principal && !isVideoUrl(product.foto_principal) && !existingMidias.some((m) => m.url === product.foto_principal)) {
@@ -246,6 +248,17 @@ export function ProductFullFormModal({
           display_order: 0
         });
       }
+
+      // Regra de Ouro: Garante que um vídeo NUNCA fique como Capa Principal (posição 0)
+      if (existingMidias.length > 0 && existingMidias[0].tipo === 'video') {
+        const firstPhotoIdx = existingMidias.findIndex((m) => m.tipo === 'image' && !isVideoUrl(m.url));
+        if (firstPhotoIdx > 0) {
+          const [photo] = existingMidias.splice(firstPhotoIdx, 1);
+          existingMidias.unshift(photo);
+        }
+      }
+
+      existingMidias = existingMidias.map((m, idx) => ({ ...m, display_order: idx }));
       setMediaList(existingMidias);
       setCoverIndex(0);
 

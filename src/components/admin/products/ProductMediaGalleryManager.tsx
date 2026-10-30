@@ -588,7 +588,30 @@ export function ProductMediaGalleryManager({
                 </div>
 
                 {/* Controles de Configuração da Foto */}
-                <div className="p-2 space-y-1.5 bg-slate-50/80 border-t border-slate-100 text-xs">
+                <div className="p-2 space-y-2 bg-slate-50/80 border-t border-slate-100 text-xs">
+                  {/* Botão de Destaque: Definir como Capa Principal da Peça */}
+                  {isMainCover ? (
+                    <div className="w-full py-1 px-1.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded flex items-center justify-center gap-1 shadow-2xs">
+                      <Star className="w-3 h-3 fill-slate-950 text-slate-950" />
+                      <span>⭐ Capa Principal da Peça</span>
+                    </div>
+                  ) : !isVideo ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSetMainCover(originalIndex)}
+                      className="w-full py-1.5 px-2 bg-amber-100 hover:bg-amber-500 hover:text-slate-950 text-amber-900 border border-amber-300/80 font-bold text-[10px] rounded-md cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs group/btn"
+                      title="Definir esta foto como a Capa Principal #1 do catálogo e vitrine"
+                    >
+                      <Star className="w-3 h-3 text-amber-700 group-hover/btn:fill-slate-950 group-hover/btn:text-slate-950 transition-colors" />
+                      <span>Definir como Capa Principal</span>
+                    </button>
+                  ) : (
+                    <div className="w-full py-1 px-1.5 bg-slate-900 text-rose-300 border border-rose-800/60 font-bold text-[9px] rounded flex items-center justify-center gap-1 text-center">
+                      <Video className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                      <span>Vídeo Provador (Dossiê)</span>
+                    </div>
+                  )}
+
                   {/* Seletor de Vínculo de Cor */}
                   <div>
                     <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">
@@ -608,7 +631,7 @@ export function ProductMediaGalleryManager({
                     </select>
                   </div>
 
-                  {/* Ações Rápidas: Capa da Cor, Ocultar e Capa Principal */}
+                  {/* Ações Rápidas: Capa da Cor e Ocultar */}
                   <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-200/60">
                     {/* Botão Capa da Cor */}
                     <button
@@ -624,12 +647,14 @@ export function ProductMediaGalleryManager({
                       }`}
                       title={
                         parsed.colorName
-                          ? 'Definir esta foto como a miniatura oficial da cor na vitrine'
-                          : 'Selecione uma cor para ativar'
+                          ? `Definir esta foto como a miniatura oficial da cor "${parsed.colorName}" na vitrine`
+                          : 'Vincule uma cor no campo acima para ativar'
                       }
                     >
                       <Star className={`w-3 h-3 ${parsed.isColorCover ? 'fill-slate-950' : ''}`} />
-                      <span>{parsed.isColorCover ? 'Capa da Cor' : 'Tornar Capa'}</span>
+                      <span className="truncate">
+                        {parsed.isColorCover ? 'Capa da Cor' : parsed.colorName ? 'Capa da Cor' : 'Capa de Cor'}
+                      </span>
                     </button>
 
                     {/* Botão Ocultar/Exibir */}
@@ -664,44 +689,34 @@ export function ProductMediaGalleryManager({
                         type="button"
                         disabled={originalIndex === 0}
                         onClick={() => handleMove(originalIndex, 'left')}
-                        className={`p-1 rounded text-slate-500 hover:bg-slate-200 transition-colors ${
+                        className={`p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors ${
                           originalIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
                         }`}
-                        title="Mover para esquerda"
+                        title="Mover para a frente (posição anterior)"
                       >
-                        <ArrowLeft className="w-3 h-3" />
+                        <ArrowLeft className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
                         disabled={originalIndex === mediaList.length - 1}
                         onClick={() => handleMove(originalIndex, 'right')}
-                        className={`p-1 rounded text-slate-500 hover:bg-slate-200 transition-colors ${
+                        className={`p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors ${
                           originalIndex === mediaList.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
                         }`}
-                        title="Mover para direita"
+                        title="Mover para trás (próxima posição)"
                       >
-                        <ArrowRight className="w-3 h-3" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {!isMainCover && !isVideo && (
-                        <button
-                          type="button"
-                          onClick={() => handleSetMainCover(originalIndex)}
-                          className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[9px] rounded cursor-pointer transition-colors"
-                          title="Tornar a Capa Principal #1 do catálogo"
-                        >
-                          Capa #1
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={() => handleDelete(originalIndex)}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                        title="Remover mídia da galeria"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        title="Remover mídia da galeria da peça"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

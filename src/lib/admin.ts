@@ -1291,13 +1291,15 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       subcategoria: p.subcategoria || null,
       paired_with_slug: p.paired_with_slug || null,
       detalhes: p.detalhes || null,
-      midias: (p.midias_produto || []).map((m: any) => ({
-        id: m.id,
-        url: m.url,
-        tipo: m.tipo,
-        display_order: m.display_order || 0,
-        label: m.label
-      })),
+      midias: (p.midias_produto || [])
+        .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        .map((m: any) => ({
+          id: m.id,
+          url: m.url,
+          tipo: m.tipo,
+          display_order: m.display_order || 0,
+          label: m.label
+        })),
       variacoes: (p.variacoes_produto || []).map((v: any) => ({
         id: v.id,
         cor_nome: v.cor_nome,
@@ -1666,26 +1668,34 @@ export async function updateAdminProductFull(
       // Remove mídias anteriores e insere a lista atualizada com a nova ordenação
       await supabase.from('midias_produto').delete().eq('produto_id', input.id);
 
-      const midiasToInsert = input.fotos.map((f, idx) => {
+      const midiasToInsert: any[] = [];
+      const seenUrls = new Set<string>();
+
+      // Primeiro, insere as fotos ordenadas da galeria (garantindo deduplicação estrita)
+      input.fotos.forEach((f, idx) => {
+        if (!f.url || seenUrls.has(f.url)) return;
+        seenUrls.add(f.url);
         const isVid = detectMediaType(f.tipo, f.url) === 'video';
-        return {
+        midiasToInsert.push({
           loja_id: input.loja_id || updatedProd.loja_id,
           produto_id: input.id,
           tipo: isVid ? 'video' : 'image',
           url: f.url,
           label: f.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
           display_order: f.display_order !== undefined ? f.display_order : idx
-        };
+        });
       });
 
-      if (input.video_provador_url?.trim()) {
+      // Se video_provador_url foi enviado e ainda NÃO está na lista, adiciona no final
+      if (input.video_provador_url?.trim() && !seenUrls.has(input.video_provador_url.trim())) {
+        seenUrls.add(input.video_provador_url.trim());
         midiasToInsert.push({
           loja_id: input.loja_id || updatedProd.loja_id,
           produto_id: input.id,
           tipo: 'video',
           url: input.video_provador_url.trim(),
           label: 'Vídeo de Provador (9:16)',
-          display_order: 99
+          display_order: midiasToInsert.length
         });
       }
 

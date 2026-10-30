@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, Eye, ShoppingBag, Plus, Check, Clock } from 'lucide-react';
+import { Heart, Eye, ShoppingBag, Plus, Check, Clock, Play } from 'lucide-react';
 import { Product } from '@/types';
 import { useStore } from '@/context/StoreContext';
 import { isVideoUrl } from '@/lib/products';
@@ -33,13 +33,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [hoverColorImage, setHoverColorImage] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const videoSrc = product.media.find((m) => m.type === 'video' || isVideoUrl(m.src))?.src;
 
   // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores, garantindo que nunca seja vídeo)
   const safeThumbnail = !isVideoUrl(product.thumbnail) ? product.thumbnail : '/placeholder-product.jpg';
   const currentThumbnail = (hoverColorImage && !isVideoUrl(hoverColorImage)) ? hoverColorImage : safeThumbnail;
+
+  // Foto secundária para o efeito suave de hover (padrão de moda internacional)
+  const secondaryImage = useMemo(() => {
+    if (!product.media || product.media.length < 2) return null;
+    const realImages = product.media.filter(
+      (m) => m.type === 'image' && !isVideoUrl(m.src) && m.src !== currentThumbnail
+    );
+    return realImages[0]?.src || null;
+  }, [product.media, currentThumbnail]);
+
+  const hasVideoProvador = useMemo(() => {
+    return Boolean(product.media?.some((m) => m.type === 'video' || isVideoUrl(m.src)));
+  }, [product.media]);
 
   // Analisa se há preços diferenciados entre as variações cadastradas
   const variablePricesInfo = useMemo(() => {
@@ -131,7 +141,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         className="relative aspect-[3/4] catalog-card-image w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
         onClick={() => onOpenDetails(product)}
       >
-        {/* Imagem do Produto */}
+        {/* Imagem Principal do Produto */}
         <Image
           key={currentThumbnail}
           src={currentThumbnail}
@@ -139,22 +149,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className={`object-cover object-top transition-all duration-500 ${
-            isHovered && videoSrc ? 'opacity-0' : 'opacity-100 group-hover:scale-105'
+            isHovered && secondaryImage ? 'opacity-0 scale-105' : 'opacity-100 group-hover:scale-105'
           }`}
         />
 
-        {/* Vídeo do Provador (Injetado exclusivamente no hover do desktop para performance máxima) */}
-        {isHovered && videoSrc && (
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none opacity-100 transition-opacity duration-300"
+        {/* Segunda Imagem no Hover (quando houver mais de uma foto cadastrada) */}
+        {secondaryImage && (
+          <Image
+            src={secondaryImage}
+            alt={`${product.name} - Detalhe`}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className={`object-cover object-top transition-all duration-500 pointer-events-none absolute inset-0 ${
+              isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            }`}
           />
+        )}
+
+        {/* Indicador Elegante de que a Peça possui Vídeo de Provador */}
+        {hasVideoProvador && (
+          <div
+            className="absolute bottom-2.5 right-2.5 z-10 bg-black/60 backdrop-blur-xs text-white/90 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20 pointer-events-none shadow-xs"
+            title="Esta peça possui vídeo de provador (clique para assistir no detalhe)"
+          >
+            <Play className="w-2.5 h-2.5 fill-white text-white" />
+            <span>Vídeo</span>
+          </div>
         )}
 
         {/* Gradiente sutil inferior */}
