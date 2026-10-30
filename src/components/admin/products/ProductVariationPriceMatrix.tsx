@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Sparkles, DollarSign, RotateCcw, Copy } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, DollarSign, RotateCcw, Copy, Lock, Unlock, AlertCircle } from 'lucide-react';
 
 export interface PrecoVariavelItem {
   preco?: number;
@@ -13,6 +13,7 @@ export interface ProductVariationPriceMatrixProps {
   tamanhos: string[];
   basePrice: number;
   basePromoPrice?: number;
+  variacoes?: Array<{ cor_nome: string; tamanho: string; estoque: number }>;
   precosPorVariacao: Record<string, PrecoVariavelItem>;
   onChange: (updated: Record<string, PrecoVariavelItem>) => void;
   onFeedback?: (msg: string) => void;
@@ -23,10 +24,20 @@ export function ProductVariationPriceMatrix({
   tamanhos,
   basePrice,
   basePromoPrice,
+  variacoes,
   precosPorVariacao,
   onChange,
   onFeedback
 }: ProductVariationPriceMatrixProps) {
+  // Controle de células desbloqueadas manualmente pelo administrador mesmo sem estoque
+  const [unlockedCells, setUnlockedCells] = useState<Set<string>>(new Set());
+  const [confirmModalData, setConfirmModalData] = useState<{
+    corNome: string;
+    tam: string;
+    estoque: number;
+    existsInGrade: boolean;
+  } | null>(null);
+
   const formatBRL = (val: number) => {
     return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -65,7 +76,7 @@ export function ProductVariationPriceMatrix({
       });
     });
     onChange(updated);
-    onFeedback?.('Preço base replicado para todas as combinações de cor e tamanho!');
+    onFeedback?.('Preço base replicado para todas as combinações da matriz!');
   };
 
   const handleLimparPrecosDiferenciados = () => {
@@ -129,7 +140,7 @@ export function ProductVariationPriceMatrix({
               Precificação Granular por Cor × Tamanho
             </span>
             <span className="text-[11px] text-amber-800 block">
-              Defina preços de venda e ofertas promocionais específicos para qualquer combinação.
+              Defina preços de venda e ofertas promocionais específicos. Itens com estoque zerado ficam protegidos em cinza.
             </span>
           </div>
         </div>
@@ -164,7 +175,7 @@ export function ProductVariationPriceMatrix({
             <tr>
               <th className="p-2.5 min-w-[140px]">Cor</th>
               {tamanhos.map((tam) => (
-                <th key={tam} className="p-2.5 text-center min-w-[130px]">
+                <th key={tam} className="p-2.5 text-center min-w-[140px]">
                   Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
                 </th>
               ))}
@@ -193,9 +204,79 @@ export function ProductVariationPriceMatrix({
                     const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : basePrice;
                     const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (basePromoPrice || 0);
 
+                    // Análise de estoque para bloqueio inteligente
+                    const matchingVar = variacoes?.find(
+                      (v) => (v.cor_nome || '').trim().toLowerCase() === corNome.trim().toLowerCase() && (v.tamanho || '').trim() === tam.trim()
+                    );
+                    const existsInGrade = Boolean(matchingVar);
+                    const estoqueNum = matchingVar ? Number(matchingVar.estoque || 0) : 0;
+                    const isZeroStock = !existsInGrade || estoqueNum === 0;
+                    const isUnlockedManually = unlockedCells.has(key);
+                    const isBlocked = isZeroStock && !isUnlockedManually;
+
                     return (
-                      <td key={tam} className="p-2 text-center">
+                      <td
+                        key={tam}
+                        className={`p-2 text-center transition-colors ${
+                          isBlocked
+                            ? 'bg-slate-100/80 border border-slate-200'
+                            : isUnlockedManually
+                            ? 'bg-amber-50/40 border border-amber-300/60'
+                            : ''
+                        }`}
+                      >
                         <div className="space-y-1">
+                          {/* Indicador de Status de Estoque e Cadeado */}
+                          {isBlocked ? (
+                            <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold px-0.5 mb-1">
+                              <span className="flex items-center gap-1 text-slate-500">
+                                <Lock className="w-2.5 h-2.5 text-slate-400" />
+                                {existsInGrade ? '0 un (Zerado)' : 'Fora da grade'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmModalData({
+                                    corNome,
+                                    tam,
+                                    estoque: estoqueNum,
+                                    existsInGrade
+                                  })
+                                }
+                                className="text-amber-700 hover:text-amber-900 underline text-[9px] cursor-pointer"
+                                title="Clique para desbloquear a edição deste preço"
+                              >
+                                Desbloquear
+                              </button>
+                            </div>
+                          ) : isUnlockedManually ? (
+                            <div className="flex items-center justify-between text-[9px] text-amber-800 font-bold px-0.5 mb-1">
+                              <span className="flex items-center gap-1">
+                                <Unlock className="w-2.5 h-2.5 text-amber-600" />
+                                Desbloqueado (0 un)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUnlockedCells((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(key);
+                                    return next;
+                                  });
+                                }}
+                                className="text-slate-400 hover:text-slate-600 text-[9px] cursor-pointer"
+                                title="Bloquear novamente"
+                              >
+                                Bloquear
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium px-0.5 mb-0.5">
+                              <span>Estoque:</span>
+                              <span className="font-bold text-slate-700">{estoqueNum} un</span>
+                            </div>
+                          )}
+
                           {/* Preço de Venda do Tamanho */}
                           <div className="relative">
                             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
@@ -204,20 +285,34 @@ export function ProductVariationPriceMatrix({
                               step="0.01"
                               min="0"
                               value={precoVendaAtual || ''}
-                              onChange={(e) =>
+                              readOnly={isBlocked}
+                              onClick={() => {
+                                if (isBlocked) {
+                                  setConfirmModalData({
+                                    corNome,
+                                    tam,
+                                    estoque: estoqueNum,
+                                    existsInGrade
+                                  });
+                                }
+                              }}
+                              onChange={(e) => {
+                                if (isBlocked) return;
                                 handleUpdateCellPrice(
                                   corNome,
                                   tam,
                                   'preco',
                                   parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className={`w-24 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-2xs ${
-                                customItem?.preco !== undefined && customItem.preco !== basePrice
-                                  ? 'bg-amber-100/70 border border-amber-400 text-amber-950 font-black'
-                                  : 'bg-slate-50 border border-slate-200 text-slate-900'
+                                );
+                              }}
+                              className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
+                                isBlocked
+                                  ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed'
+                                  : customItem?.preco !== undefined && customItem.preco !== basePrice
+                                  ? 'bg-amber-100/70 border border-amber-400 text-amber-950 font-black focus:ring-1 focus:ring-amber-500'
+                                  : 'bg-white border border-slate-300 text-slate-900 focus:ring-1 focus:ring-amber-500'
                               }`}
-                              title={`Preço de venda para ${corNome} Tam ${tam}`}
+                              title={isBlocked ? `Bloqueado: ${corNome} Tam ${tam} está sem estoque. Clique para desbloquear.` : `Preço de venda para ${corNome} Tam ${tam}`}
                             />
                           </div>
 
@@ -229,17 +324,33 @@ export function ProductVariationPriceMatrix({
                               step="0.01"
                               min="0"
                               value={promoAtual || ''}
-                              onChange={(e) =>
+                              readOnly={isBlocked}
+                              onClick={() => {
+                                if (isBlocked) {
+                                  setConfirmModalData({
+                                    corNome,
+                                    tam,
+                                    estoque: estoqueNum,
+                                    existsInGrade
+                                  });
+                                }
+                              }}
+                              onChange={(e) => {
+                                if (isBlocked) return;
                                 handleUpdateCellPrice(
                                   corNome,
                                   tam,
                                   'preco_promocional',
                                   parseFloat(e.target.value) || 0
-                                )
-                              }
-                              placeholder="Promoção"
-                              className="w-24 pl-5 pr-1.5 py-1 bg-rose-50/40 border border-rose-200 rounded-md text-[11px] font-mono font-bold text-rose-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                              title={`Preço promocional para ${corNome} Tam ${tam}`}
+                                );
+                              }}
+                              placeholder={isBlocked ? 'Bloqueado' : 'Promoção'}
+                              className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
+                                isBlocked
+                                  ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed placeholder:text-slate-400'
+                                  : 'bg-rose-50/40 border border-rose-200 text-rose-900 focus:ring-1 focus:ring-rose-500'
+                              }`}
+                              title={isBlocked ? `Bloqueado: ${corNome} Tam ${tam} está sem estoque. Clique para desbloquear.` : `Preço promocional para ${corNome} Tam ${tam}`}
                             />
                           </div>
 
@@ -298,6 +409,56 @@ export function ProductVariationPriceMatrix({
           </tfoot>
         </table>
       </div>
+
+      {/* Pop-up Modal de Confirmação Inteligente para Desbloqueio Consciente */}
+      {confirmModalData && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Variação sem Estoque Físico
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  A peça na cor <strong className="text-slate-900 font-bold">{confirmModalData.corNome}</strong> e tamanho <strong className="text-slate-900 font-bold">{confirmModalData.tam}</strong> {confirmModalData.existsInGrade ? 'está atualmente com estoque zerado (0 unidades físicas).' : 'não foi cadastrada na grade física desta peça.'}
+                </p>
+                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 mt-2 text-[11px] text-amber-900">
+                  💡 <strong>Por que este campo está bloqueado?</strong> Para evitar que preços sejam configurados para itens indisponíveis na vitrine.
+                </div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Deseja desbloquear a edição deste preço mesmo assim para deixar o valor pré-configurado quando houver reposição no estoque?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setConfirmModalData(null)}
+                className="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar / Manter Bloqueado
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const k = `${confirmModalData.corNome}_${confirmModalData.tam}`;
+                  setUnlockedCells((prev) => new Set([...prev, k]));
+                  setConfirmModalData(null);
+                  onFeedback?.(`Edição de preço desbloqueada para ${confirmModalData.corNome} (${confirmModalData.tam})!`);
+                }}
+                className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                <span>Sim, Desbloquear e Editar Preço</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

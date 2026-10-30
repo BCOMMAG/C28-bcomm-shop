@@ -74,20 +74,6 @@ export function parseMediaColor(label?: string): {
 export function mapDbProductToProduct(dbProd: any): Product {
   const precoBase = Number(dbProd.preco || 0);
   const precoPromo = dbProd.preco_promocional ? Number(dbProd.preco_promocional) : null;
-  const hasRealDiscount = precoPromo !== null && precoPromo > 0 && precoPromo < precoBase;
-
-  const currentPrice = hasRealDiscount ? precoPromo! : precoBase;
-  const originalPrice = hasRealDiscount ? precoBase : undefined;
-  const savingsAmount = hasRealDiscount ? (precoBase - precoPromo!) : undefined;
-  const discountPercent = hasRealDiscount ? Math.round(((precoBase - precoPromo!) / precoBase) * 100) : undefined;
-
-  const isOutlet = Boolean(dbProd.outlet);
-  let discountBadge: string | undefined = undefined;
-  if (hasRealDiscount && discountPercent) {
-    discountBadge = isOutlet ? `OUTLET ${discountPercent}% OFF` : `${discountPercent}% OFF`;
-  } else if (isOutlet) {
-    discountBadge = 'OUTLET';
-  }
 
   // 1. Processamento e Ordenação das Mídias (Fotos e Vídeos) - Filtra mídias ocultas da vitrine
   const mediaList: ProductMedia[] = [];
@@ -160,6 +146,54 @@ export function mapDbProductToProduct(dbProd: any): Product {
         });
       }
     });
+  }
+
+  // 3. Resolução Inteligente da Precificação e Descontos (Compatibilidade Cabeçalho x Variações)
+  const activeVarsWithStock = variations.filter((v) => v.stock > 0);
+  const targetVars = activeVarsWithStock.length > 0 ? activeVarsWithStock : variations;
+
+  // Analisa promoções nas variações físicas ativas
+  const promoVariations = targetVars
+    .map((v) => {
+      const vBase = v.price && v.price > 0 ? v.price : precoBase;
+      const vPromo = v.promoPrice && v.promoPrice > 0 ? v.promoPrice : null;
+      if (vPromo !== null && vPromo < vBase) {
+        return {
+          promoPrice: vPromo,
+          basePrice: vBase,
+          savings: vBase - vPromo,
+          discountPct: Math.round(((vBase - vPromo) / vBase) * 100)
+        };
+      }
+      return null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+  let effectiveBasePrice = precoBase;
+  let effectivePromoPrice = precoPromo;
+
+  // Se o cabeçalho não tiver preço promocional, mas as variações ativas tiverem
+  if (effectivePromoPrice === null && promoVariations.length > 0) {
+    const minPromoItem = promoVariations.reduce(
+      (min, cur) => (cur.promoPrice < min.promoPrice ? cur : min),
+      promoVariations[0]
+    );
+    effectivePromoPrice = minPromoItem.promoPrice;
+    effectiveBasePrice = minPromoItem.basePrice;
+  }
+
+  const hasRealDiscount = effectivePromoPrice !== null && effectivePromoPrice > 0 && effectivePromoPrice < effectiveBasePrice;
+  const currentPrice = hasRealDiscount ? effectivePromoPrice! : effectiveBasePrice;
+  const originalPrice = hasRealDiscount ? effectiveBasePrice : undefined;
+  const savingsAmount = hasRealDiscount ? (effectiveBasePrice - effectivePromoPrice!) : undefined;
+  const discountPercent = hasRealDiscount ? Math.round(((effectiveBasePrice - effectivePromoPrice!) / effectiveBasePrice) * 100) : undefined;
+
+  const isOutlet = Boolean(dbProd.outlet);
+  let discountBadge: string | undefined = undefined;
+  if (hasRealDiscount && discountPercent) {
+    discountBadge = isOutlet ? `OUTLET ${discountPercent}% OFF` : `${discountPercent}% OFF`;
+  } else if (isOutlet) {
+    discountBadge = 'OUTLET';
   }
 
   // Ordenação padronizada e lógica de tamanhos de moda
