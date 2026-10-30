@@ -67,14 +67,19 @@ export const BackgroundVideo: React.FC = () => {
       aria-hidden="true"
       className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none bg-[#121110]"
     >
-      <img
-        src={bgImageSrc}
-        alt=""
-        role="presentation"
-        className="w-full h-full object-cover object-center"
-        loading="eager"
-        fetchPriority="high"
-      />
+      <picture className="w-full h-full">
+        {bgImageSrc.includes('plano-de-fundo') && (
+          <source srcSet="/images/plano-de-fundo.webp" type="image/webp" />
+        )}
+        <img
+          src={bgImageSrc}
+          alt=""
+          role="presentation"
+          className="w-full h-full object-cover object-center"
+          loading="eager"
+          fetchPriority="high"
+        />
+      </picture>
       {/* Camada de Filtro Atmosférico e Contraste Nobre */}
       <div
         className="absolute inset-0 bg-black backdrop-blur-[0.5px]"

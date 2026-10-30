@@ -112,10 +112,13 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "bg_light": "#FAF8F5"
     },
     "plano_fundo_site": {
-      "tipo": "solido",
+      "tipo": "imagem",
       "bg_dark": "#121110",
       "bg_light": "#FAF8F5",
-      "overlay_opacidade": 40
+      "video_url": "/video/plano-de-fundo.mp4",
+      "imagem_url": "/images/plano-de-fundo.webp",
+      "imagem_custom_url": "",
+      "overlay_opacidade": 50
     },
     "barra_aviso_ativa": true,
     "barra_aviso_estilo": {

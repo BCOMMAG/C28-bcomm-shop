@@ -2621,6 +2621,7 @@ export interface PlanoFundoSiteConfig {
   bg_light?: string;
   bg_dark?: string;
   imagem_url?: string;
+  imagem_custom_url?: string;
   video_url?: string;
   overlay_opacidade?: number;
 }

@@ -77,6 +77,7 @@ export default function AppearanceSettingsPage() {
   const [siteBgLight, setSiteBgLight] = useState('#FAF8F5');
   const [siteBgDark, setSiteBgDark] = useState('#121110');
   const [siteBgImageUrl, setSiteBgImageUrl] = useState('');
+  const [siteBgCustomUrl, setSiteBgCustomUrl] = useState('');
   const [siteBgVideoUrl, setSiteBgVideoUrl] = useState('');
   const [siteBgOverlay, setSiteBgOverlay] = useState(40);
 
@@ -181,8 +182,11 @@ export default function AppearanceSettingsPage() {
             setSiteBgLight(data.planoFundoSite.bg_light || '#FAF8F5');
             setSiteBgDark(data.planoFundoSite.bg_dark || '#121110');
             setSiteBgImageUrl(data.planoFundoSite.imagem_url || '');
+            const custom = data.planoFundoSite.imagem_custom_url ||
+              (data.planoFundoSite.imagem_url && !data.planoFundoSite.imagem_url.includes('plano-de-fundo') ? data.planoFundoSite.imagem_url : '');
+            setSiteBgCustomUrl(custom);
             setSiteBgVideoUrl(data.planoFundoSite.video_url || '');
-            setSiteBgOverlay(data.planoFundoSite.overlay_opacidade ?? 40);
+            setSiteBgOverlay(data.planoFundoSite.overlay_opacidade ?? 50);
           }
 
           if (data.planoFundoMenu) {
@@ -307,6 +311,7 @@ export default function AppearanceSettingsPage() {
         if (type === 'favicon') setFaviconUrl(res.url);
         if (type === 'og') setOgImageUrl(res.url);
         if (type === 'site_bg') {
+          setSiteBgCustomUrl(res.url);
           setSiteBgImageUrl(res.url);
           setSiteBgTipo('imagem');
         }
@@ -325,6 +330,14 @@ export default function AppearanceSettingsPage() {
     }
   };
 
+  const handleRemoveCustomBgImage = () => {
+    setSiteBgCustomUrl('');
+    if (siteBgImageUrl === siteBgCustomUrl) {
+      setSiteBgImageUrl('/images/plano-de-fundo.webp');
+    }
+    showToast('Imagem personalizada removida. Fundo restaurado para o acervo oficial.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -335,6 +348,7 @@ export default function AppearanceSettingsPage() {
         bg_light: siteBgLight,
         bg_dark: siteBgDark,
         imagem_url: siteBgImageUrl || undefined,
+        imagem_custom_url: siteBgCustomUrl || undefined,
         video_url: siteBgVideoUrl || undefined,
         overlay_opacidade: siteBgOverlay
       };
@@ -753,216 +767,477 @@ export default function AppearanceSettingsPage() {
       </div>
 
       {/* BLOCO 2: PLANO DE FUNDO GERAL DO SITE (STOREFRONT ATMOSPHERE) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
-            <Layout className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              2. Plano de Fundo Geral do Site
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Escolha entre cor sólida nobre, textura fotográfica ou atmosfera em vídeo leve para o fundo da boutique.
-            </p>
-          </div>
-        </div>
-
-        {/* Seleção do Tipo de Fundo */}
-        <div className="grid grid-cols-3 gap-3">
-          <button
-            type="button"
-            onClick={() => setSiteBgTipo('solido')}
-            className={cn(
-              'p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1.5',
-              siteBgTipo === 'solido'
-                ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
-            )}
-          >
-            <Palette className="w-4 h-4" />
-            <span>Sólido / Gradiente</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSiteBgTipo('imagem')}
-            className={cn(
-              'p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1.5',
-              siteBgTipo === 'imagem'
-                ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
-            )}
-          >
-            <ImageIcon className="w-4 h-4" />
-            <span>Imagem / Textura</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSiteBgTipo('video')}
-            className={cn(
-              'p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1.5',
-              siteBgTipo === 'video'
-                ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
-            )}
-          >
-            <Film className="w-4 h-4" />
-            <span>Vídeo Atmosférico</span>
-          </button>
-        </div>
-
-        {/* Opções de Cor Sólida */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                Cor Fundo Modo Claro
-              </span>
-              <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
-                {siteBgLight}
-              </span>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+              <Layout className="w-4 h-4" />
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={siteBgLight}
-                onChange={(e) => setSiteBgLight(e.target.value)}
-                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-              />
-              <div className="flex gap-1.5 flex-wrap">
-                {['#FAF8F5', '#FFFFFF', '#F5F2EB', '#FDFBF7'].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSiteBgLight(c)}
-                    className="w-7 h-7 rounded-md border border-slate-300 shadow-2xs hover:scale-110 transition-transform"
-                    style={{ backgroundColor: c }}
-                    title={c}
-                  />
-                ))}
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                2. Atmosfera & Plano de Fundo da Loja
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                  Home & Catálogo
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Selecione o plano de fundo da loja. Ele é aplicado de forma contínua e imersiva na página inicial e no catálogo.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+            Modo Atual: <strong className="text-slate-900 capitalize">{siteBgTipo === 'solido' ? 'Cor Sólida (Inativo)' : siteBgTipo}</strong>
+          </div>
+        </div>
+
+        {/* Galeria de Opções de Fundo */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-800 block">
+            Galeria de Fundos Disponíveis
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            {/* OPÇÃO 1: Fundo Oficial Leidy Boutique */}
+            <div
+              className={cn(
+                'relative flex flex-col rounded-xl border-2 p-3 transition-all',
+                siteBgTipo === 'imagem' && (siteBgImageUrl === '/images/plano-de-fundo.webp' || siteBgImageUrl === '/images/plano-de-fundo.jpg' || !siteBgImageUrl)
+                  ? 'border-amber-600 bg-amber-50/30 shadow-xs ring-2 ring-amber-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              )}
+            >
+              <div className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-900 border border-slate-200/80 mb-3 group">
+                <Image
+                  src="/images/plano-de-fundo.webp"
+                  alt="Plano de Fundo Oficial Leidy Boutique"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-black/25" />
+                <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> Oficial Leidy
+                </span>
+                {siteBgTipo === 'imagem' && (siteBgImageUrl === '/images/plano-de-fundo.webp' || siteBgImageUrl === '/images/plano-de-fundo.jpg' || !siteBgImageUrl) && (
+                  <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5" /> Ativo
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Boutique & Jardim Vertical</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
+                    Foto do acervo oficial com jardim verde e espelhos dourados.
+                  </p>
+                </div>
+
+                <div className="pt-3">
+                  {siteBgTipo === 'imagem' && (siteBgImageUrl === '/images/plano-de-fundo.webp' || siteBgImageUrl === '/images/plano-de-fundo.jpg' || !siteBgImageUrl) ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5 text-amber-600" />
+                      Em Uso na Loja
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteBgTipo('imagem');
+                        setSiteBgImageUrl('/images/plano-de-fundo.webp');
+                        showToast('Plano de fundo oficial da Leidy Boutique ativado!');
+                      }}
+                      className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      Ativar Oficial
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                Cor Fundo Modo Escuro
-              </span>
-              <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
-                {siteBgDark}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={siteBgDark}
-                onChange={(e) => setSiteBgDark(e.target.value)}
-                className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-              />
-              <div className="flex gap-1.5 flex-wrap">
-                {['#121110', '#1A1918', '#0D0C0B', '#181716'].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSiteBgDark(c)}
-                    className="w-7 h-7 rounded-md border border-slate-700 shadow-2xs hover:scale-110 transition-transform"
-                    style={{ backgroundColor: c }}
-                    title={c}
-                  />
-                ))}
+            {/* OPÇÃO 2: Vídeo Atmosférico Oficial */}
+            <div
+              className={cn(
+                'relative flex flex-col rounded-xl border-2 p-3 transition-all',
+                siteBgTipo === 'video'
+                  ? 'border-amber-600 bg-amber-50/30 shadow-xs ring-2 ring-amber-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              )}
+            >
+              <div className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 mb-3 flex items-center justify-center group">
+                <div className="absolute inset-0 bg-radial from-amber-950/20 to-black/80" />
+                <Film className="w-8 h-8 text-amber-400/80 group-hover:scale-110 transition-transform" />
+                <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <Film className="w-2.5 h-2.5" /> Vídeo MP4
+                </span>
+                {siteBgTipo === 'video' && (
+                  <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5" /> Ativo
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Vídeo Atmosférico</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
+                    Movimento sutil e suave contínuo em mudo ao fundo.
+                  </p>
+                </div>
+
+                <div className="pt-3">
+                  {siteBgTipo === 'video' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5 text-amber-600" />
+                      Em Uso na Loja
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteBgTipo('video');
+                        if (!siteBgVideoUrl) setSiteBgVideoUrl('/video/plano-de-fundo.mp4');
+                        showToast('Vídeo atmosférico ativado!');
+                      }}
+                      className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      Ativar Vídeo
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* OPÇÃO 3: Imagem Personalizada (Upload R2) */}
+            <div
+              className={cn(
+                'relative flex flex-col rounded-xl border-2 p-3 transition-all',
+                siteBgTipo === 'imagem' && siteBgCustomUrl && siteBgImageUrl === siteBgCustomUrl
+                  ? 'border-amber-600 bg-amber-50/30 shadow-xs ring-2 ring-amber-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              )}
+            >
+              {siteBgCustomUrl ? (
+                <>
+                  <div className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 mb-3 group">
+                    <Image
+                      src={siteBgCustomUrl}
+                      alt="Imagem Personalizada"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-sky-400 border border-sky-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md">
+                      Personalizada R2
+                    </span>
+                    {siteBgTipo === 'imagem' && siteBgImageUrl === siteBgCustomUrl && (
+                      <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5" /> Ativo
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900">Upload Próprio</h3>
+                      <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                        Armazenada na sua nuvem Cloudflare R2.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 space-y-1.5">
+                      {siteBgTipo === 'imagem' && siteBgImageUrl === siteBgCustomUrl ? (
+                        <div className="py-1 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg text-center flex items-center justify-center gap-1">
+                          <Check className="w-3.5 h-3.5 text-amber-600" /> Em Uso
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSiteBgTipo('imagem');
+                            setSiteBgImageUrl(siteBgCustomUrl);
+                            showToast('Imagem personalizada ativada!');
+                          }}
+                          className="w-full py-1 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg cursor-pointer"
+                        >
+                          Ativar Esta Imagem
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-1.5">
+                        <label className="flex-1 py-1 px-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-[10px] cursor-pointer text-center flex items-center justify-center gap-1 transition-colors">
+                          {isUploadingBgImage ? <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-500" /> : <Upload className="w-2.5 h-2.5" />}
+                          <span>{isUploadingBgImage ? 'Enviando...' : 'Substituir'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleUploadMedia(e, 'site_bg')}
+                            disabled={isUploadingBgImage}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCustomBgImage}
+                          title="Excluir imagem personalizada"
+                          className="p-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col justify-between items-center text-center p-3 border-2 border-dashed border-slate-200 rounded-lg hover:border-slate-300">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mt-2">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">Nova Imagem Própria</h3>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Envie qualquer foto ou textura (PNG, JPG, WebP) para o R2.
+                    </p>
+                  </div>
+                  <label className="w-full mt-3 py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer transition-colors flex items-center justify-center gap-1.5">
+                    {isUploadingBgImage ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span>{isUploadingBgImage ? 'Enviando...' : 'Carregar Imagem'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleUploadMedia(e, 'site_bg')}
+                      disabled={isUploadingBgImage}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* OPÇÃO 4: Cor Sólida / Inativar Imagens */}
+            <div
+              className={cn(
+                'relative flex flex-col rounded-xl border-2 p-3 transition-all',
+                siteBgTipo === 'solido'
+                  ? 'border-amber-600 bg-amber-50/30 shadow-xs ring-2 ring-amber-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              )}
+            >
+              <div
+                className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-200 mb-3 flex items-center justify-center shadow-inner"
+                style={{ backgroundColor: siteBgLight }}
+              >
+                <div className="w-16 h-12 rounded-lg bg-black/5 border border-black/10 flex flex-col items-center justify-center p-1 text-center">
+                  <Palette className="w-4 h-4 text-slate-700 mb-0.5" />
+                  <span className="text-[8px] font-mono text-slate-600">{siteBgLight}</span>
+                </div>
+                <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-slate-200 border border-slate-700 text-[9px] font-bold px-2 py-0.5 rounded-md">
+                  Minimalista
+                </span>
+                {siteBgTipo === 'solido' && (
+                  <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5" /> Ativo
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Cor Sólida / Neutro</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
+                    Inativa fotos e vídeos, exibindo fundo liso minimalista.
+                  </p>
+                </div>
+
+                <div className="pt-3">
+                  {siteBgTipo === 'solido' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5 text-amber-600" />
+                      Em Uso na Loja
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteBgTipo('solido');
+                        showToast('Plano de fundo definido para cor sólida.');
+                      }}
+                      className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      Inativar Mídias
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Upload de Imagem de Fundo se o tipo for imagem */}
-        {siteBgTipo === 'imagem' && (
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+        {/* Ajustes Avançados de Atmosfera: Overlay de Contraste e Cores Base */}
+        <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          {/* Slider de Opacidade do Overlay (quando imagem ou vídeo) */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-800 block">
-                  Imagem / Fotografia de Fundo (Cloudflare R2)
+                  Contraste & Escurecimento (Overlay)
                 </span>
                 <span className="text-[11px] text-slate-500">
-                  Ideal textura de linho, mármore ou foto suave da boutique física.
+                  Controla a camada escura sobre a foto/vídeo para máxima legibilidade dos textos e vestidos.
                 </span>
               </div>
-              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer transition-all">
-                {isUploadingBgImage ? (
-                  <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
-                ) : (
-                  <Upload className="w-3 h-3 text-amber-400" />
-                )}
-                <span>{isUploadingBgImage ? 'Enviando...' : 'Carregar Imagem'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleUploadMedia(e, 'site_bg')}
-                  disabled={isUploadingBgImage}
-                  className="hidden"
-                />
-              </label>
+              <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800">
+                {siteBgOverlay}%
+              </span>
             </div>
 
-            {siteBgImageUrl && (
-              <div className="relative w-full h-28 rounded-lg overflow-hidden border border-slate-300">
+            <input
+              type="range"
+              min="0"
+              max="80"
+              value={siteBgOverlay}
+              onChange={(e) => setSiteBgOverlay(Number(e.target.value))}
+              disabled={siteBgTipo === 'solido'}
+              className="w-full accent-amber-600 cursor-pointer disabled:opacity-40"
+            />
+
+            {/* Prévia interativa em tempo real */}
+            <div className="relative w-full h-24 rounded-lg overflow-hidden border border-slate-300">
+              {siteBgTipo === 'imagem' ? (
                 <Image
-                  src={siteBgImageUrl}
-                  alt="Plano de Fundo da Loja"
+                  src={siteBgImageUrl || '/images/plano-de-fundo.webp'}
+                  alt="Prévia de Fundo"
                   fill
                   className="object-cover"
                 />
+              ) : siteBgTipo === 'video' ? (
+                <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+                  <Film className="w-8 h-8 text-amber-400/40" />
+                </div>
+              ) : (
+                <div className="w-full h-full" style={{ backgroundColor: siteBgLight }} />
+              )}
+              {siteBgTipo !== 'solido' && (
                 <div
-                  className="absolute inset-0 bg-black"
+                  className="absolute inset-0 bg-black backdrop-blur-[0.5px] transition-opacity"
                   style={{ opacity: siteBgOverlay / 100 }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow">
-                  Prévia com Overlay de {siteBgOverlay}%
-                </div>
+              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                <span className="text-white text-xs font-serif font-bold drop-shadow">
+                  LEIDY BOUTIQUE
+                </span>
+                <span className="text-amber-300 text-[10px] font-sans drop-shadow">
+                  Prévia de Legibilidade com {siteBgTipo === 'solido' ? '0' : siteBgOverlay}% de Overlay
+                </span>
               </div>
-            )}
-
-            {/* Slider de Opacidade do Overlay */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                <span>Escurecimento / Contraste do Overlay</span>
-                <span>{siteBgOverlay}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="80"
-                value={siteBgOverlay}
-                onChange={(e) => setSiteBgOverlay(Number(e.target.value))}
-                className="w-full accent-amber-600 cursor-pointer"
-              />
             </div>
           </div>
-        )}
 
-        {/* Vídeo de Fundo */}
-        {siteBgTipo === 'video' && (
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2 text-xs">
-            <label className="block text-slate-800 font-bold">
-              URL do Vídeo MP4 Atmosférico
-            </label>
-            <input
-              type="text"
-              placeholder="Ex: https://pub-xxx.r2.dev/video-atmosfera.mp4"
-              value={siteBgVideoUrl}
-              onChange={(e) => setSiteBgVideoUrl(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
-            />
-            <span className="text-[10px] text-slate-500">
-              O vídeo será reproduzido em mudo contínuo ao fundo, transmitindo requinte boutique.
+          {/* Configuração de Cores Base / Sólidas */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+            <span className="text-xs font-bold text-slate-800 block">
+              Cores Base do Site (Carregamento & Modo Sólido)
             </span>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Modo Claro */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                  <span className="flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-500" /> Claro
+                  </span>
+                  <span className="font-mono text-[9px] text-slate-500">{siteBgLight}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="color"
+                    value={siteBgLight}
+                    onChange={(e) => setSiteBgLight(e.target.value)}
+                    className="w-8 h-8 rounded cursor-pointer border border-slate-300 p-0.5 bg-white"
+                  />
+                  <div className="flex gap-1">
+                    {['#FAF8F5', '#FFFFFF', '#F5F2EB'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSiteBgLight(c)}
+                        className="w-5 h-5 rounded border border-slate-300 hover:scale-110 transition-transform"
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modo Escuro */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                  <span className="flex items-center gap-1">
+                    <Moon className="w-3 h-3 text-indigo-500" /> Escuro
+                  </span>
+                  <span className="font-mono text-[9px] text-slate-500">{siteBgDark}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="color"
+                    value={siteBgDark}
+                    onChange={(e) => setSiteBgDark(e.target.value)}
+                    className="w-8 h-8 rounded cursor-pointer border border-slate-300 p-0.5 bg-white"
+                  />
+                  <div className="flex gap-1">
+                    {['#121110', '#1A1918', '#0D0C0B'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSiteBgDark(c)}
+                        className="w-5 h-5 rounded border border-slate-700 hover:scale-110 transition-transform"
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo URL do Vídeo (quando tipo vídeo estiver selecionado) */}
+            {siteBgTipo === 'video' && (
+              <div className="pt-2 border-t border-slate-200/80 space-y-1">
+                <label className="text-[10px] font-bold text-slate-700 block">
+                  URL do Vídeo MP4
+                </label>
+                <input
+                  type="text"
+                  placeholder="/video/plano-de-fundo.mp4"
+                  value={siteBgVideoUrl}
+                  onChange={(e) => setSiteBgVideoUrl(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+            )}
           </div>
-        )}
+
+        </div>
       </div>
 
       {/* BLOCO 3: PLANO DE FUNDO DO MENU SUPERIOR (HEADER) */}
