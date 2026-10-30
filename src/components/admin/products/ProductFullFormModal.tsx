@@ -87,8 +87,6 @@ export function ProductFullFormModal({
   onCategoriesUpdated,
   onStoreAttributesUpdated
 }: ProductFullFormModalProps) {
-  if (!isOpen) return null;
-
   const isEdit = mode === 'edit' && Boolean(product);
 
   // Controle de Visualização: Abas vs Página Única (Scroll)
@@ -730,6 +728,8 @@ export function ProductFullFormModal({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nome, preco, variacoes, precosDiferenciados, mediaList, slug, categoriaId, subcategoria]);
+
+  if (!isOpen) return null;
 
   // Subcategorias disponíveis da categoria selecionada
   const selectedCat = categoriesList.find((c) => c.id === categoriaId);

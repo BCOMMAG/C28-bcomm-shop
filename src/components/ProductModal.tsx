@@ -266,12 +266,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }
   }, [isPlaying, activeMediaIndex, product]);
 
-  if (!isOpen || !product) return null;
-
-  const currentMedia = product.media[activeMediaIndex];
-  const pairedProduct = sourceProducts.find((p) => p.id === product.pairedWithId);
-
-  // Identifica a variação específica (Cor x Tamanho) para precificação granular
+  // Identifica a variação específica (Cor x Tamanho) para precificação granular (Top-level Hook incondicional)
   const selectedVariation = useMemo(() => {
     if (!product || !selectedColor || !selectedSize || !product.variations) return null;
     return product.variations.find(
@@ -281,7 +276,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     );
   }, [product, selectedColor, selectedSize]);
 
-  // Preço atual efetivo (respeita preço diferenciado da variação se configurado)
+  // Preço atual efetivo (respeita preço diferenciado da variação se configurado - Top-level Hook incondicional)
   const rawCurrentPrice = useMemo(() => {
     if (selectedVariation?.promoPrice !== undefined && selectedVariation.promoPrice > 0) {
       return selectedVariation.promoPrice;
@@ -289,16 +284,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     if (selectedVariation?.price !== undefined && selectedVariation.price > 0) {
       return selectedVariation.price;
     }
+    if (!product) return 0;
     return product.price ?? (product.formattedPrice ? parseFloat(product.formattedPrice.replace(/[^\d,]/g, '').replace(',', '.')) : 0);
   }, [selectedVariation, product]);
 
-  // Preço original/de referência para desconto
+  // Preço original/de referência para desconto (Top-level Hook incondicional)
   const rawOriginalPrice = useMemo(() => {
     if (selectedVariation?.promoPrice !== undefined && selectedVariation.promoPrice > 0 && selectedVariation.price) {
       return selectedVariation.price;
     }
+    if (!product) return null;
     return product.originalPrice ?? (product.formattedOriginalPrice ? parseFloat(product.formattedOriginalPrice.replace(/[^\d,]/g, '').replace(',', '.')) : null);
   }, [selectedVariation, product]);
+
+  // GUARDA PRINCIPAL: Executada estritamente APÓS todos os hooks do componente
+  if (!isOpen || !product) return null;
+
+  const currentMedia = (product.media && product.media.length > 0)
+    ? (product.media[activeMediaIndex] || product.media[0])
+    : { type: 'image' as const, src: product.thumbnail, label: 'Foto Principal' };
+
+  const pairedProduct = product.pairedWithId ? sourceProducts.find((p) => p.id === product.pairedWithId) : null;
 
   const formattedCurrentPrice = `R$ ${rawCurrentPrice.toFixed(2).replace('.', ',')}`;
   const formattedOriginalPrice = rawOriginalPrice ? `R$ ${rawOriginalPrice.toFixed(2).replace('.', ',')}` : null;
@@ -537,7 +543,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               onTouchEnd={handleTouchEnd}
               className="relative w-full aspect-[3/4] sm:aspect-auto sm:h-[380px] lg:h-[500px] rounded-none overflow-hidden bg-black shadow-lg mx-auto select-none touch-pan-y"
             >
-              {currentMedia.type === 'video' ? (
+              {currentMedia && currentMedia.type === 'video' ? (
                 <div className="relative w-full h-full">
                   <video
                     ref={videoRef}
@@ -590,7 +596,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               ) : (
                 <div className="relative w-full h-full">
                   <Image
-                    src={currentMedia.src}
+                    src={currentMedia?.src || product.thumbnail || ''}
                     alt={product.name}
                     fill
                     className="object-cover object-top"
