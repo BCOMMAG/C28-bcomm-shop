@@ -23,7 +23,8 @@ import {
   ScrollText,
   AlertCircle,
   Package,
-  Check
+  Check,
+  Settings
 } from 'lucide-react';
 import {
   AdminProductItem,
@@ -42,6 +43,7 @@ import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPicke
 import { ProductVariationPriceMatrix, PrecoVariavelItem } from '@/components/admin/products/ProductVariationPriceMatrix';
 import { ProductMediaGalleryManager, FormMediaItem } from '@/components/admin/products/ProductMediaGalleryManager';
 import { ProductCardPreviewDrawer } from '@/components/admin/products/ProductCardPreviewDrawer';
+import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { BOUTIQUE_OFFICIAL_COLORS } from '@/components/admin/products/ProductBatchImportModal';
 import { parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
 
@@ -147,6 +149,9 @@ export function ProductFullFormModal({
   const [newCustomBadgeColor, setNewCustomBadgeColor] = useState('#d97706');
   const [newCustomBadgeIcon, setNewCustomBadgeIcon] = useState('✨');
 
+  // Sinalizadores Globais
+  const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
+
   // Cross-Sell / Monte o Look
   const [pairedSlugs, setPairedSlugs] = useState<string[]>([]);
   const [isCrossSellPickerOpen, setIsCrossSellPickerOpen] = useState(false);
@@ -221,7 +226,9 @@ export function ProductFullFormModal({
         }
       }
       setEspecificacoesTexto(specs.join('\n'));
-      setCustomBadgesSelected(badges);
+      // Remove tags do sistema do array de badges customizados para evitar duplicidade
+      const coreLabels = ['Lançamento', 'Destaque', 'Mais Vendido', 'Outlet', 'Últimas Peças', 'destaque', 'mais_vendido', 'outlet', 'ultimas_pecas'];
+      setCustomBadgesSelected(badges.filter((b) => !coreLabels.includes(b)));
       setPrecosDiferenciados(precosDiff);
 
       // Mídias
@@ -1630,139 +1637,79 @@ export function ProductFullFormModal({
 
                 {/* Sinalizadores Oficiais da Vitrine */}
                 <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                      Sinalizadores Comerciais na Vitrine:
-                    </span>
-                    {!isAddingCustomBadge && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingCustomBadge(true)}
-                        className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Novo Sinalizador</span>
-                      </button>
-                    )}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 gap-2">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                        Sinalizadores Comerciais na Vitrine:
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        Ative as tags que devem ser exibidas sobre a foto desta peça na vitrine e catálogo.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSinalizadoresModalOpen(true)}
+                      className="px-2.5 py-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs self-start sm:self-auto"
+                      title="Gerenciar cores, nomes e ícones oficiais de todos os sinalizadores da boutique"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-amber-700" />
+                      <span>⚙️ Gerenciar Sinalizadores</span>
+                    </button>
                   </div>
 
-                  {/* Formulário Inline de Novo Sinalizador */}
-                  {isAddingCustomBadge && (
-                    <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-xl space-y-2.5">
-                      <h6 className="font-bold text-amber-950 text-xs">Criar Novo Sinalizador Comercial</h6>
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <div className="sm:col-span-2">
-                          <input
-                            type="text"
-                            value={newCustomBadgeName}
-                            onChange={(e) => setNewCustomBadgeName(e.target.value)}
-                            placeholder="Nome (Ex: Alta Costura, Exclusivo)..."
-                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-900"
-                          />
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="color"
-                            value={newCustomBadgeColor}
-                            onChange={(e) => setNewCustomBadgeColor(e.target.value)}
-                            className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 shrink-0"
-                          />
-                          <input
-                            type="text"
-                            value={newCustomBadgeIcon}
-                            onChange={(e) => setNewCustomBadgeIcon(e.target.value)}
-                            placeholder="Emoji (✨)..."
-                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-center font-bold"
-                          />
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={handleAddCustomBadge}
-                            className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg cursor-pointer"
-                          >
-                            Salvar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAddingCustomBadge(false);
-                              setNewCustomBadgeName('');
-                            }}
-                            className="p-2 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Grade Única Consolidada de Sinalizadores (Sem Duplicações) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(storeAttributes?.sinalizadores || []).map((s) => {
+                      const sNome = s.nome || s.label || s.id;
+                      const sIcon = s.icone || s.icon || '✨';
+                      const sCor = s.cor || s.color || '#C5A059';
 
-                  {/* Grade de Checkboxes */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={destaque}
-                        onChange={(e) => setDestaque(e.target.checked)}
-                        className="accent-amber-600 rounded"
-                      />
-                      <span className="font-semibold text-slate-800">🌟 Lançamento</span>
-                    </label>
+                      // Verifica se está marcado de acordo com a chave identificadora
+                      let isChecked = false;
+                      if (s.id === 'destaque') isChecked = destaque;
+                      else if (s.id === 'mais_vendido') isChecked = maisVendido;
+                      else if (s.id === 'outlet') isChecked = outlet;
+                      else if (s.id === 'ultimas_pecas') isChecked = ultimasPecas;
+                      else isChecked = customBadgesSelected.includes(sNome);
 
-                    <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={maisVendido}
-                        onChange={(e) => setMaisVendido(e.target.checked)}
-                        className="accent-purple-600 rounded"
-                      />
-                      <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
-                    </label>
+                      const handleToggle = (checked: boolean) => {
+                        if (s.id === 'destaque') setDestaque(checked);
+                        else if (s.id === 'mais_vendido') setMaisVendido(checked);
+                        else if (s.id === 'outlet') setOutlet(checked);
+                        else if (s.id === 'ultimas_pecas') setUltimasPecas(checked);
+                        else {
+                          if (checked) {
+                            setCustomBadgesSelected((prev) => [...prev.filter((x) => x !== sNome), sNome]);
+                          } else {
+                            setCustomBadgesSelected((prev) => prev.filter((x) => x !== sNome));
+                          }
+                        }
+                      };
 
-                    <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={outlet}
-                        onChange={(e) => setOutlet(e.target.checked)}
-                        className="accent-rose-600 rounded"
-                      />
-                      <span className="font-semibold text-slate-800">🏷️ Outlet</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={ultimasPecas}
-                        onChange={(e) => setUltimasPecas(e.target.checked)}
-                        className="accent-orange-600 rounded"
-                      />
-                      <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
-                    </label>
-
-                    {/* Sinalizadores Customizados */}
-                    {(storeAttributes?.sinalizadores || []).map((b) => {
-                      const bLabel = b.label || b.nome || 'Sinalizador';
-                      const isSel = customBadgesSelected.includes(bLabel);
                       return (
                         <label
-                          key={b.id}
-                          className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                            isSel ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200 hover:bg-slate-50'
+                          key={s.id}
+                          className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all ${
+                            isChecked
+                              ? 'border-amber-400 bg-amber-50/70 shadow-2xs'
+                              : 'border-slate-200 bg-white hover:bg-slate-50'
                           }`}
                         >
                           <input
                             type="checkbox"
-                            checked={isSel}
-                            onChange={(e) => {
-                              if (e.target.checked) setCustomBadgesSelected((prev) => [...prev, bLabel]);
-                              else setCustomBadgesSelected((prev) => prev.filter((item) => item !== bLabel));
-                            }}
+                            checked={isChecked}
+                            onChange={(e) => handleToggle(e.target.checked)}
                             className="accent-amber-600 rounded"
                           />
-                          <span className="font-semibold text-slate-800 flex items-center gap-1 truncate">
-                            <span>{b.icon || b.icone || '✨'}</span>
-                            <span className="truncate">{bLabel}</span>
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
+                            style={{ backgroundColor: sCor }}
+                            title={`Cor oficial: ${sCor}`}
+                          />
+                          <span className="font-bold text-slate-800 text-xs flex items-center gap-1 truncate">
+                            <span>{sIcon}</span>
+                            <span className="truncate">{sNome}</span>
                           </span>
                         </label>
                       );
@@ -1920,6 +1867,22 @@ export function ProductFullFormModal({
             setPairedSlugs(slugs);
             setIsCrossSellPickerOpen(false);
           }}
+        />
+      )}
+
+      {/* Modal de Gerenciamento Global de Sinalizadores da Vitrine (Badges) */}
+      {isSinalizadoresModalOpen && (
+        <AdminSinalizadoresModal
+          isOpen={isSinalizadoresModalOpen}
+          onClose={() => setIsSinalizadoresModalOpen(false)}
+          tenantId={tenantId}
+          initialSinalizadores={storeAttributes?.sinalizadores || []}
+          onUpdated={(updatedList) => {
+            if (onStoreAttributesUpdated) {
+              onStoreAttributesUpdated({ ...storeAttributes, sinalizadores: updatedList });
+            }
+          }}
+          onToast={showToast}
         />
       )}
     </div>

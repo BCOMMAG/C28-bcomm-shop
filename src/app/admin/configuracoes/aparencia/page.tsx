@@ -31,8 +31,10 @@ import {
   Box,
   CheckSquare,
   Megaphone,
-  ExternalLink
+  ExternalLink,
+  Tag
 } from 'lucide-react';
+import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { useStore } from '@/context/StoreContext';
 import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
@@ -57,6 +59,7 @@ export default function AppearanceSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
 
   // Estados de Upload
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -2310,6 +2313,44 @@ export default function AppearanceSettingsPage() {
         </div>
       </div>
 
+      {/* BLOCO: SINALIZADORES COMERCIAIS DA VITRINE (BADGES) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Tag className="w-4 h-4 text-amber-600" />
+              Sinalizadores Comerciais da Vitrine (Badges)
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Personalize cores oficiais, nomes e emojis das tags que aparecem sobre as fotos das peças na loja.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsSinalizadoresModalOpen(true)}
+            className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Tag className="w-3.5 h-3.5 text-amber-700" />
+            <span>Gerenciar Cores & Badges Globais</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-slate-600">Badges ativos da boutique:</span>
+          {((currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || []).map((s: any) => (
+            <div
+              key={s.id}
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-2xs flex items-center gap-1"
+              style={{ backgroundColor: s.cor || s.color || '#C5A059', color: s.textColor || '#ffffff' }}
+            >
+              <span>{s.icone || s.icon || '✨'}</span>
+              <span>{s.nome || s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* BOTÃO SALVAR */}
       <div className="flex justify-end pt-2">
         <button
@@ -2325,6 +2366,18 @@ export default function AppearanceSettingsPage() {
           <span>{isSaving ? 'Salvando...' : 'Salvar Identidade Visual, Tipografias & Seções'}</span>
         </button>
       </div>
+
+      {/* MODAL DE SINALIZADORES */}
+      {isSinalizadoresModalOpen && (
+        <AdminSinalizadoresModal
+          isOpen={isSinalizadoresModalOpen}
+          onClose={() => setIsSinalizadoresModalOpen(false)}
+          tenantId={tenantId}
+          onUpdated={() => {
+            refreshProducts();
+          }}
+        />
+      )}
     </form>
   );
 }

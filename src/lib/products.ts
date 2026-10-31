@@ -244,6 +244,33 @@ export function mapDbProductToProduct(dbProd: any): Product {
       })
     : [];
 
+  // Extrai badges comerciais personalizados adicionados na peça
+  const customBadgesList: string[] = [];
+  const coreFilter = ['destaque', 'mais_vendido', 'outlet', 'ultimas_pecas', 'Lançamento', 'Destaque', 'Mais Vendido', 'Outlet', 'Últimas Peças'];
+  if (Array.isArray(dbProd.status_badges)) {
+    dbProd.status_badges.forEach((b: string) => {
+      const clean = b.replace('[Badge] ', '').trim();
+      if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+    });
+  }
+  if (dbProd.detalhes) {
+    if (Array.isArray(dbProd.detalhes)) {
+      dbProd.detalhes.forEach((d: any) => {
+        if (typeof d === 'string' && d.startsWith('[Badge] ')) {
+          const clean = d.replace('[Badge] ', '').trim();
+          if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+        }
+      });
+    } else if (typeof dbProd.detalhes === 'object' && Array.isArray(dbProd.detalhes.badges)) {
+      dbProd.detalhes.badges.forEach((b: any) => {
+        if (typeof b === 'string') {
+          const clean = b.replace('[Badge] ', '').trim();
+          if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+        }
+      });
+    }
+  }
+
   return {
     id: dbProd.slug, // Mantém o slug como id para compatibilidade de rotas e carrinho
     slug: dbProd.slug || dbProd.id,
@@ -261,6 +288,7 @@ export function mapDbProductToProduct(dbProd: any): Product {
     isLastPieces,
     remainingPieces,
     badge: resolvedBadge,
+    customBadges: Array.from(new Set(customBadgesList)),
     category: dbProd.categorias?.nome || 'Geral',
     subcategory: dbProd.subcategoria || undefined,
     fabric: dbProd.tecido || undefined,

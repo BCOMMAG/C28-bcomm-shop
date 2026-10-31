@@ -37,6 +37,7 @@ export interface Product {
   line?: string; // Linha
   status?: string[]; // Status: Novidade, Mais Vendido, OUTLET, Pronta Entrega
   badge?: string;
+  customBadges?: string[];
   remainingPieces?: number; // Quando <= 5, qualifica para 'Últimas Peças'
   isLastPieces?: boolean;
   description: string;

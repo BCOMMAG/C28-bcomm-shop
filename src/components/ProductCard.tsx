@@ -178,6 +178,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Badge de Destaque com Regras de Exibição */}
         {(() => {
+          // Sinalizadores dinâmicos configurados no tenant
+          const tenantSinalizadores: any[] = (currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || [];
+          const getBadgeConfig = (idOrName: string) => {
+            return tenantSinalizadores.find(
+              (s) => s.id === idOrName || (s.nome && s.nome.toLowerCase() === idOrName.toLowerCase()) || (s.label && s.label.toLowerCase() === idOrName.toLowerCase())
+            );
+          };
+
           // 0. Produto Esgotado no Estoque Físico
           if (isOutOfStock) {
             return (
@@ -206,13 +214,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }
 
           // 1. Regra para Seção de Lançamentos Exclusivos:
-          // O usuário pediu explicitamente: DEIXAR SEM CARDS EM CIMA DOS PRODUTOS!
           if (isNewReleasesSection) {
             return null;
           }
 
           // 2. Seção "Últimas Peças" (somente entram quando o estoque real for entre 1 e 5 peças)
           const isRealCriticalStock = (product.totalStock ?? 0) > 0 && (product.totalStock ?? 0) <= 5;
+          const ultimasPecasCfg = getBadgeConfig('ultimas_pecas');
           if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces || (product.remainingPieces && product.remainingPieces <= 5))) {
             const count = product.remainingPieces || product.totalStock || 5;
             let label = 'Últimas peças';
@@ -222,31 +230,93 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               label = count === 1 ? 'Última peça' : 'Últimas peças';
             }
 
+            const badgeBg = ultimasPecasCfg?.cor || ultimasPecasCfg?.color || '#8B5A2B';
+            const badgeIcon = ultimasPecasCfg?.icone || ultimasPecasCfg?.icon;
+
             return (
               <div
-                className={`absolute top-2.5 left-2.5 bg-[#8B5A2B]/95 dark:bg-black/95 text-[#FAF8F5] uppercase tracking-wider font-semibold rounded-none backdrop-blur-sm border border-[#C5A059]/40 shadow-xs ${
+                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-semibold rounded-none backdrop-blur-sm border border-white/20 shadow-xs flex items-center gap-1 ${
                   isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
                 }`}
+                style={{ backgroundColor: badgeBg, color: ultimasPecasCfg?.textColor || '#FAF8F5' }}
               >
-                {label}
+                {badgeIcon && <span className="text-[11px] leading-none">{badgeIcon}</span>}
+                <span>{label}</span>
               </div>
             );
           }
 
           // 3. Seção OUTLET ou produtos com desconto fora de lançamentos
           if (product.discountBadge) {
+            const outletCfg = getBadgeConfig('outlet');
+            const outletBg = outletCfg?.cor || outletCfg?.color || '#C5A059';
             return (
               <div
-                className={`absolute top-2.5 left-2.5 bg-[#C5A059] text-white uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs ${
+                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
                   isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
                 }`}
+                style={{ backgroundColor: outletBg, color: outletCfg?.textColor || '#ffffff' }}
               >
-                {product.discountBadge}
+                {outletCfg?.icone && <span className="text-[11px] leading-none">{outletCfg.icone}</span>}
+                <span>{product.discountBadge}</span>
               </div>
             );
           }
 
-          // 4. Badges de escassez padrão para outros cards (somente se estoque real for crítico)
+          // 4. Sinalizadores Customizados Ativos na Peça
+          if (Array.isArray(product.customBadges) && product.customBadges.length > 0) {
+            const firstBadgeName = product.customBadges[0];
+            const foundCfg = getBadgeConfig(firstBadgeName);
+            const badgeBg = foundCfg?.cor || foundCfg?.color || '#C5A059';
+            const badgeIcon = foundCfg?.icone || foundCfg?.icon || '✨';
+            return (
+              <div
+                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                }`}
+                style={{ backgroundColor: badgeBg, color: foundCfg?.textColor || '#ffffff' }}
+              >
+                <span className="text-[11px] leading-none">{badgeIcon}</span>
+                <span>{foundCfg?.nome || firstBadgeName}</span>
+              </div>
+            );
+          }
+
+          // 5. Mais Vendido
+          if (product.isBestSeller) {
+            const mvCfg = getBadgeConfig('mais_vendido');
+            const mvBg = mvCfg?.cor || mvCfg?.color || '#9333EA';
+            return (
+              <div
+                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                }`}
+                style={{ backgroundColor: mvBg, color: mvCfg?.textColor || '#ffffff' }}
+              >
+                <span className="text-[11px] leading-none">{mvCfg?.icone || '🔥'}</span>
+                <span>{mvCfg?.nome || 'Mais Vendido'}</span>
+              </div>
+            );
+          }
+
+          // 6. Lançamento
+          if (product.isNewArrival) {
+            const destCfg = getBadgeConfig('destaque');
+            const destBg = destCfg?.cor || destCfg?.color || '#C5A059';
+            return (
+              <div
+                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                }`}
+                style={{ backgroundColor: destBg, color: destCfg?.textColor || '#ffffff' }}
+              >
+                <span className="text-[11px] leading-none">{destCfg?.icone || '🌟'}</span>
+                <span>{destCfg?.nome || 'Lançamento'}</span>
+              </div>
+            );
+          }
+
+          // 7. Badges de escassez padrão para outros cards
           if (
             isRealCriticalStock &&
             (product.badge?.includes('Restam') ||

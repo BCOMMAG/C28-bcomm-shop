@@ -3378,6 +3378,10 @@ export interface CustomSinalizador {
   label?: string;
   color?: string;
   icon?: string;
+  textColor?: string;
+  ativo?: boolean;
+  ordem?: number;
+  isSystem?: boolean;
 }
 
 export interface StoreCustomAttributes {
@@ -3441,10 +3445,10 @@ export const DEFAULT_STORE_ATTRIBUTES: StoreCustomAttributes = {
     '46'
   ],
   sinalizadores: [
-    { id: 'destaque', nome: 'Destaque', cor: '#d97706', icone: '🌟', label: 'Destaque', color: '#d97706', icon: '🌟' },
-    { id: 'mais_vendido', nome: 'Mais Vendido', cor: '#9333ea', icone: '🔥', label: 'Mais Vendido', color: '#9333ea', icon: '🔥' },
-    { id: 'outlet', nome: 'Outlet', cor: '#e11d48', icone: '🏷️', label: 'Outlet', color: '#e11d48', icon: '🏷️' },
-    { id: 'ultimas_pecas', nome: 'Últimas Peças', cor: '#ea580c', icone: '⏳', label: 'Últimas Peças', color: '#ea580c', icon: '⏳' }
+    { id: 'destaque', nome: 'Lançamento', cor: '#C5A059', icone: '🌟', label: 'Lançamento', color: '#C5A059', icon: '🌟', textColor: '#ffffff', ativo: true, ordem: 1, isSystem: true },
+    { id: 'mais_vendido', nome: 'Mais Vendido', cor: '#9333EA', icone: '🔥', label: 'Mais Vendido', color: '#9333EA', icon: '🔥', textColor: '#ffffff', ativo: true, ordem: 2, isSystem: true },
+    { id: 'outlet', nome: 'Outlet', cor: '#E11D48', icone: '🏷️', label: 'Outlet', color: '#E11D48', icon: '🏷️', textColor: '#ffffff', ativo: true, ordem: 3, isSystem: true },
+    { id: 'ultimas_pecas', nome: 'Últimas Peças', cor: '#8B5A2B', icone: '⏳', label: 'Últimas Peças', color: '#8B5A2B', icon: '⏳', textColor: '#ffffff', ativo: true, ordem: 4, isSystem: true }
   ]
 };
 
@@ -3471,26 +3475,44 @@ export async function getStoreCustomAttributes(
     const colecoes = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.colecoes), ...(attrs.colecoes || [])]));
     const tamanhos = Array.from(new Set([...(DEFAULT_STORE_ATTRIBUTES.tamanhos), ...(attrs.tamanhos || [])]));
 
-    const defaultSinalizadoresMap = new Map(DEFAULT_STORE_ATTRIBUTES.sinalizadores.map((s) => [s.id, {
-      ...s,
-      label: s.label || s.nome,
-      color: s.color || s.cor,
-      icon: s.icon || s.icone
-    }]));
+    const defaultSinalizadoresMap = new Map<string, CustomSinalizador>(
+      DEFAULT_STORE_ATTRIBUTES.sinalizadores.map((s) => [
+        s.id,
+        {
+          ...s,
+          label: s.label || s.nome,
+          color: s.color || s.cor,
+          icon: s.icon || s.icone,
+          textColor: s.textColor || '#ffffff',
+          ativo: s.ativo !== false,
+          isSystem: true
+        }
+      ])
+    );
 
-    (attrs.sinalizadores || []).forEach((s: any) => {
+    (attrs.sinalizadores || []).forEach((s: any, idx: number) => {
       if (s && s.id) {
+        const isCore = ['destaque', 'mais_vendido', 'outlet', 'ultimas_pecas'].includes(s.id);
+        const existingDefault = defaultSinalizadoresMap.get(s.id);
         defaultSinalizadoresMap.set(s.id, {
           id: s.id,
-          nome: s.nome || s.label || s.id,
-          cor: s.cor || s.color || '#d97706',
-          icone: s.icone || s.icon || '✨',
-          label: s.label || s.nome || s.id,
-          color: s.color || s.cor || '#d97706',
-          icon: s.icon || s.icone || '✨'
+          nome: s.nome || s.label || existingDefault?.nome || s.id,
+          cor: s.cor || s.color || existingDefault?.cor || '#C5A059',
+          icone: s.icone || s.icon || existingDefault?.icone || '✨',
+          label: s.label || s.nome || existingDefault?.label || s.id,
+          color: s.color || s.cor || existingDefault?.color || '#C5A059',
+          icon: s.icon || s.icone || existingDefault?.icon || '✨',
+          textColor: s.textColor || existingDefault?.textColor || '#ffffff',
+          ativo: s.ativo !== undefined ? s.ativo : true,
+          ordem: typeof s.ordem === 'number' ? s.ordem : (existingDefault?.ordem ?? idx + 1),
+          isSystem: isCore
         });
       }
     });
+
+    const sinalizadoresOrdenados = Array.from(defaultSinalizadoresMap.values()).sort(
+      (a, b) => (a.ordem ?? 99) - (b.ordem ?? 99)
+    );
 
     return {
       subcategorias,
@@ -3498,11 +3520,73 @@ export async function getStoreCustomAttributes(
       modelagens,
       colecoes,
       tamanhos,
-      sinalizadores: Array.from(defaultSinalizadoresMap.values())
+      sinalizadores: sinalizadoresOrdenados
     };
   } catch (err) {
     console.error('Falha ao carregar atributos dinâmicos da loja:', err);
     return DEFAULT_STORE_ATTRIBUTES;
+  }
+}
+
+/**
+ * Salva a lista completa de sinalizadores comerciais configurados na loja.
+ */
+export async function saveStoreSinalizadores(
+  lojaId: string = DEFAULT_TENANT_ID,
+  sinalizadores: CustomSinalizador[]
+): Promise<StoreCustomAttributes> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+
+    const sanitizedList: CustomSinalizador[] = sinalizadores.map((s, idx) => {
+      const isCore = ['destaque', 'mais_vendido', 'outlet', 'ultimas_pecas'].includes(s.id);
+      return {
+        id: s.id,
+        nome: s.nome || s.label || 'Sinalizador',
+        cor: s.cor || s.color || '#C5A059',
+        icone: s.icone || s.icon || '✨',
+        label: s.nome || s.label || 'Sinalizador',
+        color: s.cor || s.color || '#C5A059',
+        icon: s.icone || s.icon || '✨',
+        textColor: s.textColor || '#ffffff',
+        ativo: s.ativo !== false,
+        ordem: typeof s.ordem === 'number' ? s.ordem : idx + 1,
+        isSystem: isCore
+      };
+    });
+
+    attrs.sinalizadores = sanitizedList;
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'sinalizadores', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return await getStoreCustomAttributes(lojaId);
+  } catch (err) {
+    console.error('Falha ao salvar sinalizadores da loja:', err);
+    throw err;
   }
 }
 

@@ -738,6 +738,77 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {product.name}
               </h2>
 
+              {/* Sinalizadores Comerciais Oficiais da Peça */}
+              {(() => {
+                const tenantSinalizadores: any[] = (currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || [];
+                const activeBadges: Array<{ nome: string; icone: string; cor: string; textColor: string }> = [];
+
+                if (product.isOutlet) {
+                  const cfg = tenantSinalizadores.find((s) => s.id === 'outlet');
+                  activeBadges.push({
+                    nome: cfg?.nome || 'Outlet',
+                    icone: cfg?.icone || '🏷️',
+                    cor: cfg?.cor || '#E11D48',
+                    textColor: cfg?.textColor || '#ffffff'
+                  });
+                }
+                if (product.isNewArrival) {
+                  const cfg = tenantSinalizadores.find((s) => s.id === 'destaque');
+                  activeBadges.push({
+                    nome: cfg?.nome || 'Lançamento',
+                    icone: cfg?.icone || '🌟',
+                    cor: cfg?.cor || '#C5A059',
+                    textColor: cfg?.textColor || '#ffffff'
+                  });
+                }
+                if (product.isBestSeller) {
+                  const cfg = tenantSinalizadores.find((s) => s.id === 'mais_vendido');
+                  activeBadges.push({
+                    nome: cfg?.nome || 'Mais Vendido',
+                    icone: cfg?.icone || '🔥',
+                    cor: cfg?.cor || '#9333EA',
+                    textColor: cfg?.textColor || '#ffffff'
+                  });
+                }
+                if (product.isLastPieces) {
+                  const cfg = tenantSinalizadores.find((s) => s.id === 'ultimas_pecas');
+                  activeBadges.push({
+                    nome: cfg?.nome || 'Últimas Peças',
+                    icone: cfg?.icone || '⏳',
+                    cor: cfg?.cor || '#8B5A2B',
+                    textColor: cfg?.textColor || '#ffffff'
+                  });
+                }
+                if (Array.isArray(product.customBadges)) {
+                  product.customBadges.forEach((bName) => {
+                    const cfg = tenantSinalizadores.find((s) => s.id === bName || s.nome === bName || s.label === bName);
+                    activeBadges.push({
+                      nome: cfg?.nome || bName,
+                      icone: cfg?.icone || '✨',
+                      cor: cfg?.cor || '#C5A059',
+                      textColor: cfg?.textColor || '#ffffff'
+                    });
+                  });
+                }
+
+                if (activeBadges.length === 0) return null;
+
+                return (
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                    {activeBadges.map((b, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-2xs flex items-center gap-1"
+                        style={{ backgroundColor: b.cor, color: b.textColor }}
+                      >
+                        <span>{b.icone}</span>
+                        <span>{b.nome}</span>
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {/* Valor do Produto & Desconto & Salvo (Fiel ao print do usuário) */}
               <div className="mt-3.5 pt-3 pb-3 border-y border-[#C5A059]/20 flex items-start justify-between gap-3">
                 <div>

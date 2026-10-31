@@ -55,6 +55,7 @@ import {
 import * as XLSX from 'xlsx';
 import { ProductBatchImportModal } from '@/components/admin/products/ProductBatchImportModal';
 import { ProductFullFormModal } from '@/components/admin/products/ProductFullFormModal';
+import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import {
   getAdminProducts,
   toggleAdminProductActive,
@@ -236,7 +237,8 @@ export default function AdminProdutosPage() {
     { id: 'size_1', tamanho: 'M', estoque: 5 }
   ]);
 
-  // Sinalizadores Customizados
+  // Sinalizadores Customizados & Global
+  const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
   const [isAddingCustomBadge, setIsAddingCustomBadge] = useState(false);
   const [newCustomBadgeName, setNewCustomBadgeName] = useState('');
   const [newCustomBadgeColor, setNewCustomBadgeColor] = useState('#d97706');
@@ -1877,6 +1879,16 @@ export default function AdminProdutosPage() {
             <span className="hidden md:inline">Atualizar</span>
           </button>
 
+          {/* Botão Gerenciar Sinalizadores */}
+          <button
+            onClick={() => setIsSinalizadoresModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold transition-colors shadow-2xs cursor-pointer shrink-0"
+            title="Gerenciar cores, nomes e ícones oficiais de todos os sinalizadores da boutique"
+          >
+            <Tag className="w-3.5 h-3.5 text-amber-700" />
+            <span className="hidden md:inline">Sinalizadores</span>
+          </button>
+
           {/* Botão Importar em Lote */}
           <button
             onClick={() => setIsBatchImportOpen(true)}
@@ -3264,6 +3276,22 @@ export default function AdminProdutosPage() {
           fetchProductsData();
         }}
       />
+
+      {/* MODAL DE GERENCIAMENTO GLOBAL DE SINALIZADORES (BADGES) */}
+      {isSinalizadoresModalOpen && (
+        <AdminSinalizadoresModal
+          isOpen={isSinalizadoresModalOpen}
+          onClose={() => setIsSinalizadoresModalOpen(false)}
+          tenantId={tenantId}
+          initialSinalizadores={storeAttributes?.sinalizadores || []}
+          onUpdated={(updatedList) => {
+            setStoreAttributes((prev) => ({ ...prev, sinalizadores: updatedList }));
+            fetchProductsData();
+            showToast('Sinalizadores comerciais da loja atualizados com sucesso!');
+          }}
+          onToast={showToast}
+        />
+      )}
     </div>
   );
 }
