@@ -17,7 +17,9 @@ import {
   CheckCircle2,
   Filter,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Info,
+  X
 } from 'lucide-react';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { parseMediaColor, isVideoUrl } from '@/lib/products';
@@ -55,6 +57,7 @@ export function ProductMediaGalleryManager({
   const [uploading, setUploading] = useState(false);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string>('todas');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showTip916, setShowTip916] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (onToast) onToast(msg, type === 'info' ? 'success' : type);
@@ -131,9 +134,9 @@ export function ProductMediaGalleryManager({
       }
 
       if (successCount > 0) {
-        showToast(`${successCount} mídia(s) otimizada(s) em WebP e enviada(s) com sucesso para o Cloudflare R2!`);
+        showToast(`${successCount} mídia(s) otimizada(s) em WebP e salva(s) com sucesso!`);
       } else {
-        showToast('Nenhuma mídia foi salva no Cloudflare R2.', 'error');
+        showToast('Nenhuma mídia foi salva.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado no upload.', 'error');
@@ -313,7 +316,7 @@ export function ProductMediaGalleryManager({
     onChange(updated);
     showToast(
       nextIsHidden
-        ? 'Foto ocultada da vitrine! (Preservada no banco e Cloudflare R2)'
+        ? 'Foto ocultada da vitrine! (Preservada no acervo)'
         : 'Foto reativada na vitrine da loja!'
     );
   };
@@ -345,25 +348,57 @@ export function ProductMediaGalleryManager({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Barra de Ações Superiores: Upload e Métricas */}
+      {/* Barra de Ações Superiores: Título, Dica 9:16 e Upload */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
               Fotos e Vídeos da Peça ({mediaList.length} mídias)
             </h4>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-              Cloudflare R2 Ilimitado
-            </span>
+            {/* Botão Discreto de Dica 9:16 */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowTip916(!showTip916)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 cursor-pointer transition-colors"
+                title="Dica de proporção Mobile First"
+              >
+                <Smartphone className="w-3 h-3 text-amber-700" />
+                <span>Dica 9:16</span>
+                <Info className="w-2.5 h-2.5 text-amber-600" />
+              </button>
+
+              {/* Popover Flutuante Discreto da Dica 9:16 */}
+              {showTip916 && (
+                <div className="absolute left-0 top-full mt-1.5 z-50 w-72 p-3 bg-slate-900 text-white rounded-xl shadow-xl border border-amber-500/30 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between font-bold text-amber-300 text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <Smartphone className="w-3.5 h-3.5" />
+                      Proporção 9:16 Vertical (1080×1920)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTip916(false)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Fotos verticais e Reels de provador ocupam a tela inteira das clientes no smartphone, destacando o caimento do tecido e aumentando a conversão.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Vincule fotos às cores da grade, eleja a capa de cada cor e oculte imagens sem precisar deletar.
+            Vincule fotos às cores da grade, eleja a capa de cada cor e oculte imagens sem deletar.
           </p>
         </div>
 
         <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm shrink-0">
           <Upload className={`w-4 h-4 ${uploading ? 'animate-bounce' : ''}`} />
-          <span>{uploading ? 'Enviando para o R2...' : '+ Adicionar Fotos / Vídeos'}</span>
+          <span>{uploading ? 'Enviando mídias...' : '+ Adicionar Fotos / Vídeos'}</span>
           <input
             type="file"
             multiple
@@ -375,29 +410,9 @@ export function ProductMediaGalleryManager({
         </label>
       </div>
 
-      {/* Card Educativo 9:16 Vertical */}
-      <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 flex items-start gap-3">
-        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-          <Smartphone className="w-4 h-4 text-amber-700" />
-        </div>
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-slate-900 text-xs">
-              📐 Dica de Conversão: Proporção 9:16 Vertical (1080×1920)
-            </span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200/70 text-amber-900">
-              Mobile First
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-600 leading-relaxed">
-            Fotos verticais e Reels de provador ocupam a tela inteira das clientes no smartphone, destacando o caimento do tecido e aumentando a conversão.
-          </p>
-        </div>
-      </div>
-
-      {/* Filtros Rápidos por Cor no Acervo */}
+      {/* Filtros Rápidos por Cor no Acervo com Dropdown Anti-Transbordo */}
       {availableColors.length > 0 && mediaList.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mr-1 shrink-0">
             <Filter className="w-3 h-3 text-amber-600" /> Filtrar Cor:
           </span>
@@ -413,7 +428,8 @@ export function ProductMediaGalleryManager({
             Todas ({mediaList.length})
           </button>
 
-          {availableColors.map((c) => {
+          {/* Primeiras 2 cores como botões rápidos */}
+          {availableColors.slice(0, 2).map((c) => {
             const count = mediaList.filter((m) => {
               const p = parseMediaColor(m.label || undefined);
               return p.colorName?.toLowerCase() === c.nome.toLowerCase();
@@ -440,19 +456,48 @@ export function ProductMediaGalleryManager({
             );
           })}
 
-          <button
-            type="button"
-            onClick={() => setSelectedColorFilter('sem_cor')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
-              selectedColorFilter === 'sem_cor'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            Sem Cor Vinculada (
-            {mediaList.filter((m) => !parseMediaColor(m.label || undefined).colorName).length}
-            )
-          </button>
+          {/* Se houver mais de 2 cores, agrupa em Dropdown elegante */}
+          {availableColors.length > 2 && (
+            <select
+              value={['todas', availableColors[0]?.nome.toLowerCase(), availableColors[1]?.nome.toLowerCase()].includes(selectedColorFilter.toLowerCase()) ? '' : selectedColorFilter}
+              onChange={(e) => {
+                if (e.target.value) setSelectedColorFilter(e.target.value);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 border ${
+                !['todas', availableColors[0]?.nome.toLowerCase(), availableColors[1]?.nome.toLowerCase()].includes(selectedColorFilter.toLowerCase())
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <option value="" disabled className="text-slate-500 bg-white">Mais Cores ({availableColors.length - 2}) ▾</option>
+              {availableColors.slice(2).map((c) => {
+                const count = mediaList.filter((m) => {
+                  const p = parseMediaColor(m.label || undefined);
+                  return p.colorName?.toLowerCase() === c.nome.toLowerCase();
+                }).length;
+                return (
+                  <option key={c.nome} value={c.nome} className="text-slate-900 bg-white">
+                    {c.nome} ({count})
+                  </option>
+                );
+              })}
+              <option value="sem_cor" className="text-slate-900 bg-white">Sem cor vinculada</option>
+            </select>
+          )}
+
+          {availableColors.length <= 2 && (
+            <button
+              type="button"
+              onClick={() => setSelectedColorFilter('sem_cor')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+                selectedColorFilter === 'sem_cor'
+                  ? 'bg-amber-600 text-white shadow-2xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Sem cor ({mediaList.filter((m) => !parseMediaColor(m.label || undefined).colorName).length})
+            </button>
+          )}
         </div>
       )}
 

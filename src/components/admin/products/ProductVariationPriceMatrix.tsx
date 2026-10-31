@@ -130,46 +130,9 @@ export function ProductVariationPriceMatrix({
   }
 
   return (
-    <div className="space-y-3">
-      {/* Barra de Ferramentas e Atalhos Globais de Preço */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-amber-100/60 border border-amber-300 rounded-xl">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-          <div>
-            <span className="text-xs font-bold text-amber-950 block">
-              Precificação Granular por Cor × Tamanho
-            </span>
-            <span className="text-[11px] text-amber-800 block">
-              Defina preços de venda e ofertas promocionais específicos. Itens com estoque zerado ficam protegidos em cinza.
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleReplicarBaseParaTodos}
-            className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
-            title="Aplica o preço base da peça em todas as variações"
-          >
-            <DollarSign className="w-3.5 h-3.5" />
-            <span>Replicar Base (R$ {formatBRL(basePrice)}) para Todos</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLimparPrecosDiferenciados}
-            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
-            title="Restaura herança automática do preço base"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-            <span>Restaurar Herança Padrão</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-2">
       {/* Tabela Matriz */}
-      <div className="overflow-x-auto border border-amber-200 rounded-xl bg-amber-50/20 shadow-2xs">
+      <div className="overflow-x-auto border border-amber-200/80 rounded-xl bg-white shadow-2xs">
         <table className="w-full text-left border-collapse text-xs">
           <thead className="bg-amber-100/70 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
             <tr>

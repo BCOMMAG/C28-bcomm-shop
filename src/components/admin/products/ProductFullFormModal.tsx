@@ -122,6 +122,7 @@ export function ProductFullFormModal({
   const [precosDiferenciados, setPrecosDiferenciados] = useState<Record<string, PrecoVariavelItem>>({});
 
   // Construtor Multi-Tamanhos por Cor
+  const [selectedColorPreset, setSelectedColorPreset] = useState<string>('custom');
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#111111');
   const [multiSizeRows, setMultiSizeRows] = useState<Array<{ id: string; tamanho: string; estoque: number }>>([
@@ -429,6 +430,7 @@ export function ProductFullFormModal({
 
     setVariacoes((prev) => [...prev, ...newVars]);
     setNewColorName('');
+    setSelectedColorPreset('custom');
     setMultiSizeRows([{ id: 'size_1', tamanho: 'M', estoque: 5 }]);
     showToast(`Cor "${corNomeFinal}" com ${newVars.length} tamanhos adicionada à grade!`);
   };
@@ -1163,7 +1165,7 @@ export function ProductFullFormModal({
               </div>
             )}
 
-            {/* SEÇÃO 2: FOTOS E VÍDEOS (CLOUDFLARE R2) */}
+            {/* SEÇÃO 2: FOTOS E VÍDEOS */}
             {(viewMode === 'scroll' || activeTab === 'midias') && (
               <div id="sec-form-midias" className="space-y-4 scroll-mt-6 pt-4 border-t border-slate-200">
                 {viewMode === 'scroll' && (
@@ -1172,7 +1174,7 @@ export function ProductFullFormModal({
                       2
                     </div>
                     <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-                      Fotos e Vídeos da Peça (Cloudflare R2)
+                      Fotos e Vídeos da Peça
                     </h4>
                   </div>
                 )}
@@ -1229,229 +1231,277 @@ export function ProductFullFormModal({
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {/* Lista de Variações Existentes com Estoque e SKU */}
-                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white shadow-2xs">
-                      {variacoes.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs">
-                          Nenhuma variação cadastrada na grade desta peça. Adicione cores e tamanhos abaixo.
-                        </div>
-                      ) : (
-                        variacoes.map((v, idx) => (
-                          <div key={idx} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/50">
-                            <div className="flex items-center gap-3">
-                              <span
-                                className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0"
-                                style={{ backgroundColor: v.cor_hex || '#111' }}
-                              />
-                              <div>
-                                <span className="font-bold text-slate-900 text-xs">
-                                  {v.tamanho} • {v.cor_nome}
+                <div className="space-y-3">
+                  {/* Lista de Variações Existentes em Grid de 2 Colunas */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {variacoes.length === 0 ? (
+                      <div className="col-span-full p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white">
+                        Nenhuma variação cadastrada na grade desta peça. Adicione cores e tamanhos abaixo.
+                      </div>
+                    ) : (
+                      variacoes.map((v, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-amber-300 transition-colors flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span
+                              className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0"
+                              style={{ backgroundColor: v.cor_hex || '#111' }}
+                              title={`${v.cor_nome} (${v.cor_hex || '#111'})`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="font-black text-slate-900 text-xs shrink-0">{v.tamanho}</span>
+                                <span className="text-slate-300 text-[10px]">&bull;</span>
+                                <span className="font-semibold text-slate-700 text-xs truncate" title={v.cor_nome}>
+                                  {v.cor_nome}
                                 </span>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[10px] text-slate-400 font-mono">SKU:</span>
-                                  <input
-                                    type="text"
-                                    value={v.sku || ''}
-                                    placeholder="SKU..."
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setVariacoes((prev) =>
-                                        prev.map((item, i) => (i === idx ? { ...item, sku: val } : item))
-                                      );
-                                    }}
-                                    className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 w-36 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                  />
-                                </div>
                               </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-slate-500 font-semibold">Estoque:</span>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[9px] text-slate-400 font-mono shrink-0">SKU:</span>
                                 <input
-                                  type="number"
-                                  min="0"
-                                  value={v.estoque}
-                                  onFocus={(e) => e.target.select()}
+                                  type="text"
+                                  value={v.sku || ''}
+                                  placeholder="SKU..."
                                   onChange={(e) => {
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                                    const val = e.target.value;
                                     setVariacoes((prev) =>
-                                      prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
+                                      prev.map((item, i) => (i === idx ? { ...item, sku: val } : item))
                                     );
                                   }}
-                                  className="w-20 bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-center font-bold text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
+                                  className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 w-28 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                                 />
-                                <span className="text-[11px] text-slate-400">un</span>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => setVariacoes((prev) => prev.filter((_, i) => i !== idx))}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                                title="Remover variação da grade"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
                             </div>
                           </div>
-                        ))
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                value={v.estoque}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => {
+                                  const val = Math.max(0, parseInt(e.target.value) || 0);
+                                  setVariacoes((prev) =>
+                                    prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
+                                  );
+                                }}
+                                className="w-14 bg-slate-50 border border-slate-300 rounded-lg p-1 text-center font-bold text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-amber-500"
+                              />
+                              <span className="text-[10px] text-slate-400 font-medium">un</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setVariacoes((prev) => prev.filter((_, i) => i !== idx))}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Remover variação"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Construtor de Nova Cor com Múltiplos Tamanhos */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                      <div>
+                        <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-amber-600" />
+                          Cadastrar Nova Cor com Múltiplos Tamanhos
+                        </h5>
+                        <p className="text-[11px] text-slate-500">
+                          Selecione ou crie a cor e defina os tamanhos com seus respectivos estoques.
+                        </p>
+                      </div>
+
+                      {/* Presets Rápidos */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleApplySizePreset('pmg')}
+                          className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        >
+                          ⚡ Grade P, M, G
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplySizePreset('numeros')}
+                          className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        >
+                          ⚡ Grade 36 ao 44
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Seletor de Cores da Boutique ou Personalizada */}
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="block text-slate-700 text-xs mb-1 font-bold">
+                          Selecione uma Cor da Boutique ou Crie Nova
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-8 h-8 rounded-lg border border-slate-300 shadow-2xs shrink-0"
+                            style={{ backgroundColor: newColorHex }}
+                          />
+                          <select
+                            value={selectedColorPreset}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSelectedColorPreset(val);
+                              if (val === 'custom') {
+                                setNewColorName('');
+                                setNewColorHex('#111111');
+                              } else {
+                                const found = BOUTIQUE_OFFICIAL_COLORS.find((c) => c.nome === val);
+                                if (found) {
+                                  setNewColorName(found.nome);
+                                  setNewColorHex(found.hex);
+                                }
+                              }
+                            }}
+                            className="flex-1 bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs focus:ring-1 focus:ring-amber-500"
+                          >
+                            <option value="custom">✨ + Cadastrar Nova Cor Personalizada...</option>
+                            {BOUTIQUE_OFFICIAL_COLORS.map((c) => (
+                              <option key={c.nome} value={c.nome}>
+                                ■ {c.nome} ({c.hex})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {selectedColorPreset === 'custom' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+                          <div>
+                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Nova Cor</label>
+                            <input
+                              type="text"
+                              value={newColorName}
+                              onChange={(e) => setNewColorName(e.target.value)}
+                              placeholder="Ex: Terracota Nobre, Off White, Nude..."
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs font-semibold focus:bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Nova Cor</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={newColorHex}
+                                onChange={(e) => setNewColorHex(e.target.value)}
+                                className="w-8 h-8 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white shrink-0"
+                              />
+                              <input
+                                type="text"
+                                value={newColorHex}
+                                onChange={(e) => setNewColorHex(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs font-semibold focus:bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Construtor de Nova Cor com Múltiplos Tamanhos */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-2">
-                        <div>
-                          <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <Plus className="w-3.5 h-3.5 text-amber-600" />
-                            Cadastrar Nova Cor com Múltiplos Tamanhos
-                          </h5>
-                          <p className="text-[11px] text-slate-500">
-                            Configure a cor uma vez e defina múltiplos tamanhos com seus respectivos estoques.
-                          </p>
-                        </div>
-
-                        {/* Presets Rápidos */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleApplySizePreset('pmg')}
-                            className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
-                          >
-                            ⚡ Grade P, M, G
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApplySizePreset('numeros')}
-                            className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
-                          >
-                            ⚡ Grade 36 ao 44
-                          </button>
-                        </div>
+                    {/* Lista de Tamanhos para esta Cor */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-slate-700 font-bold text-xs">
+                          Tamanhos e Quantidades para "{newColorName || 'esta cor'}":
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMultiSizeRows((prev) => [
+                              ...prev,
+                              { id: `size_${Date.now()}`, tamanho: 'G', estoque: 5 }
+                            ])
+                          }
+                          className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar Outro Tamanho</span>
+                        </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Cor</label>
-                          <input
-                            type="text"
-                            value={newColorName}
-                            onChange={(e) => setNewColorName(e.target.value)}
-                            placeholder="Ex: Terracota Nobre, Off White, Nude..."
-                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Cor</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={newColorHex}
-                              onChange={(e) => setNewColorHex(e.target.value)}
-                              className="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white shrink-0"
-                            />
-                            <input
-                              type="text"
-                              value={newColorHex}
-                              onChange={(e) => setNewColorHex(e.target.value)}
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs font-semibold"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Lista de Tamanhos para esta Cor */}
-                      <div className="space-y-2 pt-2 border-t border-slate-200">
-                        <div className="flex items-center justify-between">
-                          <label className="text-slate-700 font-bold text-xs">
-                            Tamanhos e Quantidades para "{newColorName || 'esta cor'}":
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMultiSizeRows((prev) => [
-                                ...prev,
-                                { id: `size_${Date.now()}`, tamanho: 'G', estoque: 5 }
-                              ])
-                            }
-                            className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
+                      <div className="space-y-1.5">
+                        {multiSizeRows.map((row) => (
+                          <div
+                            key={row.id}
+                            className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs"
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Adicionar Outro Tamanho</span>
-                          </button>
-                        </div>
+                            <div className="flex-1">
+                              <AdminCreatableSelect
+                                label=""
+                                value={row.tamanho}
+                                options={storeAttributes?.tamanhos || ['PP', 'P', 'M', 'G', 'GG', 'Tamanho Único', '36', '38', '40', '42', '44']}
+                                onChange={(val) =>
+                                  setMultiSizeRows((prev) =>
+                                    prev.map((r) => (r.id === row.id ? { ...r, tamanho: val } : r))
+                                  )
+                                }
+                                onCreateOption={(val) => handleCreateStoreAttribute('tamanhos', val)}
+                                placeholder="Tamanho..."
+                              />
+                            </div>
 
-                        <div className="space-y-2">
-                          {multiSizeRows.map((row) => (
-                            <div
-                              key={row.id}
-                              className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 shadow-2xs"
-                            >
-                              <div className="flex-1">
-                                <AdminCreatableSelect
-                                  label=""
-                                  value={row.tamanho}
-                                  options={storeAttributes?.tamanhos || ['PP', 'P', 'M', 'G', 'GG', 'Tamanho Único', '36', '38', '40', '42', '44']}
-                                  onChange={(val) =>
+                            <div className="w-28">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={row.estoque}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
                                     setMultiSizeRows((prev) =>
-                                      prev.map((r) => (r.id === row.id ? { ...r, tamanho: val } : r))
+                                      prev.map((r) =>
+                                        r.id === row.id
+                                          ? { ...r, estoque: Math.max(0, parseInt(e.target.value) || 0) }
+                                          : r
+                                      )
                                     )
                                   }
-                                  onCreateOption={(val) => handleCreateStoreAttribute('tamanhos', val)}
-                                  placeholder="Tamanho..."
+                                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-center font-bold text-slate-900 text-xs focus:bg-white"
+                                  placeholder="Qtd..."
                                 />
+                                <span className="text-[10px] text-slate-400 font-semibold">un</span>
                               </div>
-
-                              <div className="w-32">
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={row.estoque}
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) =>
-                                      setMultiSizeRows((prev) =>
-                                        prev.map((r) =>
-                                          r.id === row.id
-                                            ? { ...r, estoque: Math.max(0, parseInt(e.target.value) || 0) }
-                                            : r
-                                        )
-                                      )
-                                    }
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-center font-bold text-slate-900 text-xs focus:bg-white"
-                                    placeholder="Qtd..."
-                                  />
-                                  <span className="text-[11px] text-slate-400 font-semibold">un</span>
-                                </div>
-                              </div>
-
-                              {multiSizeRows.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setMultiSizeRows((prev) => prev.filter((r) => r.id !== row.id))}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors"
-                                  title="Remover tamanho"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
                             </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={handleFinishColorMultiSizes}
-                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                        <span>Concluir e Inserir Cor e Tamanhos na Grade</span>
-                      </button>
+                            {multiSizeRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setMultiSizeRows((prev) => prev.filter((r) => r.id !== row.id))}
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors"
+                                title="Remover tamanho"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleFinishColorMultiSizes}
+                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                      <span>Concluir e Inserir Cor e Tamanhos na Grade</span>
+                    </button>
                   </div>
+                </div>
               </div>
             )}
 
@@ -1469,85 +1519,56 @@ export function ProductFullFormModal({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Linha Única de 4 Colunas: Venda, Promo, Custo CMV (com margem discreta) e Botão Único */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$) *</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço de Venda (R$) *</label>
                     <input
                       type="number"
                       step="0.01"
                       required
                       value={preco || ''}
                       onChange={(e) => setPreco(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-sm focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-bold text-sm focus:bg-white focus:ring-1 focus:ring-amber-500"
                       placeholder="0.00"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço Promocional (R$)</label>
                     <input
                       type="number"
                       step="0.01"
                       placeholder="Opcional"
                       value={precoPromocional}
                       onChange={(e) => setPrecoPromocional(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-sm focus:bg-white focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-700 text-xs font-bold">Custo CMV (R$)</label>
+                      {margemBrutaPct && (
+                        <span
+                          className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded"
+                          title={`Lucro estimado: R$ ${lucroBrutoReais?.toFixed(2)}/un`}
+                        >
+                          ✓ {margemBrutaPct}% margem
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Custo da confecção"
+                      placeholder="Custo confecção"
                       value={precoCusto}
                       onChange={(e) => setPrecoCusto(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-sm focus:bg-white focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
-                </div>
 
-                {/* Alerta de Inconsistência de Promoção */}
-                {isPromoInconsistent && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 flex items-center gap-2 text-xs">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>
-                      Atenção: O preço promocional (R$ {parsedPromo}) deve ser menor que o preço de venda (R$ {preco}).
-                    </span>
-                  </div>
-                )}
-
-                {/* Margem Bruta e Lucro em Tempo Real */}
-                {margemBrutaPct && (
-                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
-                        Margem Bruta Estimada:
-                      </span>
-                      <span className="text-sm font-extrabold text-emerald-950 font-serif-luxury block mt-0.5">
-                        {margemBrutaPct}% de Margem
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-800">
-                      Lucro Bruto: R$ {lucroBrutoReais?.toFixed(2)} / un
-                    </span>
-                  </div>
-                )}
-
-                {/* MATRIZ DE PRECIFICAÇÃO POR VARIAÇÃO (Cor × Tamanho) */}
-                <div className="pt-3 border-t border-slate-200 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h5 className="font-bold text-slate-900 text-xs font-serif-luxury flex items-center gap-1.5">
-                        <DollarSign className="w-3.5 h-3.5 text-amber-600" />
-                        Precificação Detalhada por Variação (Cor × Tamanho)
-                      </h5>
-                      <p className="text-[11px] text-slate-500">
-                        Itens com estoque zerado estão protegidos em cinza. Clique em qualquer um para desbloquear conscientemente.
-                      </p>
-                    </div>
-
+                  <div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1564,12 +1585,35 @@ export function ProductFullFormModal({
                         setPrecosDiferenciados(updated);
                         showToast(`Preço base (R$ ${preco.toFixed(2).replace('.', ',')}) sincronizado com todas as variações da grade!`);
                       }}
-                      className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5 self-start sm:self-auto"
+                      className="w-full h-[38px] px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer transition-colors shadow-2xs flex items-center justify-center gap-1.5"
                       title="Aplica o preço de venda e promocional base em todas as variações da grade"
                     >
-                      <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>⚡ Sincronizar Base em Todas as Variações</span>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>⚡ Replicar Base na Grade</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* Alerta de Inconsistência de Promoção Inline */}
+                {isPromoInconsistent && (
+                  <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-1.5 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>
+                      Atenção: O preço promocional (R$ {parsedPromo}) deve ser menor que o preço de venda (R$ {preco}).
+                    </span>
+                  </div>
+                )}
+
+                {/* MATRIZ DE PRECIFICAÇÃO POR VARIAÇÃO (Cor × Tamanho) */}
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <div>
+                    <h5 className="font-bold text-slate-800 text-xs font-serif-luxury flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-amber-600" />
+                      Precificação Granular por Variação (Cor × Tamanho)
+                    </h5>
+                    <p className="text-[10px] text-slate-400">
+                      Itens com estoque zerado estão protegidos em cinza. Clique em qualquer um para desbloquear conscientemente.
+                    </p>
                   </div>
 
                   <ProductVariationPriceMatrix
