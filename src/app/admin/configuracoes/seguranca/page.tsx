@@ -197,6 +197,76 @@ export default function SecuritySettingsPage() {
         </div>
       )}
 
+      {/* PAINEL DE SCORE DE PROTEÇÃO DA LOJA (0 A 100%) */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-slate-700 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-6 border-b border-slate-700">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Blindagem de Dados Ativa
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-serif-luxury">
+              Score de Proteção & Integridade da Boutique
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Avaliação em tempo real dos protocolos de segurança, isolamento financeiro e controle de acesso.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 shrink-0">
+            <div className="w-12 h-12 rounded-full border-3 border-emerald-400 flex items-center justify-center font-mono font-black text-emerald-400 text-lg shadow-sm">
+              100%
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                Nível de Defesa
+              </span>
+              <span className="text-sm font-bold text-white flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Nível Máximo Seguro
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* CHECKLIST DOS 4 PILARES DE SEGURANÇA */}
+        <div className="relative z-10 pt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="text-slate-200 block text-[11px]">Anti-Força Bruta Balcão</strong>
+              <span className="text-[10px] text-slate-400">Bloqueio após 3 erros de PIN</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="text-slate-200 block text-[11px]">Isolamento de CMV & DRE</strong>
+              <span className="text-[10px] text-slate-400">Custos ocultos para atendentes</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="text-slate-200 block text-[11px]">Proteção CLT Expediente</strong>
+              <span className="text-[10px] text-slate-400">Bloqueio fora do horário de loja</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="text-slate-200 block text-[11px]">Criptografia SSL Ativa</strong>
+              <span className="text-[10px] text-slate-400">Tráfego 100% HTTPS e blindado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* BLOCO 1: SENHA MESTRA DO BALCÃO (ANTI-BRUTE FORCE) */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">

@@ -3,6 +3,68 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 
 export type CargoColaborador = 'dono' | 'gerente' | 'atendente' | 'estoquista';
 
+/**
+ * Papéis visíveis para os lojistas configurarem em suas lojas
+ */
+export const ROLES_LOJA: { id: CargoColaborador; label: string; descricao: string }[] = [
+  { id: 'dono', label: 'Proprietária / Sócia', descricao: 'Acesso total a todas as áreas, finanças e configurações da boutique' },
+  { id: 'gerente', label: 'Gerente da Loja', descricao: 'Gerencia catálogo, pedidos, equipe e estoque com CMV visível' },
+  { id: 'atendente', label: 'Vendedora / Balcão', descricao: 'Atendimento a clientes, pedidos e cupons, sem acesso a dados financeiros' },
+  { id: 'estoquista', label: 'Estoquista / Logística', descricao: 'Foco na contagem física, separação e movimentação de estoque' }
+];
+
+/**
+ * Verifica se um usuário possui autoridade Master de Engenharia/Plataforma BCOMM SaaS.
+ * O usuário master possui poderes globais de superadministração e é 100% invisível para
+ * os lojistas e colaboradoras normais da loja.
+ */
+export function isMasterUser(emailOrMetadata?: any): boolean {
+  if (!emailOrMetadata) {
+    if (typeof window !== 'undefined') {
+      const isSuper = localStorage.getItem('bcomm_master_session');
+      if (isSuper === 'true') return true;
+
+      const storedAuth = localStorage.getItem('bcomm_auth_user') || localStorage.getItem('leidy_admin_user');
+      if (storedAuth) {
+        try {
+          const parsed = JSON.parse(storedAuth);
+          return isMasterUser(parsed);
+        } catch {
+          if (typeof storedAuth === 'string') return isMasterUser(storedAuth);
+        }
+      }
+    }
+    return false;
+  }
+
+  if (typeof emailOrMetadata === 'string') {
+    const clean = emailOrMetadata.trim().toLowerCase();
+    const masterEmails = [
+      'admin@bcomm.shop',
+      'master@bcomm.shop',
+      'suporte@bcomm.shop',
+      'leonardo@bcomm.shop'
+    ];
+    return masterEmails.includes(clean) || clean.endsWith('@bcomm.shop');
+  }
+
+  if (typeof emailOrMetadata === 'object') {
+    if (
+      emailOrMetadata.is_master ||
+      emailOrMetadata.role === 'super_admin' ||
+      emailOrMetadata.app_metadata?.role === 'super_admin' ||
+      emailOrMetadata.user_metadata?.is_master
+    ) {
+      return true;
+    }
+    if (emailOrMetadata.email && isMasterUser(emailOrMetadata.email)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export interface PermissoesColaborador {
   ver_financeiro: boolean;
   ver_cmv: boolean;

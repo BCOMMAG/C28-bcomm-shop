@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   User,
+  Users,
   ShieldCheck,
   Store,
   CreditCard,
@@ -48,6 +49,14 @@ const SETTINGS_SECTIONS: NavSection[] = [
         description: 'Dados pessoais, avatar e assinatura',
         badge: 'Você',
         badgeColor: 'bg-slate-100 text-slate-700'
+      },
+      {
+        label: 'Usuários & Níveis de Acesso',
+        href: '/admin/equipe',
+        icon: Users,
+        description: 'Vendedoras, cargos e permissões finas',
+        badge: 'Equipe',
+        badgeColor: 'bg-purple-100 text-purple-800'
       },
       {
         label: 'Plano & Assinatura SaaS',

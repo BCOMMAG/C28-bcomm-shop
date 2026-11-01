@@ -48,7 +48,7 @@ export default function SubscriptionSettingsPage() {
       recursos: [
         'Até 40 produtos cadastrados',
         'Atendimento e Reserva via WhatsApp',
-        'Fotos e Vídeos em CDN Cloudflare',
+        'Galeria Multimídia de Alta Velocidade',
         'Subdomínio exclusivo (nomedaloja.bcomm.shop)',
         '1 usuária administradora',
         'Suporte por e-mail'
@@ -64,26 +64,11 @@ export default function SubscriptionSettingsPage() {
       recursos: [
         'Até 150 produtos cadastrados',
         'Domínio Próprio (.com.br) com SSL Grátis',
-        'Vídeos de provador e fotos ilimitadas no R2',
+        'Galeria de fotos e vídeos de provador em alta definição',
         'Painel Financeiro & DRE com CMV',
         'Até 5 usuárias de equipe com controle de horário',
         'Reservas de estoque com contagem regressiva',
         'Suporte prioritário via WhatsApp'
-      ]
-    },
-    {
-      nome: 'Boutique Elite Multi-Loja',
-      preco: 'R$ 297',
-      periodo: '/mês',
-      descricao: 'Para marcas em expansão com múltiplas lojas físicas ou franquias.',
-      destaque: false,
-      recursos: [
-        'Produtos e catálogos ilimitados',
-        'Múltiplas filiais e centros de distribuição',
-        'Equipe ilimitada com níveis de permissão finos',
-        'Checkout transparente e automação de frete',
-        'Integração via Webhook / ERP / Bling',
-        'Consultoria mensal de conversão BCOMM'
       ]
     }
   ];
@@ -190,11 +175,11 @@ export default function SubscriptionSettingsPage() {
             </span>
           </div>
 
-          {/* Armazenamento R2 */}
+          {/* Armazenamento Galeria Multimídia */}
           <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-slate-400 flex items-center gap-1.5">
-                <HardDrive className="w-3.5 h-3.5 text-amber-400" /> Storage Cloudflare R2
+                <HardDrive className="w-3.5 h-3.5 text-amber-400" /> Galeria Multimídia Otimizada
               </span>
               <span className="font-bold text-emerald-400 font-mono">Ilimitado</span>
             </div>
@@ -202,7 +187,7 @@ export default function SubscriptionSettingsPage() {
               32 fotos e vídeos WebP otimizados
             </span>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Zero custo de transferência de dados (egress)
+              Carregamento ultra-rápido de fotos e vídeos em alta definição
             </span>
           </div>
 
@@ -231,7 +216,7 @@ export default function SubscriptionSettingsPage() {
               <span className="font-bold text-emerald-400">Ativo</span>
             </div>
             <span className="text-xs text-slate-300 font-medium block truncate" title="leidyboutique.com.br">
-              SSL Cloudflare 100% Protegido
+              Certificado SSL Seguro (HTTPS) Ativo
             </span>
             <span className="text-[10px] text-slate-400 mt-1 block">
               DNS conectado com sucesso
@@ -251,7 +236,7 @@ export default function SubscriptionSettingsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
           {planos.map((plano, idx) => (
             <div
               key={idx}

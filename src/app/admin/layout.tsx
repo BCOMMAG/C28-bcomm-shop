@@ -32,7 +32,9 @@ import {
   Ban,
   PanelLeftClose,
   PanelLeftOpen,
-  FolderTree
+  FolderTree,
+  Crown,
+  ArrowUpRight
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -42,7 +44,7 @@ import { GlobalSearchModal } from '@/components/admin/GlobalSearchModal';
 import { getAdminPendingNotifications } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getStorefrontUrl } from '@/lib/routes';
-import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess } from '@/lib/team';
+import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser } from '@/lib/team';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 
 function AdminShell({ children }: { children: React.ReactNode }) {
@@ -61,6 +63,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     count: number;
     pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }>;
   }>({ count: 0, pedidos: [] });
+  const [isMaster, setIsMaster] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -99,6 +102,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     const localAuth = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_auth') : null;
     if (localAuth === 'true') {
       setIsAuthenticated(true);
+      if (isMasterUser()) setIsMaster(true);
       return;
     }
 
@@ -107,6 +111,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       supabase.auth.getSession().then(({ data }) => {
         if (data?.session) {
           setIsAuthenticated(true);
+          if (isMasterUser(data.session.user)) setIsMaster(true);
         } else {
           setIsAuthenticated(false);
           router.push('/admin/login/');
@@ -705,6 +710,34 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           isSidebarCollapsed ? "md:pl-20" : "md:pl-64"
         )}
       >
+        {/* BARRA EXCLUSIVA MODO MASTER SAAS (100% INVISÍVEL PARA LOJISTAS) */}
+        {isMaster && (
+          <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-200 border-b border-amber-500/30 px-4 py-2 flex flex-wrap items-center justify-between text-xs gap-3 z-40 sticky top-0 print:hidden shadow-md">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span>Modo Master BCOMM SaaS</span>
+              </div>
+              <span className="text-amber-500/40 hidden sm:inline">|</span>
+              <span className="text-slate-300 text-[11px] hidden sm:inline">
+                Loja Ativa: <strong className="text-white">{lojaNome}</strong> ({lojaSlug || 'leidy-boutique'})
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 hidden md:inline">
+                Acesso Global Irrestrito
+              </span>
+              <Link
+                href="/super-admin/lojas"
+                className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white font-bold transition-all flex items-center gap-1.5 text-[11px]"
+              >
+                <span>Painel Super Admin</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* TOPBAR FIXO DO APLICATIVO */}
         <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs print:hidden">
           {/* LADO ESQUERDO: HAMBÚRGUER MOBILE + BARRA DE BUSCA UNIVERSAL */}

@@ -20,6 +20,7 @@ import { useStore } from '@/context/StoreContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isMasterUser } from '@/lib/team';
 
 export default function UserProfileSettingsPage() {
   const { currentTenant } = useStore();
@@ -106,9 +107,9 @@ export default function UserProfileSettingsPage() {
       if (res.success && res.url) {
         setAvatarUrl(res.url);
         localStorage.setItem(`profile_avatar_${tenantId}`, res.url);
-        showToast('Foto de perfil enviada para o Cloudflare R2 com sucesso!');
+        showToast('Foto de perfil atualizada com sucesso!');
       } else {
-        showToast(res.error || 'Erro ao enviar foto para o R2.', 'error');
+        showToast(res.error || 'Erro ao enviar foto de perfil.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Falha no upload do avatar.', 'error');
@@ -311,15 +312,31 @@ export default function UserProfileSettingsPage() {
               <Crown className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900">Cargo: Proprietária (Dona da Loja)</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
-                  Acesso Total (Master)
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Você possui privilégios administrativos completos, visualização de CMV, aprovação de cupons e governança da equipe.
-              </p>
+              {isMasterUser(email) ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">Cargo: Engenharia BCOMM (Modo Master)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 border border-amber-600 shadow-2xs">
+                      👑 Acesso Global Master SaaS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Sua conta possui credencial de Engenharia/Plataforma BCOMM SaaS com privilégios irrestritos sobre todas as lojas.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">Cargo: Proprietária (Dona da Loja)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+                      Acesso Total (Proprietária)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Você possui privilégios administrativos completos da boutique, visualização de CMV, aprovação de cupons e governança da equipe.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

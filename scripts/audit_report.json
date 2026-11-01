@@ -1,0 +1,2431 @@
+{
+  "report": {
+    "totalProdutos": 17,
+    "produtosAtivos": 17,
+    "produtosPausados": 0,
+    "itensComDescontoNoAdmin": [
+      {
+        "id": "ae64c90c-db26-49b7-9280-f21b320f92a0",
+        "slug": "16-sobretudo-la-premium-copia-2289",
+        "nome": "Sobretudo Estruturado em Lã Batida Deluxe (Cópia)",
+        "ativo": true,
+        "precoBase": 699.9,
+        "precoPromo": 587,
+        "temDescontoBase": true,
+        "promovarsCount": 4,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 30,
+        "statusBadges": [],
+        "detalhesBadges": [],
+        "fotosCount": 3
+      },
+      {
+        "id": "3cb6f250-2d7e-43e5-939f-9ba38f502d39",
+        "slug": "14-lenco-seda-estampado",
+        "nome": "Lenço em Seda Pura Acabamento Rolotê",
+        "ativo": true,
+        "precoBase": 94.9,
+        "precoPromo": 79.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 5,
+        "statusBadges": [
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "a17091b7-5caf-4202-b8d4-8b7dbafbee87",
+        "slug": "04-conjunto-alfaiataria-bege",
+        "nome": "Conjunto Alfaiataria Premium Bege Dourado",
+        "ativo": true,
+        "precoBase": 489.9,
+        "precoPromo": 389.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "956a9fa5-0b91-4c63-bc0a-2d5292bdcfc4",
+        "slug": "03-conjunto-cetim",
+        "nome": "Conjunto em Cetim Seda Chic",
+        "ativo": true,
+        "precoBase": 429.9,
+        "precoPromo": 349.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "1ec3c44c-6cfc-429e-8e2f-5a4c8db5229c",
+        "slug": "02-blusa-tricot-rosa",
+        "nome": "Blusa em Tricot Especial Outubro Rosa",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": 189.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "5ea4a6c4-5872-4c78-a760-974c878ce431",
+        "slug": "01-casaco-tricot",
+        "nome": "Casaco em Tricot Biamar Exclusivo",
+        "ativo": true,
+        "precoBase": 349.9,
+        "precoPromo": 289.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 3
+      }
+    ],
+    "itensSemDescontoNoAdmin": [
+      {
+        "id": "6fa7e32c-17e6-46e1-8945-1e39727cec76",
+        "slug": "16-sobretudo-la-premium",
+        "nome": "Sobretudo Estruturado em Lã Batida Deluxe",
+        "ativo": true,
+        "precoBase": 699.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+        "slug": "15-colete-alfaiataria-botoes",
+        "nome": "Colete de Alfaiataria Feminino Sem Manga",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Novidade",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "d971fc9b-527a-48c1-9087-c9b5beeac6e7",
+        "slug": "13-bolsa-clutch-acetinada",
+        "nome": "Bolsa Baguette Estruturada com Alça Corrente",
+        "ativo": true,
+        "precoBase": 299.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 10,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "9b53fd67-f3e6-47d1-9405-130ecaf71b09",
+        "slug": "12-colar-elo-dourado",
+        "nome": "Colar Elos Portugueses Banho Ouro 18k",
+        "ativo": true,
+        "precoBase": 99,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 5,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "ee77e93e-5586-4aff-9fa1-4f4d66c78a38",
+        "slug": "11-cinto-couro-fivela-dourada",
+        "nome": "Cinto em Couro Legítimo com Fivela Dourada",
+        "ativo": true,
+        "precoBase": 89.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 10,
+        "statusBadges": [
+          "Mais Vendido",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "1bda2b97-38d6-4d40-9951-a718411ad1f4",
+        "slug": "10-bermuda-alfaiataria-chic",
+        "nome": "Bermuda Alfaiataria Pregas Duplas",
+        "ativo": true,
+        "precoBase": 179.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 20,
+        "statusBadges": [
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "028c24fe-6f7b-44ba-bba1-a64b08e083fc",
+        "slug": "09-saia-midi-plissada",
+        "nome": "Saia Midi Plissada Textura Canelada",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 30,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "239a0ce3-7227-4678-aa3f-1b309176db0b",
+        "slug": "08-camisa-seda-botoes",
+        "nome": "Camisa Pura Elegância em Seda Acetinada",
+        "ativo": true,
+        "precoBase": 219.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 40,
+        "statusBadges": [
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "821202e2-a309-4920-8caf-e212c830d923",
+        "slug": "07-vestido-midi-seda",
+        "nome": "Vestido Midi Fluido em Cetim Champagne",
+        "ativo": true,
+        "precoBase": 620,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 29,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "c5149946-8c00-4dbf-ad01-7b43e8324ddf",
+        "slug": "06-calca-pantalona-areia",
+        "nome": "Calça Pantalona Cintura Alta Elegance",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Pronta Entrega",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "e75594a1-95bf-47e9-aa4d-fbad34cc3bbe",
+        "slug": "05-blazer-alfaiataria-offwhite",
+        "nome": "Blazer Estruturado Imperial Off-White",
+        "ativo": true,
+        "precoBase": 459.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      }
+    ],
+    "itensOutletNoAdmin": [
+      {
+        "id": "3cb6f250-2d7e-43e5-939f-9ba38f502d39",
+        "slug": "14-lenco-seda-estampado",
+        "nome": "Lenço em Seda Pura Acabamento Rolotê",
+        "ativo": true,
+        "precoBase": 94.9,
+        "precoPromo": 79.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 5,
+        "statusBadges": [
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "a17091b7-5caf-4202-b8d4-8b7dbafbee87",
+        "slug": "04-conjunto-alfaiataria-bege",
+        "nome": "Conjunto Alfaiataria Premium Bege Dourado",
+        "ativo": true,
+        "precoBase": 489.9,
+        "precoPromo": 389.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "956a9fa5-0b91-4c63-bc0a-2d5292bdcfc4",
+        "slug": "03-conjunto-cetim",
+        "nome": "Conjunto em Cetim Seda Chic",
+        "ativo": true,
+        "precoBase": 429.9,
+        "precoPromo": 349.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "1ec3c44c-6cfc-429e-8e2f-5a4c8db5229c",
+        "slug": "02-blusa-tricot-rosa",
+        "nome": "Blusa em Tricot Especial Outubro Rosa",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": 189.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "5ea4a6c4-5872-4c78-a760-974c878ce431",
+        "slug": "01-casaco-tricot",
+        "nome": "Casaco em Tricot Biamar Exclusivo",
+        "ativo": true,
+        "precoBase": 349.9,
+        "precoPromo": 289.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 3
+      }
+    ],
+    "itensDestaqueNoAdmin": [
+      {
+        "id": "6fa7e32c-17e6-46e1-8945-1e39727cec76",
+        "slug": "16-sobretudo-la-premium",
+        "nome": "Sobretudo Estruturado em Lã Batida Deluxe",
+        "ativo": true,
+        "precoBase": 699.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+        "slug": "15-colete-alfaiataria-botoes",
+        "nome": "Colete de Alfaiataria Feminino Sem Manga",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Novidade",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "d971fc9b-527a-48c1-9087-c9b5beeac6e7",
+        "slug": "13-bolsa-clutch-acetinada",
+        "nome": "Bolsa Baguette Estruturada com Alça Corrente",
+        "ativo": true,
+        "precoBase": 299.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 10,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "9b53fd67-f3e6-47d1-9405-130ecaf71b09",
+        "slug": "12-colar-elo-dourado",
+        "nome": "Colar Elos Portugueses Banho Ouro 18k",
+        "ativo": true,
+        "precoBase": 99,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 5,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "028c24fe-6f7b-44ba-bba1-a64b08e083fc",
+        "slug": "09-saia-midi-plissada",
+        "nome": "Saia Midi Plissada Textura Canelada",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 30,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "821202e2-a309-4920-8caf-e212c830d923",
+        "slug": "07-vestido-midi-seda",
+        "nome": "Vestido Midi Fluido em Cetim Champagne",
+        "ativo": true,
+        "precoBase": 620,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 29,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "e75594a1-95bf-47e9-aa4d-fbad34cc3bbe",
+        "slug": "05-blazer-alfaiataria-offwhite",
+        "nome": "Blazer Estruturado Imperial Off-White",
+        "ativo": true,
+        "precoBase": 459.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "1ec3c44c-6cfc-429e-8e2f-5a4c8db5229c",
+        "slug": "02-blusa-tricot-rosa",
+        "nome": "Blusa em Tricot Especial Outubro Rosa",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": 189.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      }
+    ],
+    "itensMaisVendidoNoAdmin": [
+      {
+        "id": "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+        "slug": "15-colete-alfaiataria-botoes",
+        "nome": "Colete de Alfaiataria Feminino Sem Manga",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Novidade",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "ee77e93e-5586-4aff-9fa1-4f4d66c78a38",
+        "slug": "11-cinto-couro-fivela-dourada",
+        "nome": "Cinto em Couro Legítimo com Fivela Dourada",
+        "ativo": true,
+        "precoBase": 89.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 10,
+        "statusBadges": [
+          "Mais Vendido",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 1
+      },
+      {
+        "id": "c5149946-8c00-4dbf-ad01-7b43e8324ddf",
+        "slug": "06-calca-pantalona-areia",
+        "nome": "Calça Pantalona Cintura Alta Elegance",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Pronta Entrega",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "a17091b7-5caf-4202-b8d4-8b7dbafbee87",
+        "slug": "04-conjunto-alfaiataria-bege",
+        "nome": "Conjunto Alfaiataria Premium Bege Dourado",
+        "ativo": true,
+        "precoBase": 489.9,
+        "precoPromo": 389.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "956a9fa5-0b91-4c63-bc0a-2d5292bdcfc4",
+        "slug": "03-conjunto-cetim",
+        "nome": "Conjunto em Cetim Seda Chic",
+        "ativo": true,
+        "precoBase": 429.9,
+        "precoPromo": 349.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "1ec3c44c-6cfc-429e-8e2f-5a4c8db5229c",
+        "slug": "02-blusa-tricot-rosa",
+        "nome": "Blusa em Tricot Especial Outubro Rosa",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": 189.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 14,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "5ea4a6c4-5872-4c78-a760-974c878ce431",
+        "slug": "01-casaco-tricot",
+        "nome": "Casaco em Tricot Biamar Exclusivo",
+        "ativo": true,
+        "precoBase": 349.9,
+        "precoPromo": 289.9,
+        "temDescontoBase": true,
+        "promovarsCount": 0,
+        "isOutlet": true,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": false,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Mais Vendido",
+          "OUTLET",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 3
+      }
+    ],
+    "itensUltimasPecasNoAdmin": [
+      {
+        "id": "6fa7e32c-17e6-46e1-8945-1e39727cec76",
+        "slug": "16-sobretudo-la-premium",
+        "nome": "Sobretudo Estruturado em Lã Batida Deluxe",
+        "ativo": true,
+        "precoBase": 699.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 2,
+        "statusBadges": [
+          "Novidade"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+        "slug": "15-colete-alfaiataria-botoes",
+        "nome": "Colete de Alfaiataria Feminino Sem Manga",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 15,
+        "statusBadges": [
+          "Novidade",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "1bda2b97-38d6-4d40-9951-a718411ad1f4",
+        "slug": "10-bermuda-alfaiataria-chic",
+        "nome": "Bermuda Alfaiataria Pregas Duplas",
+        "ativo": true,
+        "precoBase": 179.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 20,
+        "statusBadges": [
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "028c24fe-6f7b-44ba-bba1-a64b08e083fc",
+        "slug": "09-saia-midi-plissada",
+        "nome": "Saia Midi Plissada Textura Canelada",
+        "ativo": true,
+        "precoBase": 199.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 30,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "c5149946-8c00-4dbf-ad01-7b43e8324ddf",
+        "slug": "06-calca-pantalona-areia",
+        "nome": "Calça Pantalona Cintura Alta Elegance",
+        "ativo": true,
+        "precoBase": 249.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": false,
+        "isMaisVendido": true,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Pronta Entrega",
+          "Mais Vendido"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      },
+      {
+        "id": "e75594a1-95bf-47e9-aa4d-fbad34cc3bbe",
+        "slug": "05-blazer-alfaiataria-offwhite",
+        "nome": "Blazer Estruturado Imperial Off-White",
+        "ativo": true,
+        "precoBase": 459.9,
+        "precoPromo": null,
+        "temDescontoBase": false,
+        "promovarsCount": 0,
+        "isOutlet": false,
+        "isDestaque": true,
+        "isMaisVendido": false,
+        "isUltimasPecasFlag": true,
+        "estoqueTotal": 19,
+        "statusBadges": [
+          "Novidade",
+          "Pronta Entrega"
+        ],
+        "detalhesBadges": [],
+        "fotosCount": 2
+      }
+    ],
+    "discrepanciasDetectadas": [
+      {
+        "tipo": "DESCONTO_FORA_DE_OUTLET",
+        "produto": "Sobretudo Estruturado em Lã Batida Deluxe (Cópia)",
+        "detalhe": "Possui preço promocional (R$ 587 vs R$ 699.9), mas NÃO está marcado como Outlet (aparece como promoção normal da boutique)"
+      },
+      {
+        "tipo": "ULTIMAS_PECAS_COM_ESTOQUE_ALTO",
+        "produto": "Colete de Alfaiataria Feminino Sem Manga",
+        "detalhe": "Flag ultimas_pecas ativa, porém possui 15 unidades em estoque (a regra de escassez da vitrine oculta o selo acima de 5 un)"
+      },
+      {
+        "tipo": "ULTIMAS_PECAS_COM_ESTOQUE_ALTO",
+        "produto": "Bermuda Alfaiataria Pregas Duplas",
+        "detalhe": "Flag ultimas_pecas ativa, porém possui 20 unidades em estoque (a regra de escassez da vitrine oculta o selo acima de 5 un)"
+      },
+      {
+        "tipo": "ULTIMAS_PECAS_COM_ESTOQUE_ALTO",
+        "produto": "Saia Midi Plissada Textura Canelada",
+        "detalhe": "Flag ultimas_pecas ativa, porém possui 30 unidades em estoque (a regra de escassez da vitrine oculta o selo acima de 5 un)"
+      },
+      {
+        "tipo": "ULTIMAS_PECAS_COM_ESTOQUE_ALTO",
+        "produto": "Calça Pantalona Cintura Alta Elegance",
+        "detalhe": "Flag ultimas_pecas ativa, porém possui 19 unidades em estoque (a regra de escassez da vitrine oculta o selo acima de 5 un)"
+      },
+      {
+        "tipo": "ULTIMAS_PECAS_COM_ESTOQUE_ALTO",
+        "produto": "Blazer Estruturado Imperial Off-White",
+        "detalhe": "Flag ultimas_pecas ativa, porém possui 19 unidades em estoque (a regra de escassez da vitrine oculta o selo acima de 5 un)"
+      }
+    ]
+  },
+  "produtosAmbos": [
+    {
+      "id": "ae64c90c-db26-49b7-9280-f21b320f92a0",
+      "slug": "16-sobretudo-la-premium-copia-2289",
+      "nome": "Sobretudo Estruturado em Lã Batida Deluxe (Cópia)",
+      "preco": 699.9,
+      "preco_promocional": 587,
+      "preco_custo": 279.96,
+      "destaque": false,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [],
+      "detalhes": {
+        "badges": [],
+        "fotos_por_cor": {
+          "Marrom Caramelo": [
+            "/products/01-casaco-tricot/marrom.jpg"
+          ],
+          "Bege Areia Nobre": [
+            "https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/produtos/1793363661000-header_mobile.jfif"
+          ]
+        },
+        "especificacoes": [
+          "Lã nobre batida"
+        ],
+        "precos_diferenciados": {
+          "Marrom Caramelo_G": {
+            "preco": 699.9,
+            "preco_promocional": 498
+          },
+          "Marrom Caramelo_M": {
+            "preco": 699.9,
+            "preco_promocional": 498
+          },
+          "Bege Areia Nobre_G": {
+            "preco": 699.9,
+            "preco_promocional": 587
+          },
+          "Bege Areia Nobre_M": {
+            "preco": 699.9,
+            "preco_promocional": 587
+          }
+        }
+      },
+      "tecido": "Lã & Fios Nobres",
+      "modelagem": "Ampla / Oversized",
+      "linha": "Resort & Elegância",
+      "subcategoria": null,
+      "descricao": "Casaco sobretudo longo com gola imponente e cinto faixa para amarração. Confeccionado para quem exige o mais alto padrão térmico e estético nos dias frios.",
+      "foto_principal": "https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/produtos/1793363661000-header_mobile.jfif",
+      "ativo": true,
+      "estoque_total": 30,
+      "categorias": {
+        "id": "5239f87a-dad3-448c-a625-2b88db525c40",
+        "nome": "Casacos & Jaquetas"
+      },
+      "variacoes_produto": [
+        {
+          "id": "f80c62df-7201-44ca-b574-3468c6289d03",
+          "sku": "SOBRETUDO--BEG-G",
+          "preco": 699.9,
+          "cor_hex": "#E2D3B8",
+          "estoque": 10,
+          "tamanho": "G",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": 587
+        },
+        {
+          "id": "e753218a-8083-4d50-851f-26554bdcb56b",
+          "sku": "16-SOBRETUDO-LA-PREMIUM-COPIA-2289-MARROM CARAMELO-M",
+          "preco": 699.9,
+          "cor_hex": "#8B5A2B",
+          "estoque": 8,
+          "tamanho": "M",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": 498
+        },
+        {
+          "id": "1f0265cc-0ef9-411c-96d9-af43d015674c",
+          "sku": "16-SOBRETUDO-LA-PREMIUM-COPIA-2289-MARROM CARAMELO-G",
+          "preco": 699.9,
+          "cor_hex": "#8B5A2B",
+          "estoque": 3,
+          "tamanho": "G",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": 498
+        },
+        {
+          "id": "cb840e5a-0bbd-4dfa-aa01-0fd6f70f7c1c",
+          "sku": "SOBRETUDO--BEG-M",
+          "preco": 699.9,
+          "cor_hex": "#E2D3B8",
+          "estoque": 9,
+          "tamanho": "M",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": 587
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "e4286976-5393-4e9c-a2d0-3b5cda9a6efb",
+          "url": "https://pub-e5c670efa04d4ef185aece8ed06532af.r2.dev/tenants/leidy-boutique/produtos/1793363661000-header_mobile.jfif",
+          "tipo": "image",
+          "label": "[COR: Bege Areia Nobre] header_mobile",
+          "display_order": 0
+        },
+        {
+          "id": "9fc3fab5-c117-43d1-b3c3-d94ca9f41ef7",
+          "url": "/products/01-casaco-tricot/marrom.jpg",
+          "tipo": "image",
+          "label": "[COR: Marrom Caramelo] [CAPA_COR] Capa Principal",
+          "display_order": 1
+        },
+        {
+          "id": "fab3d48f-47d5-4d97-9610-fdf0dbdcc3bb",
+          "url": "/products/01-casaco-tricot/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo de Provador (9:16)",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "6fa7e32c-17e6-46e1-8945-1e39727cec76",
+      "slug": "16-sobretudo-la-premium",
+      "nome": "Sobretudo Estruturado em Lã Batida Deluxe",
+      "preco": 699.9,
+      "preco_promocional": null,
+      "preco_custo": 279.96,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Novidade"
+      ],
+      "detalhes": [
+        "Lã batida de toque denso e macio",
+        "Bolsos embutidos profundos para aquecer as mãos",
+        "Fenda traseira que garante liberdade total de movimento",
+        "Acompanha cinto faixa largo no mesmo tecido"
+      ],
+      "tecido": "Lã & Fios Nobres",
+      "modelagem": "Ampla / Oversized",
+      "linha": "Resort & Elegância",
+      "subcategoria": "Casacos & Jaquetas",
+      "descricao": "Casaco sobretudo longo com gola imponente e cinto faixa para amarração. Confeccionado para quem exige o mais alto padrão térmico e estético nos dias frios.",
+      "foto_principal": "/products/01-casaco-tricot/marrom.jpg",
+      "ativo": true,
+      "estoque_total": 2,
+      "categorias": {
+        "id": "5239f87a-dad3-448c-a625-2b88db525c40",
+        "nome": "Casacos & Jaquetas"
+      },
+      "variacoes_produto": [
+        {
+          "id": "a54ed007-b02f-4286-aeb4-edfc287eb037",
+          "sku": "16-sobretudo-la-premium-marrom-caramelo-m",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 1,
+          "tamanho": "M",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "56e23b04-6506-4a3f-b2ad-4300d6272b1c",
+          "sku": "16-sobretudo-la-premium-marrom-caramelo-g",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 1,
+          "tamanho": "G",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "a26fce00-b7fa-468a-af42-b8d4a280b18e",
+          "url": "/products/01-casaco-tricot/marrom.jpg",
+          "tipo": "image",
+          "label": "Sobretudo Caramelo",
+          "display_order": 2
+        },
+        {
+          "id": "cb8eb23d-8845-4a44-bce9-888387b80535",
+          "url": "/products/01-casaco-tricot/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo de Provador (9:16)",
+          "display_order": 99
+        }
+      ]
+    },
+    {
+      "id": "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+      "slug": "15-colete-alfaiataria-botoes",
+      "nome": "Colete de Alfaiataria Feminino Sem Manga",
+      "preco": 199.9,
+      "preco_promocional": null,
+      "preco_custo": 79.96,
+      "destaque": true,
+      "mais_vendido": true,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Novidade",
+        "Mais Vendido"
+      ],
+      "detalhes": {
+        "badges": [],
+        "fotos_por_cor": null,
+        "especificacoes": [
+          "Pala traseira com fivela de ajuste para cinturar o corpo",
+          "Forro acetinado macio em toda a extensão",
+          "Botões nobres forrados no mesmo tecido"
+        ],
+        "precos_diferenciados": null
+      },
+      "tecido": "Crepe Alfaiataria",
+      "modelagem": "Alfaiataria Estruturada",
+      "linha": "Trabalho & Alfaiataria",
+      "subcategoria": "Coletes & Cardigãs",
+      "descricao": "Colete com decote V e abotoamento frontal em crepe de alfaiataria. A peça queridinha da temporada que pode ser usada fechada como blusa ou aberta em sobreposições chiques.",
+      "foto_principal": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+      "ativo": true,
+      "estoque_total": 15,
+      "categorias": {
+        "id": "6f8a5a2f-bea5-4157-ab00-fdac167dbf35",
+        "nome": "Coletes & Cardigãs"
+      },
+      "variacoes_produto": [
+        {
+          "id": "606f38e3-2ba9-4974-a006-b08ddad24e51",
+          "sku": "15-colete-alfaiataria-botoes-bege-areia-nobre-p",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "3ad1165b-e31f-4bd2-a37c-49811cf08c6c",
+          "sku": "15-colete-alfaiataria-botoes-bege-areia-nobre-m",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "8bf41499-5941-4391-9d1a-fb5b0a07a051",
+          "sku": "15-colete-alfaiataria-botoes-bege-areia-nobre-g",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "4981b3f0-b54b-476d-9973-285bed4f1c83",
+          "url": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+          "tipo": "image",
+          "label": "Capa Principal",
+          "display_order": 0
+        },
+        {
+          "id": "85532546-0777-432d-8987-8eb62a12a872",
+          "url": "/products/04-conjunto-alfaiataria-bege/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        }
+      ]
+    },
+    {
+      "id": "3cb6f250-2d7e-43e5-939f-9ba38f502d39",
+      "slug": "14-lenco-seda-estampado",
+      "nome": "Lenço em Seda Pura Acabamento Rolotê",
+      "preco": 94.9,
+      "preco_promocional": 79.9,
+      "preco_custo": 37.96,
+      "destaque": false,
+      "mais_vendido": false,
+      "outlet": true,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "OUTLET",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Barra enrolada à mão com acabamento artesanal",
+        "Estamparia digital de altíssima definição",
+        "Medidas: 70cm x 70cm",
+        "Toque macio e refrescante"
+      ],
+      "tecido": "Cetim de Seda",
+      "modelagem": "Fluida / Evasê",
+      "linha": "Resort & Elegância",
+      "subcategoria": "Lenços",
+      "descricao": "Lenço quadrado em seda fluida com estampa geométrica inspirada na Riviera Italiana. Versatilidade infinita: amarre no pescoço, no cabelo, na bolsa ou use como cinto delicado.",
+      "foto_principal": "/products/02-blusa-tricot-rosa/rosa.jpg",
+      "ativo": true,
+      "estoque_total": 5,
+      "categorias": {
+        "id": "2a046488-04a5-40eb-a314-3c27b43990c2",
+        "nome": "Acessórios"
+      },
+      "variacoes_produto": [
+        {
+          "id": "af3a14c2-0728-42fa-8206-50106c15f79a",
+          "sku": "14-lenco-seda-estampado-rosa-quartz-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "479bc1b0-8120-4d74-9420-978ec3a16a7b",
+          "url": "/products/02-blusa-tricot-rosa/rosa.jpg",
+          "tipo": "image",
+          "label": "Lenço Seda",
+          "display_order": 1
+        }
+      ]
+    },
+    {
+      "id": "d971fc9b-527a-48c1-9087-c9b5beeac6e7",
+      "slug": "13-bolsa-clutch-acetinada",
+      "nome": "Bolsa Baguette Estruturada com Alça Corrente",
+      "preco": 299.9,
+      "preco_promocional": null,
+      "preco_custo": 119.96,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Novidade"
+      ],
+      "detalhes": [
+        "Compartimento interno com bolso para cartões e documentos",
+        "Fechamento com botão magnético de precisão",
+        "Forro interno em camurça aveludada",
+        "Espaço perfeito para celular, chaves e maquiagem"
+      ],
+      "tecido": "Couro Premium",
+      "modelagem": "Reta Clássica",
+      "linha": "Festa & Noite",
+      "subcategoria": "Bolsas & Carteiras",
+      "descricao": "Bolsa modelo baguette em material nobre com acabamento impecável. Acompanha duas opções de alça: uma em corrente dourada para eventos e outra em couro para o dia a dia.",
+      "foto_principal": "/products/03-conjunto-cetim/prata.jpg",
+      "ativo": true,
+      "estoque_total": 10,
+      "categorias": {
+        "id": "2a046488-04a5-40eb-a314-3c27b43990c2",
+        "nome": "Acessórios"
+      },
+      "variacoes_produto": [
+        {
+          "id": "6c4cea7f-23a6-4e3c-9d02-c406843fa8e5",
+          "sku": "13-bolsa-clutch-acetinada-prata-acetinado-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "9e231ee1-8d1c-479d-918d-065f0dee763b",
+          "sku": "13-bolsa-clutch-acetinada-branco-off-white-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "fd616268-ade3-4a44-ab11-a15c5e89e593",
+          "url": "/products/03-conjunto-cetim/prata.jpg",
+          "tipo": "image",
+          "label": "Bolsa Baguette",
+          "display_order": 1
+        }
+      ]
+    },
+    {
+      "id": "9b53fd67-f3e6-47d1-9405-130ecaf71b09",
+      "slug": "12-colar-elo-dourado",
+      "nome": "Colar Elos Portugueses Banho Ouro 18k",
+      "preco": 99,
+      "preco_promocional": null,
+      "preco_custo": 39.6,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Novidade",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Banho de alta espessura com camada hipoalergênica",
+        "Fecho lagosta seguro com extensor de 5cm",
+        "Brilho radiante que dura anos com os devidos cuidados",
+        "Acompanha saquinho de veludo para proteção"
+      ],
+      "tecido": "Metal Nobre Banho 18k",
+      "modelagem": "Ajustada / Slim",
+      "linha": "Festa & Noite",
+      "subcategoria": "Colares & Joias",
+      "descricao": "Colar com corrente de elos entrelaçados em acabamento polido reluzente. Design marcante que valoriza decotes e eleva produções com camisas e tricots.",
+      "foto_principal": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+      "ativo": true,
+      "estoque_total": 5,
+      "categorias": {
+        "id": "2a046488-04a5-40eb-a314-3c27b43990c2",
+        "nome": "Acessórios"
+      },
+      "variacoes_produto": [
+        {
+          "id": "eb766939-4039-4d5a-a4ef-3b2c11a96913",
+          "sku": "12-colar-elo-dourado-dourado-champagne-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#DFBE76",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Dourado Champagne",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "c5bd129f-40cb-4f8b-9b8e-59ee390539d9",
+          "url": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+          "tipo": "image",
+          "label": "Colar Elos Dourados",
+          "display_order": 1
+        }
+      ]
+    },
+    {
+      "id": "ee77e93e-5586-4aff-9fa1-4f4d66c78a38",
+      "slug": "11-cinto-couro-fivela-dourada",
+      "nome": "Cinto em Couro Legítimo com Fivela Dourada",
+      "preco": 89.9,
+      "preco_promocional": null,
+      "preco_custo": 35.96,
+      "destaque": false,
+      "mais_vendido": true,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Mais Vendido",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Couro macio que não craquela",
+        "Fivela antialérgica com banho especial verniz",
+        "Largura média ideal para calças de alfaiataria ou acinturar blazers",
+        "Comprimento ajustável com 7 furos"
+      ],
+      "tecido": "Couro Premium",
+      "modelagem": "Ajustada / Slim",
+      "linha": "Casual Chic",
+      "subcategoria": "Cintos",
+      "descricao": "Cinto fino em couro estruturado com acabamento fosco e fivela geométrica em banho dourado de alta durabilidade. O toque final que transforma qualquer produção básica.",
+      "foto_principal": "/products/01-casaco-tricot/marrom.jpg",
+      "ativo": true,
+      "estoque_total": 10,
+      "categorias": {
+        "id": "2a046488-04a5-40eb-a314-3c27b43990c2",
+        "nome": "Acessórios"
+      },
+      "variacoes_produto": [
+        {
+          "id": "663890a7-f31f-449a-9ae7-5aa89d37ddde",
+          "sku": "11-cinto-couro-fivela-dourada-marrom-caramelo-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "18cb61c6-e4a2-43ac-824d-662d1a90775d",
+          "sku": "11-cinto-couro-fivela-dourada-preto-classico-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#1A1918",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Preto Clássico",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "7b1a39c8-5b4a-4d72-9bc8-004503855b18",
+          "url": "/products/01-casaco-tricot/marrom.jpg",
+          "tipo": "image",
+          "label": "Cinto Couro Caramelo",
+          "display_order": 1
+        }
+      ]
+    },
+    {
+      "id": "1bda2b97-38d6-4d40-9951-a718411ad1f4",
+      "slug": "10-bermuda-alfaiataria-chic",
+      "nome": "Bermuda Alfaiataria Pregas Duplas",
+      "preco": 179.9,
+      "preco_promocional": null,
+      "preco_custo": 71.96,
+      "destaque": false,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Acabamento de alfaiataria masculina adaptado ao corpo feminino",
+        "Comprimento moderado ideal para propostas elegantes no calor",
+        "Passantes largos para compor com cintos de couro"
+      ],
+      "tecido": "Crepe Alfaiataria",
+      "modelagem": "Reta Clássica",
+      "linha": "Casual Chic",
+      "subcategoria": "Bermudas & Shorts",
+      "descricao": "Bermuda de corte reto em alfaiataria premium com comprimento meia-coxa elegante. Traz pregas frontais bem definidas e bolsos laterais funcionais.",
+      "foto_principal": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+      "ativo": true,
+      "estoque_total": 20,
+      "categorias": {
+        "id": "6286ef46-657a-4313-b22a-047c6310e387",
+        "nome": "Bermudas & Shorts"
+      },
+      "variacoes_produto": [
+        {
+          "id": "521f1cd7-3521-4355-9831-c86db22cee65",
+          "sku": "10-bermuda-alfaiataria-chic-bege-areia-nobre-36",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "36",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "e17e0909-0595-4696-9bd9-313fb76b0e1e",
+          "sku": "10-bermuda-alfaiataria-chic-bege-areia-nobre-38",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "38",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "bee21015-504c-43da-a7f9-36c1c23cdbdd",
+          "sku": "10-bermuda-alfaiataria-chic-bege-areia-nobre-40",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "40",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "82c154d7-c805-41f6-ab76-ecc86a9fbca4",
+          "sku": "10-bermuda-alfaiataria-chic-bege-areia-nobre-42",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "42",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "2f8a3954-4acd-46a6-9d94-9bdfc739c70f",
+          "url": "/products/04-conjunto-alfaiataria-bege/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "4cb60211-269a-4eb4-b2d6-7299fbaf72b1",
+          "url": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+          "tipo": "image",
+          "label": "Bege Areia",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "028c24fe-6f7b-44ba-bba1-a64b08e083fc",
+      "slug": "09-saia-midi-plissada",
+      "nome": "Saia Midi Plissada Textura Canelada",
+      "preco": 199.9,
+      "preco_promocional": null,
+      "preco_custo": 79.96,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Novidade",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Plissado permanente que não deforma com a lavagem",
+        "Cós elástico macio que se molda suavemente à cintura",
+        "Comprimento midi elegante abaixo do joelho",
+        "Trama encorpada que dispensa o uso de forro extra"
+      ],
+      "tecido": "Tricot Biamar",
+      "modelagem": "Fluida / Evasê",
+      "linha": "Casual Chic",
+      "subcategoria": "Saias",
+      "descricao": "Saia em malharia fina plissada com elástico confortável na cintura. Cria um movimento belíssimo ao caminhar, perfeita para transitar do dia para a noite.",
+      "foto_principal": "/products/01-casaco-tricot/marrom.jpg",
+      "ativo": true,
+      "estoque_total": 30,
+      "categorias": {
+        "id": "4f9f1c8c-bc43-459a-ab7f-14416556a70f",
+        "nome": "Saias"
+      },
+      "variacoes_produto": [
+        {
+          "id": "55510832-13d4-44d7-a885-b56d5152ee6e",
+          "sku": "09-saia-midi-plissada-marrom-caramelo-p",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "f797a8f2-b05e-4c89-bf96-5ec0501f65b0",
+          "sku": "09-saia-midi-plissada-marrom-caramelo-m",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "1a92aa0e-b708-49c7-b6a4-36201d4d5d87",
+          "sku": "09-saia-midi-plissada-marrom-caramelo-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "a3746684-a34e-4702-902d-9f83f9ac820a",
+          "sku": "09-saia-midi-plissada-rosa-quartz-p",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        },
+        {
+          "id": "382ab7df-0cec-4006-a535-fb5b33ab88fd",
+          "sku": "09-saia-midi-plissada-rosa-quartz-m",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        },
+        {
+          "id": "2e91b6f0-d278-4c95-850b-2c3d5cfc824a",
+          "sku": "09-saia-midi-plissada-rosa-quartz-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "fecc29f3-3c43-4c32-9b0b-c3b5e3010eee",
+          "url": "/products/01-casaco-tricot/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "6821780f-8096-4716-962a-e717088cdd6f",
+          "url": "/products/01-casaco-tricot/marrom.jpg",
+          "tipo": "image",
+          "label": "Marrom Caramelo",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "239a0ce3-7227-4678-aa3f-1b309176db0b",
+      "slug": "08-camisa-seda-botoes",
+      "nome": "Camisa Pura Elegância em Seda Acetinada",
+      "preco": 219.9,
+      "preco_promocional": null,
+      "preco_custo": 87.96,
+      "destaque": false,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Botões tingidos no tom exato do tecido",
+        "Gola francesa entretelada com corte impecável",
+        "Fácil de sobrepor com tricots ou usar como peça principal",
+        "Excelente respiração do tecido"
+      ],
+      "tecido": "Cetim de Seda",
+      "modelagem": "Reta Clássica",
+      "linha": "Casual Chic",
+      "subcategoria": "Camisas",
+      "descricao": "Camisa de mangas compridas em seda acetinada de toque macio e fresco. Gola estruturada, punhos com abotoamento refinado e caimento leve para composições sofisticadas.",
+      "foto_principal": "/products/01-casaco-tricot/branco.jpg",
+      "ativo": true,
+      "estoque_total": 40,
+      "categorias": {
+        "id": "5c854cb5-fcf3-4b93-b516-44a2aded8d0a",
+        "nome": "Camisas"
+      },
+      "variacoes_produto": [
+        {
+          "id": "f2da20f9-550e-441e-a95f-1efbc0f6bfb7",
+          "sku": "08-camisa-seda-botoes-branco-off-white-pp",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "PP",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "5756eb95-c5f2-4c49-9654-aeeb1d156a34",
+          "sku": "08-camisa-seda-botoes-branco-off-white-p",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "89ec2b7a-e9e2-40e8-9c3c-661d7c1a3326",
+          "sku": "08-camisa-seda-botoes-branco-off-white-m",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "c592dae1-8f0a-4bdf-96f4-d4712f5466f4",
+          "sku": "08-camisa-seda-botoes-branco-off-white-g",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "6e19da2a-5fc3-47c7-a721-976d8693341e",
+          "sku": "08-camisa-seda-botoes-marrom-caramelo-pp",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "PP",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "bd7d8f07-de9a-4ec9-82f1-0d0277ff6d3a",
+          "sku": "08-camisa-seda-botoes-marrom-caramelo-p",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "c15d4731-04ba-4f9e-b324-4936e9695dc4",
+          "sku": "08-camisa-seda-botoes-marrom-caramelo-m",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "c8e7dda0-c186-47f8-8e47-cfc43ac2e4d5",
+          "sku": "08-camisa-seda-botoes-marrom-caramelo-g",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "cfa12e66-9a5d-44fe-8400-103d88e95572",
+          "url": "/products/03-conjunto-cetim/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "853f6598-c008-4835-a671-77c1b25f4dc4",
+          "url": "/products/01-casaco-tricot/branco.jpg",
+          "tipo": "image",
+          "label": "Branco Off-White",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "821202e2-a309-4920-8caf-e212c830d923",
+      "slug": "07-vestido-midi-seda",
+      "nome": "Vestido Midi Fluido em Cetim Champagne",
+      "preco": 620,
+      "preco_promocional": null,
+      "preco_custo": 248,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Novidade"
+      ],
+      "detalhes": [
+        "Corte em viés que proporciona caimento orgânico único",
+        "Costura invisível e acabamento francês",
+        "Brilho sofisticado que reflete a luz com elegância",
+        "Ideal para celebrações, casamentos e coquetéis"
+      ],
+      "tecido": "Cetim de Seda",
+      "modelagem": "Fluida / Evasê",
+      "linha": "Festa & Noite",
+      "subcategoria": "Vestidos & Macacões",
+      "descricao": "Vestido midi confeccionado em cetim seda com corte no viés, abraçando as curvas com leveza e sensualidade sutil. Decote degagê delicado e alças ajustáveis.",
+      "foto_principal": "/products/03-conjunto-cetim/prata.jpg",
+      "ativo": true,
+      "estoque_total": 29,
+      "categorias": {
+        "id": "bb53b49d-0c5b-42ee-a922-a22dcf19bd46",
+        "nome": "Vestidos & Macacões"
+      },
+      "variacoes_produto": [
+        {
+          "id": "d28ea64f-a8c4-4c5f-ac69-383b9e5f8b82",
+          "sku": "07-vestido-midi-seda-dourado-champagne-m",
+          "preco": null,
+          "cor_hex": "#DFBE76",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Dourado Champagne",
+          "preco_promocional": null
+        },
+        {
+          "id": "a9cefe02-7f2a-48fb-ab7b-2d1bb5c4c054",
+          "sku": "07-vestido-midi-seda-dourado-champagne-g",
+          "preco": null,
+          "cor_hex": "#DFBE76",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Dourado Champagne",
+          "preco_promocional": null
+        },
+        {
+          "id": "27a520c1-97d3-41f8-b31a-e6bdc43e2b48",
+          "sku": "07-vestido-midi-seda-prata-acetinado-p",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "d5c38daa-e36d-43f7-b3b4-6e7a5ec34d88",
+          "sku": "07-vestido-midi-seda-prata-acetinado-m",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "7cf44eaa-16de-4cee-91f4-671e27a9c042",
+          "sku": "07-vestido-midi-seda-prata-acetinado-g",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "c24092dd-b59a-4c56-906a-dee0c8e7f323",
+          "sku": "07-vestido-midi-seda-dourado-champagne-p",
+          "preco": null,
+          "cor_hex": "#DFBE76",
+          "estoque": 4,
+          "tamanho": "P",
+          "cor_nome": "Dourado Champagne",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "b9a0d6e2-fd2c-40a4-90de-3cd2ad9ccbbf",
+          "url": "/products/03-conjunto-cetim/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "79b5642b-1053-462d-8e8f-a4ca4dc65d0d",
+          "url": "/products/03-conjunto-cetim/prata.jpg",
+          "tipo": "image",
+          "label": "Prata Acetinado",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "c5149946-8c00-4dbf-ad01-7b43e8324ddf",
+      "slug": "06-calca-pantalona-areia",
+      "nome": "Calça Pantalona Cintura Alta Elegance",
+      "preco": 249.9,
+      "preco_promocional": null,
+      "preco_custo": 99.96,
+      "destaque": false,
+      "mais_vendido": true,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Pronta Entrega",
+        "Mais Vendido"
+      ],
+      "detalhes": [
+        "Cós entretelado firme que valoriza a cintura",
+        "Fecho invisível e bolsos faca funcionais",
+        "Caimento solto e estruturado sem marcar",
+        "Comprimento ideal para salto fino ou mocassim"
+      ],
+      "tecido": "Crepe Alfaiataria",
+      "modelagem": "Reta Clássica",
+      "linha": "Trabalho & Alfaiataria",
+      "subcategoria": "Calças",
+      "descricao": "Pantalona em modelagem impecável com cintura alta e cós limpo. Possui pregas frontais que criam uma linha vertical alongadora e fluidez em cada passo.",
+      "foto_principal": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+      "ativo": true,
+      "estoque_total": 19,
+      "categorias": {
+        "id": "f44896e8-9616-4a2d-8811-3c17c23dc972",
+        "nome": "Calças"
+      },
+      "variacoes_produto": [
+        {
+          "id": "cbfcb10c-f03a-4d77-ab73-83115227dac2",
+          "sku": "06-calca-pantalona-areia-bege-areia-nobre-p",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "c3d9f221-b967-47f4-b548-066414fa3cbe",
+          "sku": "06-calca-pantalona-areia-bege-areia-nobre-g",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "e087b7a2-5fe9-4f11-817f-4ec98333428c",
+          "sku": "06-calca-pantalona-areia-bege-areia-nobre-gg",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "GG",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "b1ede5ed-ae80-4820-ab36-b88b869b8bb2",
+          "sku": "06-calca-pantalona-areia-bege-areia-nobre-m",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 4,
+          "tamanho": "M",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "976af05e-ab6a-4452-acb3-3f3b2f4d90b6",
+          "url": "/products/04-conjunto-alfaiataria-bege/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "116405d3-c4c1-4807-8e43-508a5ff82906",
+          "url": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+          "tipo": "image",
+          "label": "Bege Areia",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "e75594a1-95bf-47e9-aa4d-fbad34cc3bbe",
+      "slug": "05-blazer-alfaiataria-offwhite",
+      "nome": "Blazer Estruturado Imperial Off-White",
+      "preco": 459.9,
+      "preco_promocional": null,
+      "preco_custo": 183.96,
+      "destaque": true,
+      "mais_vendido": false,
+      "outlet": false,
+      "ultimas_pecas": true,
+      "status_badges": [
+        "Novidade",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Forro 100% acetato com costura embutida de alto padrão",
+        "Bolsos embutidos com lapela italiana",
+        "Ombreiras anatômicas que desenham os ombros com perfeição",
+        "Tecido resistente a vincos e marcas de uso"
+      ],
+      "tecido": "Crepe Alfaiataria",
+      "modelagem": "Alfaiataria Estruturada",
+      "linha": "Trabalho & Alfaiataria",
+      "subcategoria": "Blazers & Alfaiataria",
+      "descricao": "Blazer confeccionado em crepe de alfaiataria nobre com forro em cetim puro. Lapela alongada, botões frontais em banho ouro fosco e caimento que impõe presença em qualquer reunião ou evento especial.",
+      "foto_principal": "/products/01-casaco-tricot/branco.jpg",
+      "ativo": true,
+      "estoque_total": 19,
+      "categorias": {
+        "id": "7cce3027-c085-44fe-9fb7-a5c402a06ef5",
+        "nome": "Blazers & Alfaiataria"
+      },
+      "variacoes_produto": [
+        {
+          "id": "ca728e50-e51f-4f25-a1bf-216dba8f1451",
+          "sku": "05-blazer-alfaiataria-offwhite-branco-off-white-pp",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "PP",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "ce15e04d-8511-41f7-880a-2981b7f25e4d",
+          "sku": "05-blazer-alfaiataria-offwhite-branco-off-white-p",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "f0350264-e6df-41e9-a943-84b1eaa3025b",
+          "sku": "05-blazer-alfaiataria-offwhite-branco-off-white-g",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        },
+        {
+          "id": "7ce4a941-7393-48c6-8477-5bcd8b8b570a",
+          "sku": "05-blazer-alfaiataria-offwhite-branco-off-white-m",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 4,
+          "tamanho": "M",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "c5959776-3e1a-4a02-9fa8-c4411944c8a5",
+          "url": "/products/04-conjunto-alfaiataria-bege/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "ddbc1e37-19e0-419f-9dac-1db8ffbb3dd0",
+          "url": "/products/01-casaco-tricot/branco.jpg",
+          "tipo": "image",
+          "label": "Branco Off-White",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "a17091b7-5caf-4202-b8d4-8b7dbafbee87",
+      "slug": "04-conjunto-alfaiataria-bege",
+      "nome": "Conjunto Alfaiataria Premium Bege Dourado",
+      "preco": 489.9,
+      "preco_promocional": 389.9,
+      "preco_custo": 195.96,
+      "destaque": false,
+      "mais_vendido": true,
+      "outlet": true,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Mais Vendido",
+        "OUTLET",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Alfaiataria encorpada com costura e forro de alto padrão",
+        "Blazer com ombreiras sutis que desenham a postura com harmonia",
+        "Calça pantalona com pregas frontais alongadoras",
+        "Composição: 95% Crepe Alfaiataria, 5% Spandex",
+        "Acompanha botões nobres com acabamento em banho dourado fosco"
+      ],
+      "tecido": "Crepe Alfaiataria",
+      "modelagem": "Alfaiataria Estruturada",
+      "linha": "Trabalho & Alfaiataria",
+      "subcategoria": "Calças",
+      "descricao": "A definição absoluta da alfaiataria feminina contemporânea. Peça esculpida em tecido estruturado de caimento impecável em tom bege sofisticado. Projetado para mulheres que se posicionam com autoridade e elegância onde chegam.",
+      "foto_principal": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+      "ativo": true,
+      "estoque_total": 14,
+      "categorias": {
+        "id": "7cce3027-c085-44fe-9fb7-a5c402a06ef5",
+        "nome": "Blazers & Alfaiataria"
+      },
+      "variacoes_produto": [
+        {
+          "id": "5fd4a60d-2609-4a97-a2a7-6ed8905bb2b3",
+          "sku": "04-conjunto-alfaiataria-bege-bege-areia-nobre-p",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "262fdcd8-d42d-4e6a-964c-681a2f4e81f5",
+          "sku": "04-conjunto-alfaiataria-bege-bege-areia-nobre-m",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        },
+        {
+          "id": "7483139a-38a4-4523-bccc-1e59dc335c27",
+          "sku": "04-conjunto-alfaiataria-bege-bege-areia-nobre-g",
+          "preco": null,
+          "cor_hex": "#E2D3B8",
+          "estoque": 4,
+          "tamanho": "G",
+          "cor_nome": "Bege Areia Nobre",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "964a4884-ea6d-4c84-931d-86f0725a9488",
+          "url": "/products/04-conjunto-alfaiataria-bege/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "e2def2bd-71e7-4cca-82e1-4aab2274fe2d",
+          "url": "/products/04-conjunto-alfaiataria-bege/bege.jpg",
+          "tipo": "image",
+          "label": "Bege Areia Nobre",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "956a9fa5-0b91-4c63-bc0a-2d5292bdcfc4",
+      "slug": "03-conjunto-cetim",
+      "nome": "Conjunto em Cetim Seda Chic",
+      "preco": 429.9,
+      "preco_promocional": 349.9,
+      "preco_custo": 171.96,
+      "destaque": false,
+      "mais_vendido": true,
+      "outlet": true,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Mais Vendido",
+        "OUTLET"
+      ],
+      "detalhes": [
+        "Cetim acetinado com toque acetinado premium antiestático",
+        "Calça de corte reto com caimento fluido e cós confortável",
+        "Camisa leve de botões forrados e manga estruturada",
+        "Composição: 97% Cetim Seda Toque Suave, 3% Elastano",
+        "Não amassa facilmente e traz frescor imediato"
+      ],
+      "tecido": "Cetim de Seda",
+      "modelagem": "Fluida / Evasê",
+      "linha": "Festa & Noite",
+      "subcategoria": "Camisas",
+      "descricao": "Conjunto em cetim toque de seda com brilho suave e movimento natural. O match perfeito entre conforto descomplicado e o requinte de uma produção sofisticada para ocasiões especiais, jantares e passeios com estilo.",
+      "foto_principal": "/products/03-conjunto-cetim/prata.jpg",
+      "ativo": true,
+      "estoque_total": 15,
+      "categorias": {
+        "id": "d1561164-21ed-4c95-8b9f-aa3623f11eec",
+        "nome": "Conjuntos Exclusivos"
+      },
+      "variacoes_produto": [
+        {
+          "id": "5a3ce2b8-8472-4b6d-8873-6b0241c65b67",
+          "sku": "03-conjunto-cetim-prata-acetinado-p",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "08322cd2-b57c-4b0b-aa23-12c90482f2cb",
+          "sku": "03-conjunto-cetim-prata-acetinado-m",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "M",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        },
+        {
+          "id": "200e70b7-534d-4f1d-b8d9-d05120a6b7a8",
+          "sku": "03-conjunto-cetim-prata-acetinado-g",
+          "preco": null,
+          "cor_hex": "#D1D5DB",
+          "estoque": 5,
+          "tamanho": "G",
+          "cor_nome": "Prata Acetinado",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "778f8f05-f733-471e-ab46-e06deb905bfa",
+          "url": "/products/03-conjunto-cetim/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "a62ae725-d786-4ca6-bf53-79a2b1e686f5",
+          "url": "/products/03-conjunto-cetim/prata.jpg",
+          "tipo": "image",
+          "label": "Prata Acetinado",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "1ec3c44c-6cfc-429e-8e2f-5a4c8db5229c",
+      "slug": "02-blusa-tricot-rosa",
+      "nome": "Blusa em Tricot Especial Outubro Rosa",
+      "preco": 249.9,
+      "preco_promocional": 189.9,
+      "preco_custo": 99.96,
+      "destaque": true,
+      "mais_vendido": true,
+      "outlet": true,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Mais Vendido",
+        "OUTLET",
+        "Novidade"
+      ],
+      "detalhes": [
+        "Trama trabalhada com toque suave na pele",
+        "Elasticidade inteligente que valoriza a silhueta sem apertar",
+        "Manga de acabamento impecável com punho ajustado",
+        "Composição: 80% Fio Especial, 20% Elastano de reforço",
+        "Peça versátil para combinar com alfaiataria ou jeans premium"
+      ],
+      "tecido": "Tricot Biamar",
+      "modelagem": "Ajustada / Slim",
+      "linha": "Casual Chic",
+      "subcategoria": "Tricots",
+      "descricao": "Blusa em tricot canelado com ponto refinado e decote suave. Peça curinga que combina a delicadeza dos tons rosados com a sofisticação de uma malharia estruturada e confortável para qualquer momento do dia.",
+      "foto_principal": "/products/02-blusa-tricot-rosa/rosa.jpg",
+      "ativo": true,
+      "estoque_total": 14,
+      "categorias": {
+        "id": "d50fc063-4cf9-4772-81f5-ab70420e732c",
+        "nome": "Blusas & Tops"
+      },
+      "variacoes_produto": [
+        {
+          "id": "edc865dc-5111-4586-a290-df64419a5b13",
+          "sku": "02-blusa-tricot-rosa-rosa-quartz-p",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "P",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        },
+        {
+          "id": "928c4362-347a-4bda-a926-c6106d0bcc17",
+          "sku": "02-blusa-tricot-rosa-rosa-quartz-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 5,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        },
+        {
+          "id": "ddd58c89-cdba-405b-a544-64acaea855c9",
+          "sku": "02-blusa-tricot-rosa-rosa-quartz-m",
+          "preco": null,
+          "cor_hex": "#E8A598",
+          "estoque": 4,
+          "tamanho": "M",
+          "cor_nome": "Rosa Quartz",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "cb51230f-7612-453a-b77e-1d93f5ed1a44",
+          "url": "/products/02-blusa-tricot-rosa/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "9568b7ac-96a5-45e7-8f3d-cfe541b4c198",
+          "url": "/products/02-blusa-tricot-rosa/rosa.jpg",
+          "tipo": "image",
+          "label": "Rosa Quartz",
+          "display_order": 2
+        }
+      ]
+    },
+    {
+      "id": "5ea4a6c4-5872-4c78-a760-974c878ce431",
+      "slug": "01-casaco-tricot",
+      "nome": "Casaco em Tricot Biamar Exclusivo",
+      "preco": 349.9,
+      "preco_promocional": 289.9,
+      "preco_custo": 139.96,
+      "destaque": false,
+      "mais_vendido": true,
+      "outlet": true,
+      "ultimas_pecas": false,
+      "status_badges": [
+        "Mais Vendido",
+        "OUTLET",
+        "Pronta Entrega"
+      ],
+      "detalhes": [
+        "Fio nobre Biamar de alta durabilidade e conforto térmico",
+        "Acabamento canelado com caimento fluído",
+        "Pala alongada e modelagem sofisticada",
+        "Composição: 70% Acrílico nobre, 30% Poliamida",
+        "Cuidados: Lavagem manual ou ciclo delicado para preservar a fibra"
+      ],
+      "tecido": "Tricot Biamar",
+      "modelagem": "Ampla / Oversized",
+      "linha": "Casual Chic",
+      "subcategoria": "Tricots",
+      "descricao": "Casaco confeccionado em tricot premium Biamar, com textura canelada encorpada e toque aveludado irresistível. Modelagem ampla com caimento elegante para compor sobreposições refinadas em dias de meia-estação e inverno.",
+      "foto_principal": "/products/01-casaco-tricot/marrom.jpg",
+      "ativo": true,
+      "estoque_total": 2,
+      "categorias": {
+        "id": "5239f87a-dad3-448c-a625-2b88db525c40",
+        "nome": "Casacos & Jaquetas"
+      },
+      "variacoes_produto": [
+        {
+          "id": "ef8d62b9-177c-4a11-95d9-998251c26f2b",
+          "sku": "01-casaco-tricot-marrom-caramelo-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#8B5A2B",
+          "estoque": 1,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Marrom Caramelo",
+          "preco_promocional": null
+        },
+        {
+          "id": "9d0cf6e6-a035-46ac-82d5-24d6dc357acf",
+          "sku": "01-casaco-tricot-branco-off-white-tamanho-unico",
+          "preco": null,
+          "cor_hex": "#FAF9F6",
+          "estoque": 1,
+          "tamanho": "Tamanho Único",
+          "cor_nome": "Branco Off-White",
+          "preco_promocional": null
+        }
+      ],
+      "midias_produto": [
+        {
+          "id": "cc4c5304-b366-487c-8ac7-5f3d76940b6e",
+          "url": "/products/01-casaco-tricot/video.mp4",
+          "tipo": "video",
+          "label": "Vídeo no Provador (Leidy)",
+          "display_order": 1
+        },
+        {
+          "id": "ce66d2c2-8ff4-4162-989d-dbad1b1f0d5a",
+          "url": "/products/01-casaco-tricot/marrom.jpg",
+          "tipo": "image",
+          "label": "Marrom Caramelo",
+          "display_order": 2
+        },
+        {
+          "id": "b503e6f5-0c7d-4eb2-b60e-de6154adeeae",
+          "url": "/products/01-casaco-tricot/branco.jpg",
+          "tipo": "image",
+          "label": "Branco Off-White",
+          "display_order": 3
+        }
+      ]
+    }
+  ]
+}
