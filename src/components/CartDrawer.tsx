@@ -7,7 +7,7 @@ import { X, Trash2, ShoppingBag, MessageCircle, ShieldCheck, Truck, MapPin, Lock
 import { CartItem } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
-import { fetchAddressByCep, calculateShippingOptions, formatCep } from '@/utils/shipping';
+import { fetchAddressByCep, calculateShippingOptions, fetchStoreShippingOptions, formatCep, ShippingOption } from '@/utils/shipping';
 import { getStoreCheckoutUrl } from '@/lib/routes';
 import { validateLiveCartStock } from '@/lib/orders';
 
@@ -53,6 +53,57 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [cepError, setCepError] = useState('');
   const [isValidatingWhatsApp, setIsValidatingWhatsApp] = useState(false);
   const [stockWarning, setStockWarning] = useState<string | null>(null);
+
+  // Estados e cálculo de frete dinâmico da loja
+  const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalPecas = items.reduce((acc, item) => acc + item.quantity, 0);
+  const freeShippingGoal = Number(currentTenant?.configuracoes_visuais?.frete_gratis_valor || STORE_INFO.freeShippingThreshold);
+  const progressToFreeShipping = Math.min(100, (subtotal / freeShippingGoal) * 100);
+  const remainingForFreeShipping = Math.max(0, freeShippingGoal - subtotal);
+
+  const [drawerShippingOptions, setDrawerShippingOptions] = useState<ShippingOption[]>([]);
+  const [isShippingLoading, setIsShippingLoading] = useState(false);
+  const [shippingDiscount, setShippingDiscount] = useState<number>(0);
+  const [isFreeShippingGranted, setIsFreeShippingGranted] = useState(false);
+
+  useEffect(() => {
+    if (!savedAddress?.cep) {
+      setDrawerShippingOptions([]);
+      setShippingDiscount(0);
+      setIsFreeShippingGranted(false);
+      return;
+    }
+
+    let active = true;
+    setIsShippingLoading(true);
+
+    fetchStoreShippingOptions({
+      lojaId: currentTenant?.id,
+      cepDestino: savedAddress.cep,
+      subtotal,
+      totalPecas,
+      ufDestino: savedAddress.uf,
+      cidadeDestino: savedAddress.localidade,
+    })
+      .then((res) => {
+        if (!active) return;
+        setDrawerShippingOptions(res.options);
+        setShippingDiscount(res.descontoAplicadoReais);
+        setIsFreeShippingGranted(res.freteGratisQualificado);
+      })
+      .catch((err) => {
+        console.warn('Fallback frete drawer:', err);
+        if (!active) return;
+        setDrawerShippingOptions(calculateShippingOptions(savedAddress.uf, subtotal));
+      })
+      .finally(() => {
+        if (active) setIsShippingLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [savedAddress?.cep, subtotal, totalPecas, currentTenant?.id]);
 
   // Trava a rolagem da página quando a sacola está aberta
   useEffect(() => {
@@ -100,11 +151,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const freeShippingGoal = STORE_INFO.freeShippingThreshold;
-  const progressToFreeShipping = Math.min(100, (subtotal / freeShippingGoal) * 100);
-  const remainingForFreeShipping = Math.max(0, freeShippingGoal - subtotal);
-
   // Sugestão de Upsell (peça que ainda não está no carrinho)
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
   const upsellProduct = sourceProducts.find((p) => !items.some((i) => i.productId === p.id));
@@ -132,9 +178,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  const drawerShippingOptions = savedAddress ? calculateShippingOptions(savedAddress.uf, subtotal) : [];
   const lowestShipping = drawerShippingOptions.length > 0 ? drawerShippingOptions[0] : null;
-  const shippingCost = subtotal >= freeShippingGoal ? 0 : (lowestShipping ? lowestShipping.price : 0);
+  const effectiveFreeShipping = isFreeShippingGranted || subtotal >= freeShippingGoal;
+  const shippingCost = effectiveFreeShipping ? 0 : (lowestShipping ? Math.max(0, lowestShipping.price - shippingDiscount) : 0);
   const currentGiftCost = isGift ? giftFee : 0;
   const finalTotal = subtotal + shippingCost + currentGiftCost;
 
@@ -157,10 +203,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
     if (savedAddress) {
       message += `📍 *Endereço de Entrega:* ${savedAddress.bairro ? savedAddress.bairro + ', ' : ''}${savedAddress.localidade} - ${savedAddress.uf} (CEP: ${savedAddress.cep})\n`;
-      if (subtotal >= freeShippingGoal) {
+      if (effectiveFreeShipping) {
         message += `🚚 *Frete:* Cortesia VIP (Grátis)\n\n`;
       } else if (lowestShipping) {
-        message += `🚚 *Opção de Frete:* ${lowestShipping.name} (${lowestShipping.formattedPrice} - ${lowestShipping.deliveryDays})\n\n`;
+        const discountText = shippingDiscount > 0 ? ` (com R$ ${shippingDiscount.toFixed(2).replace('.', ',')} de desconto progressivo aplicado)` : '';
+        message += `🚚 *Opção de Frete:* ${lowestShipping.name} (R$ ${shippingCost.toFixed(2).replace('.', ',')}${discountText} - ${lowestShipping.deliveryDays})\n\n`;
       } else {
         message += `\n`;
       }
@@ -646,15 +693,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <div className="flex justify-between items-center">
                   <span>Envio / Entrega:</span>
                   <span className="text-[#C5A059] dark:text-[#DFBE76] font-medium">
-                    {subtotal >= freeShippingGoal ? (
+                    {isShippingLoading ? (
+                      <span className="text-stone-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin inline" /> Calculando...</span>
+                    ) : effectiveFreeShipping ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Grátis (VIP)</span>
                     ) : lowestShipping ? (
-                      `${lowestShipping.name} (${lowestShipping.formattedPrice})`
+                      `${lowestShipping.name} (R$ ${shippingCost.toFixed(2).replace('.', ',')})`
                     ) : (
                       'A consultar'
                     )}
                   </span>
                 </div>
+                {shippingDiscount > 0 && !effectiveFreeShipping && (
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                    <span>Desconto no Frete:</span>
+                    <span>- R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm sm:text-base font-bold text-[#1A1918] dark:text-[#FAF8F5] pt-2 border-t border-dashed border-[#C5A059]/20">
                   <span>Total Previsto:</span>
                   <span className="text-[#C5A059] dark:text-[#DFBE76]">

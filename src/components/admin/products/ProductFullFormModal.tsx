@@ -24,7 +24,8 @@ import {
   AlertCircle,
   Package,
   Check,
-  Settings
+  Settings,
+  Truck
 } from 'lucide-react';
 import {
   AdminProductItem,
@@ -152,6 +153,12 @@ export function ProductFullFormModal({
   // Sinalizadores Globais
   const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
 
+  // Dimensões e Peso para Envio (Opcional - Piloto Automático se vazio)
+  const [pesoKg, setPesoKg] = useState<string>('');
+  const [alturaCm, setAlturaCm] = useState<string>('');
+  const [larguraCm, setLarguraCm] = useState<string>('');
+  const [comprimentoCm, setComprimentoCm] = useState<string>('');
+
   // Cross-Sell / Monte o Look
   const [pairedSlugs, setPairedSlugs] = useState<string[]>([]);
   const [isCrossSellPickerOpen, setIsCrossSellPickerOpen] = useState(false);
@@ -222,6 +229,18 @@ export function ProductFullFormModal({
           }
           if (product.detalhes.precos_diferenciados) {
             precosDiff = product.detalhes.precos_diferenciados;
+          }
+          if (product.detalhes.dimensoes_frete) {
+            const df = product.detalhes.dimensoes_frete;
+            setPesoKg(df.peso_kg !== undefined && df.peso_kg !== null ? String(df.peso_kg) : '');
+            setAlturaCm(df.altura_cm !== undefined && df.altura_cm !== null ? String(df.altura_cm) : '');
+            setLarguraCm(df.largura_cm !== undefined && df.largura_cm !== null ? String(df.largura_cm) : '');
+            setComprimentoCm(df.comprimento_cm !== undefined && df.comprimento_cm !== null ? String(df.comprimento_cm) : '');
+          } else {
+            setPesoKg('');
+            setAlturaCm('');
+            setLarguraCm('');
+            setComprimentoCm('');
           }
         }
       }
@@ -301,6 +320,10 @@ export function ProductFullFormModal({
       setCustomBadgesSelected([]);
       setPairedSlugs([]);
       setPrecosDiferenciados({});
+      setPesoKg('');
+      setAlturaCm('');
+      setLarguraCm('');
+      setComprimentoCm('');
       setMediaList([]);
       setCoverIndex(0);
 
@@ -557,11 +580,24 @@ export function ProductFullFormModal({
         }
       });
 
+      const pesoKgNum = pesoKg.trim() ? parseFloat(pesoKg.replace(',', '.')) : undefined;
+      const alturaCmNum = alturaCm.trim() ? parseFloat(alturaCm.replace(',', '.')) : undefined;
+      const larguraCmNum = larguraCm.trim() ? parseFloat(larguraCm.replace(',', '.')) : undefined;
+      const comprimentoCmNum = comprimentoCm.trim() ? parseFloat(comprimentoCm.replace(',', '.')) : undefined;
+
+      const dimensoesFrete = (pesoKgNum || alturaCmNum || larguraCmNum || comprimentoCmNum) ? {
+        peso_kg: pesoKgNum,
+        altura_cm: alturaCmNum,
+        largura_cm: larguraCmNum,
+        comprimento_cm: comprimentoCmNum
+      } : undefined;
+
       const detalhesPayload = {
         especificacoes: baseSpecs,
         badges: badgesArray,
         precos_diferenciados: Object.keys(precosDiferenciados).length > 0 ? precosDiferenciados : undefined,
-        fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : undefined
+        fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : undefined,
+        dimensoes_frete: dimensoesFrete
       };
 
       const orderedFotos = [...validMediaList];
@@ -1788,6 +1824,70 @@ export function ProductFullFormModal({
                       })}
                     </div>
                   )}
+                </div>
+
+                {/* Dimensões e Peso para Envio (Opcional - Piloto Automático se vazio) */}
+                <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                  <div>
+                    <label className="block text-slate-800 font-bold text-xs flex items-center gap-1.5">
+                      <Truck className="w-4 h-4 text-amber-600" />
+                      <span>📦 Peso e Dimensões Específicas para Frete (Opcional)</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Deixe em branco para usar o <strong>Piloto Automático</strong> da loja (300g por peça em pacote padrão). Preencha apenas para peças pesadas ou volumosas (ex: casacos pesados, bolsas ou botas).
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Peso (kg):
+                      </label>
+                      <input
+                        type="text"
+                        value={pesoKg}
+                        onChange={(e) => setPesoKg(e.target.value)}
+                        placeholder="Ex: 0.850"
+                        className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Altura (cm):
+                      </label>
+                      <input
+                        type="text"
+                        value={alturaCm}
+                        onChange={(e) => setAlturaCm(e.target.value)}
+                        placeholder="Ex: 8"
+                        className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Largura (cm):
+                      </label>
+                      <input
+                        type="text"
+                        value={larguraCm}
+                        onChange={(e) => setLarguraCm(e.target.value)}
+                        placeholder="Ex: 25"
+                        className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Comprimento (cm):
+                      </label>
+                      <input
+                        type="text"
+                        value={comprimentoCm}
+                        onChange={(e) => setComprimentoCm(e.target.value)}
+                        placeholder="Ex: 35"
+                        className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

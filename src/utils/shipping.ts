@@ -72,11 +72,86 @@ export async function fetchAddressByCep(cep: string): Promise<ViaCepResponse | n
 }
 
 /**
- * Calcula prazos e valores de frete realistas baseados na UF de destino
+ * Consulta o motor unificado de frete da BCOMM (/api/shipping/calculate).
+ * Integra Melhor Envio (Correios e Jadlog), regras de autonomia do lojista,
+ * desconto progressivo e cai na contingência automaticamente em caso de oscilação.
+ */
+export async function fetchStoreShippingOptions(params: {
+  lojaId?: string;
+  cepDestino: string;
+  subtotal: number;
+  totalPecas?: number;
+  ufDestino?: string;
+  cidadeDestino?: string;
+  pesoCustomKg?: number;
+}): Promise<{
+  options: ShippingOption[];
+  isFallback: boolean;
+  descontoAplicadoReais: number;
+  freteGratisQualificado: boolean;
+}> {
+  const cleanCep = (params.cepDestino || '').replace(/\D/g, '');
+  if (cleanCep.length !== 8) {
+    return {
+      options: [],
+      isFallback: false,
+      descontoAplicadoReais: 0,
+      freteGratisQualificado: false
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch('/api/shipping/calculate', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lojaId: params.lojaId,
+        cepDestino: cleanCep,
+        subtotal: params.subtotal,
+        totalPecas: params.totalPecas || 1,
+        ufDestino: params.ufDestino,
+        cidadeDestino: params.cidadeDestino,
+        pesoCustomKg: params.pesoCustomKg
+      })
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.options && data.options.length > 0) {
+        return {
+          options: data.options,
+          isFallback: Boolean(data.isFallback),
+          descontoAplicadoReais: Number(data.descontoAplicadoReais || 0),
+          freteGratisQualificado: Boolean(data.freteGratisQualificado)
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[shipping.ts] Queda de rota /api/shipping/calculate, acionando fallback local:', err);
+  }
+
+  // Fallback instantâneo
+  const fallbackOpts = calculateShippingOptions(params.ufDestino || '', params.subtotal);
+  return {
+    options: fallbackOpts,
+    isFallback: true,
+    descontoAplicadoReais: 0,
+    freteGratisQualificado: params.subtotal >= 350
+  };
+}
+
+/**
+ * Calcula prazos e valores de frete realistas baseados na UF de destino (Fallback local)
  */
 export function calculateShippingOptions(uf: string, subtotal: number = 0): ShippingOption[] {
   const ufUpper = (uf || '').toUpperCase().trim();
-  const isFreeShipping = subtotal >= 400; // Frete Cortesia para compras a partir de R$ 400
+  const isFreeShipping = subtotal >= 350;
 
   // Região Sudeste (Origem Boutique)
   const isSudeste = ['SP', 'RJ', 'MG', 'ES'].includes(ufUpper);

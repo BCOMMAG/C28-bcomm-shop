@@ -31,7 +31,8 @@ import {
   ArrowRight,
   Gift,
   Heart,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { Product } from '@/types';
@@ -42,6 +43,7 @@ import { AviseMeModal } from '@/components/AviseMeModal';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
+  fetchStoreShippingOptions,
   formatCep,
   ShippingOption,
   ViaCepResponse
@@ -113,6 +115,9 @@ export default function CheckoutPage() {
   const [uf, setUf] = useState(savedAddress?.uf || '');
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShippingId, setSelectedShippingId] = useState<string>('sedex');
+  const [shippingDiscount, setShippingDiscount] = useState<number>(0);
+  const [isFreeShippingFromEngine, setIsFreeShippingFromEngine] = useState<boolean>(false);
+  const [isShippingLoading, setIsShippingLoading] = useState<boolean>(false);
   const [filledByCep, setFilledByCep] = useState<{ [key: string]: boolean }>({});
 
   // 3. Pagamento e Cupom
@@ -217,28 +222,62 @@ export default function CheckoutPage() {
 
   // Cálculos de Valores
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const freeShippingThreshold = currentTenant?.configuracoes_visuais?.frete_gratis_valor ?? STORE_INFO.freeShippingThreshold;
-  const isFreeShipping = rawSubtotal >= freeShippingThreshold;
+  const totalPecas = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const freeShippingThreshold = Number(currentTenant?.configuracoes_visuais?.frete_gratis_valor ?? STORE_INFO.freeShippingThreshold);
+  const isFreeShipping = isFreeShippingFromEngine || rawSubtotal >= freeShippingThreshold;
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - rawSubtotal);
   const progressToFreeShipping = Math.min(100, (rawSubtotal / freeShippingThreshold) * 100);
 
-  // Atualiza opções de frete quando o estado ou subtotal mudam
+  // Atualiza opções de frete via motor avançado da loja (Melhor Envio + regras)
   useEffect(() => {
-    if (uf) {
-      const opts = calculateShippingOptions(uf, rawSubtotal);
-      setShippingOptions(opts);
-      if (opts.length > 0 && !opts.find((o) => o.id === selectedShippingId)) {
-        setSelectedShippingId(opts[0].id);
-      }
+    const cleanCep = cepInput.replace(/\D/g, '');
+    if (cleanCep.length === 8 || uf) {
+      let active = true;
+      setIsShippingLoading(true);
+
+      fetchStoreShippingOptions({
+        lojaId: currentTenant?.id,
+        cepDestino: cleanCep || (savedAddress?.cep || ''),
+        subtotal: rawSubtotal,
+        totalPecas,
+        ufDestino: uf,
+        cidadeDestino: city,
+      })
+        .then((res) => {
+          if (!active) return;
+          setShippingOptions(res.options);
+          setShippingDiscount(res.descontoAplicadoReais);
+          setIsFreeShippingFromEngine(res.freteGratisQualificado);
+          if (res.options.length > 0 && !res.options.find((o) => o.id === selectedShippingId)) {
+            setSelectedShippingId(res.options[0].id);
+          }
+        })
+        .catch((err) => {
+          console.warn('Erro ao cotar frete no checkout, fallback ativado:', err);
+          if (!active) return;
+          if (uf) {
+            const fallbackOpts = calculateShippingOptions(uf, rawSubtotal);
+            setShippingOptions(fallbackOpts);
+            if (fallbackOpts.length > 0 && !fallbackOpts.find((o) => o.id === selectedShippingId)) {
+              setSelectedShippingId(fallbackOpts[0].id);
+            }
+          }
+        })
+        .finally(() => {
+          if (active) setIsShippingLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
     }
-  }, [uf, rawSubtotal]);
+  }, [cepInput, uf, city, rawSubtotal, totalPecas, currentTenant?.id]);
 
   const chosenShippingOption = shippingOptions.find((o) => o.id === selectedShippingId);
+  const baseShippingPrice = chosenShippingOption ? chosenShippingOption.price : 0;
   const shippingPrice = isFreeShipping
     ? 0
-    : chosenShippingOption
-    ? chosenShippingOption.price
-    : 0;
+    : Math.max(0, baseShippingPrice - shippingDiscount);
 
   const couponDiscount = appliedCoupon
     ? appliedCoupon.amount !== undefined
@@ -593,7 +632,7 @@ export default function CheckoutPage() {
       valorDesconto: couponDiscount + pixDiscount,
       total: totalAmount,
       metodoPagamento: paymentMethod,
-      observacoes: orderNotes || undefined,
+      observacoes: [orderNotes, chosenShippingOption ? `Frete: ${chosenShippingOption.name} (${chosenShippingOption.deliveryDays})${shippingDiscount > 0 ? ` [Desc frete: R$ ${shippingDiscount.toFixed(2)}]` : ''}` : null].filter(Boolean).join(' | ') || undefined,
       status: 'aguardando_whatsapp',
       isGift,
       giftFee: currentGiftCost,
@@ -691,7 +730,8 @@ export default function CheckoutPage() {
         : 'Atendimento VIP no WhatsApp'
     }\n`;
 
-    msg += `🚚 *Envio:* ${isFreeShipping ? 'Frete VIP Cortesia (Grátis)' : `${chosenShippingOption?.name || 'Correios'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')})`}\n`;
+    const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de R$ ${shippingDiscount.toFixed(2).replace('.', ',')})` : '';
+    msg += `🚚 *Envio:* ${isFreeShipping ? 'Frete VIP Cortesia (Grátis)' : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`}\n`;
 
     if (appliedCoupon) {
       msg += `🏷️ *Cupom Aplicado:* ${appliedCoupon.code} (-R$ ${couponDiscount.toFixed(2).replace('.', ',')})\n`;
@@ -1580,43 +1620,72 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Seleção da Modalidade de Frete */}
-                    {shippingOptions.length > 0 && (
+                    {(shippingOptions.length > 0 || isShippingLoading) && (
                       <div className="pt-2 space-y-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#C5A059] block">
-                          Modalidade de Entrega:
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#C5A059] block">
+                            Modalidade de Entrega:
+                          </span>
+                          {isShippingLoading && (
+                            <span className="text-[11px] text-stone-400 flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin inline" /> Atualizando cotação...
+                            </span>
+                          )}
+                        </div>
+                        {shippingDiscount > 0 && !isFreeShipping && (
+                          <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-1.5 font-medium">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>Você ganhou <strong>R$ {shippingDiscount.toFixed(2).replace('.', ',')} de desconto</strong> no frete nesta compra!</span>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {shippingOptions.map((opt) => (
-                            <label
-                              key={opt.id}
-                              className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
-                                selectedShippingId === opt.id
-                                  ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
-                                  : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="radio"
-                                  name="shippingOption"
-                                  checked={selectedShippingId === opt.id}
-                                  onChange={() => setSelectedShippingId(opt.id)}
-                                  className="accent-[#C5A059]"
-                                />
-                                <div>
-                                  <span className="text-xs font-bold block text-[#1A1918] dark:text-[#FAF8F5]">
-                                    {opt.name}
-                                  </span>
-                                  <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E]">
-                                    {opt.deliveryDays}
-                                  </span>
+                          {shippingOptions.map((opt) => {
+                            const optFinalPrice = isFreeShipping ? 0 : Math.max(0, opt.price - shippingDiscount);
+                            return (
+                              <label
+                                key={opt.id}
+                                className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
+                                  selectedShippingId === opt.id
+                                    ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
+                                    : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name="shippingOption"
+                                    checked={selectedShippingId === opt.id}
+                                    onChange={() => setSelectedShippingId(opt.id)}
+                                    className="accent-[#C5A059]"
+                                  />
+                                  <div>
+                                    <span className="text-xs font-bold block text-[#1A1918] dark:text-[#FAF8F5]">
+                                      {opt.name}
+                                    </span>
+                                    <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E]">
+                                      {opt.deliveryDays}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                              <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                                {isFreeShipping ? 'Grátis' : `R$ ${opt.price.toFixed(2).replace('.', ',')}`}
-                              </span>
-                            </label>
-                          ))}
+                                <div className="text-right">
+                                  {isFreeShipping ? (
+                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Grátis</span>
+                                  ) : (
+                                    <div>
+                                      {shippingDiscount > 0 && opt.price > optFinalPrice && (
+                                        <span className="text-[10px] text-stone-400 line-through block">
+                                          R$ {opt.price.toFixed(2).replace('.', ',')}
+                                        </span>
+                                      )}
+                                      <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                                        {optFinalPrice === 0 ? 'Grátis' : `R$ ${optFinalPrice.toFixed(2).replace('.', ',')}`}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -2039,6 +2108,12 @@ export default function CheckoutPage() {
                                 )}
                               </span>
                             </div>
+                            {shippingDiscount > 0 && !isFreeShipping && (
+                              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                <span>Desconto Frete:</span>
+                                <span>-R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                              </div>
+                            )}
                             {appliedCoupon && (
                               <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                                 <span>Cupom ({appliedCoupon.code}):</span>
@@ -2142,6 +2217,13 @@ export default function CheckoutPage() {
                         )}
                       </span>
                     </div>
+
+                    {shippingDiscount > 0 && !isFreeShipping && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span>Desconto no Frete:</span>
+                        <span>-R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
 
                     {appliedCoupon && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">

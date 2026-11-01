@@ -3,6 +3,7 @@ import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
 import { BarraAvisoEstilo } from '@/types/database';
 import { clearTenantCache } from '@/lib/tenant';
+import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
 export interface DashboardStats {
   faturamentoTotal: number;
@@ -2578,6 +2579,7 @@ export interface StoreSettingsData {
   entregaLocalAtiva: boolean;
   entregaLocalTaxa: number;
   entregaLocalBairros?: string;
+  logisticaAvancada?: LogisticaAvancadaConfig | null;
 
   // Checkout & Experiência
   presenteAtivo: boolean;
@@ -2738,6 +2740,7 @@ export interface SaveStoreSettingsInput {
   entregaLocalAtiva?: boolean;
   entregaLocalTaxa?: number;
   entregaLocalBairros?: string;
+  logisticaAvancada?: LogisticaAvancadaConfig;
 
   // Checkout & Experiência
   presenteAtivo?: boolean;
@@ -2852,6 +2855,7 @@ export async function getStoreSettings(
       entregaLocalAtiva: vis.entrega_local_ativa ?? true,
       entregaLocalTaxa: Number(vis.entrega_local_taxa ?? 18.00),
       entregaLocalBairros: vis.entrega_local_bairros || 'Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)',
+      logisticaAvancada: vis.logistica_avancada || null,
 
       // Checkout & Experiência
       presenteAtivo: vis.presente_ativo ?? true,
@@ -2995,6 +2999,7 @@ export async function saveStoreGeneralSettings(
       ...(input.entregaLocalAtiva !== undefined ? { entrega_local_ativa: Boolean(input.entregaLocalAtiva) } : {}),
       ...(input.entregaLocalTaxa !== undefined ? { entrega_local_taxa: Number(input.entregaLocalTaxa) } : {}),
       ...(input.entregaLocalBairros !== undefined ? { entrega_local_bairros: input.entregaLocalBairros.trim() } : {}),
+      ...(input.logisticaAvancada !== undefined ? { logistica_avancada: input.logisticaAvancada } : {}),
 
       // Checkout
       ...(input.presenteAtivo !== undefined ? { presente_ativo: Boolean(input.presenteAtivo) } : {}),

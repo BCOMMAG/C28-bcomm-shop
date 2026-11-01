@@ -37,6 +37,7 @@ import { isVideoUrl } from '@/lib/products';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
+  fetchStoreShippingOptions,
   formatCep,
   ViaCepResponse,
   ShippingOption
@@ -413,7 +414,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       if (address) {
         setShippingAddress(address);
         setSavedAddressInfo(cleanCep, address);
-        setShippingOptions(calculateShippingOptions(address.uf, product.price));
+        
+        // Cotação inteligente via motor BCOMM (Melhor Envio + regras da loja)
+        const storeRates = await fetchStoreShippingOptions({
+          lojaId: currentTenant?.id,
+          cepDestino: cleanCep,
+          subtotal: product.price,
+          totalPecas: 1,
+          ufDestino: address.uf,
+          cidadeDestino: address.localidade
+        });
+
+        setShippingOptions(storeRates.options);
         setShippingResult(true);
       } else {
         setShippingError('CEP não encontrado. Por favor, confira os números digitados.');
