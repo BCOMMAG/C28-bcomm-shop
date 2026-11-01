@@ -50,6 +50,14 @@ const SETTINGS_SECTIONS: NavSection[] = [
         badgeColor: 'bg-slate-100 text-slate-700'
       },
       {
+        label: 'Plano & Assinatura SaaS',
+        href: '/admin/configuracoes/assinatura',
+        icon: Sparkles,
+        description: 'Plano contratado, limites e faturas da boutique',
+        badge: 'PRO',
+        badgeColor: 'bg-sky-100 text-sky-800'
+      },
+      {
         label: 'Segurança & Acessos',
         href: '/admin/configuracoes/seguranca',
         icon: ShieldCheck,

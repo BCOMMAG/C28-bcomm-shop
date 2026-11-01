@@ -226,33 +226,49 @@ export async function getTenantById(lojaId: string): Promise<Loja | null> {
  */
 export async function getTenantByHost(host: string): Promise<Loja> {
   const cleanHost = host.split(':')[0].toLowerCase();
+  const rawHost = cleanHost.replace(/^www\./, '');
 
-  // Se for ambiente local ou preview genérico da Cloudflare Pages, consulta pelo slug padrão
+  // 1. Se for ambiente local ou raiz padrão da Cloudflare Pages, consulta pelo slug padrão
   if (
     cleanHost === 'localhost' ||
     cleanHost === '127.0.0.1' ||
-    cleanHost.includes('pages.dev')
+    cleanHost === 'bcomm-shop.pages.dev'
   ) {
     return getTenantBySlug('leidy-boutique');
   }
 
-  // Verifica cache
-  const cached = tenantCache.get(cleanHost);
+  // 2. Detecção de Subdomínio SaaS da Plataforma (ex: leidy.bcomm.shop, auraprivee.bcomm.shop)
+  const saasDomains = ['bcomm.shop', 'bcomm.com.br', 'bcomm-shop.pages.dev'];
+  for (const baseDom of saasDomains) {
+    if (cleanHost.endsWith(`.${baseDom}`)) {
+      const subdomain = cleanHost.replace(`.${baseDom}`, '').replace(/^www\./, '');
+      const reservedPrefixes = ['www', 'app', 'admin', 'super-admin', 'api', 'stage', 'preview'];
+      if (subdomain && !reservedPrefixes.includes(subdomain)) {
+        return getTenantBySlug(subdomain);
+      }
+    }
+  }
+
+  // 3. Verifica cache em memória para o host
+  const cached = tenantCache.get(cleanHost) || tenantCache.get(rawHost);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.loja;
   }
 
+  // 4. Busca por Domínio Próprio Customizado no Supabase (com ou sem 'www.')
   try {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
       .from('lojas')
       .select('*')
-      .eq('dominio_proprio', cleanHost)
+      .or(`dominio_proprio.eq.${cleanHost},dominio_proprio.eq.${rawHost}`)
       .eq('ativo', true);
 
     if (!error && data && data.length > 0) {
       const loja = data[0] as Loja;
       tenantCache.set(cleanHost, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
+      tenantCache.set(rawHost, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
+      tenantCache.set(`slug:${loja.slug}`, { loja, expiresAt: Date.now() + CACHE_TTL_MS });
       return loja;
     }
   } catch (error) {

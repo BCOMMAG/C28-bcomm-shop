@@ -133,12 +133,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Carrega notificações operacionais de pedidos pendentes
+  // Carrega notificações operacionais de pedidos pendentes da loja ativa
   useEffect(() => {
     if (!isAuthenticated) return;
+    const activeLojaId = currentTenant?.id || DEFAULT_TENANT_ID;
     const fetchNotifs = async () => {
       try {
-        const notifs = await getAdminPendingNotifications(DEFAULT_TENANT_ID);
+        const notifs = await getAdminPendingNotifications(activeLojaId);
         setPendingNotifs(notifs);
       } catch (err) {
         console.error('Erro ao buscar notificações:', err);
@@ -149,7 +150,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
     const supabase = getSupabaseBrowserClient();
     const channel = supabase
-      .channel('admin-header-pedidos-notifs')
+      .channel(`admin-header-pedidos-notifs-${activeLojaId}`)
       .on(
         'postgres_changes',
         {
@@ -167,14 +168,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentTenant?.id]);
 
   // Carrega a equipe e o colaborador ativo da sessão
   useEffect(() => {
     if (!isAuthenticated) return;
+    const activeLojaId = currentTenant?.id || DEFAULT_TENANT_ID;
     const loadTeam = async () => {
       try {
-        const list = await getTeamMembers(DEFAULT_TENANT_ID);
+        const list = await getTeamMembers(activeLojaId);
         setTeamMembers(list);
         const savedColab = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_colaborador') : null;
         if (savedColab) {
@@ -990,7 +992,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         isOpen={isLockScreenOpen}
         onClose={() => setIsLockScreenOpen(false)}
         members={teamMembers}
-        lojaId={DEFAULT_TENANT_ID}
+        lojaId={currentTenant?.id || DEFAULT_TENANT_ID}
         onUserSwitched={(m) => {
           setActiveMember(m);
         }}

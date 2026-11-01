@@ -280,10 +280,13 @@ export default function SuperAdminLojasPage() {
                       </button>
 
                       <Link
-                        href="/admin/"
-                        className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                        href={`/admin/?loja=${store.slug}`}
+                        target="_blank"
+                        className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                        title="Abrir painel administrativo desta boutique"
                       >
-                        Acessar Painel
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#38BDF8]" />
+                        <span>Acessar Admin</span>
                       </Link>
 
                       <Link

@@ -1,0 +1,5 @@
+# Regras de Redirecionamento e Roteamento Edge - Cloudflare Pages
+# Permite roteamento dinâmico instantâneo para novos tenants SaaS
+
+/api/*  /api/:splat  200
+
