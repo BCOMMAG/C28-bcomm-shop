@@ -65,6 +65,7 @@ interface ProductBatchImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   lojaId?: string;
+  tenantSlug?: string;
   onSuccess: () => void;
   categoriesList: BatchCategoryOption[];
   existingProducts?: AdminProductItem[];
@@ -227,6 +228,7 @@ export function ProductBatchImportModal({
   isOpen,
   onClose,
   lojaId = DEFAULT_TENANT_ID,
+  tenantSlug,
   onSuccess,
   categoriesList,
   existingProducts = []
@@ -1372,8 +1374,9 @@ export function ProductBatchImportModal({
     setUploadingPhotoRowId(rowId);
     try {
       const fileArray = Array.from(files);
+      const effectiveSlug = tenantSlug || 'default';
       for (const file of fileArray) {
-        const res = await uploadBrowserFileToR2(file, 'leidy-boutique', 'produtos');
+        const res = await uploadBrowserFileToR2(file, effectiveSlug, 'produtos');
         if (res.success && res.url) {
           setGridRows((prev) =>
             prev.map((r) => {

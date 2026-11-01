@@ -23,6 +23,8 @@ export default function SuperAdminNovaLojaPage() {
   const [slug, setSlug] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
+  const [nomeResponsavel, setNomeResponsavel] = useState('');
+  const [senhaInicial, setSenhaInicial] = useState('');
   const [dominioProprio, setDominioProprio] = useState('');
   const [cloneCatalog, setCloneCatalog] = useState(true);
 
@@ -59,6 +61,8 @@ export default function SuperAdminNovaLojaPage() {
         slug,
         whatsapp,
         email,
+        nomeResponsavel: nomeResponsavel.trim() || undefined,
+        senhaInicial: senhaInicial.trim() || undefined,
         dominioProprio: dominioProprio.trim() || undefined,
         cloneCatalog
       });
@@ -138,8 +142,13 @@ export default function SuperAdminNovaLojaPage() {
               <p className="text-slate-300">
                 <strong>E-mail:</strong> {createdLoja.email}
               </p>
+              {senhaInicial && (
+                <p className="text-slate-300 font-mono">
+                  <strong>Senha:</strong> {senhaInicial}
+                </p>
+              )}
               <p className="text-slate-300">
-                <strong>Painel:</strong> /admin
+                <strong>Painel Administrativo:</strong> <Link href="/admin/login/" className="text-[#38BDF8] hover:underline">/admin/login/</Link>
               </p>
             </div>
           </div>
@@ -237,6 +246,34 @@ export default function SuperAdminNovaLojaPage() {
                   required
                   placeholder="contato@auraprivee.com.br"
                   className="w-full bg-slate-950/80 border border-slate-800 text-white text-xs px-3.5 py-3 rounded-lg focus:outline-none focus:border-[#38BDF8]"
+                />
+              </div>
+
+              {/* Nome do Responsável / Lojista */}
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-slate-300 mb-1.5">
+                  Nome do Lojista / Proprietário
+                </label>
+                <input
+                  type="text"
+                  value={nomeResponsavel}
+                  onChange={(e) => setNomeResponsavel(e.target.value)}
+                  placeholder="Ex: Patrícia Menezes"
+                  className="w-full bg-slate-950/80 border border-slate-800 text-white text-xs px-3.5 py-3 rounded-lg focus:outline-none focus:border-[#38BDF8]"
+                />
+              </div>
+
+              {/* Senha Inicial de Acesso ao Painel */}
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-slate-300 mb-1.5">
+                  Senha Inicial de Acesso ao /admin
+                </label>
+                <input
+                  type="text"
+                  value={senhaInicial}
+                  onChange={(e) => setSenhaInicial(e.target.value)}
+                  placeholder="Ex: Boutique@2026 (mínimo 6 caracteres)"
+                  className="w-full bg-slate-950/80 border border-slate-800 text-white text-xs font-mono px-3.5 py-3 rounded-lg focus:outline-none focus:border-[#38BDF8]"
                 />
               </div>
             </div>

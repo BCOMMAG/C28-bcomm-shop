@@ -34,6 +34,7 @@ import { PRODUCTS, STORE_INFO } from '@/data/products';
 import { useStore } from '@/context/StoreContext';
 import { AviseMeModal } from '@/components/AviseMeModal';
 import { isVideoUrl } from '@/lib/products';
+import { getStoreCheckoutUrl } from '@/lib/routes';
 import {
   fetchAddressByCep,
   calculateShippingOptions,
@@ -394,7 +395,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       quantity: qtyToAdd
     });
     closeProductSilently();
-    router.push('/checkout/');
+    router.push(getStoreCheckoutUrl(currentTenant?.slug));
   };
 
   // Consulta Real de Endereço via ViaCEP

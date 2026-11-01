@@ -236,6 +236,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('leidy_admin_auth');
     localStorage.removeItem('leidy_admin_user');
     localStorage.removeItem('leidy_admin_colaborador');
+    localStorage.removeItem('bcomm_admin_loja_id');
+    localStorage.removeItem('bcomm_admin_loja_slug');
+    localStorage.removeItem('bcomm_auth_user');
     router.push('/admin/login/');
   };
 

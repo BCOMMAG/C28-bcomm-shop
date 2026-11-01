@@ -286,7 +286,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       {/* Container da gaveta: 100% de largura no mobile e lateral elegante no desktop */}
       <div className="fixed inset-y-0 right-0 left-0 sm:left-auto max-w-full flex sm:pl-10 pointer-events-none">
         <div className="w-full sm:w-[440px] max-w-full pointer-events-auto bg-[#FAF8F5] dark:bg-[#141312] text-[#1A1918] dark:text-[#FAF8F5] shadow-2xl flex flex-col sm:border-l border-[#C5A059]/30 h-full">
-          
+
           {/* Header da Sacola */}
           <div className="p-4 sm:p-5 border-b border-[#C5A059]/20 flex items-center justify-between bg-white dark:bg-[#1A1918] shrink-0">
             <div className="flex items-center gap-2.5">
@@ -416,11 +416,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                                   type="button"
                                   onClick={() => onUpdateQuantity(item.id, 1)}
                                   disabled={isMaxReached}
-                                  className={`text-xs font-bold px-1 transition-colors ${
-                                    isMaxReached
+                                  className={`text-xs font-bold px-1 transition-colors ${isMaxReached
                                       ? 'opacity-30 cursor-not-allowed text-stone-400'
                                       : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] cursor-pointer'
-                                  }`}
+                                    }`}
                                   title={isMaxReached ? 'Limite máximo de estoque atingido' : 'Adicionar mais 1 unidade'}
                                 >
                                   +
@@ -583,16 +582,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
               {/* CARD DE EMBALAGEM PARA PRESENTE (LEIDY BOUTIQUE) */}
               {isGiftServiceActive && (
-                <div className={`p-3 rounded-none border transition-all duration-300 text-xs space-y-2.5 ${
-                  isGift
+                <div className={`p-3 rounded-none border transition-all duration-300 text-xs space-y-2.5 ${isGift
                     ? 'bg-[#FAF8F5] dark:bg-[#252220] border-[#C5A059] shadow-xs'
                     : 'bg-white dark:bg-[#1A1918] border-[#C5A059]/30 hover:border-[#C5A059]/60'
-                }`}>
+                  }`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5">
-                      <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 transition-colors ${
-                        isGift ? 'bg-[#C5A059] text-white' : 'bg-[#FAF8F5] dark:bg-[#252220] text-[#C5A059] border border-[#C5A059]/40'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 transition-colors ${isGift ? 'bg-[#C5A059] text-white' : 'bg-[#FAF8F5] dark:bg-[#252220] text-[#C5A059] border border-[#C5A059]/40'
+                        }`}>
                         <Gift className="w-4 h-4" />
                       </div>
                       <div>
@@ -764,11 +761,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         closeCartSilently();
                         router.push(getStoreCheckoutUrl(currentTenant?.slug));
                       }}
-                      className={`w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md ${
-                        hasReservedItems
+                      className={`w-full py-3.5 sm:py-4 px-6 rounded-none text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md ${hasReservedItems
                           ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
                           : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] active:scale-95 group cursor-pointer'
-                      }`}
+                        }`}
                       title={hasReservedItems ? 'Remova as peças em reserva para continuar' : 'Finalizar compra'}
                     >
                       <Lock className="w-4 h-4" />

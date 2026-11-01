@@ -30,6 +30,8 @@ export interface CreateStorePayload {
   slug: string;
   whatsapp: string;
   email: string;
+  nomeResponsavel?: string;
+  senhaInicial?: string;
   dominioProprio?: string;
   cloneCatalog?: boolean;
 }
@@ -213,7 +215,40 @@ export async function createStoreExpress(
     if (insertErr) throw insertErr;
     const newLojaId = createdStore.id;
 
-    // 2. Se habilitado clonar catálogo da loja base (Leidy Boutique)
+    // 2. Registra o Administrador Dono da Loja em membros_equipe
+    const nomeResp = payload.nomeResponsavel?.trim() || payload.nome.trim();
+    try {
+      await supabase.from('membros_equipe').insert({
+        loja_id: newLojaId,
+        nome: nomeResp,
+        email: payload.email.trim(),
+        cargo: 'dono',
+        ativo: true
+      });
+    } catch (membroErr) {
+      console.warn('⚠️ [Super Admin] Aviso ao vincular membro dono:', membroErr);
+    }
+
+    // 3. Registra as credenciais no Supabase Auth caso fornecidas
+    if (payload.senhaInicial && payload.senhaInicial.trim().length >= 6) {
+      try {
+        await supabase.auth.signUp({
+          email: payload.email.trim(),
+          password: payload.senhaInicial.trim(),
+          options: {
+            data: {
+              nome: nomeResp,
+              loja_id: newLojaId,
+              cargo: 'dono'
+            }
+          }
+        });
+      } catch (authErr) {
+        console.warn('⚠️ [Super Admin] Aviso ao criar credenciais no Supabase Auth:', authErr);
+      }
+    }
+
+    // 4. Se habilitado clonar catálogo da loja base (Leidy Boutique)
     if (payload.cloneCatalog) {
       console.log(`📦 Clonando catálogo padrão para a nova loja ${newLojaId}...`);
 
@@ -330,6 +365,18 @@ export async function createStoreExpress(
         ativo: true,
         display_order: 1
       });
+    } else {
+      // Loja criada no Modo Limpo: gera categoria inicial padrão pronta para uso
+      try {
+        await supabase.from('categorias').insert({
+          loja_id: newLojaId,
+          nome: 'Novidades',
+          slug: `novidades-${cleanSlug}`,
+          display_order: 1
+        });
+      } catch (catErr) {
+        console.warn('Aviso ao criar categoria inicial:', catErr);
+      }
     }
 
     return { success: true, loja: createdStore as StoreTenant };

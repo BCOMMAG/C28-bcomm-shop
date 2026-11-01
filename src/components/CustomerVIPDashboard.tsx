@@ -125,19 +125,13 @@ export function CustomerVIPDashboard() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const savedPhone =
-        localStorage.getItem(`bcomm_customer_${tenantSlug}_phone`) ||
-        localStorage.getItem('leidy_customer_phone');
-      const savedName =
-        localStorage.getItem(`bcomm_customer_${tenantSlug}_name`) ||
-        localStorage.getItem('leidy_customer_name');
+      const savedPhone = localStorage.getItem(`bcomm_customer_${tenantSlug}_phone`);
+      const savedName = localStorage.getItem(`bcomm_customer_${tenantSlug}_name`);
       const savedEmail = localStorage.getItem(`bcomm_customer_${tenantSlug}_email`);
       const savedBirthday = localStorage.getItem(`bcomm_customer_${tenantSlug}_birthday`);
       const savedSize = localStorage.getItem(`bcomm_customer_${tenantSlug}_size`);
       const savedShoe = localStorage.getItem(`bcomm_customer_${tenantSlug}_shoesize`);
-      const savedAvatar =
-        localStorage.getItem(`bcomm_customer_${tenantSlug}_avatar`) ||
-        localStorage.getItem('leidy_customer_avatar');
+      const savedAvatar = localStorage.getItem(`bcomm_customer_${tenantSlug}_avatar`);
 
       if (savedName) setCustomerName(savedName);
       if (savedEmail) setCustomerEmail(savedEmail);
@@ -195,10 +189,8 @@ export function CustomerVIPDashboard() {
 
       if (typeof window !== 'undefined') {
         localStorage.setItem(`bcomm_customer_${tenantSlug}_phone`, clean);
-        localStorage.setItem('leidy_customer_phone', clean);
         if (res.cliente?.nome) {
           localStorage.setItem(`bcomm_customer_${tenantSlug}_name`, res.cliente.nome);
-          localStorage.setItem('leidy_customer_name', res.cliente.nome);
         }
       }
     } catch {
@@ -216,7 +208,6 @@ export function CustomerVIPDashboard() {
     setPhoneInput('');
     try {
       localStorage.removeItem(`bcomm_customer_${tenantSlug}_phone`);
-      localStorage.removeItem('leidy_customer_phone');
     } catch (e) {
       console.warn(e);
     }
@@ -282,7 +273,6 @@ export function CustomerVIPDashboard() {
       localStorage.setItem(`bcomm_customer_${tenantSlug}_birthday`, customerBirthday);
       localStorage.setItem(`bcomm_customer_${tenantSlug}_size`, customerSize);
       localStorage.setItem(`bcomm_customer_${tenantSlug}_shoesize`, customerShoeSize);
-      localStorage.setItem('leidy_customer_name', customerName);
 
       // Envia lead enriquecido ao Supabase
       if (customerPhone) {
@@ -341,7 +331,6 @@ export function CustomerVIPDashboard() {
           setCustomerAvatar(compressed);
           try {
             localStorage.setItem(`bcomm_customer_${tenantSlug}_avatar`, compressed);
-            localStorage.setItem('leidy_customer_avatar', compressed);
           } catch (storageErr) {
             console.warn('Erro ao salvar avatar no localStorage:', storageErr);
           }
@@ -356,7 +345,6 @@ export function CustomerVIPDashboard() {
     setCustomerAvatar('');
     try {
       localStorage.removeItem(`bcomm_customer_${tenantSlug}_avatar`);
-      localStorage.removeItem('leidy_customer_avatar');
     } catch {}
   };
 

@@ -210,7 +210,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (firstSegment && !knownRoutes.includes(firstSegment)) {
           tenant = await getTenantBySlug(firstSegment);
         } else {
-          tenant = await getTenantByHost(window.location.hostname);
+          // Em rotas globais como /checkout, prioriza a loja ativa recentemente pelo usuário antes de cair no host fallback
+          let lastTenant: Loja | null = null;
+          try {
+            const rawLast = localStorage.getItem('bcomm_tenant_last');
+            if (rawLast) {
+              const parsed = JSON.parse(rawLast);
+              if (parsed?.id && parsed?.slug) lastTenant = parsed;
+            }
+          } catch {}
+          if (lastTenant) {
+            tenant = lastTenant;
+          } else {
+            tenant = await getTenantByHost(window.location.hostname);
+          }
         }
         setCurrentTenant(tenant);
         if (typeof window !== 'undefined' && tenant) {
@@ -233,7 +246,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         getStoreProducts(tenant.id),
         getAdminHeroBanners(tenant.id)
       ]);
-      if (dynamicProds && dynamicProds.length > 0) {
+      if (dynamicProds) {
         setProducts(dynamicProds);
       }
       if (heroBanners && heroBanners.length > 0) {
@@ -847,7 +860,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setRecentlyViewedIds((prev) => {
       const updated = [productId, ...prev.filter((id) => id !== productId)].slice(0, 8);
       try {
-        localStorage.setItem('leidy_recently_viewed', JSON.stringify(updated));
+        const tenantKey = normalizeTenantSlug(currentTenant?.slug);
+        localStorage.setItem(`bcomm_recent_${tenantKey}`, JSON.stringify(updated));
       } catch (e) {
         console.error(e);
       }
@@ -858,7 +872,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearRecentlyViewed = () => {
     setRecentlyViewedIds([]);
     try {
-      localStorage.removeItem('leidy_recently_viewed');
+      const tenantKey = normalizeTenantSlug(currentTenant?.slug);
+      localStorage.removeItem(`bcomm_recent_${tenantKey}`);
     } catch (e) {
       console.error(e);
     }
@@ -868,10 +883,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSavedCep(cep);
     setSavedAddress(address);
     try {
-      if (cep) localStorage.setItem('leidy_saved_cep', cep);
-      else localStorage.removeItem('leidy_saved_cep');
-      if (address) localStorage.setItem('leidy_saved_address', JSON.stringify(address));
-      else localStorage.removeItem('leidy_saved_address');
+      const tenantKey = normalizeTenantSlug(currentTenant?.slug);
+      if (cep) localStorage.setItem(`bcomm_saved_cep_${tenantKey}`, cep);
+      else localStorage.removeItem(`bcomm_saved_cep_${tenantKey}`);
+      if (address) localStorage.setItem(`bcomm_saved_address_${tenantKey}`, JSON.stringify(address));
+      else localStorage.removeItem(`bcomm_saved_address_${tenantKey}`);
     } catch (e) {
       console.error(e);
     }

@@ -48,7 +48,12 @@ import {
   ShippingOption,
   ViaCepResponse
 } from '@/utils/shipping';
-import { normalizeTenantSlug } from '@/lib/routes';
+import {
+  normalizeTenantSlug,
+  getStoreCheckoutUrl,
+  getStoreHomeUrl,
+  getStoreCatalogUrl
+} from '@/lib/routes';
 
 export type CheckoutStep = 'sacola' | 'endereco' | 'dados' | 'pagamento';
 
@@ -59,11 +64,11 @@ const CHECKOUT_STEPS: {
   shortLabel: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { id: 'sacola', number: 1, label: 'Sacola & Frete', shortLabel: 'Sacola', icon: ShoppingBag },
-  { id: 'endereco', number: 2, label: 'Endereço de Entrega', shortLabel: 'Endereço', icon: MapPin },
-  { id: 'dados', number: 3, label: 'Dados Pessoais', shortLabel: 'Identificação', icon: User },
-  { id: 'pagamento', number: 4, label: 'Pagamento & Envio', shortLabel: 'Pagamento', icon: CreditCard },
-];
+    { id: 'sacola', number: 1, label: 'Sacola & Frete', shortLabel: 'Sacola', icon: ShoppingBag },
+    { id: 'endereco', number: 2, label: 'Endereço de Entrega', shortLabel: 'Endereço', icon: MapPin },
+    { id: 'dados', number: 3, label: 'Dados Pessoais', shortLabel: 'Identificação', icon: User },
+    { id: 'pagamento', number: 4, label: 'Pagamento & Envio', shortLabel: 'Pagamento', icon: CreditCard },
+  ];
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -170,17 +175,33 @@ export default function CheckoutPage() {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
   };
 
+  // Guardião de Rota Canônica: garante que a URL do checkout sempre preserve o slug da loja em hosts compartilhados
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentTenant?.slug) {
+      const pathname = window.location.pathname;
+      const host = window.location.hostname.toLowerCase();
+      const isPlatformHost =
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host.endsWith('.pages.dev') ||
+        host.includes('bcomm');
+
+      if (isPlatformHost && (pathname === '/checkout' || pathname === '/checkout/')) {
+        const canonicalUrl = getStoreCheckoutUrl(currentTenant.slug);
+        if (canonicalUrl && canonicalUrl !== pathname) {
+          router.replace(canonicalUrl);
+        }
+      }
+    }
+  }, [currentTenant?.slug, router]);
+
   // Carrega dados salvos do cliente (Sincronização Bidirecional com a Central VIP da Cliente)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const tenantKey = normalizeTenantSlug(currentTenant?.slug);
-        const savedPhone =
-          localStorage.getItem(`bcomm_customer_${tenantKey}_phone`) ||
-          localStorage.getItem('leidy_customer_phone');
-        const savedName =
-          localStorage.getItem(`bcomm_customer_${tenantKey}_name`) ||
-          localStorage.getItem('leidy_customer_name');
+        const savedPhone = localStorage.getItem(`bcomm_customer_${tenantKey}_phone`);
+        const savedName = localStorage.getItem(`bcomm_customer_${tenantKey}_name`);
         const savedEmail = localStorage.getItem(`bcomm_customer_${tenantKey}_email`);
         const savedAddrRaw = localStorage.getItem(`bcomm_customer_${tenantKey}_address`);
 
@@ -249,7 +270,9 @@ export default function CheckoutPage() {
           setShippingDiscount(res.descontoAplicadoReais);
           setIsFreeShippingFromEngine(res.freteGratisQualificado);
           if (res.options.length > 0 && !res.options.find((o) => o.id === selectedShippingId)) {
-            setSelectedShippingId(res.options[0].id);
+            // Se qualificado para frete cortesia, pré-seleciona preferencialmente PAC / Econômico
+            const economic = res.options.find((o) => o.id === 'pac' || o.name.toLowerCase().includes('pac')) || res.options[0];
+            setSelectedShippingId(economic.id);
           }
         })
         .catch((err) => {
@@ -273,18 +296,29 @@ export default function CheckoutPage() {
     }
   }, [cepInput, uf, city, rawSubtotal, totalPecas, currentTenant?.id]);
 
-  const chosenShippingOption = shippingOptions.find((o) => o.id === selectedShippingId);
-  const baseShippingPrice = chosenShippingOption ? chosenShippingOption.price : 0;
-  const shippingPrice = isFreeShipping
-    ? 0
-    : Math.max(0, baseShippingPrice - shippingDiscount);
+  // Preço calculado por modalidade de frete com suporte a Frete Cortesia VIP + Opções Expressas Pagas
+  const getOptionPrice = (opt: ShippingOption) => {
+    if (isFreeShipping) {
+      const isEconomic =
+        opt.id === 'pac' ||
+        opt.name.toLowerCase().includes('pac') ||
+        opt.price === Math.min(...shippingOptions.map((o) => o.price));
+      if (isEconomic) return 0;
+      return Math.max(0, opt.price - shippingDiscount);
+    }
+    return Math.max(0, opt.price - shippingDiscount);
+  };
+
+  const chosenShippingOption =
+    shippingOptions.find((o) => o.id === selectedShippingId) || shippingOptions[0];
+  const shippingPrice = chosenShippingOption ? getOptionPrice(chosenShippingOption) : 0;
 
   const couponDiscount = appliedCoupon
     ? appliedCoupon.amount !== undefined
       ? Math.min(rawSubtotal, appliedCoupon.amount)
       : appliedCoupon.percent
-      ? (rawSubtotal * appliedCoupon.percent) / 100
-      : 0
+        ? (rawSubtotal * appliedCoupon.percent) / 100
+        : 0
     : 0;
   const subtotalAfterCoupon = Math.max(0, rawSubtotal - couponDiscount);
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
@@ -299,11 +333,9 @@ export default function CheckoutPage() {
       const tenantKey = normalizeTenantSlug(currentTenant?.slug);
       if (cleanPhone) {
         localStorage.setItem(`bcomm_customer_${tenantKey}_phone`, cleanPhone);
-        localStorage.setItem('leidy_customer_phone', cleanPhone);
       }
       if (clientName) {
         localStorage.setItem(`bcomm_customer_${tenantKey}_name`, clientName);
-        localStorage.setItem('leidy_customer_name', clientName);
       }
       if (customerEmail) {
         localStorage.setItem(`bcomm_customer_${tenantKey}_email`, customerEmail);
@@ -325,7 +357,7 @@ export default function CheckoutPage() {
           origem: status === 'finalizado' ? 'checkout_finalizado' : 'checkout_lead'
         });
 
-        const existingRaw = localStorage.getItem('leidy_checkout_leads');
+        const existingRaw = localStorage.getItem(`bcomm_${tenantKey}_checkout_leads`);
         const leads: Array<any> = existingRaw ? JSON.parse(existingRaw) : [];
         const now = new Date().toISOString();
         const leadIndex = leads.findIndex((l) => (l.phone || '').replace(/\D/g, '') === cleanPhone);
@@ -356,7 +388,7 @@ export default function CheckoutPage() {
           leads.unshift(leadData);
         }
 
-        localStorage.setItem('leidy_checkout_leads', JSON.stringify(leads.slice(0, 50)));
+        localStorage.setItem(`bcomm_${tenantKey}_checkout_leads`, JSON.stringify(leads.slice(0, 50)));
       }
     } catch (e) {
       console.warn('Erro ao registrar captura de lead local:', e);
@@ -594,14 +626,21 @@ export default function CheckoutPage() {
     }
 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
-    const newOrderId = `LB-2026-${randomCode}`;
+    const storePrefix = (currentTenant?.nome || 'BC')
+      .split(' ')
+      .filter(Boolean)
+      .map((w: string) => w[0].toUpperCase())
+      .slice(0, 3)
+      .join('') || 'BC';
+    const newOrderId = `${storePrefix}-2026-${randomCode}`;
 
     const vis = currentTenant?.configuracoes_visuais as any;
     const tempoReservaMinutos = Number(vis?.tempo_reserva_minutos ?? 20);
     const reservaAtiva = vis?.reserva_estoque_ativa !== false;
 
-    // Salva o pedido e os itens oficialmente no banco de dados Supabase com reserva temporária
+    // Salva o pedido e os itens oficialmente no banco de dados Supabase com reserva temporária e ISOLAMENTO MULTI-TENANT
     const orderResult = await createOrderInDatabase({
+      lojaId: currentTenant?.id,
       numeroPedido: newOrderId,
       cliente: {
         nome: customerName || 'Cliente WhatsApp',
@@ -695,8 +734,14 @@ export default function CheckoutPage() {
 
   // Monta a mensagem completa formatada e inviolável do pedido
   const buildOrderSummaryText = (customOrderId?: string, isDirectWithoutFilling?: boolean) => {
-    const finalId = customOrderId || orderId || 'LB-2026';
-    const storeDisplayName = currentTenant?.nome || 'Leidy Boutique';
+    const storePrefix = (currentTenant?.nome || 'BC')
+      .split(' ')
+      .filter(Boolean)
+      .map((w: string) => w[0].toUpperCase())
+      .slice(0, 3)
+      .join('') || 'BC';
+    const finalId = customOrderId || orderId || `${storePrefix}-2026`;
+    const storeDisplayName = currentTenant?.nome || 'Loja Oficial';
     let msg = `✨ *PEDIDO CONFIRMADO NO SITE ${storeDisplayName.toUpperCase()}* ✨\n`;
     msg += `🔖 *Pedido:* #${finalId}\n\n`;
     msg += `👤 *Cliente:* ${customerName || `Cliente ${storeDisplayName}`}\n`;
@@ -722,13 +767,12 @@ export default function CheckoutPage() {
       msg += `   • Qtd: ${item.quantity}x (R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')})\n`;
     });
 
-    msg += `\n💳 *Forma de Pagamento:* ${
-      paymentMethod === 'pix'
+    msg += `\n💳 *Forma de Pagamento:* ${paymentMethod === 'pix'
         ? 'PIX (com 5% de desconto à vista)'
         : paymentMethod === 'credit_card'
-        ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
-        : 'Atendimento VIP no WhatsApp'
-    }\n`;
+          ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
+          : 'Atendimento VIP no WhatsApp'
+      }\n`;
 
     const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de R$ ${shippingDiscount.toFixed(2).replace('.', ',')})` : '';
     msg += `🚚 *Envio:* ${isFreeShipping ? 'Frete VIP Cortesia (Grátis)' : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`}\n`;
@@ -815,14 +859,14 @@ export default function CheckoutPage() {
 
   return (
     <div className="relative z-10 min-h-screen flex flex-col bg-[#FAF8F5] dark:bg-[#121110] text-[#1A1918] dark:text-[#FAF8F5] transition-colors duration-300">
-      
+
       {/* 1. HEADER DO CHECKOUT COM NAVEGAÇÃO E RETORNO CLARO */}
       <header className="sticky top-0 z-30 bg-white/98 dark:bg-[#1A1918]/98 backdrop-blur-md border-b border-[#C5A059]/30 shadow-2xs">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
-          
+
           {/* Botão Voltar para a Loja */}
           <Link
-            href="/catalogo"
+            href={getStoreCatalogUrl(currentTenant?.slug)}
             className="flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold text-[#57534E] dark:text-[#A8A29E] hover:text-[#C5A059] dark:hover:text-[#DFBE76] transition-colors group cursor-pointer"
             title="Voltar ao Catálogo"
           >
@@ -832,11 +876,15 @@ export default function CheckoutPage() {
           </Link>
 
           {/* Logo Centralizada */}
-          <Link href="/" className="flex items-center justify-center" title="Leidy Boutique">
+          <Link
+            href={getStoreHomeUrl(currentTenant?.slug)}
+            className="flex items-center justify-center"
+            title={currentTenant?.nome || 'Loja Oficial'}
+          >
             <div className="relative w-32 sm:w-44 h-10 sm:h-12 flex items-center justify-center">
               <Image
-                src="/images/Logo sem fundo.png"
-                alt="Leidy Boutique"
+                src={currentTenant?.configuracoes_visuais?.logo_url || '/images/Logo sem fundo.png'}
+                alt={currentTenant?.nome || 'Loja Oficial'}
                 fill
                 className="object-contain"
                 priority
@@ -856,7 +904,7 @@ export default function CheckoutPage() {
 
       {/* 2. CONTEÚDO PRINCIPAL */}
       <main className="max-w-[1440px] mx-auto px-3.5 sm:px-6 lg:px-8 py-3.5 sm:py-8 flex-1 w-full">
-        
+
         {/* CASO A SACOLA ESTEJA VAZIA */}
         {cartCount === 0 && !orderSubmitted ? (
           <div className="max-w-md mx-auto text-center py-16 px-6 bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 shadow-md">
@@ -878,10 +926,10 @@ export default function CheckoutPage() {
             </Link>
           </div>
         ) : orderSubmitted ? (
-          
+
           /* 3. TELA DE SUCESSO: PEDIDO REGISTRADO COM SUCESSO */
           <div className="max-w-2xl mx-auto bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 shadow-xl p-6 sm:p-10 animate-fadeIn">
-            
+
             <div className="text-center mb-8">
               <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] flex items-center justify-center rounded-none shadow-sm">
                 <Check className="w-8 h-8 sm:w-10 sm:h-10 stroke-[3]" />
@@ -980,17 +1028,17 @@ export default function CheckoutPage() {
 
           /* 4. TELA PRINCIPAL: CHECKOUT EM ETAPAS (FASEADA E INTUITIVA) */
           <div className="space-y-4 sm:space-y-6">
-            
+
             {/* ========================================================================= */}
             {/* TRILHA DE FINALIZAÇÃO (PROGRESS TRACK / STEPPER LUXUOSO)                  */}
             {/* ========================================================================= */}
             <div className="bg-white dark:bg-[#1A1918] border border-[#C5A059]/35 shadow-xs p-3.5 sm:p-5">
-              
+
               {/* VISÃO DESKTOP DA TRILHA (Horizontal com Linhas e Títulos) */}
               <div className="hidden sm:flex items-center justify-between relative">
                 {/* Linha Conectora de Fundo */}
                 <div className="absolute top-1/2 left-8 right-8 -translate-y-1/2 h-0.5 bg-[#E7E5E4] dark:bg-[#292524] z-0" />
-                
+
                 {/* Linha Conectora de Progresso Concluído */}
                 <div
                   className="absolute top-1/2 left-8 -translate-y-1/2 h-0.5 bg-gradient-to-r from-[#C5A059] to-[#DFBE76] z-0 transition-all duration-500"
@@ -1013,21 +1061,19 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => canClick && goToStep(step.id)}
                       disabled={!canClick}
-                      className={`relative z-10 flex flex-col items-center gap-1.5 transition-all text-center group ${
-                        canClick ? 'cursor-pointer' : 'cursor-default opacity-60'
-                      }`}
+                      className={`relative z-10 flex flex-col items-center gap-1.5 transition-all text-center group ${canClick ? 'cursor-pointer' : 'cursor-default opacity-60'
+                        }`}
                     >
                       {/* Círculo do Ícone / Número */}
                       <div
-                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 border-2 ${
-                          isActive
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 border-2 ${isActive
                             ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] shadow-md scale-110'
                             : isConfirmed
-                            ? 'bg-[#22C55E] text-white border-[#22C55E] shadow-xs'
-                            : isPreFilled
-                            ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
-                            : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
-                        }`}
+                              ? 'bg-[#22C55E] text-white border-[#22C55E] shadow-xs'
+                              : isPreFilled
+                                ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
+                                : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
+                          }`}
                       >
                         {isConfirmed ? (
                           <Check className="w-4 h-4 stroke-[3]" />
@@ -1039,15 +1085,14 @@ export default function CheckoutPage() {
                       {/* Rótulo da Etapa */}
                       <div className="flex flex-col items-center">
                         <span
-                          className={`text-xs uppercase tracking-wider font-bold transition-colors ${
-                            isActive
+                          className={`text-xs uppercase tracking-wider font-bold transition-colors ${isActive
                               ? 'text-[#C5A059] dark:text-[#DFBE76]'
                               : isConfirmed
-                              ? 'text-[#1A1918] dark:text-[#FAF8F5]'
-                              : isPreFilled
-                              ? 'text-[#1A1918] dark:text-[#FAF8F5] group-hover:text-[#2563EB]'
-                              : 'text-[#78716C] dark:text-[#A8A29E]'
-                          }`}
+                                ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                                : isPreFilled
+                                  ? 'text-[#1A1918] dark:text-[#FAF8F5] group-hover:text-[#2563EB]'
+                                  : 'text-[#78716C] dark:text-[#A8A29E]'
+                            }`}
                         >
                           {step.number}. {step.label}
                         </span>
@@ -1072,7 +1117,7 @@ export default function CheckoutPage() {
               <div className="sm:hidden relative py-1 px-1">
                 {/* Linha Conectora de Fundo */}
                 <div className="absolute top-4 left-6 right-6 -translate-y-1/2 h-0.5 bg-[#E7E5E4] dark:bg-[#292524] z-0" />
-                
+
                 {/* Linha Conectora de Progresso Concluído */}
                 <div
                   className="absolute top-4 left-6 -translate-y-1/2 h-0.5 bg-gradient-to-r from-[#C5A059] to-[#DFBE76] z-0 transition-all duration-300"
@@ -1096,21 +1141,19 @@ export default function CheckoutPage() {
                         type="button"
                         onClick={() => canClick && goToStep(step.id)}
                         disabled={!canClick}
-                        className={`flex flex-col items-center gap-1 transition-all flex-1 text-center ${
-                          canClick ? 'cursor-pointer' : 'cursor-default opacity-50'
-                        }`}
+                        className={`flex flex-col items-center gap-1 transition-all flex-1 text-center ${canClick ? 'cursor-pointer' : 'cursor-default opacity-50'
+                          }`}
                       >
                         {/* Círculo Compacto */}
                         <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] transition-all border-2 ${
-                            isActive
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] transition-all border-2 ${isActive
                               ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] scale-110 shadow-xs'
                               : isConfirmed
-                              ? 'bg-[#22C55E] text-white border-[#22C55E]'
-                              : isPreFilled
-                              ? 'bg-[#2563EB] text-white border-[#2563EB]'
-                              : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
-                          }`}
+                                ? 'bg-[#22C55E] text-white border-[#22C55E]'
+                                : isPreFilled
+                                  ? 'bg-[#2563EB] text-white border-[#2563EB]'
+                                  : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
+                            }`}
                         >
                           {isConfirmed ? (
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -1122,15 +1165,14 @@ export default function CheckoutPage() {
                         {/* Rótulo e Status Compacto */}
                         <div className="flex flex-col items-center leading-tight">
                           <span
-                            className={`text-[10px] font-bold tracking-tight ${
-                              isActive
+                            className={`text-[10px] font-bold tracking-tight ${isActive
                                 ? 'text-[#C5A059] dark:text-[#DFBE76]'
                                 : isConfirmed
-                                ? 'text-[#1A1918] dark:text-[#FAF8F5]'
-                                : isPreFilled
-                                ? 'text-[#2563EB] dark:text-blue-400'
-                                : 'text-[#78716C] dark:text-[#A8A29E]'
-                            }`}
+                                  ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                                  : isPreFilled
+                                    ? 'text-[#2563EB] dark:text-blue-400'
+                                    : 'text-[#78716C] dark:text-[#A8A29E]'
+                              }`}
                           >
                             {step.id === 'dados' ? 'Dados' : step.shortLabel}
                           </span>
@@ -1158,7 +1200,7 @@ export default function CheckoutPage() {
             {/* GRID PRINCIPAL: ETAPA ATIVA (ESQUERDA) + RESUMO FIXO (DIREITA)            */}
             {/* ========================================================================= */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
-              
+
               {/* ============================================================ */}
               {/* COLUNA ESQUERDA: CONTEÚDO DA ETAPA ATUAL (7 Colunas no Desk) */}
               {/* ============================================================ */}
@@ -1169,7 +1211,7 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'sacola' && (
                   <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
-                    
+
                     <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
                         <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
@@ -1274,17 +1316,31 @@ export default function CheckoutPage() {
                       ))}
                     </div>
 
-                    {/* Cálculo do Frete na Etapa 1 (Apenas no Desktop; no Mobile o CEP fica na Etapa 2 de Endereço) */}
-                    <div className="hidden sm:block p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
-                        <Truck className="w-4 h-4" />
-                        <span>Calcular Frete com Seu CEP</span>
+                    {/* Cálculo do Frete na Etapa 1 (Disponível em Desktop e Mobile com Opções Imediatas) */}
+                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
+                          <Truck className="w-4 h-4" />
+                          <span>Calcular Frete & Prazo</span>
+                        </div>
+                        {isShippingLoading && (
+                          <span className="text-[11px] text-stone-400 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin inline text-[#C5A059]" /> Cotando opções...
+                          </span>
+                        )}
                       </div>
+
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={cepInput}
-                          onChange={(e) => setCepInput(formatCep(e.target.value))}
+                          onChange={(e) => {
+                            const val = formatCep(e.target.value);
+                            setCepInput(val);
+                            if (val.replace(/\D/g, '').length === 8) {
+                              handleSearchCep(val);
+                            }
+                          }}
                           placeholder="00000-000"
                           maxLength={9}
                           className="flex-1 px-3 py-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none focus:border-[#C5A059]"
@@ -1298,60 +1354,78 @@ export default function CheckoutPage() {
                           {isCepLoading ? 'Buscando...' : 'Calcular'}
                         </button>
                       </div>
+
                       {cepError && (
                         <p className="text-[11px] text-rose-500 font-medium">{cepError}</p>
                       )}
+
                       {city && uf && (
                         <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />
                           Destino localizado: {city}/{uf}
                         </p>
                       )}
-                    </div>
 
-                    {/* Cupom de Desconto */}
-                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
-                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span>Possui Cupom de Desconto?</span>
-                      </div>
-                      {appliedCoupon ? (
-                        <div className="flex items-center justify-between p-2 sm:p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-xs">
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                            ✓ {appliedCoupon.code} (
-                            {appliedCoupon.percent !== undefined
-                              ? `${appliedCoupon.percent}%`
-                              : `R$ ${appliedCoupon.amount?.toFixed(2).replace('.', ',')}`}{' '}
-                            OFF aplicado)
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleRemoveCoupon}
-                            className="text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
-                          >
-                            Remover
-                          </button>
+                      {/* Renderização Imediata das Modalidades de Envio na Etapa 1 */}
+                      {isShippingLoading ? (
+                        <div className="p-3 bg-white dark:bg-[#1A1918] border border-[#C5A059]/20 flex items-center justify-center gap-2 text-xs text-[#C5A059]">
+                          <Loader2 className="w-4 h-4 animate-spin text-[#C5A059]" />
+                          <span>Consultando transportadoras oficiais...</span>
                         </div>
-                      ) : (
-                        <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder="Ex: BEMVINDA10, VIP15"
-                            className="flex-1 px-3 py-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] uppercase focus:outline-none"
-                          />
-                          <button
-                            type="submit"
-                            disabled={isCheckingCoupon}
-                            className="px-4 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {isCheckingCoupon ? 'Validando...' : 'Aplicar'}
-                          </button>
-                        </form>
-                      )}
-                      {couponError && <p className="text-[11px] text-rose-500">{couponError}</p>}
-                      {couponSuccess && <p className="text-[11px] text-emerald-600">{couponSuccess}</p>}
+                      ) : shippingOptions.length > 0 ? (
+                        <div className="pt-2 space-y-2 border-t border-[#C5A059]/20 animate-fadeIn">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block">
+                            Modalidades Disponíveis para Seu Endereço:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {shippingOptions.map((opt) => {
+                              const finalPrice = getOptionPrice(opt);
+                              const isSelected = selectedShippingId === opt.id;
+                              const isOptFree = finalPrice === 0;
+
+                              return (
+                                <label
+                                  key={opt.id}
+                                  className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
+                                      : 'bg-white dark:bg-[#1A1918] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <input
+                                      type="radio"
+                                      name="shippingOptionEtapa1"
+                                      checked={isSelected}
+                                      onChange={() => setSelectedShippingId(opt.id)}
+                                      className="accent-[#C5A059] shrink-0"
+                                    />
+                                    <div className="truncate">
+                                      <span className="text-xs font-bold block text-[#1A1918] dark:text-[#FAF8F5] truncate">
+                                        {opt.name}
+                                      </span>
+                                      <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block">
+                                        {opt.deliveryDays}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0 ml-2">
+                                    {isOptFree ? (
+                                      <span className="text-xs font-bold text-[#25D366] block">
+                                        Grátis (VIP)
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] block">
+                                        R$ {finalPrice.toFixed(2).replace('.', ',')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* Opção Luxuosa: É para presente? */}
@@ -1380,16 +1454,14 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => setIsGift(!isGift)}
-                            className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              isGift ? 'bg-[#C5A059]' : 'bg-[#E7E5E4] dark:bg-[#3E3A36]'
-                            }`}
+                            className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isGift ? 'bg-[#C5A059]' : 'bg-[#E7E5E4] dark:bg-[#3E3A36]'
+                              }`}
                             aria-pressed={isGift}
                             title="Ativar embalagem para presente"
                           >
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                isGift ? 'translate-x-5' : 'translate-x-0'
-                              }`}
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isGift ? 'translate-x-5' : 'translate-x-0'
+                                }`}
                             />
                           </button>
                         </div>
@@ -1469,7 +1541,7 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'endereco' && (
                   <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
-                    
+
                     <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
                         <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
@@ -1640,15 +1712,14 @@ export default function CheckoutPage() {
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           {shippingOptions.map((opt) => {
-                            const optFinalPrice = isFreeShipping ? 0 : Math.max(0, opt.price - shippingDiscount);
+                            const optFinalPrice = getOptionPrice(opt);
                             return (
                               <label
                                 key={opt.id}
-                                className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
-                                  selectedShippingId === opt.id
+                                className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${selectedShippingId === opt.id
                                     ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
                                     : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center gap-2">
                                   <input
@@ -1668,8 +1739,8 @@ export default function CheckoutPage() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  {isFreeShipping ? (
-                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Grátis</span>
+                                  {optFinalPrice === 0 ? (
+                                    <span className="text-xs font-bold text-[#25D366]">Grátis (VIP)</span>
                                   ) : (
                                     <div>
                                       {shippingDiscount > 0 && opt.price > optFinalPrice && (
@@ -1678,7 +1749,7 @@ export default function CheckoutPage() {
                                         </span>
                                       )}
                                       <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                                        {optFinalPrice === 0 ? 'Grátis' : `R$ ${optFinalPrice.toFixed(2).replace('.', ',')}`}
+                                        R$ {optFinalPrice.toFixed(2).replace('.', ',')}
                                       </span>
                                     </div>
                                   )}
@@ -1717,7 +1788,7 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'dados' && (
                   <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
-                    
+
                     <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
                         <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
@@ -1849,7 +1920,7 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {currentStep === 'pagamento' && (
                   <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
-                    
+
                     <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
                         <span className="hidden sm:block text-[10px] uppercase tracking-widest font-bold text-[#C5A059] mb-0.5">
@@ -1864,19 +1935,42 @@ export default function CheckoutPage() {
                       </span>
                     </div>
 
-                    {/* Seleção do Método de Pagamento */}
-                    <div className="space-y-2.5 sm:space-y-3">
+                    {/* Confirmação Rápida da Modalidade de Entrega */}
+                    <div className="p-2.5 sm:p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-[#C5A059]/15 flex items-center justify-center text-[#C5A059] shrink-0">
+                          <Truck className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="truncate">
+                          <span className="font-bold text-[#1A1918] dark:text-[#FAF8F5] block truncate">
+                            Entrega: {chosenShippingOption ? `${chosenShippingOption.name} (${chosenShippingOption.deliveryDays})` : 'Frete Padrão'}
+                          </span>
+                          <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block truncate">
+                            {street ? `${street}, nº ${number || 'S/N'} • ${city}/${uf}` : 'Destino a confirmar'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => goToStep('endereco')}
+                        className="text-[11px] font-bold text-[#C5A059] hover:underline shrink-0 ml-2 px-2 py-1 cursor-pointer"
+                      >
+                        Alterar
+                      </button>
+                    </div>
+
+                    {/* Seleção do Método de Pagamento - Cards Horizontais Compactos de Alta Conversão */}
+                    <div className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#C5A059] block">
                         Escolha como deseja pagar:
                       </span>
 
-                      {/* Opção PIX (Com 5% OFF) */}
+                      {/* Opção PIX (Com 5% OFF) - Horizontal Compacto */}
                       <label
-                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
-                          paymentMethod === 'pix'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
+                        className={`p-2.5 sm:p-3 border flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'pix'
+                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -1884,83 +1978,83 @@ export default function CheckoutPage() {
                           value="pix"
                           checked={paymentMethod === 'pix'}
                           onChange={() => setPaymentMethod('pix')}
-                          className="accent-[#C5A059] mt-1"
+                          className="accent-[#C5A059] shrink-0"
                         />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5">
-                              <QrCode className="w-4 h-4 text-[#22C55E]" />
-                              PIX Instantâneo
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
+                              <QrCode className="w-4 h-4 text-[#22C55E] shrink-0" />
+                              <span>PIX Instantâneo</span>
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5">
-                              5% DE DESCONTO
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 shrink-0">
+                              5% OFF
                             </span>
                           </div>
-                          <p className="text-xs text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
-                            Aprovação imediata. O código QR e a chave serão gerados logo após a confirmação.
+                          <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
+                            Aprovação imediata. QR Code gerado após confirmação.
                           </p>
                         </div>
                       </label>
 
-                      {/* Opção Cartão de Crédito */}
-                      <label
-                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
-                          paymentMethod === 'credit_card'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
+                      {/* Opção Cartão de Crédito - Horizontal Compacto com Dropdown Suave */}
+                      <div
+                        className={`p-2.5 sm:p-3 border transition-all ${paymentMethod === 'credit_card'
+                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                        }`}
+                          }`}
                       >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="credit_card"
-                          checked={paymentMethod === 'credit_card'}
-                          onChange={() => setPaymentMethod('credit_card')}
-                          className="accent-[#C5A059] mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5">
-                              <CreditCard className="w-4 h-4 text-[#C5A059]" />
-                              Cartão de Crédito
-                            </span>
-                            <span className="text-[10px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5">
-                              ATÉ 6X SEM JUROS
-                            </span>
-                          </div>
-                          <p className="text-xs text-[#78716C] dark:text-[#A8A29E] leading-relaxed mb-3">
-                            Nossa equipe enviará o link de pagamento blindado para parcelamento no cartão.
-                          </p>
-
-                          {/* Seletor de Parcelas */}
-                          {paymentMethod === 'credit_card' && (
-                            <div className="pt-2 border-t border-[#C5A059]/20">
-                              <label className="text-[11px] font-semibold block mb-1 text-[#57534E] dark:text-[#D6D3D1]">
-                                Escolha o número de parcelas:
-                              </label>
-                              <select
-                                value={cardInstallments}
-                                onChange={(e) => setCardInstallments(Number(e.target.value))}
-                                className="w-full px-3 py-2 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
-                              >
-                                {[1, 2, 3, 4, 5, 6].map((n) => (
-                                  <option key={n} value={n}>
-                                    {n}x de R$ {(totalAmount / n).toFixed(2).replace('.', ',')} sem juros
-                                  </option>
-                                ))}
-                              </select>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="credit_card"
+                            checked={paymentMethod === 'credit_card'}
+                            onChange={() => setPaymentMethod('credit_card')}
+                            className="accent-[#C5A059] shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
+                                <CreditCard className="w-4 h-4 text-[#C5A059] shrink-0" />
+                                <span>Cartão de Crédito</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 shrink-0">
+                                ATÉ 6X SEM JUROS
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      </label>
+                            <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
+                              Link de pagamento blindado para parcelamento.
+                            </p>
+                          </div>
+                        </label>
 
-                      {/* Opção WhatsApp Direto */}
+                        {/* Seletor de Parcelas Embutido */}
+                        {paymentMethod === 'credit_card' && (
+                          <div className="mt-2.5 pt-2 border-t border-[#C5A059]/20 flex items-center gap-2">
+                            <label className="text-[11px] font-semibold text-[#57534E] dark:text-[#D6D3D1] shrink-0">
+                              Parcelamento:
+                            </label>
+                            <select
+                              value={cardInstallments}
+                              onChange={(e) => setCardInstallments(Number(e.target.value))}
+                              className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                            >
+                              {[1, 2, 3, 4, 5, 6].map((n) => (
+                                <option key={n} value={n}>
+                                  {n}x de R$ {(totalAmount / n).toFixed(2).replace('.', ',')} sem juros
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Opção WhatsApp Direto - Horizontal Compacto */}
                       <label
-                        className={`p-3 sm:p-4 border flex items-start gap-3.5 cursor-pointer transition-all ${
-                          paymentMethod === 'whatsapp'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
+                        className={`p-2.5 sm:p-3 border flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'whatsapp'
+                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
                             : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -1968,19 +2062,49 @@ export default function CheckoutPage() {
                           value="whatsapp"
                           checked={paymentMethod === 'whatsapp'}
                           onChange={() => setPaymentMethod('whatsapp')}
-                          className="accent-[#C5A059] mt-1"
+                          className="accent-[#C5A059] shrink-0"
                         />
-                        <div className="flex-1">
-                          <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 mb-1">
-                            <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                            Combinar Pagamento no WhatsApp
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
+                            <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
+                            <span>Combinar no WhatsApp</span>
                           </span>
-                          <p className="text-xs text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
-                            Nossa equipe de atendimento te orienta sobre a melhor forma na conversa.
+                          <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
+                            Nossa equipe de atendimento orienta a melhor forma na conversa.
                           </p>
                         </div>
                       </label>
                     </div>
+
+                    {/* Segunda Chance de Embalagem para Presente na Etapa 4 */}
+                    {isGiftServiceActive && (
+                      <div className="p-2.5 sm:p-3 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] dark:from-[#201D1B] dark:to-[#171514] border border-[#C5A059]/40 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Gift className="w-4 h-4 text-[#C5A059] shrink-0" />
+                          <div className="truncate">
+                            <span className="font-serif-luxury font-bold text-[#1A1918] dark:text-[#FAF8F5] block truncate">
+                              {isGift ? 'Embalagem para Presente Ativada' : 'É para presente especial?'}
+                            </span>
+                            <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block truncate">
+                              {isGift
+                                ? `Caixa rígida, papel de seda e laço de cetim (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`
+                                : `Adicione embalagem de luxo exclusiva (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsGift(!isGift)}
+                          className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold shrink-0 transition-colors cursor-pointer ${
+                            isGift
+                              ? 'bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
+                              : 'bg-[#C5A059] text-black hover:bg-[#DFBE76]'
+                          }`}
+                        >
+                          {isGift ? 'Remover' : '+ Adicionar'}
+                        </button>
+                      </div>
+                    )}
 
                     {/* Observações do Pedido */}
                     <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 text-xs">
@@ -2088,6 +2212,41 @@ export default function CheckoutPage() {
                             ))}
                           </div>
 
+                          {/* Cupom no Resumo Mobile */}
+                          <div className="pt-2 border-t border-[#C5A059]/20 space-y-1">
+                            {appliedCoupon ? (
+                              <div className="flex items-center justify-between p-2 bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                                  ✓ Cupom {appliedCoupon.code} aplicado
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveCoupon}
+                                  className="text-rose-500 hover:text-rose-700 text-[11px] font-bold cursor-pointer"
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                            ) : (
+                              <form onSubmit={handleApplyCoupon} className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  value={couponInput}
+                                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                  placeholder="CUPOM DE DESCONTO"
+                                  className="flex-1 px-2.5 py-1.5 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] uppercase focus:outline-none"
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={isCheckingCoupon}
+                                  className="px-3 py-1.5 bg-[#1A1918] dark:bg-[#C5A059] text-white text-[10px] font-bold uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                                >
+                                  {isCheckingCoupon ? '...' : 'Aplicar'}
+                                </button>
+                              </form>
+                            )}
+                          </div>
+
                           {/* Valores */}
                           <div className="pt-2 border-t border-[#C5A059]/15 space-y-1.5 text-xs">
                             <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
@@ -2097,14 +2256,22 @@ export default function CheckoutPage() {
                               </span>
                             </div>
                             <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
-                              <span>Frete:</span>
-                              <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                                {isFreeShipping ? (
+                              <span>Envio:</span>
+                              <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5] text-right">
+                                {chosenShippingOption ? (
+                                  shippingPrice === 0 ? (
+                                    <span className="text-[#25D366] font-bold">
+                                      {chosenShippingOption.name}: Grátis (VIP)
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      {chosenShippingOption.name}: R$ {shippingPrice.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  )
+                                ) : isFreeShipping ? (
                                   <span className="text-[#25D366] font-bold">Grátis (VIP)</span>
-                                ) : shippingPrice > 0 ? (
-                                  `R$ ${shippingPrice.toFixed(2).replace('.', ',')}`
                                 ) : (
-                                  'A calcular'
+                                  'A calcular pelo CEP'
                                 )}
                               </span>
                             </div>
@@ -2155,7 +2322,7 @@ export default function CheckoutPage() {
               {/* ============================================================ */}
               <div className="hidden lg:block lg:col-span-5 sticky top-24 space-y-4">
                 <div className="bg-white dark:bg-[#1A1918] p-5 sm:p-6 border border-[#C5A059]/35 shadow-xs space-y-5">
-                  
+
                   <div className="flex items-center justify-between pb-3 border-b border-[#C5A059]/20">
                     <div className="flex items-center gap-2">
                       <ShoppingBag className="w-4 h-4 text-[#C5A059]" />
@@ -2196,6 +2363,51 @@ export default function CheckoutPage() {
                     ))}
                   </div>
 
+                  {/* Bloco de Cupom de Desconto Integrado ao Resumo da Sacola */}
+                  <div className="pt-3 border-t border-[#C5A059]/20 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#C5A059]">
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Cupom Promocional:</span>
+                    </div>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                          ✓ {appliedCoupon.code} (
+                          {appliedCoupon.percent !== undefined
+                            ? `${appliedCoupon.percent}%`
+                            : `R$ ${appliedCoupon.amount?.toFixed(2).replace('.', ',')}`}{' '}
+                          OFF)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          placeholder="DIGITE SEU CUPOM"
+                          className="flex-1 px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] uppercase focus:outline-none focus:border-[#C5A059]"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isCheckingCoupon}
+                          className="px-3.5 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {isCheckingCoupon ? '...' : 'Aplicar'}
+                        </button>
+                      </form>
+                    )}
+                    {couponError && <p className="text-[11px] text-rose-500 font-medium">{couponError}</p>}
+                    {couponSuccess && <p className="text-[11px] text-emerald-600 font-medium">{couponSuccess}</p>}
+                  </div>
+
                   {/* Linhas de Valores Financeiros */}
                   <div className="pt-3 border-t border-[#C5A059]/15 space-y-2 text-xs">
                     <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
@@ -2207,11 +2419,19 @@ export default function CheckoutPage() {
 
                     <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
                       <span>Envio:</span>
-                      <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                        {isFreeShipping ? (
+                      <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5] text-right">
+                        {chosenShippingOption ? (
+                          shippingPrice === 0 ? (
+                            <span className="text-[#25D366] font-bold">
+                              {chosenShippingOption.name}: Grátis (VIP)
+                            </span>
+                          ) : (
+                            <span>
+                              {chosenShippingOption.name}: R$ {shippingPrice.toFixed(2).replace('.', ',')}
+                            </span>
+                          )
+                        ) : isFreeShipping ? (
                           <span className="text-[#25D366] font-bold">Grátis (VIP)</span>
-                        ) : shippingPrice > 0 ? (
-                          `R$ ${shippingPrice.toFixed(2).replace('.', ',')}`
                         ) : (
                           'A calcular pelo CEP'
                         )}
@@ -2452,11 +2672,10 @@ export default function CheckoutPage() {
                     <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E]">
                       Cor: {div.color} | Tam: {div.size}
                     </p>
-                    <span className={`inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 ${
-                      div.esgotado
+                    <span className={`inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 ${div.esgotado
                         ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
                         : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                    }`}>
+                      }`}>
                       {div.esgotado
                         ? 'Acabou de Esgotar'
                         : `Ajustado de ${div.solicitado} para ${div.disponivel} un`}

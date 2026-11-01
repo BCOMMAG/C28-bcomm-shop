@@ -3269,6 +3269,7 @@ export default function AdminProdutosPage() {
         isOpen={isBatchImportOpen}
         onClose={() => setIsBatchImportOpen(false)}
         lojaId={tenantId}
+        tenantSlug={tenantSlug}
         categoriesList={categoriesList}
         existingProducts={products}
         onSuccess={() => {

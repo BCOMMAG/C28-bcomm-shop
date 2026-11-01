@@ -22,16 +22,60 @@ export default function AdminLoginPage() {
     try {
       const supabase = getSupabaseBrowserClient();
 
+      // Função auxiliar para vincular a loja do usuário autenticado
+      const bindUserTenantSession = async (userEmail: string) => {
+        try {
+          // 1. Busca em membros_equipe
+          const { data: membro } = await supabase
+            .from('membros_equipe')
+            .select('loja_id, cargo')
+            .eq('email', userEmail.trim().toLowerCase())
+            .eq('ativo', true)
+            .maybeSingle();
+
+          let targetLoja = null;
+          if (membro?.loja_id) {
+            const { data: loja } = await supabase
+              .from('lojas')
+              .select('*')
+              .eq('id', membro.loja_id)
+              .maybeSingle();
+            if (loja) targetLoja = loja;
+          }
+
+          // 2. Fallback de busca em lojas pelo email oficial
+          if (!targetLoja) {
+            const { data: lojaByEmail } = await supabase
+              .from('lojas')
+              .select('*')
+              .eq('email', userEmail.trim().toLowerCase())
+              .maybeSingle();
+            if (lojaByEmail) targetLoja = lojaByEmail;
+          }
+
+          if (targetLoja) {
+            localStorage.setItem('bcomm_admin_loja_id', targetLoja.id);
+            localStorage.setItem('bcomm_admin_loja_slug', targetLoja.slug);
+            localStorage.setItem('bcomm_tenant_last', JSON.stringify(targetLoja));
+            localStorage.setItem(`bcomm_tenant_${targetLoja.slug}`, JSON.stringify(targetLoja));
+          }
+        } catch (e) {
+          console.warn('Aviso ao resolver tenant do usuário autenticado:', e);
+        }
+      };
+
       // 1. Tenta autenticação via Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password
       });
 
-      // 2. Se autenticar com sucesso ou se corresponder às credenciais do Tenant #1
+      // 2. Se autenticar com sucesso via Supabase Auth
       if (!error && data?.session) {
+        await bindUserTenantSession(email);
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('bcomm_auth_user', email);
         router.push('/admin/');
         return;
       }
@@ -41,8 +85,10 @@ export default function AdminLoginPage() {
         email.trim().toLowerCase() === 'admin@leidyboutique.com.br' &&
         password === 'Leidy@2026!'
       ) {
+        await bindUserTenantSession(email);
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('bcomm_auth_user', email);
         router.push('/admin/');
         return;
       }
@@ -56,6 +102,7 @@ export default function AdminLoginPage() {
       ) {
         localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('bcomm_auth_user', email);
         router.push('/admin/');
         return;
       }
