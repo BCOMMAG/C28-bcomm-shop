@@ -12,6 +12,27 @@ export interface BarraAvisoEstilo {
   icone?: 'sparkles' | 'truck' | 'gift' | 'heart' | 'tag' | 'none';
 }
 
+export interface ProgramaVIPBeneficios {
+  frete_gratis_sem_minimo?: boolean;
+  frete_gratis_valor_minimo?: number;
+  presente_gratis?: boolean;
+  desconto_percentual?: number;
+}
+
+export interface ProgramaVIPCriterios {
+  ltv_minimo?: number;
+  pedidos_minimos?: number;
+  ticket_medio_minimo?: number;
+}
+
+export interface ProgramaVIPConfig {
+  ativo: boolean;
+  modo: 'manual' | 'hibrido' | 'automatico';
+  criterios_automaticos?: ProgramaVIPCriterios;
+  beneficios?: ProgramaVIPBeneficios;
+  mensagem_reconhecimento?: string;
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
@@ -26,6 +47,7 @@ export interface LojaConfiguracoesVisuais {
   barra_aviso_ativa?: boolean;
   barra_aviso_estilo?: BarraAvisoEstilo;
   exibir_quantidade_estoque_consumidor?: boolean;
+  programa_vip?: ProgramaVIPConfig;
   [key: string]: any;
 }
 
@@ -147,6 +169,19 @@ export interface MenuNavegacaoDB {
   submenus?: MenuNavegacaoDB[];
 }
 
+export interface ClienteLojaPreferenciasVIP {
+  is_vip_manual?: boolean;
+  vip_motivo?: string;
+  vip_atribuido_em?: string;
+  vip_atribuido_por?: string;
+  vip_validade?: 'vitalicio' | '30d' | '90d' | '180d' | '365d';
+  tamanho_habitual?: string;
+  notas_internas?: string;
+  cidade?: string;
+  uf?: string;
+  [key: string]: unknown;
+}
+
 export interface ClienteLojaDB {
   id: string;
   loja_id: string;
@@ -154,7 +189,7 @@ export interface ClienteLojaDB {
   telefone: string;
   email: string | null;
   cpf: string | null;
-  preferencias: Record<string, unknown>;
+  preferencias: ClienteLojaPreferenciasVIP;
   created_at: string;
   updated_at: string;
 }

@@ -54,7 +54,8 @@ import {
   Snowflake,
   Timer,
   Archive,
-  ShieldCheck
+  ShieldCheck,
+  Crown
 } from 'lucide-react';
 import {
   getAdminOrders,
@@ -953,7 +954,7 @@ export default function AdminPedidosPage() {
       tenantId,
       order.id,
       order.numero_pedido || '',
-      order.cliente_nome || 'Cliente VIP',
+      order.cliente_nome || 'Cliente',
       order.cliente_telefone || '',
       additionalMinutes,
       authorName
@@ -977,7 +978,7 @@ export default function AdminPedidosPage() {
       showToast('Telefone do cliente não encontrado.', 'error');
       return;
     }
-    const clienteNome = order.cliente_nome?.split(' ')[0] || 'Cliente VIP';
+    const clienteNome = order.cliente_nome?.split(' ')[0] || 'Cliente';
     const isPausada = reserva?.status === 'pausada';
 
     const texto = encodeURIComponent(
@@ -2196,9 +2197,19 @@ export default function AdminPedidosPage() {
                     <div className="hidden sm:block h-7 w-[1px] bg-slate-200" />
 
                     <div>
-                      <span className="text-xs font-bold text-slate-900 block">
-                        {order.cliente_nome || 'Cliente'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-900 block">
+                          {order.cliente_nome || 'Cliente'}
+                        </span>
+                        {order.cliente_is_vip && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                            title={order.cliente_vip_motivo ? `VIP: ${order.cliente_vip_motivo}` : 'Cliente VIP Reconhecido'}
+                          >
+                            <Crown className="w-3 h-3 text-amber-600 fill-amber-500" /> VIP
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[11px] text-slate-500 block">
                         {order.cliente_telefone || '-'}
                       </span>
@@ -2559,9 +2570,19 @@ export default function AdminPedidosPage() {
 
                       {/* Cliente + WhatsApp Direto */}
                       <td className="p-3 whitespace-nowrap">
-                        <span className="font-bold text-slate-900 block truncate max-w-[150px]">
-                          {order.cliente_nome || 'Cliente VIP'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900 block truncate max-w-[150px]">
+                            {order.cliente_nome || 'Cliente'}
+                          </span>
+                          {order.cliente_is_vip && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0"
+                              title={order.cliente_vip_motivo ? `VIP: ${order.cliente_vip_motivo}` : 'Cliente VIP Reconhecido'}
+                            >
+                              <Crown className="w-3 h-3 text-amber-600 fill-amber-500" /> VIP
+                            </span>
+                          )}
+                        </div>
                         {cleanPhone ? (
                           <a
                             href={`https://wa.me/55${cleanPhone}`}
@@ -2896,9 +2917,19 @@ export default function AdminPedidosPage() {
 
                           {/* Cliente e Valor */}
                           <div>
-                            <span className="text-xs font-bold text-slate-900 block truncate">
-                              {order.cliente_nome || 'Cliente VIP'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-slate-900 block truncate">
+                                {order.cliente_nome || 'Cliente'}
+                              </span>
+                              {order.cliente_is_vip && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0"
+                                  title={order.cliente_vip_motivo ? `VIP: ${order.cliente_vip_motivo}` : 'Cliente VIP Reconhecido'}
+                                >
+                                  <Crown className="w-3 h-3 text-amber-600 fill-amber-500" /> VIP
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center justify-between mt-1 text-[11px]">
                               <span className="font-extrabold text-slate-900 font-mono">
                                 {formatCurrency(Number(order.total || 0))}
@@ -3218,7 +3249,17 @@ export default function AdminPedidosPage() {
                 {/* Cliente */}
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Cliente</span>
-                  <p className="font-bold text-slate-900 text-sm">{detailsModalOrder.cliente_nome || 'Cliente VIP'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 text-sm">{detailsModalOrder.cliente_nome || 'Cliente'}</p>
+                    {detailsModalOrder.cliente_is_vip && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-400"
+                        title={detailsModalOrder.cliente_vip_motivo ? `VIP: ${detailsModalOrder.cliente_vip_motivo}` : 'Cliente VIP Reconhecido'}
+                      >
+                        <Crown className="w-3 h-3 text-amber-600 fill-amber-500" /> VIP
+                      </span>
+                    )}
+                  </div>
                   <p className="text-slate-600 font-mono">{detailsModalOrder.cliente_telefone || '-'}</p>
                   {dPhone && (
                     <a
@@ -4198,7 +4239,7 @@ export default function AdminPedidosPage() {
                     Liberar Peças da Reserva
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {releaseModalOrder.order.cliente_nome || 'Cliente VIP'}
+                    Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {releaseModalOrder.order.cliente_nome || 'Cliente'}
                   </p>
                 </div>
               </div>

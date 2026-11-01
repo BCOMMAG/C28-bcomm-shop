@@ -27,11 +27,24 @@ import {
   Save,
   ChevronDown,
   Gift,
-  UserCheck
+  UserCheck,
+  Crown,
+  CheckSquare,
+  Square,
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
-import { getAdminClients, saveClientInternalNotes, AdminClientItem } from '@/lib/admin';
+import {
+  getAdminClients,
+  saveClientInternalNotes,
+  saveClientVipStatus,
+  saveBatchClientsVipStatus,
+  saveStoreVipConfig,
+  AdminClientItem
+} from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
+import { ProgramaVIPConfig } from '@/types/database';
 
 type SortOption = 'ltv' | 'pedidos' | 'recente' | 'nome';
 
@@ -65,7 +78,42 @@ export default function AdminClientesPage() {
   const [selectedClient, setSelectedClient] = useState<AdminClientItem | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
   const [editingSize, setEditingSize] = useState('');
+  const [editingIsVip, setEditingIsVip] = useState(false);
+  const [editingVipMotivo, setEditingVipMotivo] = useState('');
+  const [editingVipValidade, setEditingVipValidade] = useState('vitalicio');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isSavingVip, setIsSavingVip] = useState(false);
+
+  // Ações em Lote
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [isBatchVipModalOpen, setIsBatchVipModalOpen] = useState(false);
+  const [batchVipMotivo, setBatchVipMotivo] = useState('Cliente Loja Física');
+  const [isApplyingBatchVip, setIsApplyingBatchVip] = useState(false);
+
+  // Configuração Geral do Programa VIP
+  const [isVipConfigModalOpen, setIsVipConfigModalOpen] = useState(false);
+  const [vipConfig, setVipConfig] = useState<ProgramaVIPConfig>(() => {
+    const vis = currentTenant?.configuracoes_visuais as any;
+    return (
+      vis?.programa_vip || {
+        ativo: true,
+        modo: 'manual',
+        criterios_automaticos: {
+          ltv_minimo: 1500,
+          pedidos_minimos: 3
+        },
+        beneficios: {
+          frete_gratis_sem_minimo: true,
+          frete_gratis_valor_minimo: 0,
+          presente_gratis: true,
+          desconto_percentual: 0
+        },
+        mensagem_reconhecimento:
+          'Identificamos seu cadastro VIP! Você possui frete cortesia e privilégios exclusivos garantidos nesta compra.'
+      }
+    );
+  });
+  const [isSavingVipConfig, setIsSavingVipConfig] = useState(false);
 
   // Menu de WhatsApp Snippets por Linha
   const [activeWhatsappMenu, setActiveWhatsappMenu] = useState<string | null>(null);
@@ -116,6 +164,132 @@ export default function AdminClientesPage() {
     setSelectedClient(client);
     setEditingNotes(client.notasInternas || '');
     setEditingSize(client.tamanhoHabitual || '');
+    setEditingIsVip(Boolean(client.isVIP));
+    setEditingVipMotivo(client.vipMotivo || '');
+    setEditingVipValidade(client.vipValidade || 'vitalicio');
+  };
+
+  // Salvar Status VIP Individual no Dossiê
+  const handleSaveVipStatus = async () => {
+    if (!selectedClient?.id) return;
+    setIsSavingVip(true);
+    try {
+      const autorNome = activeColab?.nome ? `${activeColab.nome} (Equipe)` : 'Administrador';
+      const res = await saveClientVipStatus(
+        selectedClient.id,
+        editingIsVip,
+        editingVipMotivo,
+        editingVipValidade,
+        autorNome
+      );
+      if (res.success) {
+        selectedClient.isVIP = editingIsVip;
+        selectedClient.isVipManual = editingIsVip;
+        selectedClient.vipMotivo = editingIsVip ? editingVipMotivo : null;
+        selectedClient.vipAtribuidoEm = editingIsVip ? new Date().toISOString() : null;
+        selectedClient.vipAtribuidoPor = editingIsVip ? autorNome : null;
+        selectedClient.vipValidade = editingIsVip ? editingVipValidade : null;
+        if (editingIsVip) selectedClient.tag = 'vip';
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...selectedClient } : c))
+        );
+        showToast(
+          editingIsVip
+            ? `Cliente ${selectedClient.nome} qualificada como VIP!`
+            : `Status VIP removido de ${selectedClient.nome}.`
+        );
+      } else {
+        showToast(res.error || 'Erro ao atualizar status VIP.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsSavingVip(false);
+    }
+  };
+
+  // Ações em Lote: Seleção
+  const handleToggleSelectClient = (clientId: string) => {
+    setSelectedClientIds((prev) =>
+      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId]
+    );
+  };
+
+  const handleSelectAllClients = () => {
+    if (selectedClientIds.length === filteredClients.length) {
+      setSelectedClientIds([]);
+    } else {
+      setSelectedClientIds(filteredClients.map((c) => c.id).filter(Boolean) as string[]);
+    }
+  };
+
+  // Ações em Lote: Tornar VIPs Selecionadas
+  const handleApplyBatchVip = async () => {
+    if (selectedClientIds.length === 0) return;
+    setIsApplyingBatchVip(true);
+    try {
+      const autorNome = activeColab?.nome ? `${activeColab.nome} (Equipe)` : 'Administrador';
+      const res = await saveBatchClientsVipStatus(
+        selectedClientIds,
+        true,
+        batchVipMotivo,
+        autorNome
+      );
+      if (res.success) {
+        showToast(`${res.count} clientes qualificadas como VIP com sucesso!`);
+        setIsBatchVipModalOpen(false);
+        setSelectedClientIds([]);
+        fetchClients();
+      } else {
+        showToast(res.error || 'Erro ao atualizar clientes em lote.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsApplyingBatchVip(false);
+    }
+  };
+
+  // Ações em Lote: Remover VIP Selecionadas
+  const handleBatchRemoveVip = async () => {
+    if (selectedClientIds.length === 0) return;
+    try {
+      const autorNome = activeColab?.nome ? `${activeColab.nome} (Equipe)` : 'Administrador';
+      const res = await saveBatchClientsVipStatus(
+        selectedClientIds,
+        false,
+        undefined,
+        autorNome
+      );
+      if (res.success) {
+        showToast(`Status VIP removido de ${res.count} clientes.`);
+        setSelectedClientIds([]);
+        fetchClients();
+      } else {
+        showToast(res.error || 'Erro ao remover VIP em lote.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    }
+  };
+
+  // Salvar Configurações Gerais do Programa VIP da Loja
+  const handleSaveVipConfig = async () => {
+    setIsSavingVipConfig(true);
+    try {
+      const res = await saveStoreVipConfig(tenantId, vipConfig);
+      if (res.success) {
+        showToast('Configurações do Programa VIP atualizadas com sucesso!');
+        setIsVipConfigModalOpen(false);
+        fetchClients();
+      } else {
+        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsSavingVipConfig(false);
+    }
   };
 
   // Salvar Notas Internas da Cliente
@@ -266,6 +440,14 @@ export default function AdminClientesPage() {
           )}
 
           <button
+            onClick={() => setIsVipConfigModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>Regras do Programa VIP</span>
+          </button>
+
+          <button
             onClick={fetchClients}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer w-fit"
@@ -286,11 +468,13 @@ export default function AdminClientesPage() {
           <span className="text-[11px] text-slate-400 mt-0.5 block">{totalCompradoras} clientes já compraram</span>
         </div>
         <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-xs">
-          <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider block">Clientes VIP (LTV &gt; R$ 1k)</span>
+          <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider block">Clientes VIP Qualificadas</span>
           <span className="text-2xl font-extrabold text-amber-900 font-serif-luxury mt-1 block">
             {totalVIP}
           </span>
-          <span className="text-[11px] text-amber-700/80 mt-0.5 block">Ticket alto e alta fidelidade</span>
+          <span className="text-[11px] text-amber-700/80 mt-0.5 block">
+            {vipConfig?.modo === 'manual' ? 'Critério: Seleção Manual do Lojista' : 'Critério: Manual + Metas de Compras'}
+          </span>
         </div>
         <div className="bg-white border border-purple-200 rounded-xl p-4 shadow-xs">
           <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">LTV Médio por Cliente</span>
@@ -341,7 +525,7 @@ export default function AdminClientesPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1">
           {[
             { id: 'todas', label: 'Todas as Clientes' },
-            { id: 'vip', label: '⭐ Clientes VIP (Alto Valor)' },
+            { id: 'vip', label: '👑 Clientes VIP' },
             { id: 'recorrente', label: '🏅 Clientes Recorrentes (2+ Compras)' },
             { id: 'compradora', label: '🛍️ Novas Compradoras' },
             { id: 'lead', label: '⏳ Leads & Carrinho Abandonado' }
@@ -360,6 +544,39 @@ export default function AdminClientesPage() {
           ))}
         </div>
       </div>
+
+      {/* BARRA DE AÇÕES EM LOTE PARA SELEÇÃO DE CLIENTES */}
+      {selectedClientIds.length > 0 && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-3 rounded-xl flex items-center justify-between shadow-lg animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-4 h-4 text-slate-950" />
+            <span className="font-bold text-xs">
+              {selectedClientIds.length} {selectedClientIds.length === 1 ? 'cliente selecionada' : 'clientes selecionadas'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsBatchVipModalOpen(true)}
+              className="px-3.5 py-1.5 bg-slate-900 text-amber-300 rounded-lg font-bold text-xs hover:bg-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>Tornar VIPs em Lote</span>
+            </button>
+            <button
+              onClick={handleBatchRemoveVip}
+              className="px-3 py-1.5 bg-white text-slate-800 rounded-lg font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Remover VIP
+            </button>
+            <button
+              onClick={() => setSelectedClientIds([])}
+              className="text-xs font-semibold text-slate-900 underline hover:text-black ml-2 cursor-pointer"
+            >
+              Limpar seleção
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TABELA DE CLIENTES CRM */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
@@ -390,6 +607,15 @@ export default function AdminClientesPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
                 <tr>
+                  <th className="py-3 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredClients.length > 0 && selectedClientIds.length === filteredClients.length}
+                      onChange={handleSelectAllClients}
+                      className="rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      title="Selecionar todas as clientes da lista"
+                    />
+                  </th>
                   <th className="py-3 px-4">Cliente / Contato</th>
                   <th className="py-3 px-4">Localização</th>
                   <th className="py-3 px-4 text-center">Compras</th>
@@ -402,15 +628,33 @@ export default function AdminClientesPage() {
                 {filteredClients.map((client, idx) => {
                   const cleanPhone = client.telefone.replace(/\D/g, '');
                   const isMenuOpen = activeWhatsappMenu === (client.id || client.telefone);
+                  const isSelected = Boolean(client.id && selectedClientIds.includes(client.id));
 
                   return (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                    <tr
+                      key={idx}
+                      className={`transition-colors ${isSelected ? 'bg-amber-50/50 hover:bg-amber-50/80' : 'hover:bg-slate-50/80'}`}
+                    >
+                      {/* Checkbox em Lote */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => client.id && handleToggleSelectClient(client.id)}
+                          className="rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </td>
+
                       {/* Cliente */}
                       <td className="py-3.5 px-4 font-bold text-slate-900">
                         <div className="flex items-center gap-2.5">
                           <button
                             onClick={() => handleOpenClientDossier(client)}
-                            className="w-8 h-8 rounded-full bg-slate-900 text-amber-300 font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs hover:scale-105 transition-transform cursor-pointer"
+                            className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs hover:scale-105 transition-transform cursor-pointer ${
+                              client.isVIP
+                                ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-300'
+                                : 'bg-slate-900 text-amber-300'
+                            }`}
                             title="Ver Dossiê VIP"
                           >
                             {client.nome.slice(0, 2).toUpperCase()}
@@ -460,9 +704,21 @@ export default function AdminClientesPage() {
                       {/* Perfil & Selo */}
                       <td className="py-3.5 px-4">
                         {client.isVIP ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
-                            <Star className="w-3 h-3 fill-current text-amber-600" /> VIP Gold
-                          </span>
+                          client.isVipManual ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-400 shadow-2xs"
+                              title={client.vipMotivo ? `VIP Manual: ${client.vipMotivo}` : 'Cliente VIP definida pelo lojista'}
+                            >
+                              <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500" /> VIP Loja
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs"
+                              title="Cliente VIP por Fidelidade de Compras"
+                            >
+                              <Star className="w-3.5 h-3.5 fill-current text-amber-600" /> VIP Compras
+                            </span>
+                          )
                         ) : client.totalPedidos >= 2 ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
                             <Award className="w-3 h-3 text-emerald-600" /> Recorrente
@@ -685,6 +941,124 @@ export default function AdminClientesPage() {
                 </div>
               </div>
 
+              {/* Gestão de Qualificação VIP pelo Lojista */}
+              <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-300 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <span className="font-bold text-amber-950 uppercase tracking-wider text-[11px] block">
+                        Status VIP & Privilégios da Cliente
+                      </span>
+                      <span className="text-[10px] text-amber-800">
+                        Defina se esta cliente terá frete cortesia garantido e tratamento VIP no checkout
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveVipStatus}
+                    disabled={isSavingVip}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSavingVip ? 'Salvando...' : 'Salvar Status VIP'}</span>
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-amber-200/70 space-y-3">
+                  <div className="flex items-center justify-between bg-white/80 p-2.5 rounded-lg border border-amber-200">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editingIsVip}
+                        onChange={(e) => setEditingIsVip(e.target.checked)}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-slate-900">
+                        Qualificar cliente como VIP da Boutique
+                      </span>
+                    </label>
+
+                    {editingIsVip ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 flex items-center gap-1 shadow-2xs">
+                        <Crown className="w-3 h-3" /> VIP Ativo
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 font-medium">Cliente Normal</span>
+                    )}
+                  </div>
+
+                  {editingIsVip && (
+                    <div className="space-y-2.5 animate-fadeIn">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Por que este cliente é VIP? (Motivo):
+                        </label>
+                        {/* Chips de motivos frequentes */}
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {[
+                            'Influenciadora / Parceria',
+                            'Cliente Loja Física',
+                            'Alto Ticket / Recompra',
+                            'Atendimento Pessoal Diretoria',
+                            'Amiga da Marca'
+                          ].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setEditingVipMotivo(chip)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                                editingVipMotivo === chip
+                                  ? 'bg-amber-600 text-white font-bold'
+                                  : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-50'
+                              }`}
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          value={editingVipMotivo}
+                          onChange={(e) => setEditingVipMotivo(e.target.value)}
+                          placeholder="Digite ou escolha um motivo acima..."
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Validade do Privilégio VIP:
+                          </label>
+                          <select
+                            value={editingVipValidade}
+                            onChange={(e) => setEditingVipValidade(e.target.value)}
+                            className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          >
+                            <option value="vitalicio">Vitalício / Permanente</option>
+                            <option value="12_meses">Válido por 12 meses</option>
+                            <option value="6_meses">Válido por 6 meses</option>
+                          </select>
+                        </div>
+
+                        {selectedClient.vipAtribuidoEm && (
+                          <div className="bg-white/60 rounded-lg p-2 border border-amber-200 text-[10px] text-amber-900 flex flex-col justify-center">
+                            <span>
+                              <strong>Atribuído por:</strong> {selectedClient.vipAtribuidoPor || 'Lojista'}
+                            </span>
+                            <span>
+                              <strong>Data:</strong> {formatDate(selectedClient.vipAtribuidoEm)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Preferências e Anotações Internas da Boutique */}
               <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -823,6 +1197,310 @@ export default function AdminClientesPage() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TORNAR VIPS EM LOTE */}
+      {isBatchVipModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-slate-900 text-base font-serif-luxury">
+                  Tornar Clientes VIP em Lote
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsBatchVipModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Você está prestes a conceder o selo VIP e privilégios de frete exclusivo para{' '}
+              <strong className="text-amber-700 font-bold">{selectedClientIds.length} clientes selecionadas</strong>.
+            </p>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800">
+                Motivo / Justificativa da Concessão:
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  'Cliente Loja Física',
+                  'Influenciadora / Parceria',
+                  'Alto Ticket / Recompra',
+                  'Atendimento Diretoria',
+                  'Ação Promocional VIP'
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setBatchVipMotivo(chip)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                      batchVipMotivo === chip
+                        ? 'bg-amber-600 text-white font-bold'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={batchVipMotivo}
+                onChange={(e) => setBatchVipMotivo(e.target.value)}
+                placeholder="Ex: Clientes da Inauguração da Loja Física"
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsBatchVipModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyBatchVip}
+                disabled={isApplyingBatchVip}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>{isApplyingBatchVip ? 'Aplicando...' : `Confirmar (${selectedClientIds.length})`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIGURAÇÃO DO PROGRAMA VIP DA LOJA */}
+      {isVipConfigModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-slate-900 text-base font-serif-luxury">
+                  Regras do Programa VIP da Loja
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsVipConfigModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-slate-700">
+              {/* Modo de Qualificação */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-900">
+                  Como os clientes se tornam VIP nesta loja?
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label
+                    className={`p-3 rounded-xl border flex flex-col gap-1 cursor-pointer transition-all ${
+                      vipConfig.modo === 'manual'
+                        ? 'bg-amber-50/70 border-amber-400 ring-1 ring-amber-400'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="vipModo"
+                        value="manual"
+                        checked={vipConfig.modo === 'manual'}
+                        onChange={() => setVipConfig((prev) => ({ ...prev, modo: 'manual' }))}
+                        className="text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="font-bold text-slate-900 text-xs">Exclusivamente Manual</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">
+                      Apenas quem o lojista/equipe marcar como VIP no CRM terá o status. Nenhum visitante vira VIP por valor gasto.
+                    </span>
+                  </label>
+
+                  <label
+                    className={`p-3 rounded-xl border flex flex-col gap-1 cursor-pointer transition-all ${
+                      vipConfig.modo === 'hibrido'
+                        ? 'bg-amber-50/70 border-amber-400 ring-1 ring-amber-400'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="vipModo"
+                        value="hibrido"
+                        checked={vipConfig.modo === 'hibrido'}
+                        onChange={() => setVipConfig((prev) => ({ ...prev, modo: 'hibrido' }))}
+                        className="text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="font-bold text-slate-900 text-xs">Híbrido (Manual + Metas)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">
+                      Marcação manual pelo CRM + clientes que atingirem as metas de fidelidade configuradas abaixo.
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Critérios se Híbrido */}
+              {vipConfig.modo === 'hibrido' && (
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 animate-fadeIn">
+                  <span className="font-bold text-slate-900 text-xs block">
+                    Metas para Qualificação Automática por Compras:
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        LTV Mínimo Acumulado (R$):
+                      </label>
+                      <input
+                        type="number"
+                        value={vipConfig.criterios_automaticos?.ltv_minimo || 1500}
+                        onChange={(e) =>
+                          setVipConfig((prev) => ({
+                            ...prev,
+                            criterios_automaticos: {
+                              ...prev.criterios_automaticos,
+                              ltv_minimo: Number(e.target.value)
+                            }
+                          }))
+                        }
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Mínimo de Pedidos Entregues:
+                      </label>
+                      <input
+                        type="number"
+                        value={vipConfig.criterios_automaticos?.pedidos_minimos || 3}
+                        onChange={(e) =>
+                          setVipConfig((prev) => ({
+                            ...prev,
+                            criterios_automaticos: {
+                              ...prev.criterios_automaticos,
+                              pedidos_minimos: Number(e.target.value)
+                            }
+                          }))
+                        }
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Benefícios Concedidos aos VIPs */}
+              <div className="space-y-2">
+                <span className="font-bold text-slate-900 text-xs block">
+                  Benefícios Exclusivos no Checkout para Clientes VIP:
+                </span>
+                <div className="space-y-2 bg-amber-50/50 p-3 rounded-xl border border-amber-200">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(vipConfig.beneficios?.frete_gratis_sem_minimo)}
+                      onChange={(e) =>
+                        setVipConfig((prev) => ({
+                          ...prev,
+                          beneficios: {
+                            ...prev.beneficios,
+                            frete_gratis_sem_minimo: e.target.checked
+                          }
+                        }))
+                      }
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">
+                        Frete Grátis Exclusivo VIP em Qualquer Compra
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Cliente reconhecida como VIP ganha frete cortesia sem precisar atingir valor mínimo
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-amber-200/60">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(vipConfig.beneficios?.presente_gratis)}
+                      onChange={(e) =>
+                        setVipConfig((prev) => ({
+                          ...prev,
+                          beneficios: {
+                            ...prev.beneficios,
+                            presente_gratis: e.target.checked
+                          }
+                        }))
+                      }
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">
+                        Embalagem de Presente Cortesia VIP
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Opção de embalagem especial de presente incluída sem custos
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Mensagem de Reconhecimento */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-900">
+                  Mensagem de Reconhecimento Dourada no Checkout:
+                </label>
+                <textarea
+                  rows={2}
+                  value={vipConfig.mensagem_reconhecimento || ''}
+                  onChange={(e) =>
+                    setVipConfig((prev) => ({
+                      ...prev,
+                      mensagem_reconhecimento: e.target.value
+                    }))
+                  }
+                  placeholder="Ex: Identificamos seu cadastro VIP! Você possui frete cortesia e privilégios exclusivos garantidos nesta compra."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsVipConfigModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveVipConfig}
+                disabled={isSavingVipConfig}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingVipConfig ? 'Salvando...' : 'Salvar Regras VIP'}</span>
+              </button>
             </div>
           </div>
         </div>

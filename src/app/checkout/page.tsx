@@ -32,12 +32,19 @@ import {
   Gift,
   Heart,
   RefreshCw,
-  Loader2
+  Loader2,
+  Crown
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { Product } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
-import { saveCustomerLead, createOrderInDatabase, validateLiveCartStock, CartStockDivergenceItem } from '@/lib/orders';
+import {
+  saveCustomerLead,
+  createOrderInDatabase,
+  validateLiveCartStock,
+  CartStockDivergenceItem,
+  checkCustomerVipStatus
+} from '@/lib/orders';
 import { validateCouponInDatabase, incrementCouponUsage } from '@/lib/coupons';
 import { AviseMeModal } from '@/components/AviseMeModal';
 import {
@@ -158,6 +165,63 @@ export default function CheckoutPage() {
   const PIX_KEY = currentTenant?.configuracoes_financeiras?.chave_pix || '554197347601';
   const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
 
+  // Estados do Programa VIP & Reconhecimento do Cliente
+  const [isCustomerVip, setIsCustomerVip] = useState<boolean>(false);
+  const [customerVipData, setCustomerVipData] = useState<{
+    clienteId?: string;
+    nome?: string;
+    motivo?: string | null;
+    isVipManual?: boolean;
+    validade?: string | null;
+    beneficios?: any;
+    mensagemReconhecimento?: string;
+  } | null>(null);
+  const [isCheckingVip, setIsCheckingVip] = useState<boolean>(false);
+
+  // Consulta VIP em tempo real via Telefone, E-mail ou CPF com cache instantâneo (<5ms)
+  useEffect(() => {
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    const cleanEmail = customerEmail.trim().toLowerCase();
+    const cleanCpf = customerCpf.replace(/\D/g, '');
+
+    const identifier = cleanPhone.length >= 10 ? cleanPhone : (cleanEmail.includes('@') ? cleanEmail : (cleanCpf.length === 11 ? cleanCpf : null));
+    if (!identifier || !currentTenant?.id) {
+      setIsCustomerVip(false);
+      setCustomerVipData(null);
+      return;
+    }
+
+    let active = true;
+    setIsCheckingVip(true);
+    checkCustomerVipStatus(identifier, currentTenant.id)
+      .then((res) => {
+        if (!active) return;
+        setIsCustomerVip(res.isVip);
+        if (res.isVip) {
+          setCustomerVipData({
+            clienteId: res.clienteId,
+            nome: res.clienteNome,
+            motivo: res.vipMotivo,
+            isVipManual: res.isVipManual,
+            beneficios: res.vipBeneficios,
+            mensagemReconhecimento: res.mensagemReconhecimento,
+          });
+        } else {
+          setCustomerVipData(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erro ao verificar status VIP:', err);
+      })
+      .finally(() => {
+        if (active) setIsCheckingVip(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customerPhone, customerEmail, customerCpf, currentTenant?.id]);
+
   // Formatação de telefone brasileiro
   const formatPhone = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);
@@ -241,13 +305,26 @@ export default function CheckoutPage() {
     }
   }, [savedAddress]);
 
-  // Cálculos de Valores
+  // Cálculos de Valores com distinção clara entre Cortesia da Loja e Privilégio VIP
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalPecas = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const freeShippingThreshold = Number(currentTenant?.configuracoes_visuais?.frete_gratis_valor ?? STORE_INFO.freeShippingThreshold);
-  const isFreeShipping = isFreeShippingFromEngine || rawSubtotal >= freeShippingThreshold;
+
+  // Qualificação do Frete Grátis da Loja (Meta Pública de Compras da Loja, ex: R$ 350)
+  const isStorePromoFreeShipping = isFreeShippingFromEngine || rawSubtotal >= freeShippingThreshold;
+
+  // Qualificação do Frete Privilégio VIP (Apenas para clientes autenticados/qualificados pelo Lojista)
+  const isVipFreeShipping =
+    isCustomerVip &&
+    (customerVipData?.beneficios?.frete_gratis_sem_minimo !== false ||
+      rawSubtotal >= (customerVipData?.beneficios?.frete_gratis_valor_minimo || 0));
+
+  const isFreeShipping = isVipFreeShipping || isStorePromoFreeShipping;
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - rawSubtotal);
   const progressToFreeShipping = Math.min(100, (rawSubtotal / freeShippingThreshold) * 100);
+
+  // Benefício de Embalagem para Presente Cortesia VIP
+  const isVipGiftFree = isCustomerVip && Boolean(customerVipData?.beneficios?.presente_gratis);
 
   // Atualiza opções de frete via motor avançado da loja (Melhor Envio + regras)
   useEffect(() => {
@@ -322,7 +399,7 @@ export default function CheckoutPage() {
     : 0;
   const subtotalAfterCoupon = Math.max(0, rawSubtotal - couponDiscount);
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
-  const currentGiftCost = isGift ? giftFee : 0;
+  const currentGiftCost = isGift ? (isVipGiftFree ? 0 : giftFee) : 0;
   const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount + currentGiftCost);
 
   // Captura de Leads Local e no Supabase (Nuvem) com Sincronização da Loja
@@ -771,11 +848,16 @@ export default function CheckoutPage() {
         ? 'PIX (com 5% de desconto à vista)'
         : paymentMethod === 'credit_card'
           ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
-          : 'Atendimento VIP no WhatsApp'
+          : 'Combinar Pagamento no WhatsApp'
       }\n`;
 
     const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de R$ ${shippingDiscount.toFixed(2).replace('.', ',')})` : '';
-    msg += `🚚 *Envio:* ${isFreeShipping ? 'Frete VIP Cortesia (Grátis)' : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`}\n`;
+    const shippingLabelText = isCustomerVip
+      ? 'Frete Exclusivo VIP (Grátis)'
+      : isStorePromoFreeShipping
+      ? 'Frete Cortesia da Loja (Grátis)'
+      : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`;
+    msg += `🚚 *Envio:* ${shippingLabelText}\n`;
 
     if (appliedCoupon) {
       msg += `🏷️ *Cupom Aplicado:* ${appliedCoupon.code} (-R$ ${couponDiscount.toFixed(2).replace('.', ',')})\n`;
@@ -786,7 +868,7 @@ export default function CheckoutPage() {
     }
 
     if (isGift) {
-      msg += `🎁 *EMBALAGEM PARA PRESENTE VIP:* Sim (+R$ ${giftFee.toFixed(2).replace('.', ',')})\n`;
+      msg += `🎁 *EMBALAGEM PARA PRESENTE:* Sim ${isVipGiftFree ? '(Cortesia VIP)' : `(+R$ ${giftFee.toFixed(2).replace('.', ',')})`}\n`;
       if (giftMessage?.trim()) {
         msg += `💌 *Dedicatória no Cartão:* "${giftMessage.trim()}"\n`;
       }
@@ -1227,27 +1309,32 @@ export default function CheckoutPage() {
                       </span>
                     </div>
 
-                    {/* Barra de Progresso de Frete Cortesia VIP */}
+                    {/* Barra de Progresso de Frete Cortesia */}
                     <div className="p-2.5 sm:p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 sm:space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        {remainingForFreeShipping > 0 ? (
+                        {isCustomerVip ? (
+                          <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
+                            <Crown className="w-3.5 h-3.5 text-[#DFBE76] fill-[#DFBE76]" />
+                            Cliente VIP: Você possui Frete Cortesia Garantido pela loja!
+                          </span>
+                        ) : remainingForFreeShipping > 0 ? (
                           <span className="text-[11px] text-[#57534E] dark:text-[#D6D3D1]">
-                            Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Cortesia VIP</strong>!
+                            Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Grátis da Loja</strong>!
                           </span>
                         ) : (
                           <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-[#DFBE76]" />
-                            Parabéns! Sacola com Frete Cortesia VIP Grátis!
+                            Parabéns! Sacola com Frete Grátis (Cortesia da Loja)!
                           </span>
                         )}
                         <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                          {Math.round(progressToFreeShipping)}%
+                          {isCustomerVip ? '100%' : `${Math.round(progressToFreeShipping)}%`}
                         </span>
                       </div>
                       <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 sm:h-2 rounded-none overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059] transition-all duration-500"
-                          style={{ width: `${progressToFreeShipping}%` }}
+                          style={{ width: `${isCustomerVip ? 100 : progressToFreeShipping}%` }}
                         />
                       </div>
                     </div>
@@ -1412,7 +1499,7 @@ export default function CheckoutPage() {
                                   <div className="text-right shrink-0 ml-2">
                                     {isOptFree ? (
                                       <span className="text-xs font-bold text-[#25D366] block">
-                                        Grátis (VIP)
+                                        {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
                                       </span>
                                     ) : (
                                       <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] block">
@@ -1740,7 +1827,9 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="text-right">
                                   {optFinalPrice === 0 ? (
-                                    <span className="text-xs font-bold text-[#25D366]">Grátis (VIP)</span>
+                                    <span className="text-xs font-bold text-[#25D366]">
+                                      {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
+                                    </span>
                                   ) : (
                                     <div>
                                       {shippingDiscount > 0 && opt.price > optFinalPrice && (
@@ -1796,11 +1885,11 @@ export default function CheckoutPage() {
                         </span>
                         <h2 className="font-serif-luxury text-base sm:text-xl font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                           <span className="sm:hidden">Seus Dados Pessoais</span>
-                          <span className="hidden sm:inline">Identificação VIP Para Atendimento</span>
+                          <span className="hidden sm:inline">Identificação & Contato</span>
                         </h2>
                       </div>
                       <span className="hidden sm:inline text-xs text-[#22C55E] font-bold bg-[#22C55E]/10 px-2 py-0.5">
-                        Atendimento VIP
+                        Atendimento Dedicado
                       </span>
                     </div>
 
@@ -1918,8 +2007,10 @@ export default function CheckoutPage() {
                 {/* ------------------------------------------------------------ */}
                 {/* ETAPA 4: PAGAMENTO & FINALIZAÇÃO                             */}
                 {/* ------------------------------------------------------------ */}
+                {/* ETAPA 4: PAGAMENTO & CONCLUSÃO                                */}
+                {/* ------------------------------------------------------------ */}
                 {currentStep === 'pagamento' && (
-                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-6 animate-fadeIn">
+                  <div className="bg-white dark:bg-[#1A1918] p-3.5 sm:p-7 border border-[#C5A059]/35 shadow-xs space-y-3.5 sm:space-y-5 animate-fadeIn">
 
                     <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C5A059]/20">
                       <div>
@@ -1934,6 +2025,36 @@ export default function CheckoutPage() {
                         <Lock className="w-3.5 h-3.5" /> 100% Protegido
                       </span>
                     </div>
+
+                    {/* Banner de Reconhecimento VIP Dourado */}
+                    {isCustomerVip && (
+                      <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border border-amber-400/50 flex items-center justify-between gap-3 animate-fadeIn">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+                            <Crown className="w-5 h-5 fill-slate-950" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif-luxury font-bold text-xs sm:text-sm text-amber-900 dark:text-amber-300">
+                                Cliente VIP Reconhecida {customerVipData?.nome ? `• ${customerVipData.nome}` : ''}
+                              </span>
+                              {customerVipData?.motivo && (
+                                <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-500/30 rounded font-semibold">
+                                  {customerVipData.motivo}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-amber-900/90 dark:text-amber-200/90 mt-0.5">
+                              {customerVipData?.mensagemReconhecimento ||
+                                'Você possui Frete Cortesia Garantido e privilégios exclusivos da loja nesta compra!'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="hidden sm:inline-block text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2.5 py-1 border border-emerald-500/30 shrink-0">
+                          👑 Privilégio VIP Ativo
+                        </span>
+                      </div>
+                    )}
 
                     {/* Confirmação Rápida da Modalidade de Entrega */}
                     <div className="p-2.5 sm:p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 flex items-center justify-between text-xs">
@@ -1959,51 +2080,50 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    {/* Seleção do Método de Pagamento - Cards Horizontais Compactos de Alta Conversão */}
+                    {/* Seleção Compacta e Enxuta do Método de Pagamento */}
                     <div className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#C5A059] block">
                         Escolha como deseja pagar:
                       </span>
 
-                      {/* Opção PIX (Com 5% OFF) - Horizontal Compacto */}
-                      <label
-                        className={`p-2.5 sm:p-3 border flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'pix'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
-                            : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {/* Opção 1: PIX */}
+                        <label
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
+                            paymentMethod === 'pix'
+                              ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
+                              : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
                           }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="pix"
-                          checked={paymentMethod === 'pix'}
-                          onChange={() => setPaymentMethod('pix')}
-                          className="accent-[#C5A059] shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
-                              <QrCode className="w-4 h-4 text-[#22C55E] shrink-0" />
-                              <span>PIX Instantâneo</span>
-                            </span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 shrink-0">
-                              5% OFF
-                            </span>
+                        >
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="pix"
+                            checked={paymentMethod === 'pix'}
+                            onChange={() => setPaymentMethod('pix')}
+                            className="accent-[#C5A059] shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-xs text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1 truncate">
+                                <QrCode className="w-3.5 h-3.5 text-[#22C55E] shrink-0" />
+                                <span>PIX Instantâneo</span>
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 shrink-0">
+                                5% OFF
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
-                            Aprovação imediata. QR Code gerado após confirmação.
-                          </p>
-                        </div>
-                      </label>
+                        </label>
 
-                      {/* Opção Cartão de Crédito - Horizontal Compacto com Dropdown Suave */}
-                      <div
-                        className={`p-2.5 sm:p-3 border transition-all ${paymentMethod === 'credit_card'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
-                            : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                        {/* Opção 2: Cartão */}
+                        <label
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
+                            paymentMethod === 'credit_card'
+                              ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
+                              : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
                           }`}
-                      >
-                        <label className="flex items-center gap-3 cursor-pointer">
+                        >
                           <input
                             type="radio"
                             name="paymentMethod"
@@ -2013,81 +2133,85 @@ export default function CheckoutPage() {
                             className="accent-[#C5A059] shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
-                                <CreditCard className="w-4 h-4 text-[#C5A059] shrink-0" />
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-xs text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1 truncate">
+                                <CreditCard className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
                                 <span>Cartão de Crédito</span>
                               </span>
-                              <span className="text-[10px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 shrink-0">
-                                ATÉ 6X SEM JUROS
+                              <span className="text-[9px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.2 shrink-0">
+                                Até 6x
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
-                              Link de pagamento blindado para parcelamento.
-                            </p>
                           </div>
                         </label>
 
-                        {/* Seletor de Parcelas Embutido */}
-                        {paymentMethod === 'credit_card' && (
-                          <div className="mt-2.5 pt-2 border-t border-[#C5A059]/20 flex items-center gap-2">
-                            <label className="text-[11px] font-semibold text-[#57534E] dark:text-[#D6D3D1] shrink-0">
-                              Parcelamento:
-                            </label>
-                            <select
-                              value={cardInstallments}
-                              onChange={(e) => setCardInstallments(Number(e.target.value))}
-                              className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
-                            >
-                              {[1, 2, 3, 4, 5, 6].map((n) => (
-                                <option key={n} value={n}>
-                                  {n}x de R$ {(totalAmount / n).toFixed(2).replace('.', ',')} sem juros
-                                </option>
-                              ))}
-                            </select>
+                        {/* Opção 3: WhatsApp */}
+                        <label
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
+                            paymentMethod === 'whatsapp'
+                              ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
+                              : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="whatsapp"
+                            checked={paymentMethod === 'whatsapp'}
+                            onChange={() => setPaymentMethod('whatsapp')}
+                            className="accent-[#C5A059] shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-xs text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1 truncate">
+                                <MessageCircle className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
+                                <span>WhatsApp</span>
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 dark:bg-stone-800 px-1.5 py-0.2 shrink-0">
+                                Direto
+                              </span>
+                            </div>
                           </div>
-                        )}
+                        </label>
                       </div>
 
-                      {/* Opção WhatsApp Direto - Horizontal Compacto */}
-                      <label
-                        className={`p-2.5 sm:p-3 border flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'whatsapp'
-                            ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/40'
-                            : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                          }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="whatsapp"
-                          checked={paymentMethod === 'whatsapp'}
-                          onChange={() => setPaymentMethod('whatsapp')}
-                          className="accent-[#C5A059] shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="font-bold text-xs sm:text-sm text-[#1A1918] dark:text-[#FAF8F5] flex items-center gap-1.5 truncate">
-                            <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
-                            <span>Combinar no WhatsApp</span>
-                          </span>
-                          <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] truncate">
-                            Nossa equipe de atendimento orienta a melhor forma na conversa.
-                          </p>
+                      {/* Dropdown de Parcelas caso Cartão esteja selecionado */}
+                      {paymentMethod === 'credit_card' && (
+                        <div className="p-2.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 flex items-center gap-2 animate-fadeIn">
+                          <label className="text-[11px] font-semibold text-[#57534E] dark:text-[#D6D3D1] shrink-0">
+                            Número de Parcelas:
+                          </label>
+                          <select
+                            value={cardInstallments}
+                            onChange={(e) => setCardInstallments(Number(e.target.value))}
+                            className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] font-semibold focus:outline-none"
+                          >
+                            {[1, 2, 3, 4, 5, 6].map((n) => (
+                              <option key={n} value={n}>
+                                {n}x de R$ {(totalAmount / n).toFixed(2).replace('.', ',')} sem juros no link blindado
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      </label>
+                      )}
                     </div>
 
-                    {/* Segunda Chance de Embalagem para Presente na Etapa 4 */}
+                    {/* Opção Luxuosa: É para presente? (Segunda Chance na Etapa 4) */}
                     {isGiftServiceActive && (
                       <div className="p-2.5 sm:p-3 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] dark:from-[#201D1B] dark:to-[#171514] border border-[#C5A059]/40 flex items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <Gift className="w-4 h-4 text-[#C5A059] shrink-0" />
                           <div className="truncate">
                             <span className="font-serif-luxury font-bold text-[#1A1918] dark:text-[#FAF8F5] block truncate">
-                              {isGift ? 'Embalagem para Presente Ativada' : 'É para presente especial?'}
+                              {isGift ? '✓ Embalagem para Presente Incluída' : 'Esta compra é para presente especial?'}
                             </span>
                             <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block truncate">
                               {isGift
-                                ? `Caixa rígida, papel de seda e laço de cetim (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`
+                                ? isVipGiftFree
+                                  ? 'Embalagem especial de presente cortesia VIP'
+                                  : `Caixa rígida, papel de seda e laço (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`
+                                : isVipGiftFree
+                                ? 'Privilégio VIP: Embalagem cortesia inclusa sem custos'
                                 : `Adicione embalagem de luxo exclusiva (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`}
                             </span>
                           </div>
@@ -2101,42 +2225,42 @@ export default function CheckoutPage() {
                               : 'bg-[#C5A059] text-black hover:bg-[#DFBE76]'
                           }`}
                         >
-                          {isGift ? 'Remover' : '+ Adicionar'}
+                          {isGift ? 'Remover' : '+ Incluir Presente'}
                         </button>
                       </div>
                     )}
 
-                    {/* Observações do Pedido */}
-                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 text-xs">
-                      <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1] block">
+                    {/* Observações do Pedido (Mais Enxuto) */}
+                    <div className="p-2.5 sm:p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1 text-xs">
+                      <label className="font-semibold text-[#57534E] dark:text-[#D6D3D1] block text-[11px]">
                         Observações Especiais (Opcional):
                       </label>
-                      <textarea
+                      <input
+                        type="text"
                         value={orderNotes}
                         onChange={(e) => setOrderNotes(e.target.value)}
-                        placeholder="Ex: Embalar para presente, ponto de referência..."
-                        rows={2}
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
+                        placeholder="Ex: Ponto de referência, preferências de entrega..."
+                        className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
                       />
                     </div>
 
                     {/* Revisão Consolidada Antes do Envio */}
-                    <div className="p-3 sm:p-4 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/40 space-y-2 text-xs">
+                    <div className="p-2.5 sm:p-3 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/40 space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-wider font-bold text-[#C5A059]">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-[#C5A059]">
                           Resumo da Finalização:
                         </span>
                         <span className="sm:hidden text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
                           Total: R$ {totalAmount.toFixed(2).replace('.', ',')}
                         </span>
                       </div>
-                      <div className="space-y-1 text-[#57534E] dark:text-[#D6D3D1]">
+                      <div className="space-y-0.5 text-[#57534E] dark:text-[#D6D3D1] text-[11px]">
                         <p>👤 <strong>Cliente:</strong> {customerName || 'A confirmar'} ({customerPhone || 'A confirmar'})</p>
                         <p>📍 <strong>Entrega:</strong> {street ? `${street}, nº ${number || 'S/N'} (${city}/${uf})` : 'A combinar no WhatsApp'}</p>
                         <p>💳 <strong>Pagamento:</strong> {paymentMethod === 'pix' ? 'PIX com 5% de desconto' : paymentMethod === 'credit_card' ? `Cartão em ${cardInstallments}x` : 'WhatsApp'}</p>
                         {isGift && (
                           <p className="text-[#C5A059] font-medium">
-                            🎁 <strong>Presente:</strong> Embalagem VIP Especial (+R$ {giftFee.toFixed(2).replace('.', ',')})
+                            🎁 <strong>Presente:</strong> Embalagem Especial {isVipGiftFree ? '(Cortesia VIP)' : `(+R$ ${giftFee.toFixed(2).replace('.', ',')})`}
                             {giftMessage?.trim() ? ` com cartão dedicado` : ''}
                           </p>
                         )}
@@ -2261,7 +2385,7 @@ export default function CheckoutPage() {
                                 {chosenShippingOption ? (
                                   shippingPrice === 0 ? (
                                     <span className="text-[#25D366] font-bold">
-                                      {chosenShippingOption.name}: Grátis (VIP)
+                                      {chosenShippingOption.name}: {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
                                     </span>
                                   ) : (
                                     <span>
@@ -2269,7 +2393,9 @@ export default function CheckoutPage() {
                                     </span>
                                   )
                                 ) : isFreeShipping ? (
-                                  <span className="text-[#25D366] font-bold">Grátis (VIP)</span>
+                                  <span className="text-[#25D366] font-bold">
+                                    {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
+                                  </span>
                                 ) : (
                                   'A calcular pelo CEP'
                                 )}
@@ -2298,7 +2424,7 @@ export default function CheckoutPage() {
                                 <span className="flex items-center gap-1">
                                   <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
                                 </span>
-                                <span>+R$ {giftFee.toFixed(2).replace('.', ',')}</span>
+                                <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+R$ ${giftFee.toFixed(2).replace('.', ',')}`}</span>
                               </div>
                             )}
                             <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-[#C5A059]/30 font-bold text-[#1A1918] dark:text-[#FAF8F5]">
@@ -2423,7 +2549,7 @@ export default function CheckoutPage() {
                         {chosenShippingOption ? (
                           shippingPrice === 0 ? (
                             <span className="text-[#25D366] font-bold">
-                              {chosenShippingOption.name}: Grátis (VIP)
+                              {chosenShippingOption.name}: {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
                             </span>
                           ) : (
                             <span>
@@ -2431,7 +2557,9 @@ export default function CheckoutPage() {
                             </span>
                           )
                         ) : isFreeShipping ? (
-                          <span className="text-[#25D366] font-bold">Grátis (VIP)</span>
+                          <span className="text-[#25D366] font-bold">
+                            {isCustomerVip ? 'Grátis (Privilégio VIP)' : 'Grátis (Cortesia da Loja)'}
+                          </span>
                         ) : (
                           'A calcular pelo CEP'
                         )}
@@ -2464,7 +2592,7 @@ export default function CheckoutPage() {
                         <span className="flex items-center gap-1">
                           <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
                         </span>
-                        <span>+R$ {giftFee.toFixed(2).replace('.', ',')}</span>
+                        <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+R$ ${giftFee.toFixed(2).replace('.', ',')}`}</span>
                       </div>
                     )}
 

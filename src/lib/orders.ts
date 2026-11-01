@@ -1,6 +1,7 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { CartItem } from '@/types';
+import { ProgramaVIPConfig, ProgramaVIPBeneficios } from '@/types/database';
 
 export interface CustomerLeadPayload {
   lojaId?: string;
@@ -509,10 +510,13 @@ export interface CustomerOrder {
   cliente_id?: string | null;
   cliente_nome?: string;
   cliente_telefone?: string;
+  cliente_is_vip?: boolean;
+  cliente_vip_motivo?: string | null;
   clientes_loja?: {
     nome?: string;
     telefone?: string;
     email?: string;
+    preferencias?: any;
   } | null;
   itens_pedido: Array<{
     id: string;
@@ -671,5 +675,139 @@ export function getOrderGiftDetails(order: CustomerOrder): {
     };
   }
   return { isGift: false };
+}
+
+export interface CustomerVipCheckResult {
+  isVip: boolean;
+  isVipManual: boolean;
+  vipMotivo?: string;
+  vipBeneficios?: ProgramaVIPBeneficios;
+  clienteNome?: string;
+  clienteId?: string;
+  mensagemReconhecimento?: string;
+}
+
+// Cache em memória para lookups rápidos no checkout (<5ms)
+const vipCheckMemoryCache = new Map<string, { result: CustomerVipCheckResult; expiresAt: number }>();
+
+/**
+ * Verifica em tempo real se um cliente é VIP na loja (por telefone ou e-mail).
+ * Consulta tanto a classificação manual do lojista quanto as regras ativas da loja.
+ */
+export async function checkCustomerVipStatus(
+  identifier: string,
+  lojaId: string
+): Promise<CustomerVipCheckResult> {
+  if (!identifier || !lojaId) {
+    return { isVip: false, isVipManual: false };
+  }
+
+  const cleanPhone = identifier.replace(/\D/g, '');
+  const cleanEmail = identifier.includes('@') ? identifier.trim().toLowerCase() : '';
+  const cacheKey = `${lojaId}_${cleanPhone || cleanEmail}`;
+
+  const cached = vipCheckMemoryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+
+  try {
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Consulta configuração do Programa VIP da loja
+    const { data: lojaData } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const vis = lojaData?.configuracoes_visuais as any;
+    const vipConfig: ProgramaVIPConfig | undefined = vis?.programa_vip;
+    const isVipAtivo = vipConfig?.ativo !== false;
+
+    // 2. Busca o cliente no banco
+    let query = supabase
+      .from('clientes_loja')
+      .select('id, nome, telefone, email, preferencias')
+      .eq('loja_id', lojaId);
+
+    if (cleanPhone.length >= 8) {
+      query = query.ilike('telefone', `%${cleanPhone.slice(-8)}%`);
+    } else if (cleanEmail) {
+      query = query.eq('email', cleanEmail);
+    } else {
+      return { isVip: false, isVipManual: false };
+    }
+
+    const { data: clients, error } = await query.limit(1);
+    if (error || !clients || clients.length === 0) {
+      const fallbackResult: CustomerVipCheckResult = { isVip: false, isVipManual: false };
+      vipCheckMemoryCache.set(cacheKey, { result: fallbackResult, expiresAt: Date.now() + 60000 });
+      return fallbackResult;
+    }
+
+    const client = clients[0];
+    const pref = (client.preferencias as any) || {};
+    const isVipManual = Boolean(pref.is_vip_manual);
+    const vipMotivo = pref.vip_motivo as string | undefined;
+
+    // Se o lojista marcou manualmente como VIP, tem prioridade absoluta!
+    if (isVipManual) {
+      const res: CustomerVipCheckResult = {
+        isVip: true,
+        isVipManual: true,
+        vipMotivo: vipMotivo || 'Cliente VIP selecionada pela administração',
+        vipBeneficios: vipConfig?.beneficios,
+        clienteNome: client.nome,
+        clienteId: client.id,
+        mensagemReconhecimento: vipConfig?.mensagem_reconhecimento
+      };
+      vipCheckMemoryCache.set(cacheKey, { result: res, expiresAt: Date.now() + 120000 });
+      return res;
+    }
+
+    // Se o programa VIP estiver inativo ou for estritamente manual, cliente comum não é VIP
+    if (!isVipAtivo || vipConfig?.modo === 'manual') {
+      const res: CustomerVipCheckResult = {
+        isVip: false,
+        isVipManual: false,
+        clienteNome: client.nome
+      };
+      vipCheckMemoryCache.set(cacheKey, { result: res, expiresAt: Date.now() + 60000 });
+      return res;
+    }
+
+    // Se for modo híbrido ou automático, consulta pedidos faturados
+    const { data: pedidos } = await supabase
+      .from('pedidos')
+      .select('total, status')
+      .eq('loja_id', lojaId)
+      .eq('cliente_id', client.id)
+      .neq('status', 'cancelado');
+
+    const totalPedidos = pedidos?.length || 0;
+    const totalGasto = (pedidos || []).reduce((acc: number, p: any) => acc + Number(p.total || 0), 0);
+
+    const ltvMin = Number(vipConfig?.criterios_automaticos?.ltv_minimo ?? 1000);
+    const pedidosMin = Number(vipConfig?.criterios_automaticos?.pedidos_minimos ?? 3);
+
+    const isAutoVip = totalGasto >= ltvMin || totalPedidos >= pedidosMin;
+
+    const res: CustomerVipCheckResult = {
+      isVip: isAutoVip,
+      isVipManual: false,
+      vipMotivo: isAutoVip ? `Fidelidade por compras (LTV: R$ ${totalGasto.toFixed(2)})` : undefined,
+      vipBeneficios: vipConfig?.beneficios,
+      clienteNome: client.nome,
+      clienteId: client.id,
+      mensagemReconhecimento: vipConfig?.mensagem_reconhecimento
+    };
+
+    vipCheckMemoryCache.set(cacheKey, { result: res, expiresAt: Date.now() + 120000 });
+    return res;
+  } catch (err) {
+    console.warn('Erro ao checar status VIP do cliente:', err);
+    return { isVip: false, isVipManual: false };
+  }
 }
 

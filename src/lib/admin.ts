@@ -1,7 +1,7 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo } from '@/types/database';
+import { BarraAvisoEstilo, ProgramaVIPConfig } from '@/types/database';
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -195,6 +195,11 @@ export interface AdminClientItem {
   primeiroPedido?: string | null;
   ultimoPedido?: string | null;
   isVIP?: boolean;
+  isVipManual?: boolean;
+  vipMotivo?: string | null;
+  vipAtribuidoEm?: string | null;
+  vipAtribuidoPor?: string | null;
+  vipValidade?: string | null;
   tag?: 'vip' | 'recorrente' | 'compradora' | 'lead';
   notasInternas?: string | null;
   tamanhoHabitual?: string | null;
@@ -347,7 +352,7 @@ export async function getAdminOrders(
       .from('pedidos')
       .select(`
         *,
-        clientes_loja (nome, telefone, email),
+        clientes_loja (nome, telefone, email, preferencias),
         itens_pedido (*)
       `)
       .eq('loja_id', lojaId)
@@ -366,8 +371,10 @@ export async function getAdminOrders(
     
     return (data || []).map((p: any) => ({
       ...p,
-      cliente_nome: p.clientes_loja?.nome || p.endereco_entrega?.destinatario || 'Cliente VIP',
+      cliente_nome: p.clientes_loja?.nome || p.endereco_entrega?.destinatario || 'Cliente',
       cliente_telefone: p.clientes_loja?.telefone || p.endereco_entrega?.telefone || '',
+      cliente_is_vip: Boolean(p.clientes_loja?.preferencias?.is_vip_manual),
+      cliente_vip_motivo: p.clientes_loja?.preferencias?.vip_motivo || null,
       subtotal: Number(p.subtotal || 0),
       valor_frete: Number(p.valor_frete || 0),
       valor_desconto: Number(p.valor_desconto || 0),
@@ -2141,6 +2148,22 @@ export async function getAdminClients(
 
     if (error) throw error;
 
+    // Consulta configuração do Programa VIP da loja
+    let vipConfig: any = null;
+    try {
+      const { data: storeData } = await supabase
+        .from('lojas')
+        .select('configuracoes_visuais')
+        .eq('id', lojaId)
+        .single();
+      vipConfig = storeData?.configuracoes_visuais?.programa_vip;
+    } catch {}
+
+    const isVipProgramActive = vipConfig?.ativo !== false;
+    const vipMode = vipConfig?.modo || 'hibrido';
+    const ltvMin = Number(vipConfig?.criterios_automaticos?.ltv_minimo ?? 1000);
+    const pedidosMin = Number(vipConfig?.criterios_automaticos?.pedidos_minimos ?? 3);
+
     return (clients || []).map((c: any) => {
       const orders = c.pedidos || [];
       const paidOrders = orders.filter((o: any) => o.status !== 'cancelado');
@@ -2148,7 +2171,25 @@ export async function getAdminClients(
       const totalGasto = paidOrders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
       const ticketMedio = totalPedidos > 0 ? totalGasto / totalPedidos : 0;
 
-      const isVIP = totalGasto >= 1000 || totalPedidos >= 3;
+      const pref = c.preferencias || {};
+      const isVipManual = Boolean(pref.is_vip_manual);
+      const vipMotivo = (pref.vip_motivo as string) || null;
+      const vipAtribuidoEm = (pref.vip_atribuido_em as string) || null;
+      const vipAtribuidoPor = (pref.vip_atribuido_por as string) || null;
+      const vipValidade = (pref.vip_validade as string) || null;
+
+      let isVIP = false;
+      if (isVipProgramActive) {
+        if (vipMode === 'manual') {
+          isVIP = isVipManual;
+        } else if (vipMode === 'automatico') {
+          isVIP = totalGasto >= ltvMin || totalPedidos >= pedidosMin;
+        } else {
+          // Híbrido: lojista marca ou atinge meta de compras
+          isVIP = isVipManual || totalGasto >= ltvMin || totalPedidos >= pedidosMin;
+        }
+      }
+
       let tag: 'vip' | 'recorrente' | 'compradora' | 'lead' = 'lead';
       if (isVIP) {
         tag = 'vip';
@@ -2179,8 +2220,6 @@ export async function getAdminClients(
         }))
       }));
 
-      const pref = c.preferencias || {};
-
       return {
         id: c.id,
         nome: c.nome,
@@ -2196,6 +2235,11 @@ export async function getAdminClients(
         primeiroPedido: firstOrder?.created_at || c.created_at,
         ultimoPedido: lastOrder?.created_at || c.created_at,
         isVIP,
+        isVipManual,
+        vipMotivo,
+        vipAtribuidoEm,
+        vipAtribuidoPor,
+        vipValidade,
         tag,
         notasInternas: pref.notas_internas || null,
         tamanhoHabitual: pref.tamanho_habitual || null,
@@ -2246,6 +2290,145 @@ export async function saveClientInternalNotes(
     return { success: true };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao salvar notas da cliente:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Salva ou remove o status VIP manual de uma cliente com justificativa/motivo no Supabase.
+ */
+export async function saveClientVipStatus(
+  clienteId: string,
+  isVip: boolean,
+  motivo?: string,
+  validade?: string,
+  autor?: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: client, error: getErr } = await supabase
+      .from('clientes_loja')
+      .select('preferencias')
+      .eq('id', clienteId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentPref = client?.preferencias || {};
+    const updatedPref = {
+      ...currentPref,
+      is_vip_manual: isVip,
+      vip_motivo: isVip ? (motivo || 'Cliente VIP selecionada pela administração') : null,
+      vip_atribuido_em: isVip ? new Date().toISOString() : null,
+      vip_atribuido_por: isVip ? (autor || 'Administração da Loja') : null,
+      vip_validade: isVip ? (validade || 'vitalicio') : null
+    };
+
+    const { error: updErr } = await supabase
+      .from('clientes_loja')
+      .update({
+        preferencias: updatedPref,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', clienteId);
+
+    if (updErr) throw updErr;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao atualizar status VIP da cliente:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Atribui ou remove status VIP em lote para múltiplos clientes.
+ */
+export async function saveBatchClientsVipStatus(
+  clienteIds: string[],
+  isVip: boolean,
+  motivo?: string,
+  autor?: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: clients, error: getErr } = await supabase
+      .from('clientes_loja')
+      .select('id, preferencias')
+      .in('id', clienteIds);
+
+    if (getErr) throw getErr;
+
+    const now = new Date().toISOString();
+    let updatedCount = 0;
+
+    for (const c of clients || []) {
+      const currentPref = c.preferencias || {};
+      const updatedPref = {
+        ...currentPref,
+        is_vip_manual: isVip,
+        vip_motivo: isVip ? (motivo || 'Atribuição VIP em Lote') : null,
+        vip_atribuido_em: isVip ? now : null,
+        vip_atribuido_por: isVip ? (autor || 'Administração da Loja') : null,
+        vip_validade: isVip ? 'vitalicio' : null
+      };
+
+      const { error: updErr } = await supabase
+        .from('clientes_loja')
+        .update({
+          preferencias: updatedPref,
+          updated_at: now
+        })
+        .eq('id', c.id);
+
+      if (!updErr) updatedCount++;
+    }
+
+    return { success: true, count: updatedCount };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao atualizar status VIP em lote:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Salva as configurações do Programa VIP da loja.
+ */
+export async function saveStoreVipConfig(
+  lojaId: string,
+  config: ProgramaVIPConfig
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentVisuais = loja?.configuracoes_visuais || {};
+    const updatedVisuais = {
+      ...currentVisuais,
+      programa_vip: config
+    };
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: updatedVisuais,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+    clearTenantCache();
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao salvar configurações VIP da loja:', err);
     return { success: false, error: err?.message };
   }
 }

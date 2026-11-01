@@ -130,8 +130,117 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "text_light": "#ffffff",
       "font_family": "'Montserrat', sans-serif"
     },
+    "entrega_local_taxa": 18,
     "frete_gratis_valor": 350,
-    "_teste_e2e_timestamp": 1792612811741
+    "logistica_avancada": {
+      "ambiente": "sandbox",
+      "provedor": "melhor_envio",
+      "cep_origem": "83005000",
+      "modo_exibicao": "transparente",
+      "dimensoes_pacote": {
+        "altura": 8,
+        "largura": 20,
+        "comprimento": 25
+      },
+      "entrega_local_taxa": 18,
+      "token_melhor_envio": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NTYiLCJqdGkiOiI5NTM0MDIxNWVkZTU2MmU3ZWI3YjVlNmU0ODc3MzY4YmZjNTQwZTk4NzE4OWY1YmE3Yjg2YzliMTQ1NTY2ZmEzMGVlNDcyOGU2ZGIyMTEyZSIsImlhdCI6MTc5MzU2NzQ2Ni4yODIwMywibmJmIjoxNzkzNTY3NDY2LjI4MjAzMiwiZXhwIjoxODI1MTAzNDY2LjI3MjA4NCwic3ViIjoiYTMxZmI3OTItMWE2Mi00ZTNkLTlkMDctNDYxMDE5YjM5N2EzIiwic2NvcGVzIjpbImNhcnQtcmVhZCIsImNhcnQtd3JpdGUiLCJjb21wYW5pZXMtcmVhZCIsImNvbXBhbmllcy13cml0ZSIsImNvdXBvbnMtcmVhZCIsImNvdXBvbnMtd3JpdGUiLCJub3RpZmljYXRpb25zLXJlYWQiLCJvcmRlcnMtcmVhZCIsInByb2R1Y3RzLXJlYWQiLCJwcm9kdWN0cy1kZXN0cm95IiwicHJvZHVjdHMtd3JpdGUiLCJwdXJjaGFzZXMtcmVhZCIsInNoaXBwaW5nLWNhbGN1bGF0ZSIsInNoaXBwaW5nLWNhbmNlbCIsInNoaXBwaW5nLWNoZWNrb3V0Iiwic2hpcHBpbmctY29tcGFuaWVzIiwic2hpcHBpbmctZ2VuZXJhdGUiLCJzaGlwcGluZy1wcmV2aWV3Iiwic2hpcHBpbmctcHJpbnQiLCJzaGlwcGluZy1zaGFyZSIsInNoaXBwaW5nLXRyYWNraW5nIiwiZWNvbW1lcmNlLXNoaXBwaW5nIiwidHJhbnNhY3Rpb25zLXJlYWQiLCJ1c2Vycy1yZWFkIiwidXNlcnMtd3JpdGUiLCJ3ZWJob29rcy1yZWFkIiwid2ViaG9va3Mtd3JpdGUiLCJ3ZWJob29rcy1kZWxldGUiLCJ0ZGVhbGVyLXdlYmhvb2siLCJtY3A6dXNlIl19.HafmTl0rZqNmis2sl6mBJ4otIaRodVEzDlhjM5bqAcGepJfKZUQo83FnjXUMoEfZiz5hAaZTEzCn40sqV_W7T_bpKMJW-XS8rdohCWqcTNi7U9es3c6KSNNGasw7oD3B1nRPU768DxfMKHcfxeqVq5wK-0XhpwYr-PjHKwxtwBczWjxf6wzepeKDHRY-yS_Ez0XycIvV_AqsuPG93Tn1Gu61vQLXles-lahxnoIdfAN7oHpPKLrUMdUQ2ChjQzOwkp7Oypn7x881Q3zbMIAGVgpAIM7nqpb4I812YhmRMdMG-rA_MrVfu4bHLi11aKULuBpAkx8nO7mnCf0sVLcgerdBOYgCz9tzJPT0ICV3au88eKKtk7ea9peJkj666ZlmD6ThS5gUrnaJZIMpFK1mLu3rShxFVQQxIJxPrrB5aOlOPlI3aJT9wJ2EeHYrAdwBWEoUUVigQLaBpzPlVx-Z-qmtzxcnRE61AXiEMeoP2r5AgbeLLcGnkfpFvXdttvePAeR4z8uoQotRGILSQZTg7a97-wczSbnsVe93Djkky1j1NjAU-avVCN9rXNoMgOTwDJVy6DJi1r_TdL-6NH2mwNhSJmXkbXRhfJkZZEGNYBj9iV6m9tzstUO0bVhj2J-uouRo6vekb9A7rS8sfxJdIMxfX4eP3QcEwoO3YiezWWw",
+      "entrega_local_ativa": true,
+      "instrucoes_retirada": "Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.",
+      "prazo_manuseio_dias": 1,
+      "regras_frete_gratis": {
+        "ativo": true,
+        "regras_regionais": [
+          {
+            "uf": "PR",
+            "valor_minimo": 200
+          },
+          {
+            "regiao": "SUDESTE",
+            "valor_minimo": 300
+          },
+          {
+            "regiao": "SUL",
+            "valor_minimo": 300
+          }
+        ],
+        "valor_minimo_padrao": 350,
+        "teto_maximo_subsidio": 50,
+        "aplicar_apenas_economico": true
+      },
+      "desconto_progressivo": {
+        "ativo": true,
+        "faixas": [
+          {
+            "a_partir_de": 500,
+            "desconto_reais": 15
+          },
+          {
+            "a_partir_de": 1000,
+            "desconto_reais": 30
+          },
+          {
+            "a_partir_de": 2000,
+            "desconto_reais": 60
+          },
+          {
+            "a_partir_de": 3000,
+            "isencao_total": true
+          }
+        ]
+      },
+      "servicos_habilitados": [
+        {
+          "id": 1,
+          "nome": "SEDEX",
+          "ativo": true,
+          "codigo": "correios_sedex",
+          "transportadora": "Correios",
+          "nome_personalizado": "SEDEX Express Prioritário",
+          "permite_frete_gratis": false,
+          "prazo_adicional_dias": 0
+        },
+        {
+          "id": 2,
+          "nome": "PAC",
+          "ativo": false,
+          "codigo": "correios_pac",
+          "transportadora": "Correios",
+          "nome_personalizado": "PAC Econômico Segurado",
+          "permite_frete_gratis": true,
+          "prazo_adicional_dias": 0
+        },
+        {
+          "id": 3,
+          "nome": ".Com",
+          "ativo": false,
+          "codigo": "jadlog_com",
+          "transportadora": "Jadlog",
+          "nome_personalizado": "Jadlog Express",
+          "permite_frete_gratis": false,
+          "prazo_adicional_dias": 0
+        },
+        {
+          "id": 4,
+          "nome": ".Package",
+          "ativo": false,
+          "codigo": "jadlog_package",
+          "transportadora": "Jadlog",
+          "nome_personalizado": "Jadlog Econômico",
+          "permite_frete_gratis": true,
+          "prazo_adicional_dias": 0
+        }
+      ],
+      "entrega_local_bairros": "Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)",
+      "peso_padrao_peca_gramas": 300,
+      "retirada_boutique_ativa": true,
+      "sobretaxa_embalagem_reais": 2.5
+    },
+    "entrega_local_ativa": true,
+    "instrucoes_retirada": "Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.",
+    "prazo_manuseio_dias": 1,
+    "_teste_e2e_timestamp": 1792612811741,
+    "entrega_local_bairros": "Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)",
+    "retirada_boutique_ativa": true
   },
   "modulos_ativos": {
     "frete_automatico": true,
@@ -141,7 +250,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-10-30T21:09:28.771+00:00",
+  "updated_at": "2026-11-01T23:12:33.102+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
