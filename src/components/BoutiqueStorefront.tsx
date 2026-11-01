@@ -101,13 +101,11 @@ export function BoutiqueStorefront() {
     () =>
       products.filter(
         (p) =>
+          p.isNewArrival ||
           p.status?.includes('Lançamento') ||
           p.status?.includes('Novidade') ||
-          p.isNewArrival ||
-          p.id === '04-conjunto-alfaiataria-bege' ||
-          p.id === '03-conjunto-alfaiataria-terracota' ||
-          p.id === '07-t-shirt-algodao-egipcio' ||
-          p.id === '01-casaco-tricot'
+          p.customBadges?.includes('Lançamento') ||
+          p.customBadges?.includes('Novidade')
       ),
     [products]
   );

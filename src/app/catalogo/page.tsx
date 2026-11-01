@@ -445,12 +445,15 @@ function CatalogoContent() {
           if (st === 'Mais Vendidos') return p.isBestSeller;
           if (st === 'OUTLET' || st === 'Peças em OUTLET' || st === 'BAZAR') return Boolean(p.isOutlet);
           if (st === 'Novidades' || st === 'Lançamento' || st === 'Lançamento 2026') {
-            return p.isNewArrival || p.status?.includes('Lançamento') || p.status?.includes('Novidades');
+            return p.isNewArrival || p.status?.includes('Lançamento') || p.status?.includes('Novidades') || p.customBadges?.includes('Lançamento') || p.customBadges?.includes('Novidade');
           }
           if (st === 'Últimas Peças') {
             return (p.totalStock ?? 0) > 0 && (p.totalStock ?? 0) <= 5 && (p.isLastPieces || (p.remainingPieces !== undefined && p.remainingPieces <= 5));
           }
-          return p.status?.some((s) => s.toLowerCase() === st.toLowerCase());
+          return (
+            p.status?.some((s) => s.toLowerCase() === st.toLowerCase()) ||
+            p.customBadges?.some((b) => b.toLowerCase() === st.toLowerCase())
+          );
         })
       );
     }
@@ -1794,7 +1797,7 @@ function CatalogoContent() {
                       onQuickAdd={handleSafeQuickAdd}
                       isWishlisted={wishlistIds.includes(product.id)}
                       onToggleWishlist={toggleWishlist}
-                      isOutletSection={product.isOutlet}
+                      isOutletSection={product.isOutlet || appliedFilters.statuses.includes('OUTLET')}
                       columnsCount={gridColumns}
                     />
                   ))}

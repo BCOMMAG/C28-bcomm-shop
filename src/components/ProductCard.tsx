@@ -33,6 +33,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [hoverColorImage, setHoverColorImage] = useState<string | null>(null);
+  const [hoverColorName, setHoverColorName] = useState<string | null>(null);
 
   // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores, garantindo que nunca seja vídeo)
   const safeThumbnail = !isVideoUrl(product.thumbnail) ? product.thumbnail : '/placeholder-product.jpg';
@@ -47,29 +48,115 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     return realImages[0]?.src || null;
   }, [product.media, currentThumbnail]);
 
-  // Analisa se há preços diferenciados entre as variações cadastradas
-  const variablePricesInfo = useMemo(() => {
-    if (!product.variations || product.variations.length === 0) return null;
-    const validPrices = product.variations
-      .map((v) => (v.promoPrice && v.promoPrice > 0 ? v.promoPrice : v.price))
-      .filter((p): p is number => p !== undefined && p > 0);
-    if (validPrices.length === 0) return null;
-    const minPrice = Math.min(...validPrices);
-    const maxPrice = Math.max(...validPrices);
-    const isDivergent = minPrice !== maxPrice;
-    return { minPrice, maxPrice, isDivergent };
-  }, [product.variations]);
+  // Resolução Inteligente e Fiel dos Preços Vigentes (compatibilidade integral entre Card, Modal e Variações)
+  const priceDisplay = useMemo(() => {
+    // 1. Se o cliente estiver com o mouse sobre uma cor específica
+    if (hoverColorName && product.variations && product.variations.length > 0) {
+      const colorVars = product.variations.filter(
+        (v) => v.color.toLowerCase() === hoverColorName.toLowerCase()
+      );
+      if (colorVars.length > 0) {
+        // Variação representativa (prioriza a que tem estoque)
+        const targetVar = colorVars.find((v) => v.stock > 0) || colorVars[0];
+        const vBase = targetVar.price && targetVar.price > 0 ? targetVar.price : (product.originalPrice || product.price);
+        const vPromo = targetVar.promoPrice && targetVar.promoPrice > 0 ? targetVar.promoPrice : null;
+        const hasDesc = vPromo !== null && vPromo < vBase;
+        const finalPrice = hasDesc ? vPromo! : vBase;
+        const savings = hasDesc ? vBase - finalPrice : 0;
+        const pct = hasDesc && vBase > 0 ? Math.round((savings / vBase) * 100) : 0;
 
-  // Identifica se a peça possui um desconto promocional real cadastrado no sistema
-  const hasRealDiscount = useMemo(() => {
-    return Boolean(
+        return {
+          currentPrice: finalPrice,
+          originalPrice: hasDesc ? vBase : null,
+          hasRealDiscount: hasDesc,
+          savingsAmount: savings,
+          discountPercent: pct,
+          isDivergent: false,
+          label: hasDesc ? undefined : 'Valor da Peça'
+        };
+      }
+    }
+
+    // 2. Se houver variações cadastradas na peça
+    if (product.variations && product.variations.length > 0) {
+      const activeVars = product.variations.filter((v) => v.stock > 0);
+      const targetVars = activeVars.length > 0 ? activeVars : product.variations;
+
+      const mappedVars = targetVars
+        .map((v) => {
+          const vBase = v.price && v.price > 0 ? v.price : (product.originalPrice || product.price);
+          const vPromo = v.promoPrice && v.promoPrice > 0 ? v.promoPrice : null;
+          const hasDesc = vPromo !== null && vPromo < vBase;
+          const finalPrice = hasDesc ? vPromo! : vBase;
+          return {
+            basePrice: vBase,
+            promoPrice: vPromo,
+            finalPrice,
+            hasDiscount: hasDesc,
+            savings: hasDesc ? vBase - finalPrice : 0,
+            pct: hasDesc && vBase > 0 ? Math.round(((vBase - finalPrice) / vBase) * 100) : 0
+          };
+        })
+        .filter((item) => item.finalPrice > 0);
+
+      if (mappedVars.length > 0) {
+        const minItem = mappedVars.reduce(
+          (min, cur) => (cur.finalPrice < min.finalPrice ? cur : min),
+          mappedVars[0]
+        );
+        const maxItem = mappedVars.reduce(
+          (max, cur) => (cur.finalPrice > max.finalPrice ? cur : max),
+          mappedVars[0]
+        );
+        const isDivergent = minItem.finalPrice !== maxItem.finalPrice;
+
+        const anyDiscount = mappedVars.some((v) => v.hasDiscount) || Boolean(product.originalPrice && product.originalPrice > minItem.finalPrice);
+        if (anyDiscount) {
+          const origPrice = minItem.basePrice > minItem.finalPrice ? minItem.basePrice : (product.originalPrice || minItem.basePrice);
+          const savings = origPrice - minItem.finalPrice;
+          const pct = origPrice > 0 ? Math.round((savings / origPrice) * 100) : 0;
+          return {
+            currentPrice: minItem.finalPrice,
+            originalPrice: origPrice,
+            hasRealDiscount: true,
+            savingsAmount: savings,
+            discountPercent: pct,
+            isDivergent,
+            label: isDivergent ? 'A partir de' : undefined
+          };
+        }
+
+        return {
+          currentPrice: minItem.finalPrice,
+          originalPrice: null,
+          hasRealDiscount: false,
+          savingsAmount: 0,
+          discountPercent: 0,
+          isDivergent,
+          label: isDivergent ? 'A partir de' : 'Valor da Peça'
+        };
+      }
+    }
+
+    // 3. Fallback: precificação base do produto
+    const hasDiscount = Boolean(
       product.originalPrice &&
       product.price &&
-      product.originalPrice > product.price &&
-      product.savingsAmount &&
-      product.savingsAmount > 0
+      product.originalPrice > product.price
     );
-  }, [product.originalPrice, product.price, product.savingsAmount]);
+    const savings = hasDiscount && product.originalPrice ? product.originalPrice - product.price : 0;
+    const pct = product.discountPercent || (hasDiscount && product.originalPrice ? Math.round((savings / product.originalPrice) * 100) : 0);
+
+    return {
+      currentPrice: product.price,
+      originalPrice: hasDiscount ? product.originalPrice : null,
+      hasRealDiscount: hasDiscount,
+      savingsAmount: savings,
+      discountPercent: pct,
+      isDivergent: false,
+      label: 'Valor da Peça'
+    };
+  }, [product, hoverColorName]);
 
   // Variações de estilo baseadas na densidade de colunas
   const isCompact = columnsCount === 5;
@@ -218,7 +305,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             return null;
           }
 
-          // 2. Seção "Últimas Peças" (somente entram quando o estoque real for entre 1 e 5 peças)
+          // 2. Prioridade Comercial: Seção OUTLET ou produtos com desconto ativo
+          // Garante que o cliente veja o selo de OUTLET/Promoção mesmo se houver estoque baixo (a escassez é exibida no rodapé do card)
+          const isOutletItem = isOutletSection || product.isOutlet || (product.discountBadge && product.discountBadge.includes('OUTLET'));
+          if (isOutletItem || product.discountBadge) {
+            const outletCfg = getBadgeConfig('outlet');
+            const outletBg = outletCfg?.cor || outletCfg?.color || '#C5A059';
+            const badgeText = product.discountBadge || (isOutletItem ? 'OUTLET' : null);
+
+            if (badgeText) {
+              return (
+                <div
+                  className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                    isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                  }`}
+                  style={{ backgroundColor: outletBg, color: outletCfg?.textColor || '#ffffff' }}
+                >
+                  {outletCfg?.icone && <span className="text-[11px] leading-none">{outletCfg.icone}</span>}
+                  <span>{badgeText}</span>
+                </div>
+              );
+            }
+          }
+
+          // 3. Seção "Últimas Peças" / Estoque Crítico (somente produtos sem desconto promocional)
           const isRealCriticalStock = (product.totalStock ?? 0) > 0 && (product.totalStock ?? 0) <= 5;
           const ultimasPecasCfg = getBadgeConfig('ultimas_pecas');
           if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces || (product.remainingPieces && product.remainingPieces <= 5))) {
@@ -242,23 +352,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               >
                 {badgeIcon && <span className="text-[11px] leading-none">{badgeIcon}</span>}
                 <span>{label}</span>
-              </div>
-            );
-          }
-
-          // 3. Seção OUTLET ou produtos com desconto fora de lançamentos
-          if (product.discountBadge) {
-            const outletCfg = getBadgeConfig('outlet');
-            const outletBg = outletCfg?.cor || outletCfg?.color || '#C5A059';
-            return (
-              <div
-                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
-                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
-                }`}
-                style={{ backgroundColor: outletBg, color: outletCfg?.textColor || '#ffffff' }}
-              >
-                {outletCfg?.icone && <span className="text-[11px] leading-none">{outletCfg.icone}</span>}
-                <span>{product.discountBadge}</span>
               </div>
             );
           }
@@ -414,14 +507,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     onMouseEnter={(e) => {
                       e.stopPropagation();
                       if (color.imageSrc) setHoverColorImage(color.imageSrc);
+                      setHoverColorName(color.name);
                     }}
                     onMouseLeave={(e) => {
                       e.stopPropagation();
                       setHoverColorImage(null);
+                      setHoverColorName(null);
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (color.imageSrc) setHoverColorImage(color.imageSrc);
+                      setHoverColorName(color.name);
                     }}
                     className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-none border border-black/20 dark:border-white/20 shadow-2xs block shrink-0 transition-transform hover:scale-125 cursor-pointer"
                     style={{ backgroundColor: color.hex }}
@@ -454,15 +550,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="mt-2 sm:mt-2.5 pt-2 border-t border-[#C5A059]/15 flex flex-col gap-2">
           <div className="w-full flex items-start justify-between gap-2 min-w-0 min-h-[58px]">
             <div className="min-w-0 flex-1 flex flex-col justify-end">
-              {hasRealDiscount ? (
+              {priceDisplay.hasRealDiscount ? (
                 <>
                   {/* Linha 1: Preço Original Riscado + Tag de Promoção/Outlet */}
                   <div className="flex items-center gap-1.5 leading-none mb-1">
                     <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
-                      {product.formattedOriginalPrice}
+                      R$ {priceDisplay.originalPrice?.toFixed(2).replace('.', ',')}
                     </span>
                     <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
-                      {product.isOutlet ? 'OUTLET' : 'PROMOÇÃO'}
+                      {product.isOutlet || isOutletSection ? 'OUTLET' : 'PROMOÇÃO'}
                     </span>
                   </div>
                   {/* Linha 2: Preço Promocional em Destaque */}
@@ -470,17 +566,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
                       isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
                     }`}>
-                      {variablePricesInfo?.isDivergent
-                        ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
-                        : product.formattedPrice}
+                      {priceDisplay.label ? `${priceDisplay.label} ` : ''}R$ {priceDisplay.currentPrice.toFixed(2).replace('.', ',')}
                     </span>
                   </div>
                   {/* Linha 3: Economia em Verde de Alta Conversão */}
                   <div className="text-[#16A34A] dark:text-[#22C55E] text-[10px] sm:text-[11px] font-bold uppercase tracking-tight mt-1 flex items-center gap-1">
-                    <span>Economia de R$ {product.savingsAmount?.toFixed(2).replace('.', ',')}!</span>
-                    {product.discountPercent && (
+                    <span>Economia de R$ {priceDisplay.savingsAmount.toFixed(2).replace('.', ',')}!</span>
+                    {priceDisplay.discountPercent > 0 && (
                       <span className="text-[9px] bg-[#16A34A]/10 text-[#16A34A] dark:text-[#22C55E] px-1 py-0.2 rounded-none font-black">
-                        ({product.discountPercent}% OFF)
+                        ({priceDisplay.discountPercent}% OFF)
                       </span>
                     )}
                   </div>
@@ -488,25 +582,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               ) : (
                 <>
                   <span className="text-[9px] uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block truncate leading-none mb-1">
-                    {variablePricesInfo?.isDivergent ? 'A partir de' : 'Valor da Peça'}
+                    {priceDisplay.label || 'Valor da Peça'}
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
                       isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
                     }`}>
-                      {variablePricesInfo?.isDivergent
-                        ? `R$ ${variablePricesInfo.minPrice.toFixed(2).replace('.', ',')}`
-                        : product.formattedPrice}
+                      R$ {priceDisplay.currentPrice.toFixed(2).replace('.', ',')}
                     </span>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Indicador sutil de estoque baixo */}
-            {product.remainingPieces && product.remainingPieces > 0 && product.remainingPieces <= 3 && !isOutOfStock && !isAllReserved && (
+            {/* Indicador sutil de estoque baixo (restam 1 a 5 peças) */}
+            {((product.remainingPieces && product.remainingPieces > 0 && product.remainingPieces <= 5) ||
+              (product.totalStock && product.totalStock > 0 && product.totalStock <= 5)) && !isOutOfStock && !isAllReserved && (
               <span className="text-[9px] font-semibold text-[#8B5A2B] dark:text-[#DFBE76] bg-[#8B5A2B]/10 dark:bg-[#DFBE76]/10 px-1.5 py-0.5 rounded-none whitespace-nowrap shrink-0 mt-0.5">
-                Restam {product.remainingPieces}
+                Restam {product.remainingPieces || product.totalStock}
               </span>
             )}
           </div>
