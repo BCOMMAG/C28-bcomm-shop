@@ -124,7 +124,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           localStorage.getItem('bcomm_tenant_last');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed && parsed.id && parsed.configuracoes_visuais) return parsed;
+          if (parsed && parsed.id && parsed.configuracoes_visuais) {
+            // Auto-cura de coordenadas legadas em cache do navegador para CEP 82010-600
+            if (
+              parsed.configuracoes_visuais?.logistica_avancada?.origem_coordenadas?.bairro === 'Cascatinha' &&
+              (parsed.configuracoes_visuais?.logistica_avancada?.cep_origem || '').replace(/\D/g, '') === '82010600'
+            ) {
+              const healed = {
+                latitude: -25.4223,
+                longitude: -49.3346,
+                cidade: 'Curitiba',
+                uf: 'PR',
+                bairro: 'Santo Inácio',
+                logradouro: 'Rua José Boiko',
+                cep: '82010600'
+              };
+              parsed.configuracoes_visuais.logistica_avancada.origem_coordenadas = healed;
+              if (parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy) {
+                parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy.origem_coordenadas = healed;
+              }
+            }
+            return parsed;
+          }
         }
       } catch {}
     }
@@ -216,7 +237,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const rawLast = localStorage.getItem('bcomm_tenant_last');
             if (rawLast) {
               const parsed = JSON.parse(rawLast);
-              if (parsed?.id && parsed?.slug) lastTenant = parsed;
+              if (parsed?.id && parsed?.slug) {
+                if (
+                  parsed.configuracoes_visuais?.logistica_avancada?.origem_coordenadas?.bairro === 'Cascatinha' &&
+                  (parsed.configuracoes_visuais?.logistica_avancada?.cep_origem || '').replace(/\D/g, '') === '82010600'
+                ) {
+                  const healed = {
+                    latitude: -25.4223,
+                    longitude: -49.3346,
+                    cidade: 'Curitiba',
+                    uf: 'PR',
+                    bairro: 'Santo Inácio',
+                    logradouro: 'Rua José Boiko',
+                    cep: '82010600'
+                  };
+                  parsed.configuracoes_visuais.logistica_avancada.origem_coordenadas = healed;
+                  if (parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy) {
+                    parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy.origem_coordenadas = healed;
+                  }
+                }
+                lastTenant = parsed;
+              }
             }
           } catch {}
           if (lastTenant) {

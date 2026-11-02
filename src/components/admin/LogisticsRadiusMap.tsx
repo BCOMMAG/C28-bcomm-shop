@@ -108,7 +108,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         draggable: true
       }).addTo(map);
 
-      marker.bindPopup(`<b>${storeName}</b><br/>Arraste para ajustar o ponto exato da loja.`);
+      marker.bindPopup(`<b>${storeName}</b><br/>${center.logradouro ? `${center.logradouro}, ` : ''}${center.bairro ? `${center.bairro} • ` : ''}${center.cidade || 'Origem'}/${center.uf || 'UF'}<br/><span style="color:#C5A059; font-size:11px;">Arraste para ajustar o ponto exato da loja.</span>`);
 
       marker.on('dragend', () => {
         const position = marker.getLatLng();
@@ -271,7 +271,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         <div className="flex items-center gap-2 text-slate-700 dark:text-stone-300">
           <Compass className="w-4 h-4 text-[#C5A059]" />
           <span>
-            Centro em: <strong>{center.cidade || 'Origem'} ({center.uf || 'UF'})</strong> • Raio Atual: <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{radiusKm} km</strong>
+            Centro em: <strong>{center.logradouro ? `${center.logradouro}, ${center.bairro || ''} (${center.cidade}/${center.uf})` : `${center.cidade || 'Origem'} (${center.uf || 'UF'})`}</strong> • Raio Atual: <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{radiusKm} km</strong>
           </span>
         </div>
 

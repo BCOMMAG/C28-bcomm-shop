@@ -80,11 +80,30 @@ export default function ShippingSettingsPage() {
         const data = await getStoreSettings(tenantId);
         if (data) {
           if (data.logisticaAvancada) {
-            setConfig({
+            let loadedConfig: LogisticaAvancadaConfig = {
               ...CONFIG_LOGISTICA_DEFAULT,
               ...data.logisticaAvancada,
               servicos_habilitados: data.logisticaAvancada.servicos_habilitados || SERVICOS_PADRAO_MELHOR_ENVIO
-            });
+            };
+
+            // Auto-cura de coordenadas legadas ou corrompidas (ex: ponto antigo de Cascatinha)
+            const cleanOrigin = (loadedConfig.cep_origem || '').replace(/\D/g, '');
+            const isLegacyCascatinha =
+              cleanOrigin === '82010600' &&
+              (loadedConfig.origem_coordenadas?.bairro === 'Cascatinha' ||
+                Math.abs((loadedConfig.origem_coordenadas?.latitude || 0) - (-25.4055)) < 0.005);
+
+            if (isLegacyCascatinha || !loadedConfig.origem_coordenadas?.latitude) {
+              const freshCoords = await fetchCepCoordinates(cleanOrigin || '82010600');
+              if (freshCoords) {
+                loadedConfig.origem_coordenadas = freshCoords;
+                if (loadedConfig.entrega_motoboy) {
+                  loadedConfig.entrega_motoboy.origem_coordenadas = freshCoords;
+                }
+              }
+            }
+
+            setConfig(loadedConfig);
           } else {
             // Retrocompatibilidade
             setConfig((prev) => ({
@@ -424,6 +443,14 @@ export default function ShippingSettingsPage() {
               <span className="text-[10px] text-slate-400 mt-1 block">
                 Utilizado para calcular a distância e prazo exatos até o CEP da cliente.
               </span>
+              {config.origem_coordenadas?.logradouro && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span>
+                    Localizado: <strong>{config.origem_coordenadas.logradouro}</strong>, {config.origem_coordenadas.bairro || ''} ({config.origem_coordenadas.cidade}/{config.origem_coordenadas.uf})
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

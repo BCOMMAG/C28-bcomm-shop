@@ -237,6 +237,17 @@ cepCoordinatesCache.set('83005000', {
   cep: '83005000'
 });
 
+// Coordenadas exatas da filial Santo Inácio / Rua José Boiko (Curitiba/PR)
+cepCoordinatesCache.set('82010600', {
+  latitude: -25.4223,
+  longitude: -49.3346,
+  cidade: 'Curitiba',
+  uf: 'PR',
+  bairro: 'Santo Inácio',
+  logradouro: 'Rua José Boiko',
+  cep: '82010600'
+});
+
 /**
  * Calcula a distância geodésica em quilômetros corrigida pela malha viária urbana
  * Utiliza a fórmula de Haversine com fator de conversão linear -> viário (1.25x)
@@ -266,8 +277,8 @@ export function calculateGeodesicDistanceKm(
 /**
  * Consulta coordenadas geográficas de alta precisão para qualquer CEP no Brasil
  * Pipeline em 2 Etapas:
- * 1. ViaCEP oficial dos Correios -> obtém nome exato do logradouro (rua/avenida), bairro e cidade
- * 2. OpenStreetMap Nominatim -> geocodifica o logradouro real com precisão métrica na rua correta
+ * 1. Rota interna `/api/geocode` (Edge/Servidor com ViaCEP + OpenStreetMap Nominatim sem CORS)
+ * 2. Fallbacks diretos com ViaCEP e BrasilAPI v2
  */
 export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeograficas | null> {
   const cleanCep = (cep || '').replace(/\D/g, '');
@@ -277,7 +288,34 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
     return cepCoordinatesCache.get(cleanCep)!;
   }
 
-  // 1. Consulta dados cadastrais oficiais no ViaCEP
+  // 1. No ambiente browser, chama a rota interna /api/geocode (sem risco de CORS ou bloqueio)
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch(`/api/geocode?cep=${cleanCep}`, {
+        headers: { Accept: 'application/json' }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data?.latitude && json.data?.longitude) {
+          const result: CoordenadasGeograficas = {
+            latitude: Number(json.data.latitude),
+            longitude: Number(json.data.longitude),
+            cidade: json.data.cidade,
+            uf: json.data.uf,
+            bairro: json.data.bairro || '',
+            logradouro: json.data.logradouro || '',
+            cep: cleanCep
+          };
+          cepCoordinatesCache.set(cleanCep, result);
+          return result;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[fetchCepCoordinates] Erro na rota interna /api/geocode, recorrendo a fallbacks:', apiErr);
+    }
+  }
+
+  // 2. Consulta dados cadastrais oficiais no ViaCEP
   let viaCepData: any = null;
   try {
     const controller = new AbortController();
@@ -299,7 +337,7 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
     // Prossegue para os fallbacks
   }
 
-  // 2. Se o ViaCEP localizou o logradouro e a cidade, busca as coordenadas exatas no OpenStreetMap Nominatim
+  // 3. Se o ViaCEP localizou o logradouro e a cidade, busca as coordenadas exatas no OpenStreetMap Nominatim
   if (viaCepData && viaCepData.localidade) {
     try {
       const controller = new AbortController();
@@ -337,7 +375,7 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
     }
   }
 
-  // 3. Fallback: BrasilAPI v2
+  // 4. Fallback: BrasilAPI v2
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
