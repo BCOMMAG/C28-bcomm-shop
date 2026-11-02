@@ -68,6 +68,18 @@ export interface LogisticaAvancadaConfig {
   retirada_boutique_ativa?: boolean;
   instrucoes_retirada?: string;
   origem_coordenadas?: CoordenadasGeograficas;
+  endereco_origem_completo?: {
+    cep: string;
+    logradouro: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    uf: string;
+    ponto_referencia?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export interface EntregaMotoboyFaixaPreco {
@@ -82,7 +94,11 @@ export interface CoordenadasGeograficas {
   uf?: string;
   bairro?: string;
   logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  ponto_referencia?: string;
   cep?: string;
+  precision?: string;
 }
 
 export interface EntregaMotoboyConfig {
@@ -149,7 +165,7 @@ export const CONFIG_LOGISTICA_DEFAULT: LogisticaAvancadaConfig = {
   provedor: 'melhor_envio',
   ambiente: 'sandbox',
   token_melhor_envio: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NTYiLCJqdGkiOiI5NTM0MDIxNWVkZTU2MmU3ZWI3YjVlNmU0ODc3MzY4YmZjNTQwZTk4NzE4OWY1YmE3Yjg2YzliMTQ1NTY2ZmEzMGVlNDcyOGU2ZGIyMTEyZSIsImlhdCI6MTc5MzU2NzQ2Ni4yODIwMywibmJmIjoxNzkzNTY3NDY2LjI4MjAzMiwiZXhwIjoxODI1MTAzNDY2LjI3MjA4NCwic3ViIjoiYTMxZmI3OTItMWE2Mi00ZTNkLTlkMDctNDYxMDE5YjM5N2EzIiwic2NvcGVzIjpbImNhcnQtcmVhZCIsImNhcnQtd3JpdGUiLCJjb21wYW5pZXMtcmVhZCIsImNvbXBhbmllcy13cml0ZSIsImNvdXBvbnMtcmVhZCIsImNvdXBvbnMtd3JpdGUiLCJub3RpZmljYXRpb25zLXJlYWQiLCJvcmRlcnMtcmVhZCIsInByb2R1Y3RzLXJlYWQiLCJwcm9kdWN0cy1kZXN0cm95IiwicHJvZHVjdHMtd3JpdGUiLCJwdXJjaGFzZXMtcmVhZCIsInNoaXBwaW5nLWNhbGN1bGF0ZSIsInNoaXBwaW5nLWNhbmNlbCIsInNoaXBwaW5nLWNoZWNrb3V0Iiwic2hpcHBpbmctY29tcGFuaWVzIiwic2hpcHBpbmctZ2VuZXJhdGUiLCJzaGlwcGluZy1wcmV2aWV3Iiwic2hpcHBpbmctcHJpbnQiLCJzaGlwcGluZy1zaGFyZSIsInNoaXBwaW5nLXRyYWNraW5nIiwiZWNvbW1lcmNlLXNoaXBwaW5nIiwidHJhbnNhY3Rpb25zLXJlYWQiLCJ1c2Vycy1yZWFkIiwidXNlcnMtd3JpdGUiLCJ3ZWJob29rcy1yZWFkIiwid2ViaG9va3Mtd3JpdGUiLCJ3ZWJob29rcy1kZWxldGUiLCJ0ZGVhbGVyLXdlYmhvb2siLCJtY3A6dXNlIl19.HafmTl0rZqNmis2sl6mBJ4otIaRodVEzDlhjM5bqAcGepJfKZUQo83FnjXUMoEfZiz5hAaZTEzCn40sqV_W7T_bpKMJW-XS8rdohCWqcTNi7U9es3c6KSNNGasw7oD3B1nRPU768DxfMKHcfxeqVq5wK-0XhpwYr-PjHKwxtwBczWjxf6wzepeKDHRY-yS_Ez0XycIvV_AqsuPG93Tn1Gu61vQLXles-lahxnoIdfAN7oHpPKLrUMdUQ2ChjQzOwkp7Oypn7x881Q3zbMIAGVgpAIM7nqpb4I812YhmRMdMG-rA_MrVfu4bHLi11aKULuBpAkx8nO7mnCf0sVLcgerdBOYgCz9tzJPT0ICV3au88eKKtk7ea9peJkj666ZlmD6ThS5gUrnaJZIMpFK1mLu3rShxFVQQxIJxPrrB5aOlOPlI3aJT9wJ2EeHYrAdwBWEoUUVigQLaBpzPlVx-Z-qmtzxcnRE61AXiEMeoP2r5AgbeLLcGnkfpFvXdttvePAeR4z8uoQotRGILSQZTg7a97-wczSbnsVe93Djkky1j1NjAU-avVCN9rXNoMgOTwDJVy6DJi1r_TdL-6NH2mwNhSJmXkbXRhfJkZZEGNYBj9iV6m9tzstUO0bVhj2J-uouRo6vekb9A7rS8sfxJdIMxfX4eP3QcEwoO3YiezWWw',
-  cep_origem: '83005000', // Curitiba / São José dos Pinhais
+  cep_origem: '82010600', // Curitiba (Santo Inácio)
   modo_exibicao: 'transparente',
   regras_frete_gratis: {
     ativo: true,
@@ -201,21 +217,27 @@ export const CONFIG_LOGISTICA_DEFAULT: LogisticaAvancadaConfig = {
     dias_semana_disponiveis: [1, 2, 3, 4, 5, 6],
     descricao_vitrine: 'Entrega no mesmo dia para pedidos aprovados até as 14h',
     origem_coordenadas: {
-      latitude: -25.5348,
-      longitude: -49.2064,
-      cidade: 'São José dos Pinhais',
+      latitude: -25.4223,
+      longitude: -49.3346,
+      cidade: 'Curitiba',
       uf: 'PR',
-      cep: '83005000'
+      bairro: 'Santo Inácio',
+      logradouro: 'Rua José Boiko',
+      numero: '150',
+      cep: '82010600'
     }
   },
   retirada_boutique_ativa: true,
   instrucoes_retirada: 'Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.',
   origem_coordenadas: {
-    latitude: -25.5348,
-    longitude: -49.2064,
-    cidade: 'São José dos Pinhais',
+    latitude: -25.4223,
+    longitude: -49.3346,
+    cidade: 'Curitiba',
     uf: 'PR',
-    cep: '83005000'
+    bairro: 'Santo Inácio',
+    logradouro: 'Rua José Boiko',
+    numero: '150',
+    cep: '82010600'
   }
 };
 
@@ -275,23 +297,38 @@ export function calculateGeodesicDistanceKm(
 }
 
 /**
- * Consulta coordenadas geográficas de alta precisão para qualquer CEP no Brasil
+ * Consulta coordenadas geográficas de alta precisão para qualquer CEP ou Endereço no Brasil
  * Pipeline em 2 Etapas:
- * 1. Rota interna `/api/geocode` (Edge/Servidor com ViaCEP + OpenStreetMap Nominatim sem CORS)
+ * 1. Rota interna `/api/geocode` (Cloudflare Pages Edge com suporte a CEP, Rua e Número Predial)
  * 2. Fallbacks diretos com ViaCEP e BrasilAPI v2
  */
-export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeograficas | null> {
+export async function fetchCepCoordinates(
+  cep: string,
+  extraParams?: { numero?: string; rua?: string; bairro?: string; cidade?: string; uf?: string }
+): Promise<CoordenadasGeograficas | null> {
   const cleanCep = (cep || '').replace(/\D/g, '');
-  if (cleanCep.length !== 8) return null;
+  if (cleanCep.length !== 8 && !extraParams?.rua) return null;
 
-  if (cepCoordinatesCache.has(cleanCep)) {
-    return cepCoordinatesCache.get(cleanCep)!;
+  const cacheKey = cleanCep
+    ? `${cleanCep}${extraParams?.numero ? `_${extraParams.numero.trim()}` : ''}`
+    : `${extraParams?.rua?.trim()}_${extraParams?.cidade?.trim()}`;
+
+  if (cepCoordinatesCache.has(cacheKey)) {
+    return cepCoordinatesCache.get(cacheKey)!;
   }
 
   // 1. No ambiente browser, chama a rota interna /api/geocode (sem risco de CORS ou bloqueio)
   if (typeof window !== 'undefined') {
     try {
-      const res = await fetch(`/api/geocode?cep=${cleanCep}`, {
+      const qParams = new URLSearchParams();
+      if (cleanCep) qParams.set('cep', cleanCep);
+      if (extraParams?.numero) qParams.set('numero', extraParams.numero);
+      if (extraParams?.rua) qParams.set('rua', extraParams.rua);
+      if (extraParams?.bairro) qParams.set('bairro', extraParams.bairro);
+      if (extraParams?.cidade) qParams.set('cidade', extraParams.cidade);
+      if (extraParams?.uf) qParams.set('uf', extraParams.uf);
+
+      const res = await fetch(`/api/geocode?${qParams.toString()}`, {
         headers: { Accept: 'application/json' }
       });
       if (res.ok) {
@@ -304,9 +341,12 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
             uf: json.data.uf,
             bairro: json.data.bairro || '',
             logradouro: json.data.logradouro || '',
-            cep: cleanCep
+            numero: json.data.numero || extraParams?.numero || '',
+            cep: cleanCep || json.data.cep || '',
+            precision: json.data.precision
           };
-          cepCoordinatesCache.set(cleanCep, result);
+          cepCoordinatesCache.set(cacheKey, result);
+          if (cleanCep) cepCoordinatesCache.set(cleanCep, result);
           return result;
         }
       }

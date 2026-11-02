@@ -39,6 +39,8 @@ import {
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { AdminThemeProvider, useAdminTheme } from '@/context/AdminThemeContext';
+import { AdminUnsavedChangesProvider, useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
+import { UnsavedChangesModal } from '@/components/admin/UnsavedChangesModal';
 import { cn } from '@/lib/chart-utils';
 import { GlobalSearchModal } from '@/components/admin/GlobalSearchModal';
 import { getAdminPendingNotifications } from '@/lib/admin';
@@ -52,6 +54,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { currentTenant } = useStore();
   const { paletteConfig } = useAdminTheme();
+  const { requestNavigation } = useAdminUnsavedChanges();
+
+  const handleProtectedNav = (e: React.MouseEvent, href: string) => {
+    if (href === pathname) return;
+    const allowed = requestNavigation(href);
+    if (!allowed) {
+      e.preventDefault();
+    }
+  };
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -478,6 +489,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={(e) => handleProtectedNav(e, item.href)}
                 className={cn(
                   'flex items-center rounded-xl text-xs font-semibold transition-all group relative',
                   isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5',
@@ -673,7 +685,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      setIsMobileMenuOpen(false);
+                      handleProtectedNav(e, item.href);
+                    }}
                     className={cn(
                       'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all',
                       isActive ? 'font-bold' : ''
@@ -857,6 +872,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Link Rápido de Configurações */}
             <Link
               href="/admin/configuracoes/"
+              onClick={(e) => handleProtectedNav(e, '/admin/configuracoes/')}
               className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative"
               title="Configurações & Paleta de Cores"
             >
@@ -1041,7 +1057,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AdminThemeProvider>
-      <AdminShell>{children}</AdminShell>
+      <AdminUnsavedChangesProvider>
+        <AdminShell>{children}</AdminShell>
+        <UnsavedChangesModal />
+      </AdminUnsavedChangesProvider>
     </AdminThemeProvider>
   );
 }

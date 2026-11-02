@@ -23,9 +23,11 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  ArrowRight
+  ArrowRight,
+  Copy
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
+import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import {
   getStoreSettings,
@@ -48,10 +50,19 @@ export default function ShippingSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
+  const initialConfigRef = React.useRef<string>('');
+  const { setIsDirty, registerSaveHandler, setFormName } = useAdminUnsavedChanges();
+
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingToken, setIsTestingToken] = useState(false);
+  const [isImportingAddress, setIsImportingAddress] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; rates?: any[] } | null>(null);
+
+  // Registra nome do formulário para o modal de proteção
+  useEffect(() => {
+    setFormName('Logística & Frete');
+  }, [setFormName]);
 
   // Simulador de Frete ao Vivo no Admin
   const [simuladorCep, setSimuladorCep] = useState('01001000');
@@ -104,21 +115,24 @@ export default function ShippingSettingsPage() {
             }
 
             setConfig(loadedConfig);
+            initialConfigRef.current = JSON.stringify(loadedConfig);
           } else {
             // Retrocompatibilidade
-            setConfig((prev) => ({
-              ...prev,
+            const fallbackConfig: LogisticaAvancadaConfig = {
+              ...CONFIG_LOGISTICA_DEFAULT,
               regras_frete_gratis: {
-                ...prev.regras_frete_gratis,
+                ...CONFIG_LOGISTICA_DEFAULT.regras_frete_gratis,
                 valor_minimo_padrao: Number(data.freteGratisValor || 350)
               },
               prazo_manuseio_dias: Number(data.prazoManuseioDias ?? 1),
               retirada_boutique_ativa: data.retiradaBoutiqueAtiva ?? true,
-              instrucoes_retirada: data.instrucoesRetirada || prev.instrucoes_retirada,
+              instrucoes_retirada: data.instrucoesRetirada || CONFIG_LOGISTICA_DEFAULT.instrucoes_retirada,
               entrega_local_ativa: data.entregaLocalAtiva ?? true,
               entrega_local_taxa: Number(data.entregaLocalTaxa ?? 18.00),
-              entrega_local_bairros: data.entregaLocalBairros || prev.entrega_local_bairros
-            }));
+              entrega_local_bairros: data.entregaLocalBairros || CONFIG_LOGISTICA_DEFAULT.entrega_local_bairros
+            };
+            setConfig(fallbackConfig);
+            initialConfigRef.current = JSON.stringify(fallbackConfig);
           }
         }
       } catch (err) {
@@ -131,6 +145,135 @@ export default function ShippingSettingsPage() {
     fetchData();
   }, [tenantId]);
 
+  // Monitora alterações pendentes e atualiza o estado dirty
+  useEffect(() => {
+    if (!loading && initialConfigRef.current) {
+      const isChanged = JSON.stringify(config) !== initialConfigRef.current;
+      setIsDirty(isChanged);
+    }
+  }, [config, loading, setIsDirty]);
+
+  // Importa endereço completo cadastrado em Dados da Loja
+  const handleImportStoreAddress = async () => {
+    setIsImportingAddress(true);
+    try {
+      const data = await getStoreSettings(tenantId);
+      if (data) {
+        const cleanCep = (data.cep || '').replace(/\D/g, '');
+        const coords = await fetchCepCoordinates(cleanCep || '82010600', {
+          rua: data.logradouro,
+          numero: data.numero,
+          bairro: data.bairro,
+          cidade: data.cidade,
+          uf: data.estado
+        });
+
+        const newCoords: CoordenadasGeograficas = {
+          latitude: coords?.latitude || -25.4223,
+          longitude: coords?.longitude || -49.3346,
+          cidade: data.cidade || 'Curitiba',
+          uf: data.estado || 'PR',
+          bairro: data.bairro || 'Santo Inácio',
+          logradouro: data.logradouro || 'Rua José Boiko',
+          numero: data.numero || '',
+          complemento: data.complemento || '',
+          cep: cleanCep || '82010600',
+          precision: coords?.precision
+        };
+
+        setConfig((prev) => ({
+          ...prev,
+          cep_origem: cleanCep || prev.cep_origem,
+          origem_coordenadas: newCoords,
+          entrega_motoboy: {
+            ...(prev.entrega_motoboy || {
+              ativo: true,
+              raio_maximo_km: 15,
+              taxa_tipo: 'fixa',
+              taxa_fixa_reais: 18.00,
+              horario_limite_mesmo_dia: '14:00',
+              dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+            }),
+            origem_coordenadas: newCoords
+          }
+        }));
+
+        const streetInfo = newCoords.logradouro
+          ? `${newCoords.logradouro}${newCoords.numero ? `, Nº ${newCoords.numero}` : ''}`
+          : cleanCep;
+        showToast(`Endereço importado com sucesso: ${streetInfo}`);
+      }
+    } catch (err) {
+      showToast('Erro ao importar endereço da loja.', 'error');
+    } finally {
+      setIsImportingAddress(false);
+    }
+  };
+
+  // Atualiza campos específicos do endereço completo de expedição
+  const handleAddressFieldChange = async (field: keyof CoordenadasGeograficas, value: string) => {
+    setConfig((prev) => {
+      const current = prev.origem_coordenadas || {
+        latitude: -25.4223,
+        longitude: -49.3346,
+        cidade: 'Curitiba',
+        uf: 'PR',
+        cep: prev.cep_origem || '82010600'
+      };
+      const updatedCoords: CoordenadasGeograficas = {
+        ...current,
+        [field]: value
+      };
+      return {
+        ...prev,
+        origem_coordenadas: updatedCoords,
+        entrega_motoboy: prev.entrega_motoboy
+          ? { ...prev.entrega_motoboy, origem_coordenadas: updatedCoords }
+          : undefined
+      };
+    });
+
+    if ((field === 'numero' || field === 'logradouro') && value.trim().length >= 1) {
+      try {
+        const cleanCep = (config.cep_origem || '').replace(/\D/g, '');
+        const targetRua = field === 'logradouro' ? value : config.origem_coordenadas?.logradouro;
+        const targetNum = field === 'numero' ? value : config.origem_coordenadas?.numero;
+
+        const coords = await fetchCepCoordinates(cleanCep, {
+          rua: targetRua,
+          numero: targetNum,
+          bairro: config.origem_coordenadas?.bairro,
+          cidade: config.origem_coordenadas?.cidade,
+          uf: config.origem_coordenadas?.uf
+        });
+
+        if (coords?.latitude && coords?.longitude) {
+          setConfig((prev) => {
+            const freshCoords: CoordenadasGeograficas = {
+              ...(prev.origem_coordenadas || {}),
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              cidade: coords.cidade || prev.origem_coordenadas?.cidade,
+              uf: coords.uf || prev.origem_coordenadas?.uf,
+              bairro: coords.bairro || prev.origem_coordenadas?.bairro,
+              logradouro: targetRua || coords.logradouro || prev.origem_coordenadas?.logradouro,
+              numero: targetNum || coords.numero || prev.origem_coordenadas?.numero,
+              cep: cleanCep,
+              precision: coords.precision
+            };
+            return {
+              ...prev,
+              origem_coordenadas: freshCoords,
+              entrega_motoboy: prev.entrega_motoboy
+                ? { ...prev.entrega_motoboy, origem_coordenadas: freshCoords }
+                : undefined
+            };
+          });
+        }
+      } catch {}
+    }
+  };
+
   // Busca coordenadas geográficas e endereço automático ao digitar CEP de origem
   const handleCepOrigemChange = async (novoCep: string) => {
     const clean = novoCep.replace(/\D/g, '').slice(0, 8);
@@ -139,23 +282,38 @@ export default function ShippingSettingsPage() {
     if (clean.length === 8) {
       try {
         // 1. Busca coordenadas geográficas para atualizar o mapa e o círculo instantaneamente
-        const coords = await fetchCepCoordinates(clean);
+        const coords = await fetchCepCoordinates(clean, {
+          numero: config.origem_coordenadas?.numero
+        });
         if (coords && coords.latitude && coords.longitude) {
-          setConfig((prev) => ({
-            ...prev,
-            origem_coordenadas: coords,
-            entrega_motoboy: {
-              ...(prev.entrega_motoboy || {
-                ativo: true,
-                raio_maximo_km: 15,
-                taxa_tipo: 'fixa',
-                taxa_fixa_reais: 18.00,
-                horario_limite_mesmo_dia: '14:00',
-                dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
-              }),
-              origem_coordenadas: coords
-            }
-          }));
+          setConfig((prev) => {
+            const freshCoords: CoordenadasGeograficas = {
+              ...(prev.origem_coordenadas || {}),
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              cidade: coords.cidade || prev.origem_coordenadas?.cidade,
+              uf: coords.uf || prev.origem_coordenadas?.uf,
+              bairro: coords.bairro || prev.origem_coordenadas?.bairro,
+              logradouro: coords.logradouro || prev.origem_coordenadas?.logradouro,
+              cep: clean,
+              precision: coords.precision
+            };
+            return {
+              ...prev,
+              origem_coordenadas: freshCoords,
+              entrega_motoboy: {
+                ...(prev.entrega_motoboy || {
+                  ativo: true,
+                  raio_maximo_km: 15,
+                  taxa_tipo: 'fixa',
+                  taxa_fixa_reais: 18.00,
+                  horario_limite_mesmo_dia: '14:00',
+                  dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                }),
+                origem_coordenadas: freshCoords
+              }
+            };
+          });
           const streetInfo = coords.logradouro
             ? `${coords.logradouro}, ${coords.bairro || ''} (${coords.cidade}/${coords.uf})`
             : `${coords.cidade || 'Origem'}/${coords.uf || 'UF'}`;
@@ -272,8 +430,7 @@ export default function ShippingSettingsPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSalvarConfiguracoes = async (): Promise<boolean> => {
     setIsSaving(true);
 
     try {
@@ -292,16 +449,31 @@ export default function ShippingSettingsPage() {
         try {
           await refreshProducts();
         } catch {}
+        initialConfigRef.current = JSON.stringify(config);
+        setIsDirty(false);
         showToast('Todas as configurações de frete e regras comerciais foram salvas!');
+        return true;
       } else {
         showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        return false;
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSalvarConfiguracoes();
+  };
+
+  useEffect(() => {
+    registerSaveHandler(handleSalvarConfiguracoes);
+    return () => registerSaveHandler(null);
+  }, [config, tenantId, registerSaveHandler]);
 
   if (loading) {
     return (
@@ -424,30 +596,145 @@ export default function ShippingSettingsPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-slate-700 mb-1 font-bold">
-                CEP de Origem (De onde saem os pacotes da loja)
-              </label>
-              <div className="relative">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            {/* Endereço Completo de Expedição (De onde saem os pacotes e o motoboy) */}
+            <div className="pt-3 border-t border-slate-200 dark:border-stone-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="block text-slate-800 dark:text-stone-200 font-bold text-xs flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#C5A059]" />
+                  <span>Endereço de Expedição da Loja:</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleImportStoreAddress}
+                  disabled={isImportingAddress}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#C5A059] hover:text-amber-600 dark:hover:text-[#DFBE76] bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-colors cursor-pointer disabled:opacity-50"
+                  title="Importa o endereço cadastrado em Dados da Loja com 1 clique"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>{isImportingAddress ? 'Importando...' : 'Copiar de Dados da Loja'}</span>
+                </button>
+              </div>
+
+              {/* Linha 1: CEP e Número Predial */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    CEP de Origem *
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      value={config.cep_origem}
+                      onChange={(e) => handleCepOrigemChange(e.target.value)}
+                      placeholder="82010600"
+                      maxLength={9}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    Nº Predial *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.origem_coordenadas?.numero || ''}
+                    onChange={(e) => handleAddressFieldChange('numero', e.target.value)}
+                    placeholder="Ex: 150 ou S/N"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Linha 2: Rua / Logradouro */}
+              <div>
+                <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                  Rua / Logradouro *
+                </label>
                 <input
                   type="text"
                   required
-                  value={config.cep_origem}
-                  onChange={(e) => handleCepOrigemChange(e.target.value)}
-                  placeholder="83005000"
-                  maxLength={9}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+                  value={config.origem_coordenadas?.logradouro || ''}
+                  onChange={(e) => handleAddressFieldChange('logradouro', e.target.value)}
+                  placeholder="Ex: Rua José Boiko"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
                 />
               </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Utilizado para calcular a distância e prazo exatos até o CEP da cliente.
-              </span>
-              {config.origem_coordenadas?.logradouro && (
-                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span>
-                    Localizado: <strong>{config.origem_coordenadas.logradouro}</strong>, {config.origem_coordenadas.bairro || ''} ({config.origem_coordenadas.cidade}/{config.origem_coordenadas.uf})
+
+              {/* Linha 3: Complemento e Bairro */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    Complemento
+                  </label>
+                  <input
+                    type="text"
+                    value={config.origem_coordenadas?.complemento || ''}
+                    onChange={(e) => handleAddressFieldChange('complemento', e.target.value)}
+                    placeholder="Ex: Loja 02, Térreo"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    Bairro
+                  </label>
+                  <input
+                    type="text"
+                    value={config.origem_coordenadas?.bairro || ''}
+                    onChange={(e) => handleAddressFieldChange('bairro', e.target.value)}
+                    placeholder="Ex: Santo Inácio"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Linha 4: Cidade e Estado (UF) */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="col-span-2">
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={config.origem_coordenadas?.cidade || ''}
+                    onChange={(e) => handleAddressFieldChange('cidade', e.target.value)}
+                    placeholder="Ex: Curitiba"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-600 dark:text-stone-400 mb-1 font-semibold">
+                    UF
+                  </label>
+                  <input
+                    type="text"
+                    value={config.origem_coordenadas?.uf || ''}
+                    onChange={(e) => handleAddressFieldChange('uf', e.target.value)}
+                    placeholder="PR"
+                    maxLength={2}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono text-xs uppercase focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Confirmação Visual Métrica */}
+              {config.origem_coordenadas?.latitude && (
+                <div className="mt-2 flex flex-col gap-1 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>
+                      Ponto de Saída Fixado: <strong>{config.origem_coordenadas.logradouro || 'Rua'}{config.origem_coordenadas.numero ? `, Nº ${config.origem_coordenadas.numero}` : ''}</strong> • {config.origem_coordenadas.bairro ? `${config.origem_coordenadas.bairro}, ` : ''}{config.origem_coordenadas.cidade}/{config.origem_coordenadas.uf}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 pl-3.5">
+                    Coordenadas GPS: {config.origem_coordenadas.latitude.toFixed(5)}, {config.origem_coordenadas.longitude.toFixed(5)}
                   </span>
                 </div>
               )}
@@ -1031,11 +1318,14 @@ export default function ShippingSettingsPage() {
                   center={
                     config.origem_coordenadas ||
                     config.entrega_motoboy?.origem_coordenadas || {
-                      latitude: -25.5348,
-                      longitude: -49.2064,
-                      cidade: 'São José dos Pinhais',
+                      latitude: -25.4223,
+                      longitude: -49.3346,
+                      cidade: 'Curitiba',
                       uf: 'PR',
-                      cep: config.cep_origem || '83005000'
+                      bairro: 'Santo Inácio',
+                      logradouro: 'Rua José Boiko',
+                      numero: '150',
+                      cep: config.cep_origem || '82010600'
                     }
                   }
                   radiusKm={config.entrega_motoboy?.raio_maximo_km || 15}

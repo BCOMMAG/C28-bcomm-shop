@@ -164,6 +164,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "cep": "82010600",
           "bairro": "Santo Inácio",
           "cidade": "Curitiba",
+          "numero": "150",
           "latitude": -25.4223,
           "longitude": -49.3346,
           "logradouro": "Rua José Boiko"
@@ -191,6 +192,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "cep": "82010600",
         "bairro": "Santo Inácio",
         "cidade": "Curitiba",
+        "numero": "150",
         "latitude": -25.4223,
         "longitude": -49.3346,
         "logradouro": "Rua José Boiko"
@@ -302,7 +304,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-02T16:44:10.344+00:00",
+  "updated_at": "2026-11-02T17:15:59.304+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

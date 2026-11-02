@@ -30,6 +30,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
 
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [testCep, setTestCep] = useState('');
+  const [testNumero, setTestNumero] = useState('');
   const [isTestingCep, setIsTestingCep] = useState(false);
   const [testResult, setTestResult] = useState<{
     status: 'inside' | 'outside' | 'error';
@@ -108,7 +109,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         draggable: true
       }).addTo(map);
 
-      marker.bindPopup(`<b>${storeName}</b><br/>${center.logradouro ? `${center.logradouro}, ` : ''}${center.bairro ? `${center.bairro} • ` : ''}${center.cidade || 'Origem'}/${center.uf || 'UF'}<br/><span style="color:#C5A059; font-size:11px;">Arraste para ajustar o ponto exato da loja.</span>`);
+      marker.bindPopup(`<b>${storeName}</b><br/>${center.logradouro ? `${center.logradouro}, ` : ''}${center.numero ? `Nº ${center.numero} • ` : ''}${center.bairro ? `${center.bairro} • ` : ''}${center.cidade || 'Origem'}/${center.uf || 'UF'}<br/><span style="color:#C5A059; font-size:11px;">Arraste para ajustar o ponto exato da loja.</span>`);
 
       marker.on('dragend', () => {
         const position = marker.getLatLng();
@@ -175,7 +176,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
     setTestResult(null);
 
     try {
-      const coords = await fetchCepCoordinates(clean);
+      const coords = await fetchCepCoordinates(clean, testNumero ? { numero: testNumero } : undefined);
       if (!coords || !coords.latitude || !coords.longitude) {
         setTestResult({
           status: 'error',
@@ -192,8 +193,9 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
       );
 
       const isInside = dist <= radiusKm;
+      const numDesc = coords.numero ? `, Nº ${coords.numero}` : testNumero ? `, Nº ${testNumero}` : '';
       const streetDesc = coords.logradouro
-        ? `${coords.logradouro}${coords.bairro ? `, ${coords.bairro}` : ''} (${coords.cidade}/${coords.uf})`
+        ? `${coords.logradouro}${numDesc}${coords.bairro ? `, ${coords.bairro}` : ''} (${coords.cidade}/${coords.uf})`
         : `${coords.cidade || 'Destino'}/${coords.uf || 'UF'}`;
 
       setTestResult({
@@ -224,7 +226,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         });
 
         const destMarker = L.marker([coords.latitude, coords.longitude], { icon: destIcon }).addTo(map);
-        destMarker.bindPopup(`<b>${coords.logradouro || `CEP ${clean}`}</b><br/>${coords.bairro ? `${coords.bairro} • ` : ''}${coords.cidade}/${coords.uf}<br/><b>Distância da Loja:</b> ${dist} km`).openPopup();
+        destMarker.bindPopup(`<b>${coords.logradouro ? `${coords.logradouro}${numDesc}` : `CEP ${clean}`}</b><br/>${coords.bairro ? `${coords.bairro} • ` : ''}${coords.cidade}/${coords.uf}<br/><b>Distância da Loja:</b> ${dist} km`).openPopup();
         testMarkerRef.current = destMarker;
 
         // Linha tracejada conectando a loja e o destino
@@ -326,15 +328,22 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
             type="text"
             value={testCep}
             onChange={(e) => setTestCep(e.target.value)}
-            placeholder="Digite um CEP de teste (ex: 82010-600)"
+            placeholder="Digite o CEP (ex: 82010-600)"
             maxLength={9}
-            className="flex-1 bg-slate-50 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 rounded-lg px-3 py-2 text-slate-900 dark:text-stone-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 bg-slate-50 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 rounded-lg px-3 py-2 text-slate-900 dark:text-stone-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <input
+            type="text"
+            value={testNumero}
+            onChange={(e) => setTestNumero(e.target.value)}
+            placeholder="Nº (Opcional)"
+            className="w-24 bg-slate-50 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 rounded-lg px-3 py-2 text-slate-900 dark:text-stone-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button
             type="button"
             onClick={handleTestCep}
             disabled={isTestingCep}
-            className="px-4 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            className="px-4 py-2 bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 text-xs"
           >
             {isTestingCep ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
             <span>Testar</span>
