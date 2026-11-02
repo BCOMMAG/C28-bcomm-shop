@@ -1498,8 +1498,8 @@ export default function CheckoutPage() {
                                       <span className="text-xs font-bold block text-[#1A1918] dark:text-[#FAF8F5] truncate">
                                         {opt.name}
                                       </span>
-                                      <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block">
-                                        {opt.deliveryDays}
+                                      <span className="text-[10px] text-[#78716C] dark:text-[#A8A29E] block truncate">
+                                        {opt.description || opt.deliveryDays}
                                       </span>
                                     </div>
                                   </div>

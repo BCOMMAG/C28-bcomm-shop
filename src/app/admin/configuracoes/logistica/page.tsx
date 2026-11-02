@@ -36,9 +36,12 @@ import {
   CONFIG_LOGISTICA_DEFAULT,
   SERVICOS_PADRAO_MELHOR_ENVIO,
   TransportadoraHabilitada,
-  FaixaDescontoProgressivo
+  FaixaDescontoProgressivo,
+  EntregaMotoboyConfig,
+  CoordenadasGeograficas
 } from '@/lib/shipping-engine';
 import { fetchAddressByCep, fetchStoreShippingOptions } from '@/utils/shipping';
+import { LogisticsRadiusMap } from '@/components/admin/LogisticsRadiusMap';
 
 export default function ShippingSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
@@ -233,8 +236,8 @@ export default function ShippingSettingsPage() {
         prazoManuseioDias: Number(config.prazo_manuseio_dias || 1),
         retiradaBoutiqueAtiva: Boolean(config.retirada_boutique_ativa),
         instrucoesRetirada: config.instrucoes_retirada,
-        entregaLocalAtiva: Boolean(config.entrega_local_ativa),
-        entregaLocalTaxa: Number(config.entrega_local_taxa || 18.00),
+        entregaLocalAtiva: Boolean(config.entrega_motoboy?.ativo ?? config.entrega_local_ativa),
+        entregaLocalTaxa: Number(config.entrega_motoboy?.taxa_fixa_reais ?? config.entrega_local_taxa ?? 18.00),
         entregaLocalBairros: config.entrega_local_bairros,
         logisticaAvancada: config
       });
@@ -822,54 +825,468 @@ export default function ShippingSettingsPage() {
           </div>
         </div>
 
-        {/* Motoboy Express */}
-        <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-4 text-xs">
+        {/* Motoboy Express com Raio Geográfico e Mapa Interativo */}
+        <div className="p-5 rounded-xl border border-slate-200 bg-white space-y-5 text-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold">
-                <Truck className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold">
+                <Truck className="w-4.5 h-4.5" />
               </div>
               <div>
-                <span className="font-bold text-slate-900 block">Entrega Expressa via Motoboy</span>
-                <span className="text-[11px] text-slate-500">Entrega no mesmo dia para pedidos locais</span>
+                <span className="font-bold text-slate-900 text-sm block">Entrega Expressa via Motoboy</span>
+                <span className="text-[11px] text-slate-500">
+                  Delimitação inteligente por raio geográfico em quilômetros com base no endereço da loja física
+                </span>
               </div>
             </div>
 
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={config.entrega_local_ativa}
-                onChange={(e) => setConfig((prev) => ({ ...prev, entrega_local_ativa: e.target.checked }))}
+                checked={config.entrega_motoboy?.ativo ?? config.entrega_local_ativa ?? true}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setConfig((prev) => ({
+                    ...prev,
+                    entrega_local_ativa: val,
+                    entrega_motoboy: {
+                      ...(prev.entrega_motoboy || {
+                        ativo: val,
+                        raio_maximo_km: 15,
+                        taxa_tipo: 'fixa',
+                        taxa_fixa_reais: Number(prev.entrega_local_taxa || 18.00),
+                        horario_limite_mesmo_dia: '14:00',
+                        dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                      }),
+                      ativo: val
+                    }
+                  }));
+                }}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
             </label>
           </div>
 
-          {config.entrega_local_ativa && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
-              <div>
-                <label className="block text-slate-700 mb-1 font-bold">Taxa Fixa do Motoboy (R$)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={config.entrega_local_taxa ?? 18.00}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, entrega_local_taxa: Number(e.target.value) }))}
-                  placeholder="18.00"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+          {(config.entrega_motoboy?.ativo ?? config.entrega_local_ativa ?? true) && (
+            <div className="space-y-5 pt-3 border-t border-slate-100 animate-fadeIn">
+              {/* Nome de Exibição e Raio */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold">Nome Exibido na Vitrine / Checkout</label>
+                  <input
+                    type="text"
+                    value={config.entrega_motoboy?.nome_personalizado || 'Entrega Expressa via Motoboy'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setConfig((prev) => ({
+                        ...prev,
+                        entrega_motoboy: {
+                          ...(prev.entrega_motoboy || {
+                            ativo: true,
+                            raio_maximo_km: 15,
+                            taxa_tipo: 'fixa',
+                            taxa_fixa_reais: 18.00,
+                            horario_limite_mesmo_dia: '14:00',
+                            dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                          }),
+                          nome_personalizado: val
+                        }
+                      }));
+                    }}
+                    placeholder="Ex: Motoboy Express • Mesmo Dia"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-slate-700 font-bold">Raio Máximo de Atendimento (Km)</label>
+                    <span className="text-emerald-700 font-mono font-bold text-sm bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {config.entrega_motoboy?.raio_maximo_km || 15} km
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={config.entrega_motoboy?.raio_maximo_km || 15}
+                    onChange={(e) => {
+                      const km = Number(e.target.value);
+                      setConfig((prev) => ({
+                        ...prev,
+                        entrega_motoboy: {
+                          ...(prev.entrega_motoboy || {
+                            ativo: true,
+                            raio_maximo_km: 15,
+                            taxa_tipo: 'fixa',
+                            taxa_fixa_reais: 18.00,
+                            horario_limite_mesmo_dia: '14:00',
+                            dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                          }),
+                          raio_maximo_km: km
+                        }
+                      }));
+                    }}
+                    className="w-full accent-emerald-600 cursor-pointer"
+                  />
+                  <div className="flex gap-1.5 mt-2">
+                    {[5, 10, 15, 20, 25, 35].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setConfig((prev) => ({
+                            ...prev,
+                            entrega_motoboy: {
+                              ...(prev.entrega_motoboy || {
+                                ativo: true,
+                                raio_maximo_km: 15,
+                                taxa_tipo: 'fixa',
+                                taxa_fixa_reais: 18.00,
+                                horario_limite_mesmo_dia: '14:00',
+                                dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                              }),
+                              raio_maximo_km: preset
+                            }
+                          }));
+                        }}
+                        className={`flex-1 py-1 text-[10px] font-bold rounded border transition-colors cursor-pointer ${
+                          (config.entrega_motoboy?.raio_maximo_km || 15) === preset
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-500'
+                        }`}
+                      >
+                        {preset} km
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* MAPA INTERATIVO AO VIVO */}
+              <div className="pt-2">
+                <label className="block text-slate-700 mb-2 font-bold flex items-center justify-between">
+                  <span>Visualização Espacial no Mapa da Região:</span>
+                  <span className="text-[11px] text-slate-500 font-normal">
+                    Arraste o pino para fixar o ponto exato da loja física
+                  </span>
+                </label>
+                <LogisticsRadiusMap
+                  center={
+                    config.origem_coordenadas ||
+                    config.entrega_motoboy?.origem_coordenadas || {
+                      latitude: -25.5348,
+                      longitude: -49.2064,
+                      cidade: 'São José dos Pinhais',
+                      uf: 'PR',
+                      cep: config.cep_origem || '83005000'
+                    }
+                  }
+                  radiusKm={config.entrega_motoboy?.raio_maximo_km || 15}
+                  storeName={currentTenant?.nome || 'Boutique Física'}
+                  onCoordinatesChange={(newCoords) => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      origem_coordenadas: newCoords,
+                      entrega_motoboy: {
+                        ...(prev.entrega_motoboy || {
+                          ativo: true,
+                          raio_maximo_km: 15,
+                          taxa_tipo: 'fixa',
+                          taxa_fixa_reais: 18.00,
+                          horario_limite_mesmo_dia: '14:00',
+                          dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                        }),
+                        origem_coordenadas: newCoords
+                      }
+                    }));
+                  }}
+                  onRadiusChange={(newRadius) => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      entrega_motoboy: {
+                        ...(prev.entrega_motoboy || {
+                          ativo: true,
+                          raio_maximo_km: 15,
+                          taxa_tipo: 'fixa',
+                          taxa_fixa_reais: 18.00,
+                          horario_limite_mesmo_dia: '14:00',
+                          dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                        }),
+                        raio_maximo_km: newRadius
+                      }
+                    }));
+                  }}
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-slate-700 mb-1 font-bold">Cidades e Bairros Atendidos</label>
+              {/* Modelo de Cobrança: Taxa Fixa vs Faixas por Distância */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <label className="block text-slate-800 font-bold">Modelo de Cobrança da Taxa de Entrega:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    className={`p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer transition-all ${
+                      (config.entrega_motoboy?.taxa_tipo || 'fixa') === 'fixa'
+                        ? 'bg-emerald-50/50 border-emerald-500 shadow-xs ring-1 ring-emerald-500/30'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="taxa_tipo"
+                      checked={(config.entrega_motoboy?.taxa_tipo || 'fixa') === 'fixa'}
+                      onChange={() => {
+                        setConfig((prev) => ({
+                          ...prev,
+                          entrega_motoboy: {
+                            ...(prev.entrega_motoboy || {
+                              ativo: true,
+                              raio_maximo_km: 15,
+                              taxa_tipo: 'fixa',
+                              taxa_fixa_reais: 18.00,
+                              horario_limite_mesmo_dia: '14:00',
+                              dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                            }),
+                            taxa_tipo: 'fixa'
+                          }
+                        }));
+                      }}
+                      className="accent-emerald-600 mt-0.5"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block text-xs">Taxa Única Fixa</span>
+                      <span className="text-[11px] text-slate-500">Valor igual para qualquer endereço dentro do raio</span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer transition-all ${
+                      config.entrega_motoboy?.taxa_tipo === 'por_faixa_km'
+                        ? 'bg-emerald-50/50 border-emerald-500 shadow-xs ring-1 ring-emerald-500/30'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="taxa_tipo"
+                      checked={config.entrega_motoboy?.taxa_tipo === 'por_faixa_km'}
+                      onChange={() => {
+                        setConfig((prev) => ({
+                          ...prev,
+                          entrega_motoboy: {
+                            ...(prev.entrega_motoboy || {
+                              ativo: true,
+                              raio_maximo_km: 15,
+                              taxa_tipo: 'por_faixa_km',
+                              taxa_fixa_reais: 18.00,
+                              horario_limite_mesmo_dia: '14:00',
+                              dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                            }),
+                            taxa_tipo: 'por_faixa_km',
+                            faixas_distancia: prev.entrega_motoboy?.faixas_distancia || [
+                              { ate_km: 5, valor_reais: 12.00 },
+                              { ate_km: 15, valor_reais: 18.00 },
+                              { ate_km: 25, valor_reais: 28.00 }
+                            ]
+                          }
+                        }));
+                      }}
+                      className="accent-emerald-600 mt-0.5"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block text-xs">Tabela por Faixas de Distância</span>
+                      <span className="text-[11px] text-slate-500">Valor aumenta conforme a distância em quilômetros</span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Input de Taxa Fixa */}
+                {(config.entrega_motoboy?.taxa_tipo || 'fixa') === 'fixa' ? (
+                  <div className="pt-2">
+                    <label className="block text-slate-700 mb-1 font-bold">Valor da Taxa Fixa (R$)</label>
+                    <div className="relative max-w-xs">
+                      <span className="absolute left-3 top-2.5 text-slate-400 font-bold">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={config.entrega_motoboy?.taxa_fixa_reais ?? config.entrega_local_taxa ?? 18.00}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setConfig((prev) => ({
+                            ...prev,
+                            entrega_local_taxa: val,
+                            entrega_motoboy: {
+                              ...(prev.entrega_motoboy || {
+                                ativo: true,
+                                raio_maximo_km: 15,
+                                taxa_tipo: 'fixa',
+                                taxa_fixa_reais: 18.00,
+                                horario_limite_mesmo_dia: '14:00',
+                                dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                              }),
+                              taxa_fixa_reais: val
+                            }
+                          }));
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Tabela de Faixas por Distância */
+                  <div className="pt-2 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-700 block">Faixas Configuradas:</span>
+                    <div className="space-y-1.5">
+                      {(config.entrega_motoboy?.faixas_distancia || [
+                        { ate_km: 5, valor_reais: 12.00 },
+                        { ate_km: 15, valor_reais: 18.00 },
+                        { ate_km: 25, valor_reais: 28.00 }
+                      ]).map((faixa, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="text-slate-500 text-[11px]">Até:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={faixa.ate_km}
+                            onChange={(e) => {
+                              const km = Number(e.target.value);
+                              setConfig((prev) => {
+                                const current = [...(prev.entrega_motoboy?.faixas_distancia || [])];
+                                current[idx] = { ...current[idx], ate_km: km };
+                                return {
+                                  ...prev,
+                                  entrega_motoboy: { ...prev.entrega_motoboy!, faixas_distancia: current }
+                                };
+                              });
+                            }}
+                            className="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 font-mono font-bold text-xs"
+                          />
+                          <span className="text-slate-500 text-[11px]">km → Valor: R$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={faixa.valor_reais}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setConfig((prev) => {
+                                const current = [...(prev.entrega_motoboy?.faixas_distancia || [])];
+                                current[idx] = { ...current[idx], valor_reais: val };
+                                return {
+                                  ...prev,
+                                  entrega_motoboy: { ...prev.entrega_motoboy!, faixas_distancia: current }
+                                };
+                              });
+                            }}
+                            className="w-20 bg-slate-50 border border-slate-200 rounded px-2 py-1 font-mono font-bold text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Horário de Corte e Valor Mínimo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold">Horário Limite para Pedidos no Dia (Corte)</label>
+                  <input
+                    type="time"
+                    value={config.entrega_motoboy?.horario_limite_mesmo_dia || '14:00'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setConfig((prev) => ({
+                        ...prev,
+                        entrega_motoboy: {
+                          ...(prev.entrega_motoboy || {
+                            ativo: true,
+                            raio_maximo_km: 15,
+                            taxa_tipo: 'fixa',
+                            taxa_fixa_reais: 18.00,
+                            horario_limite_mesmo_dia: '14:00',
+                            dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                          }),
+                          horario_limite_mesmo_dia: val
+                        }
+                      }));
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Pedidos aprovados após este horário serão agendados para o próximo dia útil.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold">Valor Mínimo da Sacola (Opcional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-bold">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={config.entrega_motoboy?.valor_minimo_pedido || 0}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setConfig((prev) => ({
+                          ...prev,
+                          entrega_motoboy: {
+                            ...(prev.entrega_motoboy || {
+                              ativo: true,
+                              raio_maximo_km: 15,
+                              taxa_tipo: 'fixa',
+                              taxa_fixa_reais: 18.00,
+                              horario_limite_mesmo_dia: '14:00',
+                              dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                            }),
+                            valor_minimo_pedido: val
+                          }
+                        }));
+                      }}
+                      placeholder="0.00 (Sem valor mínimo)"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Deixe 0 para permitir motoboy em qualquer valor de compra.
+                  </span>
+                </div>
+              </div>
+
+              {/* Exceções: Bairros Excluídos */}
+              <div>
+                <label className="block text-slate-700 mb-1 font-bold">Bairros ou Regiões Excluídas (Opcional)</label>
                 <input
                   type="text"
-                  value={config.entrega_local_bairros || ''}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, entrega_local_bairros: e.target.value }))}
-                  placeholder="Curitiba e Região Metropolitana"
+                  value={(config.entrega_motoboy?.bairros_excluidos || []).join(', ')}
+                  onChange={(e) => {
+                    const list = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                    setConfig((prev) => ({
+                      ...prev,
+                      entrega_motoboy: {
+                        ...(prev.entrega_motoboy || {
+                          ativo: true,
+                          raio_maximo_km: 15,
+                          taxa_tipo: 'fixa',
+                          taxa_fixa_reais: 18.00,
+                          horario_limite_mesmo_dia: '14:00',
+                          dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+                        }),
+                        bairros_excluidos: list
+                      }
+                    }));
+                  }}
+                  placeholder="Ex: Bairro Perigoso, Ilha dos Valadares (separe por vírgula)"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                 />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  Bairros dentro do raio que o motoboy NÃO atende por restrições operacionais ou de segurança.
+                </span>
               </div>
             </div>
           )}

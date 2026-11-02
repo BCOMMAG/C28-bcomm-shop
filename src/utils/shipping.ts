@@ -2,8 +2,21 @@ import {
   calculateStoreShippingRates,
   CONFIG_LOGISTICA_DEFAULT,
   SERVICOS_PADRAO_MELHOR_ENVIO,
-  LogisticaAvancadaConfig
+  LogisticaAvancadaConfig,
+  calculateGeodesicDistanceKm,
+  fetchCepCoordinates,
+  EntregaMotoboyConfig,
+  CoordenadasGeograficas
 } from '@/lib/shipping-engine';
+
+export {
+  calculateGeodesicDistanceKm,
+  fetchCepCoordinates
+};
+export type {
+  EntregaMotoboyConfig,
+  CoordenadasGeograficas
+};
 
 export interface ViaCepResponse {
   cep: string;
@@ -293,6 +306,25 @@ export function calculateShippingOptions(
       formattedPrice: 'Grátis',
       deliveryDays: 'Pronta Entrega',
       iconType: 'pickup'
+    });
+  }
+
+  // 6. Motoboy Express (Apenas se ativo na loja e região do lojista)
+  const isMotoboyAtivo = cfg.entrega_motoboy?.ativo !== undefined
+    ? cfg.entrega_motoboy.ativo
+    : Boolean(cfg.entrega_local_ativa);
+
+  const ufLoja = cfg.origem_coordenadas?.uf || 'PR';
+  if (isMotoboyAtivo && (!uf || uf.toUpperCase() === ufLoja.toUpperCase())) {
+    const taxaMotoboy = cfg.entrega_motoboy?.taxa_fixa_reais ?? Number(cfg.entrega_local_taxa || 18.00);
+    options.push({
+      id: 'motoboy_express',
+      name: cfg.entrega_motoboy?.nome_personalizado || 'Entrega Expressa via Motoboy',
+      description: 'Hoje ou próximo dia útil • Pedidos locais',
+      price: taxaMotoboy,
+      formattedPrice: `R$ ${taxaMotoboy.toFixed(2).replace('.', ',')}`,
+      deliveryDays: 'Hoje ou próximo dia útil',
+      iconType: 'sedex'
     });
   }
 

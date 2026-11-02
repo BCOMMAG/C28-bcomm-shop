@@ -60,12 +60,46 @@ export interface LogisticaAvancadaConfig {
   // Serviços e Transportadoras
   servicos_habilitados: TransportadoraHabilitada[];
 
-  // Modalidades Locais
+  // Modalidades Locais (Boutique Física & Raio Geográfico)
   entrega_local_ativa?: boolean;
   entrega_local_taxa?: number;
   entrega_local_bairros?: string;
+  entrega_motoboy?: EntregaMotoboyConfig;
   retirada_boutique_ativa?: boolean;
   instrucoes_retirada?: string;
+  origem_coordenadas?: CoordenadasGeograficas;
+}
+
+export interface EntregaMotoboyFaixaPreco {
+  ate_km: number;
+  valor_reais: number;
+}
+
+export interface CoordenadasGeograficas {
+  latitude: number;
+  longitude: number;
+  cidade?: string;
+  uf?: string;
+  bairro?: string;
+  logradouro?: string;
+  cep?: string;
+}
+
+export interface EntregaMotoboyConfig {
+  ativo: boolean;
+  nome_personalizado?: string;
+  modo_cobertura?: 'raio_km' | 'bairros_especificos' | 'hibrido';
+  raio_maximo_km: number;
+  bairros_excluidos?: string[];
+  taxa_tipo: 'fixa' | 'por_faixa_km';
+  taxa_fixa_reais: number;
+  faixas_distancia?: EntregaMotoboyFaixaPreco[];
+  valor_minimo_pedido?: number;
+  permite_frete_gratis?: boolean;
+  horario_limite_mesmo_dia?: string;
+  dias_semana_disponiveis?: number[];
+  descricao_vitrine?: string;
+  origem_coordenadas?: CoordenadasGeograficas;
 }
 
 export const SERVICOS_PADRAO_MELHOR_ENVIO: TransportadoraHabilitada[] = [
@@ -149,13 +183,164 @@ export const CONFIG_LOGISTICA_DEFAULT: LogisticaAvancadaConfig = {
   entrega_local_ativa: true,
   entrega_local_taxa: 18.00,
   entrega_local_bairros: 'Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)',
+  entrega_motoboy: {
+    ativo: true,
+    nome_personalizado: 'Entrega Expressa via Motoboy',
+    modo_cobertura: 'raio_km',
+    raio_maximo_km: 15,
+    taxa_tipo: 'fixa',
+    taxa_fixa_reais: 18.00,
+    faixas_distancia: [
+      { ate_km: 5, valor_reais: 12.00 },
+      { ate_km: 15, valor_reais: 18.00 },
+      { ate_km: 25, valor_reais: 28.00 }
+    ],
+    valor_minimo_pedido: 0,
+    permite_frete_gratis: false,
+    horario_limite_mesmo_dia: '14:00',
+    dias_semana_disponiveis: [1, 2, 3, 4, 5, 6],
+    descricao_vitrine: 'Entrega no mesmo dia para pedidos aprovados até as 14h',
+    origem_coordenadas: {
+      latitude: -25.5348,
+      longitude: -49.2064,
+      cidade: 'São José dos Pinhais',
+      uf: 'PR',
+      cep: '83005000'
+    }
+  },
   retirada_boutique_ativa: true,
-  instrucoes_retirada: 'Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.'
+  instrucoes_retirada: 'Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.',
+  origem_coordenadas: {
+    latitude: -25.5348,
+    longitude: -49.2064,
+    cidade: 'São José dos Pinhais',
+    uf: 'PR',
+    cep: '83005000'
+  }
 };
 
 // Cache simples em memória para cotações (TTL de 60 minutos)
 const shippingCache = new Map<string, { timestamp: number; options: ShippingOption[] }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+// Cache de coordenadas geográficas de CEPs
+const cepCoordinatesCache = new Map<string, CoordenadasGeograficas>();
+
+// Coordenadas conhecidas dos CEPs padrão para resposta ultra-rápida sem delay de rede
+cepCoordinatesCache.set('83005000', {
+  latitude: -25.5348,
+  longitude: -49.2064,
+  cidade: 'São José dos Pinhais',
+  uf: 'PR',
+  cep: '83005000'
+});
+cepCoordinatesCache.set('82010600', {
+  latitude: -25.4055,
+  longitude: -49.3082,
+  cidade: 'Curitiba',
+  uf: 'PR',
+  bairro: 'Cascatinha',
+  cep: '82010600'
+});
+
+/**
+ * Calcula a distância geodésica em quilômetros corrigida pela malha viária urbana
+ * Utiliza a fórmula de Haversine com fator de conversão linear -> viário (1.25x)
+ */
+export function calculateGeodesicDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Raio da Terra em km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightDistance = R * c;
+
+  // Fator de correção viária urbana (1.25x da linha reta para esquinas e trânsito)
+  return Number((straightDistance * 1.25).toFixed(1));
+}
+
+/**
+ * Consulta coordenadas geográficas de um CEP (BrasilAPI v2 -> Nominatim -> Fallback de Cidade)
+ */
+export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeograficas | null> {
+  const cleanCep = (cep || '').replace(/\D/g, '');
+  if (cleanCep.length !== 8) return null;
+
+  if (cepCoordinatesCache.has(cleanCep)) {
+    return cepCoordinatesCache.get(cleanCep)!;
+  }
+
+  // 1. Tenta BrasilAPI v2 (Gratuita, rápida, com latitude/longitude nativa)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+    const res = await fetch(`https://brasilapi.com.br/api/cep/v2/${cleanCep}`, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const coords = data?.location?.coordinates;
+      if (coords && coords.latitude && coords.longitude) {
+        const result: CoordenadasGeograficas = {
+          latitude: Number(coords.latitude),
+          longitude: Number(coords.longitude),
+          cidade: data.city,
+          uf: data.state,
+          bairro: data.neighborhood,
+          logradouro: data.street,
+          cep: cleanCep
+        };
+        cepCoordinatesCache.set(cleanCep, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    // Prossegue para o próximo fallback
+  }
+
+  // 2. Fallback Nominatim / OpenStreetMap
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${cleanCep}&country=Brazil&format=json&limit=1`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'BCOMM-Shop-Logistics/1.0' }
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const items = await res.json();
+      if (Array.isArray(items) && items.length > 0 && items[0].lat && items[0].lon) {
+        const result: CoordenadasGeograficas = {
+          latitude: Number(items[0].lat),
+          longitude: Number(items[0].lon),
+          cep: cleanCep
+        };
+        cepCoordinatesCache.set(cleanCep, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    // Prossegue
+  }
+
+  return null;
+}
 
 /**
  * Consulta a API do Melhor Envio (Sandbox ou Produção)
@@ -429,35 +614,126 @@ export async function calculateStoreShippingRates(params: {
     }];
   }
 
-  // 7. Injeta modalidades locais se o CEP for da região da loja
-  const isLocalCity = cidadeDestino.toLowerCase().includes('curitiba') ||
-                      cidadeDestino.toLowerCase().includes('são josé dos pinhais') ||
-                      cleanDestino.startsWith('80') || cleanDestino.startsWith('81') || cleanDestino.startsWith('82') || cleanDestino.startsWith('83');
+  // 7. Modalidades Locais (Retirada na Boutique & Entrega Expressa via Motoboy por Raio)
+  const motoboyCfg: EntregaMotoboyConfig = config.entrega_motoboy || {
+    ativo: config.entrega_local_ativa !== false,
+    nome_personalizado: 'Entrega Expressa via Motoboy',
+    modo_cobertura: 'raio_km',
+    raio_maximo_km: 15,
+    taxa_tipo: 'fixa',
+    taxa_fixa_reais: Number(config.entrega_local_taxa || 18.00),
+    horario_limite_mesmo_dia: '14:00',
+    dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+  };
 
-  if (isLocalCity) {
-    // Retirada na Loja
-    if (config.retirada_boutique_ativa) {
-      finalOptions.unshift({
-        id: 'retirada_boutique',
-        name: 'Retirada na Boutique Física',
-        description: 'Pronto em até 2 horas úteis • Sem custo de frete',
-        price: 0,
-        formattedPrice: 'Grátis',
-        deliveryDays: 'Em até 2 horas úteis',
-        iconType: 'pickup'
-      });
+  // Coordenadas da Loja de Origem
+  const coordsOrigem = config.origem_coordenadas || motoboyCfg.origem_coordenadas || (
+    config.cep_origem ? await fetchCepCoordinates(config.cep_origem) : null
+  ) || {
+    latitude: -25.5348,
+    longitude: -49.2064,
+    cidade: 'São José dos Pinhais',
+    uf: 'PR',
+    cep: config.cep_origem || '83005000'
+  };
+
+  // Coordenadas do Destino do Cliente
+  const coordsDestino = await fetchCepCoordinates(cleanDestino);
+
+  let distanciaCalculadaKm: number | null = null;
+  if (coordsOrigem && coordsDestino) {
+    distanciaCalculadaKm = calculateGeodesicDistanceKm(
+      coordsOrigem.latitude,
+      coordsOrigem.longitude,
+      coordsDestino.latitude,
+      coordsDestino.longitude
+    );
+  }
+
+  // Fallback de proximidade para quando não houver coordenadas exatas
+  const isCityMatch = Boolean(
+    (cidadeDestino && coordsOrigem.cidade && cidadeDestino.toLowerCase() === coordsOrigem.cidade.toLowerCase()) ||
+    (coordsDestino?.cidade && coordsOrigem.cidade && coordsDestino.cidade.toLowerCase() === coordsOrigem.cidade.toLowerCase()) ||
+    (cleanDestino.slice(0, 2) === (coordsOrigem.cep || '83005000').replace(/\D/g, '').slice(0, 2))
+  );
+
+  // Elegibilidade da Retirada na Boutique
+  const isEligivelRetirada = (distanciaCalculadaKm !== null && distanciaCalculadaKm <= 60) || isCityMatch;
+  if (config.retirada_boutique_ativa && isEligivelRetirada) {
+    finalOptions.unshift({
+      id: 'retirada_boutique',
+      name: 'Retirada na Boutique Física',
+      description: config.instrucoes_retirada || 'Pronto em até 2 horas úteis • Sem custo de frete',
+      price: 0,
+      formattedPrice: 'Grátis',
+      deliveryDays: 'Em até 2 horas úteis',
+      iconType: 'pickup'
+    });
+  }
+
+  // Elegibilidade do Motoboy com Autonomia Estrita do Lojista
+  if (motoboyCfg.ativo) {
+    const atendeValorMinimo = !motoboyCfg.valor_minimo_pedido || subtotal >= motoboyCfg.valor_minimo_pedido;
+
+    // Checagem de bairros excluídos
+    const isBairroExcluido = Boolean(
+      motoboyCfg.bairros_excluidos &&
+      coordsDestino?.bairro &&
+      motoboyCfg.bairros_excluidos.some(b => coordsDestino.bairro?.toLowerCase().includes(b.toLowerCase()))
+    );
+
+    let isDentroDoRaio = false;
+    if (distanciaCalculadaKm !== null) {
+      isDentroDoRaio = distanciaCalculadaKm <= motoboyCfg.raio_maximo_km;
+    } else if (isCityMatch) {
+      // Se não obteve coordenadas mas é a mesma cidade da loja física e o raio for padrão
+      isDentroDoRaio = motoboyCfg.raio_maximo_km >= 15;
     }
 
-    // Motoboy Express
-    if (config.entrega_local_ativa) {
-      const taxaMotoboy = Number(config.entrega_local_taxa || 18.00);
-      finalOptions.splice(1, 0, {
+    if (atendeValorMinimo && !isBairroExcluido && isDentroDoRaio) {
+      // Determinação da taxa
+      let taxaMotoboy = motoboyCfg.taxa_fixa_reais;
+      if (motoboyCfg.taxa_tipo === 'por_faixa_km' && motoboyCfg.faixas_distancia && distanciaCalculadaKm !== null) {
+        const faixasOrdenadas = [...motoboyCfg.faixas_distancia].sort((a, b) => a.ate_km - b.ate_km);
+        const faixa = faixasOrdenadas.find(f => distanciaCalculadaKm! <= f.ate_km);
+        if (faixa) {
+          taxaMotoboy = faixa.valor_reais;
+        } else if (faixasOrdenadas.length > 0) {
+          taxaMotoboy = faixasOrdenadas[faixasOrdenadas.length - 1].valor_reais;
+        }
+      }
+
+      // Frete Grátis via Motoboy se a loja permitir
+      if (motoboyCfg.permite_frete_gratis && atingiuFreteGratis) {
+        taxaMotoboy = 0;
+      }
+
+      // Horário e Prazo (Horário Oficial de Brasília UTC-3)
+      const agora = new Date();
+      const horaBrasilia = (agora.getUTCHours() - 3 + 24) % 24;
+      const minutoBrasilia = agora.getUTCMinutes();
+      const horaAtualDecimal = horaBrasilia + (minutoBrasilia / 60);
+
+      const [corteHora, corteMin] = (motoboyCfg.horario_limite_mesmo_dia || '14:00').split(':').map(Number);
+      const horarioCorteDecimal = (corteHora || 14) + ((corteMin || 0) / 60);
+
+      const diaSemana = agora.getDay();
+      const isDiaDisponivel = (motoboyCfg.dias_semana_disponiveis || [1, 2, 3, 4, 5, 6]).includes(diaSemana);
+      const isMesmoDia = isDiaDisponivel && horaAtualDecimal < horarioCorteDecimal;
+
+      const prazoTexto = isMesmoDia ? 'Hoje até as 18h' : 'Próximo dia útil';
+      const distanciaDesc = distanciaCalculadaKm !== null ? ` • Aprox. ${distanciaCalculadaKm} km` : '';
+
+      const insertIndex = finalOptions.length > 0 && finalOptions[0].id === 'retirada_boutique' ? 1 : 0;
+      finalOptions.splice(insertIndex, 0, {
         id: 'motoboy_express',
-        name: 'Entrega Expressa via Motoboy',
-        description: 'Entrega no mesmo dia para pedidos aprovados até 14h',
+        name: motoboyCfg.nome_personalizado || 'Entrega Expressa via Motoboy',
+        description: isMesmoDia
+          ? `Entrega hoje para pedidos aprovados até ${motoboyCfg.horario_limite_mesmo_dia || '14:00'}${distanciaDesc}`
+          : `Entrega expressa no próximo dia útil${distanciaDesc}`,
         price: taxaMotoboy,
-        formattedPrice: `R$ ${taxaMotoboy.toFixed(2).replace('.', ',')}`,
-        deliveryDays: 'Hoje ou próximo dia útil',
+        formattedPrice: taxaMotoboy === 0 ? 'Grátis' : `R$ ${taxaMotoboy.toFixed(2).replace('.', ',')}`,
+        deliveryDays: prazoTexto,
         iconType: 'sedex'
       });
     }
