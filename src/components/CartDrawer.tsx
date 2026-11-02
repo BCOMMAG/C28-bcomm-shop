@@ -79,6 +79,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     fetchStoreShippingOptions({
       lojaId: currentTenant?.id,
+      config: currentTenant?.configuracoes_visuais?.logistica_avancada as any,
       cepDestino: savedAddress.cep,
       subtotal,
       totalPecas,
@@ -94,7 +95,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       .catch((err) => {
         console.warn('Fallback frete drawer:', err);
         if (!active) return;
-        setDrawerShippingOptions(calculateShippingOptions(savedAddress.uf, subtotal));
+        setDrawerShippingOptions(calculateShippingOptions(savedAddress.uf, subtotal, currentTenant?.configuracoes_visuais?.logistica_avancada as any));
       })
       .finally(() => {
         if (active) setIsShippingLoading(false);
@@ -103,7 +104,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return () => {
       active = false;
     };
-  }, [savedAddress?.cep, subtotal, totalPecas, currentTenant?.id]);
+  }, [savedAddress?.cep, subtotal, totalPecas, currentTenant?.id, currentTenant?.configuracoes_visuais]);
 
   // Trava a rolagem da página quando a sacola está aberta
   useEffect(() => {
@@ -693,7 +694,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     {isShippingLoading ? (
                       <span className="text-stone-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin inline" /> Calculando...</span>
                     ) : effectiveFreeShipping ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Grátis (VIP)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Grátis (Cortesia da Loja)</span>
                     ) : lowestShipping ? (
                       `${lowestShipping.name} (R$ ${shippingCost.toFixed(2).replace('.', ',')})`
                     ) : (

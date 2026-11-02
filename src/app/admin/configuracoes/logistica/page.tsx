@@ -38,7 +38,7 @@ import {
   TransportadoraHabilitada,
   FaixaDescontoProgressivo
 } from '@/lib/shipping-engine';
-import { fetchAddressByCep } from '@/utils/shipping';
+import { fetchAddressByCep, fetchStoreShippingOptions } from '@/utils/shipping';
 
 export default function ShippingSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
@@ -160,21 +160,17 @@ export default function ShippingSettingsPage() {
     setTestResult(null);
 
     try {
-      const res = await fetch('/api/shipping/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lojaId: tenantId,
-          cepDestino: '01001000', // Praça da Sé, SP
-          subtotal: 250,
-          totalPecas: 1,
-          ufDestino: 'SP',
-          cidadeDestino: 'São Paulo'
-        })
+      const data = await fetchStoreShippingOptions({
+        lojaId: tenantId,
+        config,
+        cepDestino: '01001000', // Praça da Sé, SP
+        subtotal: 250,
+        totalPecas: 1,
+        ufDestino: 'SP',
+        cidadeDestino: 'São Paulo'
       });
 
-      const data = await res.json();
-      if (res.ok && data.success && data.options?.length > 0) {
+      if (data.options?.length > 0) {
         setTestResult({
           success: true,
           message: `Conexão bem-sucedida! ${data.options.length} modalidades calculadas em tempo real com sucesso.`,
@@ -184,7 +180,7 @@ export default function ShippingSettingsPage() {
       } else {
         setTestResult({
           success: false,
-          message: data.error || 'Não foi possível cotar frete com as credenciais informadas.'
+          message: 'Não foi possível cotar frete com as credenciais informadas.'
         });
         showToast('Falha na validação do token.', 'error');
       }
@@ -209,18 +205,14 @@ export default function ShippingSettingsPage() {
 
     setIsSimulating(true);
     try {
-      const res = await fetch('/api/shipping/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lojaId: tenantId,
-          cepDestino: cleanCep,
-          subtotal: Number(simuladorSubtotal),
-          totalPecas: Math.max(1, Math.round(Number(simuladorSubtotal) / 150))
-        })
+      const data = await fetchStoreShippingOptions({
+        lojaId: tenantId,
+        config,
+        cepDestino: cleanCep,
+        subtotal: Number(simuladorSubtotal),
+        totalPecas: Math.max(1, Math.round(Number(simuladorSubtotal) / 150))
       });
 
-      const data = await res.json();
       if (data.options) {
         setSimuladorResult(data.options);
       }

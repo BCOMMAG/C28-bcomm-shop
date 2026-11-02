@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       lojaId = DEFAULT_TENANT_ID,
+      config,
       cepDestino,
       subtotal = 0,
       totalPecas = 1,
@@ -27,43 +28,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Busca configurações da loja no Supabase
-    let configLoja: LogisticaAvancadaConfig = CONFIG_LOGISTICA_DEFAULT;
+    // Busca configurações da loja (prioriza payload ou busca no Supabase)
+    let configLoja: LogisticaAvancadaConfig = config || CONFIG_LOGISTICA_DEFAULT;
 
-    try {
-      const supabase = getSupabaseBrowserClient();
-      const { data: loja } = await supabase
-        .from('lojas')
-        .select('configuracoes_visuais')
-        .eq('id', lojaId)
-        .maybeSingle();
+    if (!config) {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: loja } = await supabase
+          .from('lojas')
+          .select('configuracoes_visuais')
+          .eq('id', lojaId)
+          .maybeSingle();
 
-      if (loja?.configuracoes_visuais) {
-        const vis = loja.configuracoes_visuais as any;
-        if (vis.logistica_avancada) {
-          configLoja = {
-            ...CONFIG_LOGISTICA_DEFAULT,
-            ...vis.logistica_avancada
-          };
-        } else {
-          // Retrocompatibilidade com campos simples existentes
-          configLoja = {
-            ...CONFIG_LOGISTICA_DEFAULT,
-            regras_frete_gratis: {
-              ...CONFIG_LOGISTICA_DEFAULT.regras_frete_gratis,
-              valor_minimo_padrao: Number(vis.frete_gratis_valor || 350)
-            },
-            prazo_manuseio_dias: Number(vis.prazo_manuseio_dias ?? 1),
-            entrega_local_ativa: vis.entrega_local_ativa ?? true,
-            entrega_local_taxa: Number(vis.entrega_local_taxa ?? 18.00),
-            entrega_local_bairros: vis.entrega_local_bairros,
-            retirada_boutique_ativa: vis.retirada_boutique_ativa ?? true,
-            instrucoes_retirada: vis.instrucoes_retirada
-          };
+        if (loja?.configuracoes_visuais) {
+          const vis = loja.configuracoes_visuais as any;
+          if (vis.logistica_avancada) {
+            configLoja = {
+              ...CONFIG_LOGISTICA_DEFAULT,
+              ...vis.logistica_avancada
+            };
+          } else {
+            // Retrocompatibilidade com campos simples existentes
+            configLoja = {
+              ...CONFIG_LOGISTICA_DEFAULT,
+              regras_frete_gratis: {
+                ...CONFIG_LOGISTICA_DEFAULT.regras_frete_gratis,
+                valor_minimo_padrao: Number(vis.frete_gratis_valor || 350)
+              },
+              prazo_manuseio_dias: Number(vis.prazo_manuseio_dias ?? 1),
+              entrega_local_ativa: vis.entrega_local_ativa ?? true,
+              entrega_local_taxa: Number(vis.entrega_local_taxa ?? 18.00),
+              entrega_local_bairros: vis.entrega_local_bairros,
+              retirada_boutique_ativa: vis.retirada_boutique_ativa ?? true,
+              instrucoes_retirada: vis.instrucoes_retirada
+            };
+          }
         }
+      } catch (dbErr) {
+        console.warn('⚠️ [api/shipping/calculate] Usando configurações padrão de frete:', dbErr);
       }
-    } catch (dbErr) {
-      console.warn('⚠️ [api/shipping/calculate] Usando configurações padrão de frete:', dbErr);
     }
 
     const result = await calculateStoreShippingRates({

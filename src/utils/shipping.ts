@@ -1,3 +1,10 @@
+import {
+  calculateStoreShippingRates,
+  CONFIG_LOGISTICA_DEFAULT,
+  SERVICOS_PADRAO_MELHOR_ENVIO,
+  LogisticaAvancadaConfig
+} from '@/lib/shipping-engine';
+
 export interface ViaCepResponse {
   cep: string;
   logradouro: string;
@@ -78,6 +85,7 @@ export async function fetchAddressByCep(cep: string): Promise<ViaCepResponse | n
  */
 export async function fetchStoreShippingOptions(params: {
   lojaId?: string;
+  config?: LogisticaAvancadaConfig;
   cepDestino: string;
   subtotal: number;
   totalPecas?: number;
@@ -100,9 +108,10 @@ export async function fetchStoreShippingOptions(params: {
     };
   }
 
+  // 1. Tenta chamar o endpoint /api/shipping/calculate (Cloudflare Pages, Vercel ou Node.js)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     const res = await fetch('/api/shipping/calculate', {
       method: 'POST',
@@ -110,6 +119,7 @@ export async function fetchStoreShippingOptions(params: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lojaId: params.lojaId,
+        config: params.config,
         cepDestino: cleanCep,
         subtotal: params.subtotal,
         totalPecas: params.totalPecas || 1,
@@ -133,84 +143,172 @@ export async function fetchStoreShippingOptions(params: {
       }
     }
   } catch (err) {
-    console.warn('[shipping.ts] Queda de rota /api/shipping/calculate, acionando fallback local:', err);
+    console.warn('[shipping.ts] Queda ou ausência de rota /api/shipping/calculate, acionando motor unificado client-side:', err);
   }
 
-  // Fallback instantâneo
-  const fallbackOpts = calculateShippingOptions(params.ufDestino || '', params.subtotal);
+  // 2. Motor Unificado Client-Side: calcula respeitando integralmente as configurações da loja
+  try {
+    const localResult = await calculateStoreShippingRates({
+      lojaId: params.lojaId,
+      config: params.config,
+      cepDestino: cleanCep,
+      subtotal: params.subtotal,
+      totalPecas: params.totalPecas || 1,
+      ufDestino: params.ufDestino,
+      cidadeDestino: params.cidadeDestino,
+      pesoCustomKg: params.pesoCustomKg
+    });
+
+    if (localResult && localResult.options.length > 0) {
+      return localResult;
+    }
+  } catch (engineErr) {
+    console.warn('[shipping.ts] Erro no motor local, acionando fallback estrito:', engineErr);
+  }
+
+  // 3. Fallback síncrono com respeito estrito às opções do lojista (nada de PAC se estiver desmarcado!)
+  const fallbackOpts = calculateShippingOptions(params.ufDestino || '', params.subtotal, params.config);
   return {
     options: fallbackOpts,
     isFallback: true,
     descontoAplicadoReais: 0,
-    freteGratisQualificado: params.subtotal >= 350
+    freteGratisQualificado: params.subtotal >= (params.config?.regras_frete_gratis?.valor_minimo_padrao || 350)
   };
 }
 
 /**
- * Calcula prazos e valores de frete realistas baseados na UF de destino (Fallback local)
+ * Calcula prazos e valores de frete com respeito integral à autonomia de transportadoras da loja
  */
-export function calculateShippingOptions(uf: string, subtotal: number = 0): ShippingOption[] {
+export function calculateShippingOptions(
+  uf: string,
+  subtotal: number = 0,
+  config?: LogisticaAvancadaConfig
+): ShippingOption[] {
+  const cfg = config || CONFIG_LOGISTICA_DEFAULT;
   const ufUpper = (uf || '').toUpperCase().trim();
-  const isFreeShipping = subtotal >= 350;
-
-  // Região Sudeste (Origem Boutique)
   const isSudeste = ['SP', 'RJ', 'MG', 'ES'].includes(ufUpper);
-  // Região Sul e Centro-Oeste
   const isSulOuCentro = ['PR', 'SC', 'RS', 'DF', 'GO', 'MT', 'MS'].includes(ufUpper);
 
   let sedexPrice = 18.90;
   let sedexDays = '1 a 2 dias úteis';
-
   let pacPrice = 14.50;
   let pacDays = '3 a 5 dias úteis';
 
   if (isSudeste) {
     sedexPrice = 18.90;
     sedexDays = '1 a 2 dias úteis';
-    pacPrice = isFreeShipping ? 0 : 14.50;
+    pacPrice = 14.50;
     pacDays = '3 a 5 dias úteis';
   } else if (isSulOuCentro) {
     sedexPrice = 27.90;
     sedexDays = '2 a 4 dias úteis';
-    pacPrice = isFreeShipping ? 0 : 21.00;
+    pacPrice = 21.00;
     pacDays = '5 a 7 dias úteis';
   } else {
-    // Norte e Nordeste
     sedexPrice = 38.90;
     sedexDays = '3 a 6 dias úteis';
-    pacPrice = isFreeShipping ? 0 : 28.50;
+    pacPrice = 28.50;
     pacDays = '7 a 12 dias úteis';
   }
 
-  const options: ShippingOption[] = [
-    {
+  const servicos = cfg.servicos_habilitados || SERVICOS_PADRAO_MELHOR_ENVIO;
+  const sedexConfig = servicos.find(s => s.codigo === 'correios_sedex' || s.id === 1);
+  const pacConfig = servicos.find(s => s.codigo === 'correios_pac' || s.id === 2);
+  const jadlogComConfig = servicos.find(s => s.codigo === 'jadlog_com' || s.id === 3);
+  const jadlogPkgConfig = servicos.find(s => s.codigo === 'jadlog_package' || s.id === 4);
+
+  const options: ShippingOption[] = [];
+
+  // 1. Sedex (Apenas se ativo na loja)
+  if (sedexConfig && sedexConfig.ativo) {
+    const nomeSedex = cfg.modo_exibicao === 'white_label'
+      ? 'Entrega Expressa Prioritária'
+      : (sedexConfig.nome_personalizado || 'SEDEX');
+    options.push({
       id: 'sedex',
-      name: 'Sedex Express / Correios',
+      name: nomeSedex,
       description: `${sedexDays} • Envio Prioritário`,
       price: sedexPrice,
       formattedPrice: `R$ ${sedexPrice.toFixed(2).replace('.', ',')}`,
       deliveryDays: sedexDays,
       iconType: 'sedex'
-    },
-    {
+    });
+  }
+
+  // 2. PAC (Apenas se ativo na loja)
+  if (pacConfig && pacConfig.ativo) {
+    const nomePac = cfg.modo_exibicao === 'white_label'
+      ? 'Entrega Econômica Padrão'
+      : (pacConfig.nome_personalizado || 'PAC');
+    options.push({
       id: 'pac',
-      name: 'PAC Padrão / Correios',
+      name: nomePac,
       description: `${pacDays} • Envio Econômico Segurado`,
       price: pacPrice,
-      formattedPrice: pacPrice === 0 ? 'Grátis' : `R$ ${pacPrice.toFixed(2).replace('.', ',')}`,
+      formattedPrice: `R$ ${pacPrice.toFixed(2).replace('.', ',')}`,
       deliveryDays: pacDays,
       iconType: 'pac'
-    },
-    {
+    });
+  }
+
+  // 3. Jadlog .Com (Apenas se ativo na loja)
+  if (jadlogComConfig && jadlogComConfig.ativo) {
+    const nomeJadlogCom = cfg.modo_exibicao === 'white_label'
+      ? 'Jadlog Express'
+      : (jadlogComConfig.nome_personalizado || 'Jadlog .Com');
+    options.push({
+      id: 'jadlog_com',
+      name: nomeJadlogCom,
+      description: `${sedexDays} • Envio Rápido Rodoviário`,
+      price: Number((sedexPrice * 0.95).toFixed(2)),
+      formattedPrice: `R$ ${(sedexPrice * 0.95).toFixed(2).replace('.', ',')}`,
+      deliveryDays: sedexDays,
+      iconType: 'sedex'
+    });
+  }
+
+  // 4. Jadlog .Package (Apenas se ativo na loja)
+  if (jadlogPkgConfig && jadlogPkgConfig.ativo) {
+    const nomeJadlogPkg = cfg.modo_exibicao === 'white_label'
+      ? 'Jadlog Econômico'
+      : (jadlogPkgConfig.nome_personalizado || 'Jadlog .Package');
+    options.push({
+      id: 'jadlog_package',
+      name: nomeJadlogPkg,
+      description: `${pacDays} • Envio Econômico`,
+      price: Number((pacPrice * 0.9).toFixed(2)),
+      formattedPrice: `R$ ${(pacPrice * 0.9).toFixed(2).replace('.', ',')}`,
+      deliveryDays: pacDays,
+      iconType: 'pac'
+    });
+  }
+
+  // 5. Retirada na Boutique (Apenas se ativa na loja)
+  if (cfg.retirada_boutique_ativa) {
+    options.push({
       id: 'pickup',
-      name: 'Retirada VIP na Boutique',
-      description: 'Disponível após agendamento • Atendimento VIP',
+      name: 'Retirada na Boutique Física',
+      description: cfg.instrucoes_retirada || 'Disponível em até 2 horas úteis • Sem custo de frete',
       price: 0,
       formattedPrice: 'Grátis',
       deliveryDays: 'Pronta Entrega',
       iconType: 'pickup'
-    }
-  ];
+    });
+  }
+
+  // Garantia: Se todas as opções foram desmarcadas, expõe ao menos o Sedex ativo
+  if (options.length === 0) {
+    options.push({
+      id: 'sedex',
+      name: sedexConfig?.nome_personalizado || 'SEDEX Express Prioritário',
+      description: `${sedexDays} • Envio Prioritário`,
+      price: sedexPrice,
+      formattedPrice: `R$ ${sedexPrice.toFixed(2).replace('.', ',')}`,
+      deliveryDays: sedexDays,
+      iconType: 'sedex'
+    });
+  }
 
   return options;
 }
+

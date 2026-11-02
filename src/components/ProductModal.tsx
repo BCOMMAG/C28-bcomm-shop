@@ -251,7 +251,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       if (savedCep && savedAddress) {
         setCepInput(formatCep(savedCep));
         setShippingAddress(savedAddress);
-        setShippingOptions(calculateShippingOptions(savedAddress.uf, product.price));
+        setShippingOptions(calculateShippingOptions(savedAddress.uf, product.price, currentTenant?.configuracoes_visuais?.logistica_avancada as any));
         setShippingResult(true);
       } else {
         setShippingResult(false);
@@ -259,7 +259,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         setCepInput('');
       }
     }
-  }, [product, savedCep, savedAddress]);
+  }, [product, savedCep, savedAddress, currentTenant?.configuracoes_visuais]);
 
   // Controle de reprodução do vídeo
   useEffect(() => {
@@ -419,6 +419,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         // Cotação inteligente via motor BCOMM (Melhor Envio + regras da loja)
         const storeRates = await fetchStoreShippingOptions({
           lojaId: currentTenant?.id,
+          config: currentTenant?.configuracoes_visuais?.logistica_avancada as any,
           cepDestino: cleanCep,
           subtotal: product.price,
           totalPecas: 1,

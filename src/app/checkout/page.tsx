@@ -335,6 +335,7 @@ export default function CheckoutPage() {
 
       fetchStoreShippingOptions({
         lojaId: currentTenant?.id,
+        config: currentTenant?.configuracoes_visuais?.logistica_avancada as any,
         cepDestino: cleanCep || (savedAddress?.cep || ''),
         subtotal: rawSubtotal,
         totalPecas,
@@ -347,8 +348,8 @@ export default function CheckoutPage() {
           setShippingDiscount(res.descontoAplicadoReais);
           setIsFreeShippingFromEngine(res.freteGratisQualificado);
           if (res.options.length > 0 && !res.options.find((o) => o.id === selectedShippingId)) {
-            // Se qualificado para frete cortesia, pré-seleciona preferencialmente PAC / Econômico
-            const economic = res.options.find((o) => o.id === 'pac' || o.name.toLowerCase().includes('pac')) || res.options[0];
+            // Se qualificado para frete cortesia, pré-seleciona preferencialmente a primeira opção elegível
+            const economic = res.options.find((o) => o.id === 'pac' || o.id === 'correios_pac' || o.name.toLowerCase().includes('econôm')) || res.options[0];
             setSelectedShippingId(economic.id);
           }
         })
@@ -356,7 +357,7 @@ export default function CheckoutPage() {
           console.warn('Erro ao cotar frete no checkout, fallback ativado:', err);
           if (!active) return;
           if (uf) {
-            const fallbackOpts = calculateShippingOptions(uf, rawSubtotal);
+            const fallbackOpts = calculateShippingOptions(uf, rawSubtotal, currentTenant?.configuracoes_visuais?.logistica_avancada as any);
             setShippingOptions(fallbackOpts);
             if (fallbackOpts.length > 0 && !fallbackOpts.find((o) => o.id === selectedShippingId)) {
               setSelectedShippingId(fallbackOpts[0].id);
@@ -371,19 +372,25 @@ export default function CheckoutPage() {
         active = false;
       };
     }
-  }, [cepInput, uf, city, rawSubtotal, totalPecas, currentTenant?.id]);
+  }, [cepInput, uf, city, rawSubtotal, totalPecas, currentTenant?.id, currentTenant?.configuracoes_visuais]);
 
   // Preço calculado por modalidade de frete com suporte a Frete Cortesia VIP + Opções Expressas Pagas
   const getOptionPrice = (opt: ShippingOption) => {
-    if (isFreeShipping) {
+    // 1. Privilégio VIP concedido pela administração no CRM
+    if (isVipFreeShipping) {
       const isEconomic =
         opt.id === 'pac' ||
+        opt.id === 'correios_pac' ||
+        opt.id === 'jadlog_package' ||
         opt.name.toLowerCase().includes('pac') ||
+        opt.name.toLowerCase().includes('econôm') ||
         opt.price === Math.min(...shippingOptions.map((o) => o.price));
       if (isEconomic) return 0;
       return Math.max(0, opt.price - shippingDiscount);
     }
-    return Math.max(0, opt.price - shippingDiscount);
+
+    // 2. Regra Comercial da Loja: o preço já vem processado com promoções, descontos progressivos e tetos
+    return opt.price;
   };
 
   const chosenShippingOption =
