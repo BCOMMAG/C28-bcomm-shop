@@ -135,14 +135,64 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "logistica_avancada": {
       "ambiente": "sandbox",
       "provedor": "melhor_envio",
-      "cep_origem": "83005000",
+      "cep_origem": "82010600",
       "modo_exibicao": "transparente",
+      "entrega_motoboy": {
+        "ativo": true,
+        "taxa_tipo": "fixa",
+        "modo_cobertura": "raio_km",
+        "raio_maximo_km": 15,
+        "taxa_fixa_reais": 18,
+        "faixas_distancia": [
+          {
+            "ate_km": 5,
+            "valor_reais": 12
+          },
+          {
+            "ate_km": 15,
+            "valor_reais": 18
+          },
+          {
+            "ate_km": 25,
+            "valor_reais": 28
+          }
+        ],
+        "descricao_vitrine": "Entrega no mesmo dia para pedidos aprovados até as 14h",
+        "nome_personalizado": "Entrega Expressa via Motoboy",
+        "origem_coordenadas": {
+          "uf": "PR",
+          "cep": "82010600",
+          "bairro": "Cascatinha",
+          "cidade": "Curitiba",
+          "latitude": -25.4055,
+          "longitude": -49.3082
+        },
+        "valor_minimo_pedido": 0,
+        "permite_frete_gratis": false,
+        "dias_semana_disponiveis": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "horario_limite_mesmo_dia": "14:00"
+      },
       "dimensoes_pacote": {
         "altura": 8,
         "largura": 20,
         "comprimento": 25
       },
       "entrega_local_taxa": 18,
+      "origem_coordenadas": {
+        "uf": "PR",
+        "cep": "82010600",
+        "bairro": "Cascatinha",
+        "cidade": "Curitiba",
+        "latitude": -25.4055,
+        "longitude": -49.3082
+      },
       "token_melhor_envio": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NTYiLCJqdGkiOiI5NTM0MDIxNWVkZTU2MmU3ZWI3YjVlNmU0ODc3MzY4YmZjNTQwZTk4NzE4OWY1YmE3Yjg2YzliMTQ1NTY2ZmEzMGVlNDcyOGU2ZGIyMTEyZSIsImlhdCI6MTc5MzU2NzQ2Ni4yODIwMywibmJmIjoxNzkzNTY3NDY2LjI4MjAzMiwiZXhwIjoxODI1MTAzNDY2LjI3MjA4NCwic3ViIjoiYTMxZmI3OTItMWE2Mi00ZTNkLTlkMDctNDYxMDE5YjM5N2EzIiwic2NvcGVzIjpbImNhcnQtcmVhZCIsImNhcnQtd3JpdGUiLCJjb21wYW5pZXMtcmVhZCIsImNvbXBhbmllcy13cml0ZSIsImNvdXBvbnMtcmVhZCIsImNvdXBvbnMtd3JpdGUiLCJub3RpZmljYXRpb25zLXJlYWQiLCJvcmRlcnMtcmVhZCIsInByb2R1Y3RzLXJlYWQiLCJwcm9kdWN0cy1kZXN0cm95IiwicHJvZHVjdHMtd3JpdGUiLCJwdXJjaGFzZXMtcmVhZCIsInNoaXBwaW5nLWNhbGN1bGF0ZSIsInNoaXBwaW5nLWNhbmNlbCIsInNoaXBwaW5nLWNoZWNrb3V0Iiwic2hpcHBpbmctY29tcGFuaWVzIiwic2hpcHBpbmctZ2VuZXJhdGUiLCJzaGlwcGluZy1wcmV2aWV3Iiwic2hpcHBpbmctcHJpbnQiLCJzaGlwcGluZy1zaGFyZSIsInNoaXBwaW5nLXRyYWNraW5nIiwiZWNvbW1lcmNlLXNoaXBwaW5nIiwidHJhbnNhY3Rpb25zLXJlYWQiLCJ1c2Vycy1yZWFkIiwidXNlcnMtd3JpdGUiLCJ3ZWJob29rcy1yZWFkIiwid2ViaG9va3Mtd3JpdGUiLCJ3ZWJob29rcy1kZWxldGUiLCJ0ZGVhbGVyLXdlYmhvb2siLCJtY3A6dXNlIl19.HafmTl0rZqNmis2sl6mBJ4otIaRodVEzDlhjM5bqAcGepJfKZUQo83FnjXUMoEfZiz5hAaZTEzCn40sqV_W7T_bpKMJW-XS8rdohCWqcTNi7U9es3c6KSNNGasw7oD3B1nRPU768DxfMKHcfxeqVq5wK-0XhpwYr-PjHKwxtwBczWjxf6wzepeKDHRY-yS_Ez0XycIvV_AqsuPG93Tn1Gu61vQLXles-lahxnoIdfAN7oHpPKLrUMdUQ2ChjQzOwkp7Oypn7x881Q3zbMIAGVgpAIM7nqpb4I812YhmRMdMG-rA_MrVfu4bHLi11aKULuBpAkx8nO7mnCf0sVLcgerdBOYgCz9tzJPT0ICV3au88eKKtk7ea9peJkj666ZlmD6ThS5gUrnaJZIMpFK1mLu3rShxFVQQxIJxPrrB5aOlOPlI3aJT9wJ2EeHYrAdwBWEoUUVigQLaBpzPlVx-Z-qmtzxcnRE61AXiEMeoP2r5AgbeLLcGnkfpFvXdttvePAeR4z8uoQotRGILSQZTg7a97-wczSbnsVe93Djkky1j1NjAU-avVCN9rXNoMgOTwDJVy6DJi1r_TdL-6NH2mwNhSJmXkbXRhfJkZZEGNYBj9iV6m9tzstUO0bVhj2J-uouRo6vekb9A7rS8sfxJdIMxfX4eP3QcEwoO3YiezWWw",
       "entrega_local_ativa": true,
       "instrucoes_retirada": "Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.",
@@ -250,7 +300,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-01T23:12:33.102+00:00",
+  "updated_at": "2026-11-02T16:12:52.305+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

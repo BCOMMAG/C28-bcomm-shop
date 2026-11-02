@@ -192,13 +192,17 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
       );
 
       const isInside = dist <= radiusKm;
+      const streetDesc = coords.logradouro
+        ? `${coords.logradouro}${coords.bairro ? `, ${coords.bairro}` : ''} (${coords.cidade}/${coords.uf})`
+        : `${coords.cidade || 'Destino'}/${coords.uf || 'UF'}`;
+
       setTestResult({
         status: isInside ? 'inside' : 'outside',
         distanceKm: dist,
         destination: coords,
         message: isInside
-          ? `✓ Elegível: Endereço a ${dist} km da loja (Dentro do raio de ${radiusKm} km)`
-          : `✗ Fora de Cobertura: Endereço a ${dist} km da loja (Excede o raio de ${radiusKm} km)`
+          ? `✓ Elegível: ${streetDesc} • ${dist} km da loja (Dentro do raio de ${radiusKm} km)`
+          : `✗ Fora de Cobertura: ${streetDesc} • ${dist} km da loja (Excede o raio de ${radiusKm} km)`
       });
 
       // Plota no mapa
@@ -220,7 +224,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         });
 
         const destMarker = L.marker([coords.latitude, coords.longitude], { icon: destIcon }).addTo(map);
-        destMarker.bindPopup(`<b>Destino de Teste (CEP ${clean})</b><br/>Distância: ${dist} km`).openPopup();
+        destMarker.bindPopup(`<b>${coords.logradouro || `CEP ${clean}`}</b><br/>${coords.bairro ? `${coords.bairro} • ` : ''}${coords.cidade}/${coords.uf}<br/><b>Distância da Loja:</b> ${dist} km`).openPopup();
         testMarkerRef.current = destMarker;
 
         // Linha tracejada conectando a loja e o destino

@@ -137,7 +137,10 @@ export default function ShippingSettingsPage() {
               origem_coordenadas: coords
             }
           }));
-          showToast(`Loja localizada no mapa: ${coords.cidade || 'Origem'}/${coords.uf || 'UF'} (${coords.bairro || 'Centro'})`);
+          const streetInfo = coords.logradouro
+            ? `${coords.logradouro}, ${coords.bairro || ''} (${coords.cidade}/${coords.uf})`
+            : `${coords.cidade || 'Origem'}/${coords.uf || 'UF'}`;
+          showToast(`Loja localizada no mapa: ${streetInfo}`);
         } else {
           const addr = await fetchAddressByCep(clean);
           if (addr) {

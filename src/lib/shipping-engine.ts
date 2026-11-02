@@ -223,24 +223,18 @@ export const CONFIG_LOGISTICA_DEFAULT: LogisticaAvancadaConfig = {
 const shippingCache = new Map<string, { timestamp: number; options: ShippingOption[] }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 
-// Cache de coordenadas geográficas de CEPs
+// Cache dinâmico em memória para coordenadas de CEPs já consultados
 const cepCoordinatesCache = new Map<string, CoordenadasGeograficas>();
 
-// Coordenadas conhecidas dos CEPs padrão para resposta ultra-rápida sem delay de rede
+// Coordenadas da boutique física padrão (Rua XV de Novembro, Centro, São José dos Pinhais/PR)
 cepCoordinatesCache.set('83005000', {
-  latitude: -25.5348,
-  longitude: -49.2064,
+  latitude: -25.5389,
+  longitude: -49.1981,
   cidade: 'São José dos Pinhais',
   uf: 'PR',
+  bairro: 'Centro',
+  logradouro: 'Rua Quinze de Novembro',
   cep: '83005000'
-});
-cepCoordinatesCache.set('82010600', {
-  latitude: -25.4055,
-  longitude: -49.3082,
-  cidade: 'Curitiba',
-  uf: 'PR',
-  bairro: 'Cascatinha',
-  cep: '82010600'
 });
 
 /**
@@ -270,7 +264,10 @@ export function calculateGeodesicDistanceKm(
 }
 
 /**
- * Consulta coordenadas geográficas de um CEP (BrasilAPI v2 -> Nominatim -> Fallback de Cidade)
+ * Consulta coordenadas geográficas de alta precisão para qualquer CEP no Brasil
+ * Pipeline em 2 Etapas:
+ * 1. ViaCEP oficial dos Correios -> obtém nome exato do logradouro (rua/avenida), bairro e cidade
+ * 2. OpenStreetMap Nominatim -> geocodifica o logradouro real com precisão métrica na rua correta
  */
 export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeograficas | null> {
   const cleanCep = (cep || '').replace(/\D/g, '');
@@ -280,7 +277,67 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
     return cepCoordinatesCache.get(cleanCep)!;
   }
 
-  // 1. Tenta BrasilAPI v2 (Gratuita, rápida, com latitude/longitude nativa)
+  // 1. Consulta dados cadastrais oficiais no ViaCEP
+  let viaCepData: any = null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.erro) {
+        viaCepData = data;
+      }
+    }
+  } catch (err) {
+    // Prossegue para os fallbacks
+  }
+
+  // 2. Se o ViaCEP localizou o logradouro e a cidade, busca as coordenadas exatas no OpenStreetMap Nominatim
+  if (viaCepData && viaCepData.localidade) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      // Prioridade 1: Rua + Bairro + Cidade + Estado (Precisão cirúrgica)
+      const streetQuery = viaCepData.logradouro
+        ? `${viaCepData.logradouro}, ${viaCepData.bairro || ''}, ${viaCepData.localidade}, ${viaCepData.uf}, Brasil`
+        : `${viaCepData.bairro || ''}, ${viaCepData.localidade}, ${viaCepData.uf}, Brasil`;
+
+      const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(streetQuery)}&format=json&limit=1`, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'BcommShop-Logistics/1.0 (suporte@bcomm.shop)' }
+      });
+      clearTimeout(timeoutId);
+
+      if (nomRes.ok) {
+        const nomData = await nomRes.json();
+        if (Array.isArray(nomData) && nomData.length > 0 && nomData[0].lat && nomData[0].lon) {
+          const result: CoordenadasGeograficas = {
+            latitude: Number(nomData[0].lat),
+            longitude: Number(nomData[0].lon),
+            cidade: viaCepData.localidade,
+            uf: viaCepData.uf,
+            bairro: viaCepData.bairro || '',
+            logradouro: viaCepData.logradouro || '',
+            cep: cleanCep
+          };
+          cepCoordinatesCache.set(cleanCep, result);
+          return result;
+        }
+      }
+    } catch (err) {
+      // Prossegue para o fallback
+    }
+  }
+
+  // 3. Fallback: BrasilAPI v2
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
@@ -298,37 +355,10 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
         const result: CoordenadasGeograficas = {
           latitude: Number(coords.latitude),
           longitude: Number(coords.longitude),
-          cidade: data.city,
-          uf: data.state,
-          bairro: data.neighborhood,
-          logradouro: data.street,
-          cep: cleanCep
-        };
-        cepCoordinatesCache.set(cleanCep, result);
-        return result;
-      }
-    }
-  } catch (err) {
-    // Prossegue para o próximo fallback
-  }
-
-  // 2. Fallback Nominatim / OpenStreetMap
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${cleanCep}&country=Brazil&format=json&limit=1`, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'BCOMM-Shop-Logistics/1.0' }
-    });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const items = await res.json();
-      if (Array.isArray(items) && items.length > 0 && items[0].lat && items[0].lon) {
-        const result: CoordenadasGeograficas = {
-          latitude: Number(items[0].lat),
-          longitude: Number(items[0].lon),
+          cidade: data.city || viaCepData?.localidade,
+          uf: data.state || viaCepData?.uf,
+          bairro: data.neighborhood || viaCepData?.bairro,
+          logradouro: data.street || viaCepData?.logradouro,
           cep: cleanCep
         };
         cepCoordinatesCache.set(cleanCep, result);
@@ -337,6 +367,40 @@ export async function fetchCepCoordinates(cep: string): Promise<CoordenadasGeogr
     }
   } catch (err) {
     // Prossegue
+  }
+
+  // 4. Fallback de Cidade: se temos a cidade pelo ViaCEP, pega as coordenadas da cidade
+  if (viaCepData && viaCepData.localidade) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const cityQuery = `${viaCepData.localidade}, ${viaCepData.uf}, Brasil`;
+      const cityRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityQuery)}&format=json&limit=1`, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'BcommShop-Logistics/1.0 (suporte@bcomm.shop)' }
+      });
+      clearTimeout(timeoutId);
+
+      if (cityRes.ok) {
+        const cityData = await cityRes.json();
+        if (Array.isArray(cityData) && cityData.length > 0 && cityData[0].lat && cityData[0].lon) {
+          const result: CoordenadasGeograficas = {
+            latitude: Number(cityData[0].lat),
+            longitude: Number(cityData[0].lon),
+            cidade: viaCepData.localidade,
+            uf: viaCepData.uf,
+            bairro: viaCepData.bairro || '',
+            logradouro: viaCepData.logradouro || '',
+            cep: cleanCep
+          };
+          cepCoordinatesCache.set(cleanCep, result);
+          return result;
+        }
+      }
+    } catch (err) {
+      // Falha graciosa
+    }
   }
 
   return null;
