@@ -38,7 +38,8 @@ import {
   TransportadoraHabilitada,
   FaixaDescontoProgressivo,
   EntregaMotoboyConfig,
-  CoordenadasGeograficas
+  CoordenadasGeograficas,
+  fetchCepCoordinates
 } from '@/lib/shipping-engine';
 import { fetchAddressByCep, fetchStoreShippingOptions } from '@/utils/shipping';
 import { LogisticsRadiusMap } from '@/components/admin/LogisticsRadiusMap';
@@ -111,18 +112,41 @@ export default function ShippingSettingsPage() {
     fetchData();
   }, [tenantId]);
 
-  // Busca endereço automático ao digitar CEP de origem
+  // Busca coordenadas geográficas e endereço automático ao digitar CEP de origem
   const handleCepOrigemChange = async (novoCep: string) => {
     const clean = novoCep.replace(/\D/g, '').slice(0, 8);
     setConfig((prev) => ({ ...prev, cep_origem: clean }));
 
     if (clean.length === 8) {
       try {
-        const addr = await fetchAddressByCep(clean);
-        if (addr) {
-          showToast(`Origem localizada: ${addr.localidade}/${addr.uf} (${addr.bairro || 'Centro'})`);
+        // 1. Busca coordenadas geográficas para atualizar o mapa e o círculo instantaneamente
+        const coords = await fetchCepCoordinates(clean);
+        if (coords && coords.latitude && coords.longitude) {
+          setConfig((prev) => ({
+            ...prev,
+            origem_coordenadas: coords,
+            entrega_motoboy: {
+              ...(prev.entrega_motoboy || {
+                ativo: true,
+                raio_maximo_km: 15,
+                taxa_tipo: 'fixa',
+                taxa_fixa_reais: 18.00,
+                horario_limite_mesmo_dia: '14:00',
+                dias_semana_disponiveis: [1, 2, 3, 4, 5, 6]
+              }),
+              origem_coordenadas: coords
+            }
+          }));
+          showToast(`Loja localizada no mapa: ${coords.cidade || 'Origem'}/${coords.uf || 'UF'} (${coords.bairro || 'Centro'})`);
+        } else {
+          const addr = await fetchAddressByCep(clean);
+          if (addr) {
+            showToast(`Origem localizada: ${addr.localidade}/${addr.uf} (${addr.bairro || 'Centro'})`);
+          }
         }
-      } catch {}
+      } catch (err) {
+        console.warn('Erro ao atualizar coordenadas do CEP de origem:', err);
+      }
     }
   };
 

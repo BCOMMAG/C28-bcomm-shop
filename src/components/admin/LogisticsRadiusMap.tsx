@@ -83,10 +83,11 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         scrollWheelZoom: false
       });
 
-      // Camada CartoDB Voyager / OpenStreetMap (Leve, limpa e moderna)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-        maxZoom: 19
+      // Camada Oficial OpenStreetMap (100% Livre de Chave de API, Aberta e Ilimitada)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+        minZoom: 4
       }).addTo(map);
 
       // Ícone customizado da Loja Física
@@ -125,20 +126,28 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         }
       });
 
-      // Círculo Translúcido de Cobertura
+      // Círculo Translúcido de Cobertura (Verde Esmeralda Nítido e Elegante)
       const circle = L.circle([lat, lon], {
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.15,
-        weight: 2,
+        color: '#059669',
+        fillColor: '#10B981',
+        fillOpacity: 0.22,
+        weight: 2.5,
         radius: (radiusKm || 15) * 1000 // metros
       }).addTo(map);
 
       mapInstanceRef.current = map;
       markerRef.current = marker;
       circleRef.current = circle;
+
+      // Força o Leaflet a recalcular as dimensões do container para eliminar áreas cinzas
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 250);
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 700);
     } else {
-      // Atualiza posição do marcador e raio do círculo
+      // Atualiza posição do marcador e raio do círculo com animação suave flyTo
       const map = mapInstanceRef.current;
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lon]);
@@ -146,8 +155,11 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
       if (circleRef.current) {
         circleRef.current.setLatLng([lat, lon]);
         circleRef.current.setRadius((radiusKm || 15) * 1000);
-        circleRef.current.setStyle({ color: color, fillColor: color });
       }
+      map.flyTo([lat, lon], 12, { duration: 1.2 });
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
     }
   }, [isLeafletLoaded, center?.latitude, center?.longitude, radiusKm, color, storeName]);
 
@@ -241,7 +253,10 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
 
   const handleResetView = () => {
     if (mapInstanceRef.current && center) {
-      mapInstanceRef.current.setView([center.latitude, center.longitude], 12);
+      mapInstanceRef.current.flyTo([center.latitude, center.longitude], 12, { duration: 1 });
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 150);
     }
   };
 
