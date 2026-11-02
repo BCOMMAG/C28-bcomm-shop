@@ -32,6 +32,7 @@ interface StoreContextType {
   products: Product[];
   isLoadingProducts: boolean;
   refreshProducts: () => Promise<void>;
+  refreshTenant: (customSlugOrId?: string) => Promise<void>;
   getProductById: (id: string) => Product | undefined;
   cartItems: CartItem[];
   wishlistIds: string[];
@@ -192,6 +193,56 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Reservas de estoque ativas e pausadas sincronizadas com o banco
   const [activeReservations, setActiveReservations] = useState<ReservaEstoque[]>([]);
+
+  // Sincronização reativa e sob demanda dos dados e configurações visuais da Loja
+  const refreshTenant = async (customSlugOrId?: string) => {
+    try {
+      let updated: Loja | null = null;
+      if (customSlugOrId) {
+        if (customSlugOrId.length > 30) {
+          updated = await getTenantById(customSlugOrId);
+        } else {
+          updated = await getTenantBySlug(customSlugOrId);
+        }
+      } else if (currentTenant?.id) {
+        updated = await getTenantById(currentTenant.id);
+      }
+      if (!updated && currentTenant?.slug) {
+        updated = await getTenantBySlug(currentTenant.slug);
+      }
+
+      if (updated) {
+        // Auto-cura de coordenadas se necessário
+        if (
+          updated.configuracoes_visuais?.logistica_avancada?.origem_coordenadas?.bairro === 'Cascatinha' &&
+          (updated.configuracoes_visuais?.logistica_avancada?.cep_origem || '').replace(/\D/g, '') === '82010600'
+        ) {
+          const healed = {
+            latitude: -25.4223,
+            longitude: -49.3346,
+            cidade: 'Curitiba',
+            uf: 'PR',
+            bairro: 'Santo Inácio',
+            logradouro: 'Rua José Boiko',
+            cep: '82010600'
+          };
+          updated.configuracoes_visuais.logistica_avancada.origem_coordenadas = healed;
+          if (updated.configuracoes_visuais.logistica_avancada.entrega_motoboy) {
+            updated.configuracoes_visuais.logistica_avancada.entrega_motoboy.origem_coordenadas = healed;
+          }
+        }
+
+        setCurrentTenant(updated);
+        try {
+          const canonical = getCanonicalDbSlug(updated.slug);
+          localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(updated));
+          localStorage.setItem('bcomm_tenant_last', JSON.stringify(updated));
+        } catch {}
+      }
+    } catch (err) {
+      console.error('Erro ao recarregar dados do tenant:', err);
+    }
+  };
 
   const refreshReservations = async () => {
     const tenantId = currentTenant?.id || DEFAULT_LEIDY_TENANT.id;
@@ -982,6 +1033,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         products,
         isLoadingProducts,
         refreshProducts,
+        refreshTenant,
         getProductById,
         cartItems,
         wishlistIds,

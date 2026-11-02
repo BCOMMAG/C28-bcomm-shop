@@ -2789,6 +2789,7 @@ export interface StoreSettingsData {
   secoesVitrine?: SecoesVitrineConfig;
   coresGlobais?: CoresModoClaroEscuro;
   adminCustom?: AdminCustomThemeConfig;
+  adminPalette?: string;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -2950,6 +2951,7 @@ export interface SaveStoreSettingsInput {
   secoesVitrine?: SecoesVitrineConfig;
   coresGlobais?: CoresModoClaroEscuro;
   adminCustom?: AdminCustomThemeConfig;
+  adminPalette?: string;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -3104,6 +3106,7 @@ export async function getStoreSettings(
         sidebarText: '#94A3B8',
         buttonRadius: 'rounded-xl'
       },
+      adminPalette: vis.admin_palette || 'midnight-gold',
 
       // Marketing & SEO
       metaPixelId: vis.meta_pixel_id || '',
@@ -3207,6 +3210,7 @@ export async function saveStoreGeneralSettings(
       ...(input.secoesVitrine !== undefined ? { secoes_vitrine: input.secoesVitrine } : {}),
       ...(input.coresGlobais !== undefined ? { cores_globais: input.coresGlobais } : {}),
       ...(input.adminCustom !== undefined ? { admin_custom: input.adminCustom } : {}),
+      ...(input.adminPalette !== undefined ? { admin_palette: input.adminPalette } : {}),
 
       // Marketing & SEO
       ...(input.metaPixelId !== undefined ? { meta_pixel_id: input.metaPixelId.trim() } : {}),

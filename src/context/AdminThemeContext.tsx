@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useStore } from '@/context/StoreContext';
 
 export type AdminPaletteKey =
   | 'midnight-gold'
@@ -236,20 +237,36 @@ const AdminThemeContext = createContext<AdminThemeContextType | undefined>(undef
 const STORAGE_KEY = 'bcomm_admin_palette_theme';
 
 export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [palette, setPaletteState] = useState<AdminPaletteKey>('midnight-gold');
+  const { currentTenant } = useStore();
+  const tenantPalette = (currentTenant?.configuracoes_visuais as any)?.admin_palette as AdminPaletteKey | undefined;
+
+  const [palette, setPaletteState] = useState<AdminPaletteKey>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY) as AdminPaletteKey | null;
+        if (saved && ADMIN_PALETTES[saved]) return saved;
+      } catch {}
+    }
+    return tenantPalette || 'midnight-gold';
+  });
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY) as AdminPaletteKey | null;
-      if (saved && ADMIN_PALETTES[saved]) {
-        setPaletteState(saved);
-      }
-    } catch {
-      // Ignora erro em ambientes restritos de storage
+    if (tenantPalette && ADMIN_PALETTES[tenantPalette]) {
+      setPaletteState(tenantPalette);
+      try {
+        localStorage.setItem(STORAGE_KEY, tenantPalette);
+      } catch {}
+    } else {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY) as AdminPaletteKey | null;
+        if (saved && ADMIN_PALETTES[saved]) {
+          setPaletteState(saved);
+        }
+      } catch {}
     }
-  }, []);
+  }, [tenantPalette]);
 
   const setPalette = (key: AdminPaletteKey) => {
     if (!ADMIN_PALETTES[key]) return;

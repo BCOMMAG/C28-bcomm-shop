@@ -37,6 +37,7 @@ import {
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { useStore } from '@/context/StoreContext';
 import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
+import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import {
@@ -52,10 +53,16 @@ import {
 import { cn } from '@/lib/chart-utils';
 
 export default function AppearanceSettingsPage() {
-  const { currentTenant, refreshProducts } = useStore();
+  const { currentTenant, refreshProducts, refreshTenant } = useStore();
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const { palette, setPalette, availablePalettes, paletteConfig } = useAdminTheme();
+  const { setIsDirty, registerSaveHandler, setFormName } = useAdminUnsavedChanges();
+  const initialSnapshotRef = React.useRef<string>('');
+
+  useEffect(() => {
+    setFormName('Aparência & Temas');
+  }, [setFormName]);
 
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -285,10 +292,72 @@ export default function AppearanceSettingsPage() {
     fetchData();
   }, [tenantId]);
 
-  const handleSelectPalette = (key: AdminPaletteKey) => {
+  const getCurrentSnapshot = React.useCallback(() => {
+    return JSON.stringify({
+      logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
+      siteBgTipo, siteBgLight, siteBgDark, siteBgImageUrl, siteBgCustomUrl, siteBgVideoUrl, siteBgOverlay,
+      menuBgTipo, menuBgLight, menuBgDark,
+      menuFontFamily, menuFontSize, menuCorTextoLight, menuCorTextoDark, menuCorHoverLight, menuCorHoverDark,
+      secoesModoIndependente, secaoGlobalFont, secaoGlobalBgLight, secaoGlobalBgDark,
+      secaoGlobalTituloLight, secaoGlobalTituloDark, secaoGlobalSubtituloLight, secaoGlobalSubtituloDark,
+      secaoLancamentosAtivo, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
+      secaoLancamentosTituloLight, secaoLancamentosTituloDark, secaoLancamentosSubtituloLight, secaoLancamentosSubtituloDark,
+      secaoMaisVendidosAtivo, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
+      secaoMaisVendidosTituloLight, secaoMaisVendidosTituloDark, secaoMaisVendidosSubtituloLight, secaoMaisVendidosSubtituloDark,
+      secaoOutletAtivo, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
+      secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
+      secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
+      secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
+      exibirQuantidadeEstoqueConsumidor,
+      adminPageBgLight, adminPageBgDark, adminFontFamily, adminSidebarBg, adminSidebarText,
+      adminButtonBg, adminButtonText, adminButtonRadius
+    });
+  }, [
+    logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
+    siteBgTipo, siteBgLight, siteBgDark, siteBgImageUrl, siteBgCustomUrl, siteBgVideoUrl, siteBgOverlay,
+    menuBgTipo, menuBgLight, menuBgDark,
+    menuFontFamily, menuFontSize, menuCorTextoLight, menuCorTextoDark, menuCorHoverLight, menuCorHoverDark,
+    secoesModoIndependente, secaoGlobalFont, secaoGlobalBgLight, secaoGlobalBgDark,
+    secaoGlobalTituloLight, secaoGlobalTituloDark, secaoGlobalSubtituloLight, secaoGlobalSubtituloDark,
+    secaoLancamentosAtivo, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
+    secaoLancamentosTituloLight, secaoLancamentosTituloDark, secaoLancamentosSubtituloLight, secaoLancamentosSubtituloDark,
+    secaoMaisVendidosAtivo, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
+    secaoMaisVendidosTituloLight, secaoMaisVendidosTituloDark, secaoMaisVendidosSubtituloLight, secaoMaisVendidosSubtituloDark,
+    secaoOutletAtivo, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
+    secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
+    secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
+    secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
+    exibirQuantidadeEstoqueConsumidor,
+    adminPageBgLight, adminPageBgDark, adminFontFamily, adminSidebarBg, adminSidebarText,
+    adminButtonBg, adminButtonText, adminButtonRadius
+  ]);
+
+  // Carrega o snapshot inicial assim que os dados terminam de carregar
+  useEffect(() => {
+    if (!loading && !initialSnapshotRef.current) {
+      initialSnapshotRef.current = getCurrentSnapshot();
+    }
+  }, [loading, getCurrentSnapshot]);
+
+  // Monitora alterações pendentes e atualiza o estado dirty
+  useEffect(() => {
+    if (!loading && initialSnapshotRef.current) {
+      const current = getCurrentSnapshot();
+      const isChanged = current !== initialSnapshotRef.current;
+      setIsDirty(isChanged);
+    }
+  }, [loading, getCurrentSnapshot, setIsDirty]);
+
+  const handleSelectPalette = async (key: AdminPaletteKey) => {
     setPalette(key);
     const p = availablePalettes.find((item) => item.id === key);
     showToast(`Tema visual alterado para "${p?.name || key}"!`);
+    try {
+      await saveStoreGeneralSettings(tenantId, { adminPalette: key });
+      await refreshTenant(tenantId);
+    } catch (err) {
+      console.warn('Erro ao salvar paleta no Supabase:', err);
+    }
   };
 
   // Upload no Cloudflare R2
@@ -341,8 +410,7 @@ export default function AppearanceSettingsPage() {
     showToast('Imagem personalizada removida. Fundo restaurado para o acervo oficial.');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeSave = async (): Promise<boolean> => {
     setIsSaving(true);
 
     try {
@@ -451,19 +519,36 @@ export default function AppearanceSettingsPage() {
       });
 
       if (res.success) {
+        initialSnapshotRef.current = getCurrentSnapshot();
+        setIsDirty(false);
         try {
           await refreshProducts();
+          await refreshTenant(tenantId);
         } catch {}
         showToast('Identidade visual, logos e planos de fundo salvos com sucesso!');
+        return true;
       } else {
         showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        return false;
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeSave();
+  };
+
+  useEffect(() => {
+    registerSaveHandler(async () => {
+      await executeSave();
+    });
+  }, [registerSaveHandler]);
 
   if (loading) {
     return (

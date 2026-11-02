@@ -308,13 +308,13 @@ export const Header: React.FC<HeaderProps> = ({
   }, [currentTenant, isTransparent, theme]);
 
   // Tipografia e cores personalizadas do Menu Superior
-  const { menuNavStyle, menuLinkColor } = useMemo(() => {
+  const { menuNavStyle, isCustomTypographyActive } = useMemo(() => {
     const vis = currentTenant?.configuracoes_visuais as any;
     const tipo = vis?.tipografia_menu;
     const isDark = theme === 'dark';
 
     const fontFamily = tipo?.fontFamily || undefined;
-    const fontSize = tipo?.fontSize || undefined;
+    const fontSize = tipo?.fontSize || '12px';
 
     const color = isTransparent
       ? 'inherit'
@@ -322,9 +322,22 @@ export const Header: React.FC<HeaderProps> = ({
       ? tipo?.corTextoDark || '#FAF8F5'
       : tipo?.corTextoLight || '#1A1918';
 
+    const hoverColor = isTransparent
+      ? '#DFBE76'
+      : isDark
+      ? tipo?.corHoverDark || '#DFBE76'
+      : tipo?.corHoverLight || '#C5A059';
+
     return {
-      menuNavStyle: { fontFamily, fontSize },
-      menuLinkColor: color
+      menuNavStyle: {
+        fontFamily,
+        fontSize,
+        '--menu-text-color': color,
+        '--menu-hover-color': hoverColor,
+        '--menu-font-size': fontSize,
+        '--menu-font-family': fontFamily || 'inherit'
+      } as React.CSSProperties,
+      isCustomTypographyActive: Boolean(tipo)
     };
   }, [currentTenant, isTransparent, theme]);
 
@@ -524,8 +537,8 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {/* Linha 1 com z-30 para sobrepor perfeitamente a Linha 2 */}
               <div
-                className={`relative z-30 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[11px] xl:text-xs 2xl:text-[13px] font-medium tracking-normal ${
-                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[#1A1918] dark:text-[#FAF8F5]'
+                className={`relative z-30 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
+                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
                 }`}
               >
                 {menuRow1.map((item: NavItem) => {
@@ -545,7 +558,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
                           isTransparent
                             ? 'hover:text-[#DFBE76]'
-                            : 'hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
+                            : 'hover:text-[color:var(--menu-hover-color)]'
                         }`}
                       >
                         <span>{item.label}</span>
@@ -579,10 +592,10 @@ export const Header: React.FC<HeaderProps> = ({
                                 key={sub.id || sub.label}
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleNavClick(sub);
+                                   e.stopPropagation();
+                                   handleNavClick(sub);
                                 }}
-                                className="w-full text-left text-xs py-1.5 px-2.5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] hover:text-[#C5A059] transition-colors rounded-none truncate cursor-pointer"
+                                className="w-full text-left text-xs py-1.5 px-2.5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] hover:text-[color:var(--menu-hover-color)] transition-colors rounded-none truncate cursor-pointer"
                               >
                                 {sub.label}
                               </button>
@@ -597,8 +610,8 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Linha 2 com z-10 */}
               <div
-                className={`relative z-10 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[11px] xl:text-xs 2xl:text-[13px] font-medium tracking-normal ${
-                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[#1A1918] dark:text-[#FAF8F5]'
+                className={`relative z-10 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
+                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
                 }`}
               >
                 {menuRow2.map((item: NavItem) => (
@@ -613,7 +626,7 @@ export const Header: React.FC<HeaderProps> = ({
                           : 'font-semibold text-rose-500 dark:text-rose-400 hover:text-rose-600'
                         : isTransparent
                         ? 'hover:text-[#DFBE76]'
-                        : 'hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
+                        : 'hover:text-[color:var(--menu-hover-color)]'
                     }`}
                   >
                     <span>{item.label}</span>
@@ -911,7 +924,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   ? item.label === 'BAZAR'
                                     ? 'font-bold text-[#C5A059] dark:text-[#DFBE76]'
                                     : 'font-semibold text-rose-600 dark:text-rose-400'
-                                  : 'font-semibold text-[#2D1B20] dark:text-[#FAF8F5] group-hover:text-[#C5A059] dark:group-hover:text-[#DFBE76]'
+                                  : 'font-semibold text-[color:var(--menu-text-color)] group-hover:text-[color:var(--menu-hover-color)] transition-colors'
                               }`}
                             >
                               {item.label}

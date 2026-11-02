@@ -126,5 +126,29 @@ body {
   }
 }
 
+/* Mapeamento de Fontes Elegantes Multitenant para CSS Inline */
+[style*="Cinzel"] {
+  font-family: var(--font-cinzel), Cinzel, Georgia, serif !important;
+}
+[style*="Cormorant Garamond"], [style*="Cormorant"] {
+  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif !important;
+}
+[style*="Playfair Display"], [style*="Playfair"] {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif !important;
+}
+[style*="Inter"] {
+  font-family: var(--font-inter), Inter, sans-serif !important;
+}
+[style*="Poppins"] {
+  font-family: var(--font-poppins), Poppins, sans-serif !important;
+}
+[style*="Plus Jakarta Sans"] {
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif !important;
+}
+[style*="Montserrat"] {
+  font-family: var(--font-montserrat), Montserrat, sans-serif !important;
+}
+
+
 
 

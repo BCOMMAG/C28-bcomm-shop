@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
-import { Montserrat, Playfair_Display } from 'next/font/google';
+import {
+  Montserrat,
+  Playfair_Display,
+  Cinzel,
+  Cormorant_Garamond,
+  Inter,
+  Poppins,
+  Plus_Jakarta_Sans
+} from 'next/font/google';
 import './globals.css';
 import { StoreProvider } from '@/context/StoreContext';
 import { BottomCartBar } from '@/components/BottomCartBar';
@@ -17,6 +25,41 @@ const playfair = Playfair_Display({
   display: 'swap',
   variable: '--font-playfair',
   weight: ['400', '600', '700'],
+});
+
+const cinzel = Cinzel({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-cinzel',
+  weight: ['400', '600', '700'],
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-cormorant',
+  weight: ['400', '500', '600', '700'],
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
+});
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700'],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+  weight: ['400', '500', '600', '700'],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://leidyboutique.pages.dev';
@@ -79,7 +122,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon-apple-touch-icon180x180.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className={`${montserrat.className} ${playfair.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full`}>
+      <body className={`${montserrat.className} ${playfair.variable} ${cinzel.variable} ${cormorant.variable} ${inter.variable} ${poppins.variable} ${plusJakartaSans.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full`}>
         <StoreProvider>
           <BackgroundVideo />
           {children}
