@@ -34,11 +34,11 @@ import {
   ExternalLink,
   Tag,
   Store,
-  RotateCcw
+  RotateCcw,
+  ArrowRight
 } from 'lucide-react';
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { useStore } from '@/context/StoreContext';
-import { useAdminTheme, AdminPaletteKey } from '@/context/AdminThemeContext';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -49,8 +49,7 @@ import {
   PlanoFundoSiteConfig,
   TipografiaMenuConfig,
   SecoesVitrineConfig,
-  SecaoEstiloConfig,
-  AdminCustomThemeConfig
+  SecaoEstiloConfig
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 
@@ -58,12 +57,11 @@ export default function AppearanceSettingsPage() {
   const { currentTenant, refreshProducts, refreshTenant } = useStore();
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const { palette, setPalette, availablePalettes, paletteConfig } = useAdminTheme();
   const { setIsDirty, registerSaveHandler, setFormName } = useAdminUnsavedChanges();
   const initialSnapshotRef = React.useRef<string>('');
 
   useEffect(() => {
-    setFormName('Aparência & Temas');
+    setFormName('Aparência da Loja Virtual');
   }, [setFormName]);
 
   const [loading, setLoading] = useState(true);
@@ -158,50 +156,6 @@ export default function AppearanceSettingsPage() {
 
   // Configuração Global de Visibilidade de Estoque para o Consumidor
   const [exibirQuantidadeEstoqueConsumidor, setExibirQuantidadeEstoqueConsumidor] = useState(true);
-
-  // Navegação Principal por Abas
-  const [activeMainTab, setActiveMainTab] = useState<'vitrine' | 'admin'>('vitrine');
-
-  // DESIGN SYSTEM DO PAINEL ADMINISTRATIVO (TOKENS COMPLETOS)
-  const [adminHeadingFont, setAdminHeadingFont] = useState('Inter');
-  const [adminBodyFont, setAdminBodyFont] = useState('Inter');
-  const [adminHeadingWeight, setAdminHeadingWeight] = useState<'font-semibold' | 'font-bold' | 'font-extrabold'>('font-bold');
-  const [adminHeadingColor, setAdminHeadingColor] = useState('#0F172A');
-  const [adminTextColor, setAdminTextColor] = useState('#334155');
-  const [adminTextMutedColor, setAdminTextMutedColor] = useState('#64748B');
-
-  const [adminBtnPrimaryBg, setAdminBtnPrimaryBg] = useState('#0F172A');
-  const [adminBtnPrimaryText, setAdminBtnPrimaryText] = useState('#FFFFFF');
-  const [adminBtnPrimaryHover, setAdminBtnPrimaryHover] = useState('#1E293B');
-
-  const [adminBtnSecondaryBg, setAdminBtnSecondaryBg] = useState('#FFFFFF');
-  const [adminBtnSecondaryText, setAdminBtnSecondaryText] = useState('#334155');
-  const [adminBtnSecondaryBorder, setAdminBtnSecondaryBorder] = useState('#E2E8F0');
-  const [adminBtnSecondaryHover, setAdminBtnSecondaryHover] = useState('#F8FAFC');
-  const [adminBtnRadius, setAdminBtnRadius] = useState<'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full'>('rounded-xl');
-
-  const [adminCardBg, setAdminCardBg] = useState('#FFFFFF');
-  const [adminCardBorder, setAdminCardBorder] = useState('#E2E8F0');
-  const [adminCardRadius, setAdminCardRadius] = useState<'rounded-lg' | 'rounded-xl' | 'rounded-2xl' | 'rounded-3xl'>('rounded-xl');
-  const [adminCardShadow, setAdminCardShadow] = useState<'shadow-none' | 'shadow-2xs' | 'shadow-xs' | 'shadow-sm'>('shadow-2xs');
-
-  const [adminSidebarBg, setAdminSidebarBg] = useState('#0B132B');
-  const [adminSidebarText, setAdminSidebarText] = useState('#94A3B8');
-  const [adminSidebarActiveBg, setAdminSidebarActiveBg] = useState('#1C2D5A');
-  const [adminSidebarActiveText, setAdminSidebarActiveText] = useState('#FFFFFF');
-  const [adminSidebarActiveBorder, setAdminSidebarActiveBorder] = useState('#F59E0B');
-
-  const [adminPrimaryAccent, setAdminPrimaryAccent] = useState('#C5A059');
-  const [adminSoftAccent, setAdminSoftAccent] = useState('#FEF3C7');
-  const [adminPageBg, setAdminPageBg] = useState('#F8FAFC');
-
-  // Estados legados compatibilizados
-  const [adminPageBgLight, setAdminPageBgLight] = useState('#F8FAFC');
-  const [adminPageBgDark, setAdminPageBgDark] = useState('#0B132B');
-  const [adminFontFamily, setAdminFontFamily] = useState('Inter');
-  const [adminButtonBg, setAdminButtonBg] = useState('#0F172A');
-  const [adminButtonText, setAdminButtonText] = useState('#FFFFFF');
-  const [adminButtonRadius, setAdminButtonRadius] = useState<'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full'>('rounded-xl');
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -306,64 +260,6 @@ export default function AppearanceSettingsPage() {
           if (data.exibirQuantidadeEstoqueConsumidor !== undefined) {
             setExibirQuantidadeEstoqueConsumidor(data.exibirQuantidadeEstoqueConsumidor);
           }
-
-          if (data.adminCustom) {
-            const ac = data.adminCustom;
-            if (ac.typography) {
-              setAdminHeadingFont(ac.typography.headingFont || 'Inter');
-              setAdminBodyFont(ac.typography.bodyFont || 'Inter');
-              setAdminHeadingWeight((ac.typography.headingWeight as any) || 'font-bold');
-              setAdminHeadingColor(ac.typography.headingColor || '#0F172A');
-              setAdminTextColor(ac.typography.textColor || '#334155');
-              setAdminTextMutedColor(ac.typography.textMutedColor || '#64748B');
-            } else if (ac.fontFamily) {
-              setAdminHeadingFont(ac.fontFamily);
-              setAdminBodyFont(ac.fontFamily);
-            }
-
-            if (ac.buttons) {
-              setAdminBtnPrimaryBg(ac.buttons.primaryBg || '#0F172A');
-              setAdminBtnPrimaryText(ac.buttons.primaryText || '#FFFFFF');
-              setAdminBtnPrimaryHover(ac.buttons.primaryHoverBg || '#1E293B');
-              setAdminBtnSecondaryBg(ac.buttons.secondaryBg || '#FFFFFF');
-              setAdminBtnSecondaryText(ac.buttons.secondaryText || '#334155');
-              setAdminBtnSecondaryBorder(ac.buttons.secondaryBorder || '#E2E8F0');
-              setAdminBtnSecondaryHover(ac.buttons.secondaryHoverBg || '#F8FAFC');
-              setAdminBtnRadius((ac.buttons.borderRadius as any) || 'rounded-xl');
-            } else if (ac.buttonBg) {
-              setAdminBtnPrimaryBg(ac.buttonBg);
-              setAdminBtnPrimaryText(ac.buttonText || '#FFFFFF');
-              setAdminBtnRadius(ac.buttonRadius || 'rounded-xl');
-            }
-
-            if (ac.cards) {
-              setAdminCardBg(ac.cards.background || '#FFFFFF');
-              setAdminCardBorder(ac.cards.border || '#E2E8F0');
-              setAdminCardRadius((ac.cards.borderRadius as any) || 'rounded-xl');
-              setAdminCardShadow((ac.cards.shadow as any) || 'shadow-2xs');
-            }
-
-            if (ac.sidebar) {
-              setAdminSidebarBg(ac.sidebar.background || ac.sidebarBg || '#0B132B');
-              setAdminSidebarText(ac.sidebar.text || ac.sidebarText || '#94A3B8');
-              setAdminSidebarActiveBg(ac.sidebar.activeBackground || '#1C2D5A');
-              setAdminSidebarActiveText(ac.sidebar.activeText || '#FFFFFF');
-              setAdminSidebarActiveBorder(ac.sidebar.activeBorder || '#F59E0B');
-            } else {
-              if (ac.sidebarBg) setAdminSidebarBg(ac.sidebarBg);
-              if (ac.sidebarText) setAdminSidebarText(ac.sidebarText);
-            }
-
-            if (ac.accents) {
-              setAdminPrimaryAccent(ac.accents.primaryAccent || '#C5A059');
-              setAdminSoftAccent(ac.accents.softAccent || '#FEF3C7');
-            }
-
-            if (ac.pageBackground || ac.pageBgLight) {
-              setAdminPageBg(ac.pageBackground || ac.pageBgLight || '#F8FAFC');
-              setAdminPageBgLight(ac.pageBackground || ac.pageBgLight || '#F8FAFC');
-            }
-          }
         }
       } catch (err) {
         console.error('Erro ao carregar dados visuais:', err);
@@ -391,12 +287,7 @@ export default function AppearanceSettingsPage() {
       secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
       secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
       secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
-      exibirQuantidadeEstoqueConsumidor,
-      adminHeadingFont, adminBodyFont, adminHeadingWeight, adminHeadingColor, adminTextColor, adminTextMutedColor,
-      adminBtnPrimaryBg, adminBtnPrimaryText, adminBtnPrimaryHover, adminBtnSecondaryBg, adminBtnSecondaryText, adminBtnSecondaryBorder, adminBtnSecondaryHover, adminBtnRadius,
-      adminCardBg, adminCardBorder, adminCardRadius, adminCardShadow,
-      adminSidebarBg, adminSidebarText, adminSidebarActiveBg, adminSidebarActiveText, adminSidebarActiveBorder,
-      adminPrimaryAccent, adminSoftAccent, adminPageBg
+      exibirQuantidadeEstoqueConsumidor
     });
   }, [
     logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
@@ -413,12 +304,7 @@ export default function AppearanceSettingsPage() {
     secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
     secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
     secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
-    exibirQuantidadeEstoqueConsumidor,
-    adminHeadingFont, adminBodyFont, adminHeadingWeight, adminHeadingColor, adminTextColor, adminTextMutedColor,
-    adminBtnPrimaryBg, adminBtnPrimaryText, adminBtnPrimaryHover, adminBtnSecondaryBg, adminBtnSecondaryText, adminBtnSecondaryBorder, adminBtnSecondaryHover, adminBtnRadius,
-    adminCardBg, adminCardBorder, adminCardRadius, adminCardShadow,
-    adminSidebarBg, adminSidebarText, adminSidebarActiveBg, adminSidebarActiveText, adminSidebarActiveBorder,
-    adminPrimaryAccent, adminSoftAccent, adminPageBg
+    exibirQuantidadeEstoqueConsumidor
   ]);
 
   // Carrega o snapshot inicial assim que os dados terminam de carregar
@@ -436,18 +322,6 @@ export default function AppearanceSettingsPage() {
       setIsDirty(isChanged);
     }
   }, [loading, getCurrentSnapshot, setIsDirty]);
-
-  const handleSelectPalette = async (key: AdminPaletteKey) => {
-    setPalette(key);
-    const p = availablePalettes.find((item) => item.id === key);
-    showToast(`Tema visual alterado para "${p?.name || key}"!`);
-    try {
-      await saveStoreGeneralSettings(tenantId, { adminPalette: key });
-      await refreshTenant(tenantId);
-    } catch (err) {
-      console.warn('Erro ao salvar paleta no Supabase:', err);
-    }
-  };
 
   // Upload no Cloudflare R2
   const handleUploadMedia = async (
@@ -582,53 +456,6 @@ export default function AppearanceSettingsPage() {
         }
       };
 
-      const adminCustom: AdminCustomThemeConfig = {
-        typography: {
-          headingFont: adminHeadingFont,
-          bodyFont: adminBodyFont,
-          headingWeight: adminHeadingWeight,
-          headingColor: adminHeadingColor,
-          textColor: adminTextColor,
-          textMutedColor: adminTextMutedColor
-        },
-        buttons: {
-          primaryBg: adminBtnPrimaryBg,
-          primaryText: adminBtnPrimaryText,
-          primaryHoverBg: adminBtnPrimaryHover,
-          secondaryBg: adminBtnSecondaryBg,
-          secondaryText: adminBtnSecondaryText,
-          secondaryBorder: adminBtnSecondaryBorder,
-          secondaryHoverBg: adminBtnSecondaryHover,
-          borderRadius: adminBtnRadius
-        },
-        cards: {
-          background: adminCardBg,
-          border: adminCardBorder,
-          borderRadius: adminCardRadius,
-          shadow: adminCardShadow
-        },
-        sidebar: {
-          background: adminSidebarBg,
-          text: adminSidebarText,
-          activeBackground: adminSidebarActiveBg,
-          activeText: adminSidebarActiveText,
-          activeBorder: adminSidebarActiveBorder
-        },
-        accents: {
-          primaryAccent: adminPrimaryAccent,
-          softAccent: adminSoftAccent
-        },
-        pageBackground: adminPageBg,
-        // Retrocompatibilidade
-        pageBgLight: adminPageBg,
-        fontFamily: adminBodyFont,
-        buttonBg: adminBtnPrimaryBg,
-        buttonText: adminBtnPrimaryText,
-        buttonRadius: adminBtnRadius,
-        sidebarBg: adminSidebarBg,
-        sidebarText: adminSidebarText
-      };
-
       const res = await saveStoreGeneralSettings(tenantId, {
         logoUrl: logoUrl.trim(),
         logoDarkUrl: logoDarkUrl.trim(),
@@ -639,8 +466,6 @@ export default function AppearanceSettingsPage() {
         planoFundoMenu,
         tipografiaMenu,
         secoesVitrine,
-        adminCustom,
-        adminPalette: palette,
         exibirQuantidadeEstoqueConsumidor
       });
 
@@ -651,7 +476,7 @@ export default function AppearanceSettingsPage() {
           await refreshProducts();
           await refreshTenant(tenantId);
         } catch { }
-        showToast('Identidade visual, logos e planos de fundo salvos com sucesso!');
+        showToast('Aparência e identidade da vitrine salvas com sucesso!');
         return true;
       } else {
         showToast(res.error || 'Erro ao salvar configurações.', 'error');
@@ -663,54 +488,6 @@ export default function AppearanceSettingsPage() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const applyPaletteToForm = (key: AdminPaletteKey) => {
-    const pal = availablePalettes.find((p) => p.id === key);
-    if (!pal) return;
-    setPalette(key);
-    setAdminBtnPrimaryBg(pal.colors.primary);
-    setAdminBtnPrimaryText(pal.colors.primaryText);
-    setAdminBtnPrimaryHover(pal.colors.primaryHover);
-    setAdminSidebarBg(pal.colors.sidebarBg);
-    setAdminSidebarText(pal.colors.sidebarText);
-    setAdminSidebarActiveBg(pal.colors.sidebarActive);
-    setAdminSidebarActiveText(pal.colors.sidebarTextActive);
-    setAdminSidebarActiveBorder(pal.colors.sidebarActiveBorder);
-    setAdminPrimaryAccent(pal.colors.accent);
-    setAdminSoftAccent(pal.colors.accentSoft);
-    showToast(`Paleta "${pal.name}" carregada no formulário. Clique em Salvar para aplicar permanentemente.`);
-  };
-
-  const handleResetAdminDefaults = () => {
-    setPalette('midnight-gold');
-    setAdminHeadingFont('Inter');
-    setAdminBodyFont('Inter');
-    setAdminHeadingWeight('font-bold');
-    setAdminHeadingColor('#0F172A');
-    setAdminTextColor('#334155');
-    setAdminTextMutedColor('#64748B');
-    setAdminBtnPrimaryBg('#0F172A');
-    setAdminBtnPrimaryText('#FFFFFF');
-    setAdminBtnPrimaryHover('#1E293B');
-    setAdminBtnSecondaryBg('#FFFFFF');
-    setAdminBtnSecondaryText('#334155');
-    setAdminBtnSecondaryBorder('#E2E8F0');
-    setAdminBtnSecondaryHover('#F8FAFC');
-    setAdminBtnRadius('rounded-xl');
-    setAdminCardBg('#FFFFFF');
-    setAdminCardBorder('#E2E8F0');
-    setAdminCardRadius('rounded-xl');
-    setAdminCardShadow('shadow-2xs');
-    setAdminSidebarBg('#0B132B');
-    setAdminSidebarText('#94A3B8');
-    setAdminSidebarActiveBg('#1C2D5A');
-    setAdminSidebarActiveText('#FFFFFF');
-    setAdminSidebarActiveBorder('#F59E0B');
-    setAdminPrimaryAccent('#C5A059');
-    setAdminSoftAccent('#FEF3C7');
-    setAdminPageBg('#F8FAFC');
-    showToast('Valores padrão executivos restaurados no formulário.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -726,71 +503,63 @@ export default function AppearanceSettingsPage() {
 
   if (loading) {
     return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
-      <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-      <span className="text-xs font-medium">Carregando configurações visuais...</span>
-    </div>
-  );
-}
-
-return (
-  <form onSubmit={handleSubmit} className="space-y-6">
-    {/* Toast flutuante */}
-    {toast && (
-      <div
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl text-white shadow-xl border animate-in fade-in slide-in-from-bottom-3 duration-200 ${toast.type === 'success' ? 'bg-slate-900 border-slate-700' : 'bg-rose-900 border-rose-700'
-          }`}
-      >
-        {toast.type === 'success' ? (
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-        ) : (
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-        )}
-        <span className="text-xs font-semibold">{toast.message}</span>
+      <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
+        <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
+        <span className="text-xs font-medium">Carregando configurações visuais da vitrine...</span>
       </div>
-    )}
+    );
+  }
 
-    {/* NAVEGAÇÃO DE ABAS EXECUTIVA: VITRINE vs DESIGN SYSTEM ADMIN */}
-    <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveMainTab('vitrine')}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-            activeMainTab === 'vitrine'
-              ? "bg-slate-900 text-amber-400 shadow-sm"
-              : "bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-          )}
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Toast flutuante */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl text-white shadow-xl border animate-in fade-in slide-in-from-bottom-3 duration-200 ${toast.type === 'success' ? 'bg-slate-900 border-slate-700' : 'bg-rose-900 border-rose-700'
+            }`}
         >
-          <Store className="w-4 h-4" />
-          <span>1. Vitrine da Loja (Consumidor)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveMainTab('admin')}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative",
-            activeMainTab === 'admin'
-              ? "bg-slate-900 text-amber-400 shadow-sm"
-              : "bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           )}
+          <span className="text-xs font-semibold">{toast.message}</span>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CABEÇALHO DEDICADO À VITRINE & LOJA VIRTUAL (CONSUMIDOR FINAL)
+          ========================================================================= */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Store className="w-3.5 h-3.5 text-indigo-600" />
+              Consumidor Final & Catálogo
+            </span>
+            <span className="text-xs text-slate-500">• Loja: {tenantSlug}</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Palette className="w-6 h-6 text-indigo-600" />
+            Aparência da Vitrine & Loja Virtual
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
+            Personalize como os clientes finais e visitantes enxergam a sua boutique: logotipo oficial, favicon, cores da vitrine, banners, menus e tipografia de seções.
+          </p>
+        </div>
+
+        {/* Atalho Direto para o Tema do Admin */}
+        <Link
+          href="/admin/configuracoes/tema-admin"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs self-start md:self-auto cursor-pointer"
         >
-          <Sliders className="w-4 h-4" />
-          <span>2. Painel Administrativo (Design System da Equipe)</span>
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-        </button>
+          <Sliders className="w-4 h-4 text-amber-600" />
+          <span>Tema do Painel Administrativo (Equipe)</span>
+          <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
+        </Link>
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-1 text-slate-400 text-[11px] font-medium hidden lg:flex">
-        <span>Loja multitenant: <strong className="text-slate-700">{tenantSlug}</strong></span>
-      </div>
-    </div>
-
-    {activeMainTab === 'vitrine' && (
-      <>
-        {/* BLOCO 1: LOGOTIPOS, FAVICON & OG IMAGE (CLOUDFLARE R2) */}
+      {/* BLOCO 1: LOGOTIPOS, FAVICON & OG IMAGE (CLOUDFLARE R2) */}
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
       <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center font-bold">
@@ -2415,800 +2184,6 @@ return (
         ))}
       </div>
     </div>
-    </>
-    )}
-
-    {/* =========================================================================
-        ABA 2: CENTRAL DE DESIGN SYSTEM DO PAINEL ADMINISTRATIVO (MULTITENANT)
-        ========================================================================= */}
-    {activeMainTab === 'admin' && (
-      <>
-        {/* BANNER DE AUTONOMIA & AVISO MULTITENANT */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
-                  Design System Corporativo Multitenant
-                </span>
-                <span className="text-xs text-slate-400">• Loja: {tenantSlug}</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-amber-400" />
-                Personalização Visual Integral do Painel Administrativo
-              </h2>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                Defina uma identidade estética única para o seu sistema de administração. As escolhas feitas aqui padronizam instantaneamente <strong>todas as 25 páginas, tabelas, formulários e modais</strong> tanto para você quanto para todos os colaboradores da sua loja.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleResetAdminDefaults}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all border border-slate-700 self-start md:self-auto cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restaurar Padrão Executivo</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 1. PALETAS RÁPIDAS EM 1 CLIQUE */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
-                <Paintbrush className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                  Paletas Executivas em 1 Clique
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Carregue instantaneamente uma combinação harmônica profissional desenvolvida para boutiques e e-commerces.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {availablePalettes.map((item) => {
-              const isSelected = palette === item.id;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => applyPaletteToForm(item.id)}
-                  className={cn(
-                    'rounded-xl border-2 p-3.5 transition-all cursor-pointer relative flex flex-col justify-between group hover:shadow-md',
-                    isSelected
-                      ? 'border-slate-900 bg-slate-50/70 shadow-xs ring-2 ring-slate-900/10'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  )}
-                >
-                  <div>
-                    <div className="w-full h-14 rounded-lg border border-slate-200 overflow-hidden flex shadow-inner mb-2.5">
-                      <div className="w-1/3 h-full p-2 flex flex-col justify-between" style={{ backgroundColor: item.colors.sidebarBg }}>
-                        <div className="w-full h-1 rounded bg-white/20" />
-                        <div className="w-full h-1 rounded" style={{ backgroundColor: item.colors.accent }} />
-                      </div>
-                      <div className="w-2/3 h-full bg-[#F8FAFC] p-2 flex flex-col justify-between">
-                        <div className="flex items-center justify-between">
-                          <div className="w-1/2 h-1.5 rounded bg-slate-200" />
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.colors.accent }} />
-                        </div>
-                        <div className="w-full h-3 rounded" style={{ backgroundColor: item.colors.primary }} />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">{item.name}</span>
-                      <span className="text-[9px] font-semibold text-slate-400 uppercase">{item.category}</span>
-                    </div>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 line-clamp-1">{item.description}</span>
-                    <button
-                      type="button"
-                      className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-md",
-                        isSelected ? "bg-slate-900 text-amber-400" : "bg-slate-100 text-slate-600"
-                      )}
-                    >
-                      {isSelected ? 'Ativa' : 'Aplicar'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 2. TIPOGRAFIA DO PAINEL ADMINISTRATIVO */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center font-bold">
-              <Type className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Tipografia & Hierarquia do Sistema
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Defina as famílias tipográficas, pesos e cores para todos os títulos, tabelas, KPIs e parágrafos do admin.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-            {/* Fonte de Títulos */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Fonte dos Títulos de Seção</span>
-              <select
-                value={adminHeadingFont}
-                onChange={(e) => setAdminHeadingFont(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
-              >
-                <option value="Inter">Inter (Padrão Corporativo Suíço)</option>
-                <option value="Plus Jakarta Sans">Plus Jakarta Sans (Moderno & Tech)</option>
-                <option value="Poppins">Poppins (Geométrico Amigável)</option>
-                <option value="Montserrat">Montserrat (Alta Visibilidade)</option>
-                <option value="Playfair Display">Playfair Display (Editorial Luxo)</option>
-                <option value="Cinzel">Cinzel (Clássico Romano)</option>
-                <option value="Cormorant Garamond">Cormorant Garamond (Elegância Nobre)</option>
-              </select>
-              <span className="text-[10px] text-slate-400 block">Aplica aos títulos de todas as 25 páginas.</span>
-            </div>
-
-            {/* Fonte do Corpo e Tabelas */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Fonte do Corpo & Tabelas</span>
-              <select
-                value={adminBodyFont}
-                onChange={(e) => setAdminBodyFont(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
-              >
-                <option value="Inter">Inter (Leitura Confortável)</option>
-                <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-                <option value="Poppins">Poppins</option>
-                <option value="Montserrat">Montserrat</option>
-              </select>
-              <span className="text-[10px] text-slate-400 block">Textos de apoio, campos, tabelas e listas.</span>
-            </div>
-
-            {/* Peso dos Títulos */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Peso dos Títulos</span>
-              <select
-                value={adminHeadingWeight}
-                onChange={(e) => setAdminHeadingWeight(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
-              >
-                <option value="font-semibold">Semibold (600 - Equilibrado)</option>
-                <option value="font-bold">Bold (700 - Destaque Padrão)</option>
-                <option value="font-extrabold">Extrabold (800 - Forte Impacto)</option>
-              </select>
-              <span className="text-[10px] text-slate-400 block">Espessura visual dos cabeçalhos.</span>
-            </div>
-
-            {/* Cor dos Títulos */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Cor dos Títulos</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminHeadingColor}
-                  onChange={(e) => setAdminHeadingColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminHeadingColor}
-                  onChange={(e) => setAdminHeadingColor(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Cor dos Textos de Leitura */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Cor do Texto Principal</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminTextColor}
-                  onChange={(e) => setAdminTextColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminTextColor}
-                  onChange={(e) => setAdminTextColor(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Cor dos Subtítulos Muted */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Cor de Textos Secundários</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminTextMutedColor}
-                  onChange={(e) => setAdminTextMutedColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminTextMutedColor}
-                  onChange={(e) => setAdminTextMutedColor(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. BOTÕES E AÇÕES DO SISTEMA */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
-              <MousePointer className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Botões de Ação Primária, Secundária & Geometria
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Padronize os botões de confirmação (Salvar, Criar, Adicionar) e neutros (Cancelar, Filtros, Voltar).
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            {/* Botão Primário: Fundo */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Primário: Fundo</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnPrimaryBg}
-                  onChange={(e) => setAdminBtnPrimaryBg(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnPrimaryBg}
-                  onChange={(e) => setAdminBtnPrimaryBg(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Botão Primário: Texto */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Primário: Texto</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnPrimaryText}
-                  onChange={(e) => setAdminBtnPrimaryText(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnPrimaryText}
-                  onChange={(e) => setAdminBtnPrimaryText(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Botão Primário: Hover */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Primário: Hover</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnPrimaryHover}
-                  onChange={(e) => setAdminBtnPrimaryHover(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnPrimaryHover}
-                  onChange={(e) => setAdminBtnPrimaryHover(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Curvatura dos Botões */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Curvatura dos Botões</span>
-              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                {[
-                  { label: 'Quadrado', val: 'rounded-none' },
-                  { label: 'Médio (8px)', val: 'rounded-lg' },
-                  { label: 'Suave (12px)', val: 'rounded-xl' },
-                  { label: 'Pílula', val: 'rounded-full' }
-                ].map((r) => (
-                  <button
-                    key={r.val}
-                    type="button"
-                    onClick={() => setAdminBtnRadius(r.val as any)}
-                    className={cn(
-                      'py-1.5 px-2 rounded-md border text-[11px] font-bold text-center transition-all cursor-pointer',
-                      adminBtnRadius === r.val
-                        ? 'bg-slate-900 text-amber-400 border-slate-900 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    )}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Botão Secundário: Fundo */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Secundário: Fundo</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnSecondaryBg}
-                  onChange={(e) => setAdminBtnSecondaryBg(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnSecondaryBg}
-                  onChange={(e) => setAdminBtnSecondaryBg(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Botão Secundário: Texto */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Secundário: Texto</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnSecondaryText}
-                  onChange={(e) => setAdminBtnSecondaryText(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnSecondaryText}
-                  onChange={(e) => setAdminBtnSecondaryText(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Botão Secundário: Borda */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Secundário: Borda</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnSecondaryBorder}
-                  onChange={(e) => setAdminBtnSecondaryBorder(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnSecondaryBorder}
-                  onChange={(e) => setAdminBtnSecondaryBorder(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-
-            {/* Botão Secundário: Hover */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Botão Secundário: Hover</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminBtnSecondaryHover}
-                  onChange={(e) => setAdminBtnSecondaryHover(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminBtnSecondaryHover}
-                  onChange={(e) => setAdminBtnSecondaryHover(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. CARDS, SUPERFÍCIES & BARRA LATERAL */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cards & Painéis */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold">
-                <Layout className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                  Cards & Superfícies de Trabalho
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Fundo, bordas, arredondamento e sombra dos blocos do admin.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Fundo dos Cards</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminCardBg}
-                    onChange={(e) => setAdminCardBg(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminCardBg}
-                    onChange={(e) => setAdminCardBg(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Borda dos Cards</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminCardBorder}
-                    onChange={(e) => setAdminCardBorder(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminCardBorder}
-                    onChange={(e) => setAdminCardBorder(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Curvatura dos Cards</span>
-                <select
-                  value={adminCardRadius}
-                  onChange={(e) => setAdminCardRadius(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
-                >
-                  <option value="rounded-lg">Médio (8px)</option>
-                  <option value="rounded-xl">Suave (12px)</option>
-                  <option value="rounded-2xl">Moderno (16px - Padrão)</option>
-                  <option value="rounded-3xl">Arrojado (24px)</option>
-                </select>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Nível de Sombra</span>
-                <select
-                  value={adminCardShadow}
-                  onChange={(e) => setAdminCardShadow(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
-                >
-                  <option value="shadow-none">Sem Sombra (Flat)</option>
-                  <option value="shadow-2xs">Micro Sombra (Sutil)</option>
-                  <option value="shadow-xs">Sombra Baixa</option>
-                  <option value="shadow-sm">Sombra Média Suave</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Barra Lateral (Sidebar) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-              <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold">
-                <Columns className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                  Barra Lateral de Navegação (Sidebar)
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Personalize a barra lateral esquerda fixa de desktop e menu mobile.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Fundo da Barra Lateral</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminSidebarBg}
-                    onChange={(e) => setAdminSidebarBg(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminSidebarBg}
-                    onChange={(e) => setAdminSidebarBg(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Texto dos Links Inativos</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminSidebarText}
-                    onChange={(e) => setAdminSidebarText(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminSidebarText}
-                    onChange={(e) => setAdminSidebarText(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Fundo do Link Ativo</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminSidebarActiveBg}
-                    onChange={(e) => setAdminSidebarActiveBg(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminSidebarActiveBg}
-                    onChange={(e) => setAdminSidebarActiveBg(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <span className="font-bold text-slate-800 block">Borda do Link Ativo</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={adminSidebarActiveBorder}
-                    onChange={(e) => setAdminSidebarActiveBorder(e.target.value)}
-                    className="w-9 h-9 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={adminSidebarActiveBorder}
-                    onChange={(e) => setAdminSidebarActiveBorder(e.target.value)}
-                    className="text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-200 bg-white uppercase w-24"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 5. DESTAQUE (ACCENT) E FUNDO GERAL */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Cor de Destaque da Marca (Accent) & Fundo do Dashboard
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                A cor de acento se propaga em badges de status, anéis de foco, tabs selecionadas e links de navegação.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Cor de Destaque (Accent)</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminPrimaryAccent}
-                  onChange={(e) => setAdminPrimaryAccent(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminPrimaryAccent}
-                  onChange={(e) => setAdminPrimaryAccent(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-              <span className="text-[10px] text-slate-400 block">Aplica em badges, ícones e destaques.</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Fundo Suave de Destaque</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminSoftAccent}
-                  onChange={(e) => setAdminSoftAccent(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminSoftAccent}
-                  onChange={(e) => setAdminSoftAccent(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-              <span className="text-[10px] text-slate-400 block">Fundo sutil de pills e seleções ativas.</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="font-bold text-slate-800 block">Fundo Geral do Painel</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={adminPageBg}
-                  onChange={(e) => setAdminPageBg(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-300 p-0.5 bg-white"
-                />
-                <input
-                  type="text"
-                  value={adminPageBg}
-                  onChange={(e) => setAdminPageBg(e.target.value)}
-                  className="text-xs font-mono px-3 py-2 rounded-lg border border-slate-200 bg-white uppercase w-28"
-                />
-              </div>
-              <span className="text-[10px] text-slate-400 block">Fundo da área de trabalho do admin.</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. PRÉVIA AO VIVO EM TEMPO REAL (LIVE PREVIEW WIDGET) */}
-        <div className="bg-white border-2 border-slate-900 rounded-3xl p-6 shadow-lg space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                Prévia Interativa ao Vivo (Exatamente como aparecerá nas suas 25 páginas)
-              </h3>
-            </div>
-            <span className="text-[11px] text-slate-500 font-medium">
-              Simulador em tempo de execução
-            </span>
-          </div>
-
-          {/* Card Simulado com os tokens aplicados inline dinamicamente */}
-          <div
-            className="p-6 transition-all border"
-            style={{
-              backgroundColor: adminCardBg,
-              borderColor: adminCardBorder,
-              borderRadius: adminCardRadius === 'rounded-lg' ? '8px' : adminCardRadius === 'rounded-xl' ? '12px' : adminCardRadius === 'rounded-2xl' ? '16px' : '24px',
-              boxShadow: adminCardShadow === 'shadow-none' ? 'none' : adminCardShadow === 'shadow-2xs' ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : adminCardShadow === 'shadow-xs' ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <div>
-                <span
-                  className="text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block mb-1"
-                  style={{ backgroundColor: adminSoftAccent, color: adminPrimaryAccent }}
-                >
-                  ★ Métrica de Faturamento & Gestão
-                </span>
-                <h4
-                  className="text-lg tracking-tight"
-                  style={{
-                    fontFamily: adminHeadingFont,
-                    color: adminHeadingColor,
-                    fontWeight: adminHeadingWeight === 'font-semibold' ? 600 : adminHeadingWeight === 'font-extrabold' ? 800 : 700
-                  }}
-                >
-                  Visão Geral da Boutique • R$ 48.920,00
-                </h4>
-                <p
-                  className="text-xs mt-0.5"
-                  style={{
-                    fontFamily: adminBodyFont,
-                    color: adminTextMutedColor
-                  }}
-                >
-                  Demonstração da tipografia, espaçamento e contraste configurados para sua loja.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg border"
-                  style={{
-                    backgroundColor: adminSoftAccent,
-                    borderColor: adminPrimaryAccent,
-                    color: adminPrimaryAccent
-                  }}
-                >
-                  +18.4% este mês
-                </span>
-              </div>
-            </div>
-
-            <div className="py-4 space-y-2">
-              <p
-                className="text-xs leading-relaxed"
-                style={{
-                  fontFamily: adminBodyFont,
-                  color: adminTextColor
-                }}
-              >
-                Este parágrafo de exemplo utiliza a fonte <strong>{adminBodyFont}</strong> e a cor de texto <strong>{adminTextColor}</strong>. Todas as tabelas de pedidos, produtos, clientes e finanças refletirão exatamente essa densidade e clareza.
-              </p>
-            </div>
-
-            {/* Ações da Prévia */}
-            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
-              {/* Botão Primário */}
-              <button
-                type="button"
-                className="px-4 py-2.5 text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
-                style={{
-                  backgroundColor: adminBtnPrimaryBg,
-                  color: adminBtnPrimaryText,
-                  borderRadius: adminBtnRadius === 'rounded-none' ? '0px' : adminBtnRadius === 'rounded-lg' ? '8px' : adminBtnRadius === 'rounded-xl' ? '12px' : '9999px',
-                  fontFamily: adminBodyFont
-                }}
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Botão Primário (Salvar)</span>
-              </button>
-
-              {/* Botão Secundário */}
-              <button
-                type="button"
-                className="px-4 py-2.5 text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer border"
-                style={{
-                  backgroundColor: adminBtnSecondaryBg,
-                  color: adminBtnSecondaryText,
-                  borderColor: adminBtnSecondaryBorder,
-                  borderRadius: adminBtnRadius === 'rounded-none' ? '0px' : adminBtnRadius === 'rounded-lg' ? '8px' : adminBtnRadius === 'rounded-xl' ? '12px' : '9999px',
-                  fontFamily: adminBodyFont
-                }}
-              >
-                <span>Botão Secundário (Filtros)</span>
-              </button>
-
-              {/* Botão de Perigo Semântico */}
-              <button
-                type="button"
-                className="px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                style={{
-                  borderRadius: adminBtnRadius === 'rounded-none' ? '0px' : adminBtnRadius === 'rounded-lg' ? '8px' : adminBtnRadius === 'rounded-xl' ? '12px' : '9999px',
-                  fontFamily: adminBodyFont
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Excluir (Segurança Semântica)</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    )}
 
     {/* BOTÃO SALVAR */}
     <div className="flex justify-end pt-2">
@@ -3222,7 +2197,7 @@ return (
         ) : (
           <Save className="w-4 h-4" />
         )}
-        <span>{isSaving ? 'Salvando...' : 'Salvar Identidade Visual, Tipografias & Seções'}</span>
+        <span>{isSaving ? 'Salvando Vitrine...' : 'Salvar Aparência da Loja Virtual'}</span>
       </button>
     </div>
 

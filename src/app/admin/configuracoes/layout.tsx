@@ -111,10 +111,20 @@ const SETTINGS_SECTIONS: NavSection[] = [
     title: 'Marca, Canais & Dados',
     items: [
       {
-        label: 'Aparência & Temas',
+        label: 'Aparência da Loja',
         href: '/admin/configuracoes/aparencia',
         icon: Palette,
-        description: 'Paleta visual do admin, logotipos e favicon'
+        description: 'Cores, logo, banners e seções da vitrine',
+        badge: 'Consumidor',
+        badgeColor: 'bg-indigo-100 text-indigo-800'
+      },
+      {
+        label: 'Tema do Painel',
+        href: '/admin/configuracoes/tema-admin',
+        icon: Sliders,
+        description: 'Cores, botões, cards e fontes do sistema',
+        badge: 'Equipe',
+        badgeColor: 'bg-amber-100 text-amber-800'
       },
       {
         label: 'Integrações & SEO',

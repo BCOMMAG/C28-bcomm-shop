@@ -18,7 +18,9 @@ import {
   ArrowRight,
   Clock,
   ExternalLink,
-  Layers
+  Layers,
+  Palette,
+  Sliders
 } from 'lucide-react';
 import { globalAdminSearch, GlobalSearchResult } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -322,8 +324,22 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                     color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
                   },
                   {
-                    title: 'Configurações & Chave PIX',
-                    desc: 'Regra de frete e 6 paletas visuais',
+                    title: 'Aparência da Loja Virtual',
+                    desc: 'Cores, logotipo, banners e vitrine',
+                    href: '/admin/configuracoes/aparencia',
+                    icon: Palette,
+                    color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                  },
+                  {
+                    title: 'Tema do Painel Administrativo',
+                    desc: 'Design system, fontes e cores da equipe',
+                    href: '/admin/configuracoes/tema-admin',
+                    icon: Sliders,
+                    color: 'text-amber-700 bg-amber-50 border-amber-200'
+                  },
+                  {
+                    title: 'Configurações Gerais & PIX',
+                    desc: 'Regra de frete, dados e segurança',
                     href: '/admin/configuracoes/',
                     icon: Settings,
                     color: 'text-slate-700 bg-slate-100 border-slate-300'

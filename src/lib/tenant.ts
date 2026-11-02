@@ -117,7 +117,6 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "bg_light": "#FAF8F5",
       "video_url": "/video/plano-de-fundo.mp4",
       "imagem_url": "/images/plano-de-fundo.webp",
-      "imagem_custom_url": "",
       "overlay_opacidade": 50
     },
     "barra_aviso_ativa": true,
@@ -294,7 +293,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "prazo_manuseio_dias": 1,
     "_teste_e2e_timestamp": 1792612811741,
     "entrega_local_bairros": "Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)",
-    "retirada_boutique_ativa": true
+    "retirada_boutique_ativa": true,
+    "exibir_quantidade_estoque_consumidor": true
   },
   "modulos_ativos": {
     "frete_automatico": true,
@@ -304,7 +304,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-02T17:15:59.304+00:00",
+  "updated_at": "2026-11-02T20:34:24.873+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
