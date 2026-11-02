@@ -373,7 +373,7 @@ export default function AdminMenuPage() {
             type="button"
             onClick={() => handleSaveMenu()}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            className="admin-btn-primary px-4 py-2 text-xs uppercase tracking-wider disabled:opacity-50"
           >
             {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             <span>Salvar Menus</span>
@@ -507,7 +507,7 @@ export default function AdminMenuPage() {
           <button
             type="button"
             onClick={handleOpenCreateItem}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            className="admin-btn-primary px-3.5 py-2 text-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Adicionar Item</span>

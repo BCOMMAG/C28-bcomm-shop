@@ -1,0 +1,162 @@
+/* =========================================================================
+   DESIGN SYSTEM OFICIAL DO PAINEL BCOMM - TOKENS CANÔNICOS
+   ========================================================================= */
+
+:root {
+  --admin-heading-font: var(--font-inter), Inter, sans-serif;
+  --admin-body-font: var(--font-inter), Inter, sans-serif;
+  --admin-heading-color: #0F172A;
+  --admin-text-color: #334155;
+  --admin-text-muted: #64748B;
+
+  --admin-btn-primary-bg: #0F172A;
+  --admin-btn-primary-text: #FFFFFF;
+  --admin-btn-primary-hover: #1E293B;
+
+  --admin-btn-secondary-bg: #FFFFFF;
+  --admin-btn-secondary-text: #334155;
+  --admin-btn-secondary-border: #E2E8F0;
+  --admin-btn-secondary-hover: #F8FAFC;
+
+  --admin-btn-radius: 12px;
+
+  --admin-card-bg: #FFFFFF;
+  --admin-card-border: #E2E8F0;
+  --admin-card-radius: 16px;
+  --admin-card-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  --admin-sidebar-bg: #0B132B;
+  --admin-sidebar-text: #94A3B8;
+  --admin-sidebar-active: #1C2D5A;
+  --admin-sidebar-active-text: #FFFFFF;
+  --admin-sidebar-active-border: #F59E0B;
+  --admin-sidebar-hover: #162244;
+  --admin-sidebar-muted: #64748B;
+  --admin-sidebar-border: #1E293B;
+
+  --admin-accent: #C5A059;
+  --admin-accent-soft: #FEF3C7;
+  --admin-page-bg: #F8FAFC;
+}
+
+/* 1. Botão de Ação Primária (Salvar, Criar, Adicionar, Concluir) */
+.admin-btn-primary {
+  background-color: var(--admin-btn-primary-bg) !important;
+  color: var(--admin-btn-primary-text) !important;
+  border-radius: var(--admin-btn-radius) !important;
+  font-family: var(--admin-body-font) !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+.admin-btn-primary:hover:not(:disabled) {
+  background-color: var(--admin-btn-primary-hover) !important;
+  filter: brightness(0.95);
+  transform: translateY(-0.5px);
+}
+.admin-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.admin-btn-primary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* 2. Botão de Ação Secundária & Neutra (Cancelar, Voltar, Filtros, Exportar) */
+.admin-btn-secondary {
+  background-color: var(--admin-btn-secondary-bg) !important;
+  color: var(--admin-btn-secondary-text) !important;
+  border: 1px solid var(--admin-btn-secondary-border) !important;
+  border-radius: var(--admin-btn-radius) !important;
+  font-family: var(--admin-body-font) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+.admin-btn-secondary:hover:not(:disabled) {
+  background-color: var(--admin-btn-secondary-hover) !important;
+}
+.admin-btn-secondary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* 3. Botão de Perigo / Ação Destrutiva (Excluir, Revogar, Descartar) */
+.admin-btn-danger {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  border-radius: var(--admin-btn-radius) !important;
+  font-family: var(--admin-body-font) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+.admin-btn-danger:hover:not(:disabled) {
+  background-color: #B91C1C !important;
+}
+
+/* 4. Cards de Superfície & Formulários */
+.admin-card {
+  background-color: var(--admin-card-bg) !important;
+  border: 1px solid var(--admin-card-border) !important;
+  border-radius: var(--admin-card-radius) !important;
+  box-shadow: var(--admin-card-shadow) !important;
+  transition: border-color 0.2s ease;
+}
+
+/* 5. Títulos de Páginas e Seções */
+.admin-heading {
+  font-family: var(--admin-heading-font) !important;
+  color: var(--admin-heading-color) !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* 6. Textos de Corpo e Informações */
+.admin-body {
+  font-family: var(--admin-body-font) !important;
+  color: var(--admin-text-color) !important;
+}
+
+.admin-text-muted {
+  color: var(--admin-text-muted) !important;
+}
+
+/* 7. Badges e Destaques */
+.admin-badge {
+  background-color: var(--admin-accent-soft) !important;
+  color: var(--admin-accent) !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+}
+
+/* 8. Foco Acessível em Campos de Formulário */
+.admin-input:focus {
+  border-color: var(--admin-accent) !important;
+  box-shadow: 0 0 0 3px var(--admin-accent-soft) !important;
+  outline: none !important;
+}
+
+/* 9. Retrocompatibilidade Total: Qualquer button[type="submit"] no admin herda o botão primário */
+#admin-root button[type="submit"]:not(.custom-override):not(.admin-btn-secondary):not(.admin-btn-danger) {
+  background-color: var(--admin-btn-primary-bg) !important;
+  color: var(--admin-btn-primary-text) !important;
+  border-radius: var(--admin-btn-radius) !important;
+  font-family: var(--admin-body-font) !important;
+}
+

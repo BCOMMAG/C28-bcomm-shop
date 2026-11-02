@@ -1850,7 +1850,7 @@ export default function AdminPedidosPage() {
         <button
           onClick={fetchOrders}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+          className="admin-btn-secondary px-3 py-2 text-xs font-semibold"
           title="Atualizar listagem de pedidos do Supabase"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />

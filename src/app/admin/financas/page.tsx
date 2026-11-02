@@ -163,7 +163,7 @@ export default function AdminFinancasPage() {
           {/* Botão Exportar CSV */}
           <button
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            className="admin-btn-secondary px-3 py-2 text-xs font-semibold"
             title="Baixar planilha DRE em formato CSV compatível com Excel"
           >
             <Download className="w-3.5 h-3.5 text-amber-600" />
@@ -174,7 +174,7 @@ export default function AdminFinancasPage() {
           {/* Botão Imprimir / Salvar PDF */}
           <button
             onClick={handlePrintDRE}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 text-amber-400 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer"
+            className="admin-btn-primary px-3 py-2 text-xs font-bold uppercase tracking-wider"
             title="Imprimir relatório DRE oficial ou salvar em PDF"
           >
             <Printer className="w-3.5 h-3.5" />

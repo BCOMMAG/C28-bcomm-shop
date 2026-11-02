@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useStore } from '@/context/StoreContext';
+import { AdminCustomThemeConfig, DEFAULT_ADMIN_CUSTOM_THEME } from '@/lib/admin';
 
 export type AdminPaletteKey =
   | 'midnight-gold'
@@ -58,18 +59,18 @@ export const ADMIN_PALETTES: Record<AdminPaletteKey, AdminPaletteConfig> = {
       sidebarTextActive: '#FFFFFF',
       sidebarMuted: '#64748B',
       sidebarBorder: '#1E293B',
-      primary: '#B45309',
-      primaryHover: '#92400E',
+      primary: '#0F172A',
+      primaryHover: '#1E293B',
       primaryText: '#FFFFFF',
-      accent: '#F59E0B',
+      accent: '#C5A059',
       accentSoft: '#FEF3C7',
       badgeBg: '#FEF3C7',
       badgeText: '#92400E',
-      ring: '#F59E0B'
+      ring: '#C5A059'
     },
     preview: {
       swatchSidebar: '#0B132B',
-      swatchAccent: '#F59E0B',
+      swatchAccent: '#C5A059',
       swatchBg: '#F8FAFC'
     }
   },
@@ -148,8 +149,8 @@ export const ADMIN_PALETTES: Record<AdminPaletteKey, AdminPaletteConfig> = {
       sidebarTextActive: '#FFFFFF',
       sidebarMuted: '#64748B',
       sidebarBorder: '#1E293B',
-      primary: '#2563EB',
-      primaryHover: '#1D4ED8',
+      primary: '#1E3A8A',
+      primaryHover: '#172554',
       primaryText: '#FFFFFF',
       accent: '#3B82F6',
       accentSoft: '#DBEAFE',
@@ -178,8 +179,8 @@ export const ADMIN_PALETTES: Record<AdminPaletteKey, AdminPaletteConfig> = {
       sidebarTextActive: '#FFFFFF',
       sidebarMuted: '#FDA4AF',
       sidebarBorder: '#4C0519',
-      primary: '#BE123C',
-      primaryHover: '#9F1239',
+      primary: '#881337',
+      primaryHover: '#4C0519',
       primaryText: '#FFFFFF',
       accent: '#F43F5E',
       accentSoft: '#FFE4E6',
@@ -225,84 +226,274 @@ export const ADMIN_PALETTES: Record<AdminPaletteKey, AdminPaletteConfig> = {
   }
 };
 
+export function getFontFamilyCss(fontName?: string): string {
+  switch (fontName) {
+    case 'Plus Jakarta Sans':
+      return 'var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif';
+    case 'Poppins':
+      return 'var(--font-poppins), Poppins, sans-serif';
+    case 'Montserrat':
+      return 'var(--font-montserrat), Montserrat, sans-serif';
+    case 'Playfair Display':
+      return 'var(--font-playfair), "Playfair Display", Georgia, serif';
+    case 'Cinzel':
+      return 'var(--font-cinzel), Cinzel, Georgia, serif';
+    case 'Cormorant Garamond':
+      return 'var(--font-cormorant), "Cormorant Garamond", Georgia, serif';
+    case 'Inter':
+    default:
+      return 'var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  }
+}
+
+export function getRadiusPixels(radiusKey?: string): string {
+  switch (radiusKey) {
+    case 'rounded-none':
+      return '0px';
+    case 'rounded-lg':
+      return '8px';
+    case 'rounded-xl':
+      return '12px';
+    case 'rounded-2xl':
+      return '16px';
+    case 'rounded-3xl':
+      return '24px';
+    case 'rounded-full':
+      return '9999px';
+    default:
+      return '12px';
+  }
+}
+
+export function getShadowCss(shadowKey?: string): string {
+  switch (shadowKey) {
+    case 'shadow-none':
+      return 'none';
+    case 'shadow-2xs':
+      return '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+    case 'shadow-xs':
+      return '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08)';
+    case 'shadow-sm':
+      return '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04)';
+    default:
+      return '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+  }
+}
+
+export function getContrastingTextColor(hexColor?: string): string {
+  if (!hexColor || hexColor.length < 4) return '#FFFFFF';
+  let c = hexColor.replace('#', '');
+  if (c.length === 3) c = c.split('').map((x) => x + x).join('');
+  const r = parseInt(c.substring(0, 2), 16) || 0;
+  const g = parseInt(c.substring(2, 4), 16) || 0;
+  const b = parseInt(c.substring(4, 6), 16) || 0;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 160 ? '#0F172A' : '#FFFFFF';
+}
+
 interface AdminThemeContextType {
   palette: AdminPaletteKey;
   paletteConfig: AdminPaletteConfig;
   setPalette: (key: AdminPaletteKey) => void;
   availablePalettes: AdminPaletteConfig[];
+  customTheme: AdminCustomThemeConfig;
+  setCustomTheme: React.Dispatch<React.SetStateAction<AdminCustomThemeConfig>>;
+  updateThemeSection: <K extends keyof AdminCustomThemeConfig>(section: K, values: Partial<AdminCustomThemeConfig[K]>) => void;
+  applyPaletteToCustom: (key: AdminPaletteKey) => void;
+  resetToDefault: () => void;
 }
 
 const AdminThemeContext = createContext<AdminThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'bcomm_admin_palette_theme';
+const STORAGE_PALETTE_KEY = 'bcomm_admin_palette_theme';
+const STORAGE_CUSTOM_KEY = 'bcomm_admin_custom_theme';
 
 export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentTenant } = useStore();
-  const tenantPalette = (currentTenant?.configuracoes_visuais as any)?.admin_palette as AdminPaletteKey | undefined;
+  const visuais = (currentTenant?.configuracoes_visuais as any) || {};
+  const tenantPalette = visuais.admin_palette as AdminPaletteKey | undefined;
+  const tenantCustom = visuais.admin_custom as AdminCustomThemeConfig | undefined;
 
   const [palette, setPaletteState] = useState<AdminPaletteKey>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY) as AdminPaletteKey | null;
+        const saved = localStorage.getItem(STORAGE_PALETTE_KEY) as AdminPaletteKey | null;
         if (saved && ADMIN_PALETTES[saved]) return saved;
       } catch {}
     }
     return tenantPalette || 'midnight-gold';
   });
-  const [isMounted, setIsMounted] = useState(false);
 
+  const [customTheme, setCustomTheme] = useState<AdminCustomThemeConfig>(() => {
+    return {
+      ...DEFAULT_ADMIN_CUSTOM_THEME,
+      ...(tenantCustom || {}),
+      typography: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME.typography,
+        ...(tenantCustom?.typography || {})
+      },
+      buttons: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME.buttons,
+        ...(tenantCustom?.buttons || {})
+      },
+      cards: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME.cards,
+        ...(tenantCustom?.cards || {})
+      },
+      sidebar: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME.sidebar,
+        ...(tenantCustom?.sidebar || {})
+      },
+      accents: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME.accents,
+        ...(tenantCustom?.accents || {})
+      }
+    };
+  });
+
+  // Sincroniza quando o tenant do StoreContext é atualizado (reatividade em tempo real)
   useEffect(() => {
-    setIsMounted(true);
     if (tenantPalette && ADMIN_PALETTES[tenantPalette]) {
       setPaletteState(tenantPalette);
-      try {
-        localStorage.setItem(STORAGE_KEY, tenantPalette);
-      } catch {}
-    } else {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY) as AdminPaletteKey | null;
-        if (saved && ADMIN_PALETTES[saved]) {
-          setPaletteState(saved);
-        }
-      } catch {}
     }
-  }, [tenantPalette]);
+    if (tenantCustom) {
+      setCustomTheme((prev) => ({
+        ...prev,
+        ...tenantCustom,
+        typography: {
+          ...prev.typography,
+          ...(tenantCustom.typography || {})
+        },
+        buttons: {
+          ...prev.buttons,
+          ...(tenantCustom.buttons || {})
+        },
+        cards: {
+          ...prev.cards,
+          ...(tenantCustom.cards || {})
+        },
+        sidebar: {
+          ...prev.sidebar,
+          ...(tenantCustom.sidebar || {})
+        },
+        accents: {
+          ...prev.accents,
+          ...(tenantCustom.accents || {})
+        }
+      }));
+    }
+  }, [tenantPalette, tenantCustom]);
 
   const setPalette = (key: AdminPaletteKey) => {
     if (!ADMIN_PALETTES[key]) return;
     setPaletteState(key);
     try {
-      localStorage.setItem(STORAGE_KEY, key);
-    } catch {
-      // fallback seguro
-    }
+      localStorage.setItem(STORAGE_PALETTE_KEY, key);
+    } catch {}
+  };
+
+  const applyPaletteToCustom = (key: AdminPaletteKey) => {
+    const pal = ADMIN_PALETTES[key];
+    if (!pal) return;
+    setPalette(key);
+    setCustomTheme((prev) => ({
+      ...prev,
+      buttons: {
+        ...prev.buttons,
+        primaryBg: pal.colors.primary,
+        primaryText: pal.colors.primaryText,
+        primaryHoverBg: pal.colors.primaryHover
+      },
+      sidebar: {
+        ...prev.sidebar,
+        background: pal.colors.sidebarBg,
+        text: pal.colors.sidebarText,
+        activeBackground: pal.colors.sidebarActive,
+        activeText: pal.colors.sidebarTextActive,
+        activeBorder: pal.colors.sidebarActiveBorder
+      },
+      accents: {
+        ...prev.accents,
+        primaryAccent: pal.colors.accent,
+        softAccent: pal.colors.accentSoft
+      }
+    }));
+  };
+
+  const updateThemeSection = <K extends keyof AdminCustomThemeConfig>(
+    section: K,
+    values: Partial<AdminCustomThemeConfig[K]>
+  ) => {
+    setCustomTheme((prev) => ({
+      ...prev,
+      [section]: {
+        ...(prev[section] as any),
+        ...values
+      }
+    }));
+  };
+
+  const resetToDefault = () => {
+    setPalette('midnight-gold');
+    setCustomTheme(DEFAULT_ADMIN_CUSTOM_THEME);
   };
 
   const paletteConfig = ADMIN_PALETTES[palette] || ADMIN_PALETTES['midnight-gold'];
 
-  // Aplica variáveis CSS no container
+  // Aplicação Dinâmica de CSS Variables diretamente em :root
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    const c = paletteConfig.colors;
 
-    root.style.setProperty('--admin-sidebar-bg', c.sidebarBg);
-    root.style.setProperty('--admin-sidebar-hover', c.sidebarHover);
-    root.style.setProperty('--admin-sidebar-active', c.sidebarActive);
-    root.style.setProperty('--admin-sidebar-active-border', c.sidebarActiveBorder);
-    root.style.setProperty('--admin-sidebar-text', c.sidebarText);
-    root.style.setProperty('--admin-sidebar-text-active', c.sidebarTextActive);
-    root.style.setProperty('--admin-sidebar-muted', c.sidebarMuted);
-    root.style.setProperty('--admin-sidebar-border', c.sidebarBorder);
+    const typo = customTheme.typography || DEFAULT_ADMIN_CUSTOM_THEME.typography!;
+    const btns = customTheme.buttons || DEFAULT_ADMIN_CUSTOM_THEME.buttons!;
+    const crds = customTheme.cards || DEFAULT_ADMIN_CUSTOM_THEME.cards!;
+    const side = customTheme.sidebar || DEFAULT_ADMIN_CUSTOM_THEME.sidebar!;
+    const accs = customTheme.accents || DEFAULT_ADMIN_CUSTOM_THEME.accents!;
+    const pageBg = customTheme.pageBackground || '#F8FAFC';
 
-    root.style.setProperty('--admin-primary', c.primary);
-    root.style.setProperty('--admin-primary-hover', c.primaryHover);
-    root.style.setProperty('--admin-primary-text', c.primaryText);
-    root.style.setProperty('--admin-accent', c.accent);
-    root.style.setProperty('--admin-accent-soft', c.accentSoft);
-    root.style.setProperty('--admin-badge-bg', c.badgeBg);
-    root.style.setProperty('--admin-badge-text', c.badgeText);
-  }, [paletteConfig]);
+    // Tipografia
+    root.style.setProperty('--admin-heading-font', getFontFamilyCss(typo.headingFont));
+    root.style.setProperty('--admin-body-font', getFontFamilyCss(typo.bodyFont));
+    root.style.setProperty('--admin-heading-color', typo.headingColor || '#0F172A');
+    root.style.setProperty('--admin-text-color', typo.textColor || '#334155');
+    root.style.setProperty('--admin-text-muted', typo.textMutedColor || '#64748B');
+
+    // Botões Primários
+    root.style.setProperty('--admin-btn-primary-bg', btns.primaryBg || '#0F172A');
+    root.style.setProperty('--admin-btn-primary-text', btns.primaryText || '#FFFFFF');
+    root.style.setProperty('--admin-btn-primary-hover', btns.primaryHoverBg || '#1E293B');
+
+    // Botões Secundários
+    root.style.setProperty('--admin-btn-secondary-bg', btns.secondaryBg || '#FFFFFF');
+    root.style.setProperty('--admin-btn-secondary-text', btns.secondaryText || '#334155');
+    root.style.setProperty('--admin-btn-secondary-border', btns.secondaryBorder || '#E2E8F0');
+    root.style.setProperty('--admin-btn-secondary-hover', btns.secondaryHoverBg || '#F8FAFC');
+
+    // Botões Geometria
+    root.style.setProperty('--admin-btn-radius', getRadiusPixels(btns.borderRadius));
+
+    // Cards
+    root.style.setProperty('--admin-card-bg', crds.background || '#FFFFFF');
+    root.style.setProperty('--admin-card-border', crds.border || '#E2E8F0');
+    root.style.setProperty('--admin-card-radius', getRadiusPixels(crds.borderRadius));
+    root.style.setProperty('--admin-card-shadow', getShadowCss(crds.shadow));
+
+    // Sidebar
+    root.style.setProperty('--admin-sidebar-bg', side.background || paletteConfig.colors.sidebarBg);
+    root.style.setProperty('--admin-sidebar-text', side.text || paletteConfig.colors.sidebarText);
+    root.style.setProperty('--admin-sidebar-active', side.activeBackground || paletteConfig.colors.sidebarActive);
+    root.style.setProperty('--admin-sidebar-active-text', side.activeText || paletteConfig.colors.sidebarTextActive);
+    root.style.setProperty('--admin-sidebar-active-border', side.activeBorder || paletteConfig.colors.sidebarActiveBorder);
+    root.style.setProperty('--admin-sidebar-hover', paletteConfig.colors.sidebarHover);
+    root.style.setProperty('--admin-sidebar-muted', paletteConfig.colors.sidebarMuted);
+    root.style.setProperty('--admin-sidebar-border', paletteConfig.colors.sidebarBorder);
+
+    // Accents & Page
+    root.style.setProperty('--admin-accent', accs.primaryAccent || paletteConfig.colors.accent);
+    root.style.setProperty('--admin-accent-soft', accs.softAccent || paletteConfig.colors.accentSoft);
+    root.style.setProperty('--admin-page-bg', pageBg);
+  }, [customTheme, paletteConfig]);
 
   return (
     <AdminThemeContext.Provider
@@ -310,7 +501,12 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         palette,
         paletteConfig,
         setPalette,
-        availablePalettes: Object.values(ADMIN_PALETTES)
+        availablePalettes: Object.values(ADMIN_PALETTES),
+        customTheme,
+        setCustomTheme,
+        updateThemeSection,
+        applyPaletteToCustom,
+        resetToDefault
       }}
     >
       {children}
@@ -321,12 +517,16 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 export const useAdminTheme = (): AdminThemeContextType => {
   const context = useContext(AdminThemeContext);
   if (!context) {
-    // Retorna fallback gracioso caso renderizado fora do provider
     return {
       palette: 'midnight-gold',
       paletteConfig: ADMIN_PALETTES['midnight-gold'],
       setPalette: () => {},
-      availablePalettes: Object.values(ADMIN_PALETTES)
+      availablePalettes: Object.values(ADMIN_PALETTES),
+      customTheme: DEFAULT_ADMIN_CUSTOM_THEME,
+      setCustomTheme: () => {},
+      updateThemeSection: () => {},
+      applyPaletteToCustom: () => {},
+      resetToDefault: () => {}
     };
   }
   return context;

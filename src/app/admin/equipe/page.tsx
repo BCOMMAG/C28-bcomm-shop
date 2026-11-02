@@ -234,7 +234,7 @@ export default function AdminEquipePage() {
           <button
             type="button"
             onClick={() => setIsInviteOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="admin-btn-primary px-4 py-2.5 text-xs font-bold"
           >
             <UserPlus className="w-4 h-4" />
             <span>+ Convidar Colaborador</span>

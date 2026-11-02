@@ -1882,7 +1882,7 @@ export default function AdminProdutosPage() {
           {/* Botão Gerenciar Sinalizadores */}
           <button
             onClick={() => setIsSinalizadoresModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold transition-colors shadow-2xs cursor-pointer shrink-0"
+            className="admin-btn-secondary px-3 py-2 text-xs font-bold shrink-0"
             title="Gerenciar cores, nomes e ícones oficiais de todos os sinalizadores da boutique"
           >
             <Tag className="w-3.5 h-3.5 text-amber-700" />
@@ -1892,10 +1892,10 @@ export default function AdminProdutosPage() {
           {/* Botão Importar em Lote */}
           <button
             onClick={() => setIsBatchImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold uppercase tracking-wider transition-all shadow-2xs cursor-pointer shrink-0"
+            className="admin-btn-secondary px-3 py-2 text-xs font-bold uppercase tracking-wider shrink-0"
             title="Importar peças em lote por planilha Excel ou CSV"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-slate-950" />
+            <FileSpreadsheet className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Importar em Lote</span>
             <span className="sm:hidden">Lote</span>
           </button>
@@ -1903,7 +1903,7 @@ export default function AdminProdutosPage() {
           {/* Botão Cadastrar Nova Peça */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-2xs cursor-pointer shrink-0"
+            className="admin-btn-primary px-3 py-2 text-xs font-bold uppercase tracking-wider shrink-0"
             title="Cadastrar nova peça no catálogo"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -2038,7 +2038,7 @@ export default function AdminProdutosPage() {
             )}
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+              className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Cadastrar Nova Peça</span>

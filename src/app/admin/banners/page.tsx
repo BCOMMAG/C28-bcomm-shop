@@ -406,7 +406,7 @@ export default function AdminBannersPage() {
           <button
             type="button"
             onClick={handleAddNewBanner}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+            className="admin-btn-secondary px-3.5 py-2 text-xs font-bold"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Novo Banner</span>
@@ -415,7 +415,7 @@ export default function AdminBannersPage() {
           <button
             onClick={handleSaveBanner}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{isSaving ? 'Publicando...' : 'Salvar Alterações'}</span>

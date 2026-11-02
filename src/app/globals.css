@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
+@import "../styles/admin-tokens.css";
 
 @variant dark (&:where(.dark, .dark *));
 

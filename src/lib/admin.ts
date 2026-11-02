@@ -2860,6 +2860,44 @@ export interface CoresModoClaroEscuro {
 }
 
 export interface AdminCustomThemeConfig {
+  typography?: {
+    headingFont?: string;
+    bodyFont?: string;
+    headingWeight?: 'font-semibold' | 'font-bold' | 'font-extrabold';
+    headingColor?: string;
+    textColor?: string;
+    textMutedColor?: string;
+  };
+  buttons?: {
+    primaryBg?: string;
+    primaryText?: string;
+    primaryHoverBg?: string;
+    secondaryBg?: string;
+    secondaryText?: string;
+    secondaryBorder?: string;
+    secondaryHoverBg?: string;
+    borderRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full';
+  };
+  cards?: {
+    background?: string;
+    border?: string;
+    borderRadius?: 'rounded-lg' | 'rounded-xl' | 'rounded-2xl' | 'rounded-3xl';
+    shadow?: 'shadow-none' | 'shadow-2xs' | 'shadow-xs' | 'shadow-sm';
+  };
+  sidebar?: {
+    background?: string;
+    text?: string;
+    activeBackground?: string;
+    activeText?: string;
+    activeBorder?: string;
+  };
+  accents?: {
+    primaryAccent?: string;
+    softAccent?: string;
+  };
+  pageBackground?: string;
+
+  // Campos retrocompatíveis legados
   pageBgLight?: string;
   pageBgDark?: string;
   fontFamily?: string;
@@ -2870,6 +2908,52 @@ export interface AdminCustomThemeConfig {
   buttonText?: string;
   buttonRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-xl' | 'rounded-full';
 }
+
+export const DEFAULT_ADMIN_CUSTOM_THEME: AdminCustomThemeConfig = {
+  typography: {
+    headingFont: 'Inter',
+    bodyFont: 'Inter',
+    headingWeight: 'font-bold',
+    headingColor: '#0F172A',
+    textColor: '#334155',
+    textMutedColor: '#64748B'
+  },
+  buttons: {
+    primaryBg: '#0F172A',
+    primaryText: '#FFFFFF',
+    primaryHoverBg: '#1E293B',
+    secondaryBg: '#FFFFFF',
+    secondaryText: '#334155',
+    secondaryBorder: '#E2E8F0',
+    secondaryHoverBg: '#F8FAFC',
+    borderRadius: 'rounded-xl'
+  },
+  cards: {
+    background: '#FFFFFF',
+    border: '#E2E8F0',
+    borderRadius: 'rounded-xl',
+    shadow: 'shadow-2xs'
+  },
+  sidebar: {
+    background: '#0B132B',
+    text: '#94A3B8',
+    activeBackground: '#1C2D5A',
+    activeText: '#FFFFFF',
+    activeBorder: '#F59E0B'
+  },
+  accents: {
+    primaryAccent: '#C5A059',
+    softAccent: '#FEF3C7'
+  },
+  pageBackground: '#F8FAFC',
+  fontFamily: 'Inter',
+  buttonBg: '#0F172A',
+  buttonText: '#FFFFFF',
+  buttonRadius: 'rounded-xl',
+  sidebarBg: '#0B132B',
+  sidebarText: '#94A3B8',
+  pageBgLight: '#F8FAFC'
+};
 
 export interface SaveStoreSettingsInput {
   nome?: string;
@@ -3098,13 +3182,29 @@ export async function getStoreSettings(
         textDark: '#FAF8F5',
         accentGold: '#C5A059'
       },
-      adminCustom: vis.admin_custom || {
-        pageBgLight: '#F8FAFC',
-        pageBgDark: '#0B132B',
-        fontFamily: 'Inter',
-        sidebarBg: '#0B132B',
-        sidebarText: '#94A3B8',
-        buttonRadius: 'rounded-xl'
+      adminCustom: {
+        ...DEFAULT_ADMIN_CUSTOM_THEME,
+        ...(vis.admin_custom || {}),
+        typography: {
+          ...DEFAULT_ADMIN_CUSTOM_THEME.typography,
+          ...(vis.admin_custom?.typography || {})
+        },
+        buttons: {
+          ...DEFAULT_ADMIN_CUSTOM_THEME.buttons,
+          ...(vis.admin_custom?.buttons || {})
+        },
+        cards: {
+          ...DEFAULT_ADMIN_CUSTOM_THEME.cards,
+          ...(vis.admin_custom?.cards || {})
+        },
+        sidebar: {
+          ...DEFAULT_ADMIN_CUSTOM_THEME.sidebar,
+          ...(vis.admin_custom?.sidebar || {})
+        },
+        accents: {
+          ...DEFAULT_ADMIN_CUSTOM_THEME.accents,
+          ...(vis.admin_custom?.accents || {})
+        }
       },
       adminPalette: vis.admin_palette || 'midnight-gold',
 

@@ -53,7 +53,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentTenant } = useStore();
-  const { paletteConfig } = useAdminTheme();
+  const { paletteConfig, customTheme } = useAdminTheme();
   const { requestNavigation } = useAdminUnsavedChanges();
 
   const handleProtectedNav = (e: React.MouseEvent, href: string) => {
@@ -356,10 +356,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
+      id="admin-root"
       className="min-h-screen text-slate-800 flex font-sans antialiased selection:bg-amber-100 selection:text-amber-900 transition-colors"
       style={{
-        backgroundColor: adminCustom?.pageBgLight || '#F8FAFC',
-        fontFamily: adminCustom?.fontFamily || undefined
+        backgroundColor: 'var(--admin-page-bg)',
+        fontFamily: 'var(--admin-body-font)'
       }}
     >
       {/* Estilos dinâmicos customizados do painel administrativo */}
