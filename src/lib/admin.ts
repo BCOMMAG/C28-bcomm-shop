@@ -48,6 +48,15 @@ export interface AdminProductItem {
   }>;
   paired_with_slug?: string | null;
   detalhes?: any;
+  arquivado?: boolean;
+  lixeira?: boolean;
+  excluido_em?: string | null;
+  expira_em?: string | null;
+  excluido_por?: {
+    colaborador_id?: string;
+    nome: string;
+    cargo: string;
+  } | null;
   variacoes: Array<{
     id: string;
     cor_nome: string;
@@ -1274,51 +1283,62 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
 
     if (error) throw error;
 
-    return (data || []).map((p: any) => ({
-      id: p.id,
-      nome: p.nome,
-      slug: p.slug,
-      descricao: p.descricao,
-      preco: Number(p.preco),
-      preco_promocional: p.preco_promocional ? Number(p.preco_promocional) : null,
-      preco_custo: p.preco_custo ? Number(p.preco_custo) : null,
-      tecido: p.tecido,
-      modelagem: p.modelagem,
-      linha: p.linha,
-      destaque: Boolean(p.destaque),
-      mais_vendido: Boolean(p.mais_vendido),
-      outlet: Boolean(p.outlet),
-      ultimas_pecas: Boolean(p.ultimas_pecas),
-      estoque_total: (p.variacoes_produto || []).length > 0
-        ? (p.variacoes_produto || []).reduce((acc: number, v: any) => acc + Number(v.estoque || 0), 0)
-        : Number(p.estoque_total || 0),
-      ativo: Boolean(p.ativo),
-      foto_principal: p.foto_principal,
-      categoria_id: p.categoria_id,
-      categoria_nome: p.categorias?.nome || 'Geral',
-      subcategoria: p.subcategoria || null,
-      paired_with_slug: p.paired_with_slug || null,
-      detalhes: p.detalhes || null,
-      midias: (p.midias_produto || [])
-        .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
-        .map((m: any) => ({
-          id: m.id,
-          url: m.url,
-          tipo: m.tipo,
-          display_order: m.display_order || 0,
-          label: m.label
-        })),
-      variacoes: (p.variacoes_produto || []).map((v: any) => ({
-        id: v.id,
-        cor_nome: v.cor_nome,
-        cor_hex: v.cor_hex,
-        tamanho: v.tamanho,
-        estoque: v.estoque,
-        sku: v.sku,
-        preco: v.preco ? Number(v.preco) : null,
-        preco_promocional: v.preco_promocional ? Number(v.preco_promocional) : null
-      }))
-    }));
+    return (data || []).map((p: any) => {
+      const detalhesObj = p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes) ? p.detalhes : {};
+      const isArquivado = Boolean(detalhesObj.arquivado);
+      const isLixeira = Boolean(detalhesObj.lixeira);
+
+      return {
+        id: p.id,
+        nome: p.nome,
+        slug: p.slug,
+        descricao: p.descricao,
+        preco: Number(p.preco),
+        preco_promocional: p.preco_promocional ? Number(p.preco_promocional) : null,
+        preco_custo: p.preco_custo ? Number(p.preco_custo) : null,
+        tecido: p.tecido,
+        modelagem: p.modelagem,
+        linha: p.linha,
+        destaque: Boolean(p.destaque),
+        mais_vendido: Boolean(p.mais_vendido),
+        outlet: Boolean(p.outlet),
+        ultimas_pecas: Boolean(p.ultimas_pecas),
+        estoque_total: (p.variacoes_produto || []).length > 0
+          ? (p.variacoes_produto || []).reduce((acc: number, v: any) => acc + Number(v.estoque || 0), 0)
+          : Number(p.estoque_total || 0),
+        ativo: Boolean(p.ativo),
+        arquivado: isArquivado,
+        lixeira: isLixeira,
+        excluido_em: detalhesObj.excluido_em || null,
+        expira_em: detalhesObj.expira_em || null,
+        excluido_por: detalhesObj.excluido_por || null,
+        foto_principal: p.foto_principal,
+        categoria_id: p.categoria_id,
+        categoria_nome: p.categorias?.nome || 'Geral',
+        subcategoria: p.subcategoria || null,
+        paired_with_slug: p.paired_with_slug || null,
+        detalhes: p.detalhes || null,
+        midias: (p.midias_produto || [])
+          .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
+          .map((m: any) => ({
+            id: m.id,
+            url: m.url,
+            tipo: m.tipo,
+            display_order: m.display_order || 0,
+            label: m.label
+          })),
+        variacoes: (p.variacoes_produto || []).map((v: any) => ({
+          id: v.id,
+          cor_nome: v.cor_nome,
+          cor_hex: v.cor_hex,
+          tamanho: v.tamanho,
+          estoque: v.estoque,
+          sku: v.sku,
+          preco: v.preco ? Number(v.preco) : null,
+          preco_promocional: v.preco_promocional ? Number(v.preco_promocional) : null
+        }))
+      };
+    });
   } catch (err) {
     console.error('❌ [Supabase] Erro ao carregar produtos no admin:', err);
     return [];
@@ -1498,11 +1518,141 @@ export async function checkProductOrdersCount(
 }
 
 /**
- * Exclui ou arquiva um produto com segurança contábil e transparência operacional.
+ * Move um produto para a Lixeira (Soft Delete) com período de retenção de 30 dias.
  */
-export async function deleteAdminProduct(
+export async function moveToTrashAdminProduct(
+  productId: string,
+  user?: { id?: string; nome: string; cargo: string }
+): Promise<{ success: boolean; expiraEm?: string; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const agora = new Date();
+    const expiraEm = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', productId).single();
+    const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+
+    const novoDetalhes = {
+      ...curDet,
+      lixeira: true,
+      arquivado: false,
+      excluido_em: agora.toISOString(),
+      expira_em: expiraEm.toISOString(),
+      excluido_por: user ? { colaborador_id: user.id || null, nome: user.nome, cargo: user.cargo } : null
+    };
+
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        ativo: false,
+        detalhes: novoDetalhes,
+        updated_at: agora.toISOString()
+      })
+      .eq('id', productId);
+
+    if (error) throw error;
+    return { success: true, expiraEm: expiraEm.toISOString() };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao mover produto para lixeira:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Restaura um produto da Lixeira de volta para o catálogo (como pausado para revisão segura).
+ */
+export async function restoreAdminProduct(
   productId: string
-): Promise<{ success: boolean; action?: 'archived' | 'deleted'; error?: string }> {
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', productId).single();
+    const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+    const { lixeira, excluido_em, expira_em, excluido_por, ...restDet } = curDet;
+
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        detalhes: Object.keys(restDet).length > 0 ? restDet : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao restaurar produto:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Arquiva um produto (fora de linha), removendo-o da vitrine e da lista padrão sem data de expurgo.
+ */
+export async function archiveAdminProduct(
+  productId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const agora = new Date().toISOString();
+    const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', productId).single();
+    const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        ativo: false,
+        detalhes: { ...curDet, arquivado: true, lixeira: false, arquivado_em: agora },
+        updated_at: agora
+      })
+      .eq('id', productId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao arquivar produto:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Desarquiva um produto de volta para o catálogo operacional.
+ */
+export async function unarchiveAdminProduct(
+  productId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', productId).single();
+    const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+    const { arquivado, arquivado_em, ...restDet } = curDet;
+
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        detalhes: Object.keys(restDet).length > 0 ? restDet : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao desarquivar produto:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Exclusão definitiva (Hard Delete) de um produto com verificação de pedidos vinculados.
+ */
+export async function permanentDeleteAdminProduct(
+  productId: string
+): Promise<{ success: boolean; action?: 'expurgo_fiscal' | 'deleted'; error?: string }> {
   const supabase = getSupabaseBrowserClient();
 
   try {
@@ -1513,20 +1663,25 @@ export async function deleteAdminProduct(
       .eq('produto_id', productId);
 
     if (pedidosCount && pedidosCount > 0) {
-      // Soft delete: arquiva e desativa da vitrine para proteger integridade contábil
+      // Preservação contábil obrigatória: limpa mídias e marca como expurgo contábil definitivo
+      await supabase.from('midias_produto').delete().eq('produto_id', productId);
+      const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', productId).single();
+      const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+
       const { error } = await supabase
         .from('produtos')
         .update({
           ativo: false,
+          detalhes: { ...curDet, lixeira: false, arquivado: true, expurgo_fiscal: true },
           updated_at: new Date().toISOString()
         })
         .eq('id', productId);
 
       if (error) throw error;
-      return { success: true, action: 'archived' };
+      return { success: true, action: 'expurgo_fiscal' };
     }
 
-    // 2. Se nunca foi vendido, pode excluir com segurança física
+    // 2. Se nunca teve pedidos, pode deletar fisicamente
     await supabase.from('midias_produto').delete().eq('produto_id', productId);
     await supabase.from('variacoes_produto').delete().eq('produto_id', productId);
     const { error: delErr } = await supabase.from('produtos').delete().eq('id', productId);
@@ -1534,9 +1689,24 @@ export async function deleteAdminProduct(
 
     return { success: true, action: 'deleted' };
   } catch (err: any) {
-    console.error('❌ [Supabase] Erro ao excluir produto:', err);
+    console.error('❌ [Supabase] Erro ao excluir definitivamente produto:', err);
     return { success: false, error: err?.message };
   }
+}
+
+/**
+ * Exclui ou move para lixeira um produto com segurança contábil e transparência operacional.
+ */
+export async function deleteAdminProduct(
+  productId: string,
+  user?: { id?: string; nome: string; cargo: string }
+): Promise<{ success: boolean; action?: 'trash' | 'archived' | 'deleted'; error?: string }> {
+  // Por padrão de segurança e experiência do usuário, toda exclusão inicial é direcionada à lixeira (30 dias)
+  const res = await moveToTrashAdminProduct(productId, user);
+  if (res.success) {
+    return { success: true, action: 'trash' };
+  }
+  return { success: false, error: res.error };
 }
 
 /**
@@ -1825,18 +1995,96 @@ export async function bulkArchiveProducts(
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase
-      .from('produtos')
-      .update({
-        ativo: false,
-        updated_at: new Date().toISOString()
-      })
-      .in('id', productIds);
+    const agora = new Date().toISOString();
 
-    if (error) throw error;
+    const updates = productIds.map(async (id) => {
+      const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', id).single();
+      const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+      return supabase
+        .from('produtos')
+        .update({
+          ativo: false,
+          detalhes: { ...curDet, arquivado: true, lixeira: false, arquivado_em: agora },
+          updated_at: agora
+        })
+        .eq('id', id);
+    });
+
+    await Promise.all(updates);
     return { success: true, count: productIds.length };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao arquivar produtos em lote:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Ações em Massa: Mover múltiplos produtos para a Lixeira (30 dias de retenção).
+ */
+export async function bulkMoveToTrashProducts(
+  productIds: string[],
+  user?: { id?: string; nome: string; cargo: string }
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const agora = new Date();
+    const expiraEm = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const updates = productIds.map(async (id) => {
+      const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', id).single();
+      const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+      return supabase
+        .from('produtos')
+        .update({
+          ativo: false,
+          detalhes: {
+            ...curDet,
+            lixeira: true,
+            arquivado: false,
+            excluido_em: agora.toISOString(),
+            expira_em: expiraEm.toISOString(),
+            excluido_por: user ? { colaborador_id: user.id || null, nome: user.nome, cargo: user.cargo } : null
+          },
+          updated_at: agora.toISOString()
+        })
+        .eq('id', id);
+    });
+
+    await Promise.all(updates);
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao mover produtos para lixeira em lote:', err);
+    return { success: false, count: 0, error: err?.message };
+  }
+}
+
+/**
+ * Ações em Massa: Restaurar múltiplos produtos da Lixeira de volta para o catálogo.
+ */
+export async function bulkRestoreProducts(
+  productIds: string[]
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const agora = new Date().toISOString();
+
+    const updates = productIds.map(async (id) => {
+      const { data: cur } = await supabase.from('produtos').select('detalhes').eq('id', id).single();
+      const curDet = cur?.detalhes && typeof cur.detalhes === 'object' && !Array.isArray(cur.detalhes) ? cur.detalhes : {};
+      const { lixeira, excluido_em, expira_em, excluido_por, ...restDet } = curDet;
+      return supabase
+        .from('produtos')
+        .update({
+          detalhes: Object.keys(restDet).length > 0 ? restDet : null,
+          updated_at: agora
+        })
+        .eq('id', id);
+    });
+
+    await Promise.all(updates);
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao restaurar produtos em lote:', err);
     return { success: false, count: 0, error: err?.message };
   }
 }

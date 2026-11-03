@@ -50,7 +50,14 @@ import {
   Play,
   Film,
   FileSpreadsheet,
-  Lock
+  Lock,
+  Archive,
+  ArchiveRestore,
+  RotateCcw,
+  AlertTriangle,
+  Info,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ProductBatchImportModal } from '@/components/admin/products/ProductBatchImportModal';
@@ -63,6 +70,11 @@ import {
   updateAdminVariationStock,
   createAdminProduct,
   deleteAdminProduct,
+  moveToTrashAdminProduct,
+  restoreAdminProduct,
+  archiveAdminProduct,
+  unarchiveAdminProduct,
+  permanentDeleteAdminProduct,
   getAdminCategories,
   getAdminCategoriesFull,
   saveAdminCategory,
@@ -72,6 +84,8 @@ import {
   bulkApplyDiscount,
   bulkUpdateCategory,
   bulkArchiveProducts,
+  bulkMoveToTrashProducts,
+  bulkRestoreProducts,
   AdminProductItem,
   AdminCategoryFull,
   CreateProductInput,
@@ -83,6 +97,15 @@ import {
   CustomSinalizador,
   DEFAULT_STORE_ATTRIBUTES
 } from '@/lib/admin';
+import {
+  getStoredActiveMember,
+  canManageCatalog,
+  canDeleteProduct,
+  canChangePrices,
+  canAdjustStock,
+  isMasterUser,
+  MembroEquipe
+} from '@/lib/team';
 import { uploadBrowserFileToR2, deleteFromR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { PRODUCTS } from '@/data/products';
@@ -115,6 +138,42 @@ export default function AdminProdutosPage() {
   // Modos de Visualização & Ordenação
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [sortOrder, setSortOrder] = useState<SortOrder>('recentes');
+
+  // Ciclo de Vida das Peças (Padrão: Apenas Ativas na Vitrine)
+  const [lifecycleTab, setLifecycleTab] = useState<'ativas' | 'pausadas' | 'arquivadas' | 'lixeira' | 'todas'>('ativas');
+
+  // RBAC & Permissões da Equipe
+  const [activeMember, setActiveMember] = useState<MembroEquipe | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
+
+  // Dropdown Consolidado de Ações do Catálogo
+  const [isActionsDropdownOpen, setIsActionsDropdownOpen] = useState(false);
+  const actionsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Modais de Confirmação: Peça Pausada e Exclusão Permanente
+  const [pausedConfirmProduct, setPausedConfirmProduct] = useState<AdminProductItem | null>(null);
+  const [permanentDeleteModalProduct, setPermanentDeleteModalProduct] = useState<AdminProductItem | null>(null);
+
+  useEffect(() => {
+    setActiveMember(getStoredActiveMember());
+    setIsMaster(isMasterUser());
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target as Node)) {
+        setIsActionsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const podeGerenciarCatalogo = canManageCatalog(activeMember, isMaster);
+  const podeExcluir = canDeleteProduct(activeMember, isMaster);
+  const podeAlterarPrecos = canChangePrices(activeMember, isMaster);
+  const podeAjustarEstoque = canAdjustStock(activeMember, isMaster);
+  const isDono = isMaster || !activeMember || activeMember.cargo === 'dono';
 
   // Popover de Filtros Avançados
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -417,6 +476,10 @@ export default function AdminProdutosPage() {
 
   // Alternar ativação na vitrine
   const handleToggleActive = async (product: AdminProductItem) => {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para pausar ou ativar peças na vitrine.', 'error');
+      return;
+    }
     const nextState = !product.ativo;
     const res = await toggleAdminProductActive(product.id, nextState);
     if (res.success) {
@@ -433,8 +496,32 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Abrir Modal Visual de Exclusão / Arquivamento
+  // Interceptar solicitação de edição para peças pausadas
+  const handleRequestEdit = (product: AdminProductItem) => {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para editar peças do catálogo.', 'error');
+      return;
+    }
+    if (!product.ativo && !product.lixeira && !product.arquivado) {
+      setPausedConfirmProduct(product);
+      return;
+    }
+    handleOpenFullEdit(product);
+  };
+
+  const handleConfirmEditPaused = () => {
+    if (!pausedConfirmProduct) return;
+    const target = pausedConfirmProduct;
+    setPausedConfirmProduct(null);
+    handleOpenFullEdit(target);
+  };
+
+  // Abrir Modal Visual de Exclusão (Lixeira com Retenção de 30 dias)
   const handleOpenDeleteModal = async (product: AdminProductItem) => {
+    if (!podeExcluir) {
+      showToast('Perfil sem permissão para excluir peças.', 'error');
+      return;
+    }
     setDeleteModalProduct(product);
     setIsCheckingOrdersCount(true);
     setProductOrdersCount(0);
@@ -448,30 +535,135 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Confirmar Exclusão ou Arquivamento
+  // Confirmar Envio para a Lixeira (30 dias de retenção)
   const handleConfirmDelete = async () => {
     if (!deleteModalProduct) return;
     setIsDeletingProduct(true);
     try {
-      const res = await deleteAdminProduct(deleteModalProduct.id);
+      const userPayload = activeMember
+        ? { id: activeMember.id, nome: activeMember.nome, cargo: activeMember.cargo }
+        : { nome: 'Administrador', cargo: 'dono' };
+
+      const res = await moveToTrashAdminProduct(deleteModalProduct.id, userPayload);
       if (res.success) {
-        if (res.action === 'archived') {
-          setProducts((prev) =>
-            prev.map((p) => (p.id === deleteModalProduct.id ? { ...p, ativo: false } : p))
-          );
-          showToast(`Peça "${deleteModalProduct.nome}" arquivada e desativada da vitrine! Histórico de vendas preservado.`);
-        } else {
-          setProducts((prev) => prev.filter((p) => p.id !== deleteModalProduct.id));
-          showToast(`Peça "${deleteModalProduct.nome}" excluída definitivamente do catálogo.`);
-        }
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === deleteModalProduct.id
+              ? {
+                  ...p,
+                  ativo: false,
+                  lixeira: true,
+                  arquivado: false,
+                  excluido_em: new Date().toISOString(),
+                  expira_em: res.expiraEm || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  excluido_por: userPayload
+                }
+              : p
+          )
+        );
+        showToast(`Peça "${deleteModalProduct.nome}" enviada para a Lixeira (30 dias de retenção).`, 'success');
         setDeleteModalProduct(null);
       } else {
-        showToast(res.error || 'Erro ao processar exclusão/arquivamento.', 'error');
+        showToast(res.error || 'Erro ao mover para a lixeira.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
     } finally {
       setIsDeletingProduct(false);
+    }
+  };
+
+  // Restaurar Peça da Lixeira
+  const handleRestoreProduct = async (product: AdminProductItem) => {
+    if (!podeExcluir) {
+      showToast('Perfil sem permissão para restaurar peças.', 'error');
+      return;
+    }
+    try {
+      const res = await restoreAdminProduct(product.id);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === product.id
+              ? { ...p, lixeira: false, excluido_em: null, expira_em: null, excluido_por: null }
+              : p
+          )
+        );
+        showToast(`Peça "${product.nome}" restaurada! Fica em Pausadas para revisão segura.`, 'success');
+      } else {
+        showToast(res.error || 'Erro ao restaurar peça.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao restaurar.', 'error');
+    }
+  };
+
+  // Arquivar Peça (Fora de Linha)
+  const handleArchiveProduct = async (product: AdminProductItem) => {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para arquivar peças.', 'error');
+      return;
+    }
+    try {
+      const res = await archiveAdminProduct(product.id);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, arquivado: true, ativo: false, lixeira: false } : p))
+        );
+        showToast(`Peça "${product.nome}" arquivada com sucesso.`, 'success');
+      } else {
+        showToast(res.error || 'Erro ao arquivar peça.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao arquivar.', 'error');
+    }
+  };
+
+  // Desarquivar Peça
+  const handleUnarchiveProduct = async (product: AdminProductItem) => {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para desarquivar peças.', 'error');
+      return;
+    }
+    try {
+      const res = await unarchiveAdminProduct(product.id);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, arquivado: false } : p))
+        );
+        showToast(`Peça "${product.nome}" desarquivada!`, 'success');
+      } else {
+        showToast(res.error || 'Erro ao desarquivar.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao desarquivar.', 'error');
+    }
+  };
+
+  // Exclusão Definitiva (Hard Delete / Expurgo)
+  const handlePermanentDelete = async (product: AdminProductItem) => {
+    if (!isDono) {
+      showToast('Apenas a proprietária pode realizar exclusão definitiva.', 'error');
+      return;
+    }
+    try {
+      const res = await permanentDeleteAdminProduct(product.id);
+      if (res.success) {
+        if (res.action === 'expurgo_fiscal') {
+          setProducts((prev) =>
+            prev.map((p) => (p.id === product.id ? { ...p, lixeira: false, arquivado: true, midias: [] } : p))
+          );
+          showToast(`Peça possui pedidos anteriores: mídias removidas e histórico fiscal preservado.`, 'success');
+        } else {
+          setProducts((prev) => prev.filter((p) => p.id !== product.id));
+          showToast(`Peça "${product.nome}" excluída permanentemente.`, 'success');
+        }
+        setPermanentDeleteModalProduct(null);
+      } else {
+        showToast(res.error || 'Erro ao excluir definitivamente.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
     }
   };
 
@@ -1008,7 +1200,12 @@ export default function AdminProdutosPage() {
     const ids = Array.from(selectedProductIds);
     if (ids.length === 0) return;
 
-    if (!confirm(`Deseja realmente arquivar as ${ids.length} peças selecionadas? Elas serão desativadas da vitrine.`)) {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para arquivar peças.', 'error');
+      return;
+    }
+
+    if (!confirm(`Deseja realmente arquivar as ${ids.length} peças selecionadas? Elas ficarão guardadas fora da vitrine e da lista padrão.`)) {
       return;
     }
 
@@ -1017,12 +1214,92 @@ export default function AdminProdutosPage() {
       const res = await bulkArchiveProducts(ids);
       if (res.success) {
         setProducts((prev) =>
-          prev.map((p) => (selectedProductIds.has(p.id) ? { ...p, ativo: false } : p))
+          prev.map((p) =>
+            selectedProductIds.has(p.id) ? { ...p, ativo: false, arquivado: true, lixeira: false } : p
+          )
         );
-        showToast(`${res.count} peças arquivadas da vitrine!`);
+        showToast(`${res.count} peças arquivadas com segurança!`);
         setSelectedProductIds(new Set());
       } else {
         showToast(res.error || 'Erro ao arquivar peças em massa.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkMoveToTrashAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    if (!podeExcluir) {
+      showToast('Perfil sem permissão para enviar peças para a lixeira.', 'error');
+      return;
+    }
+
+    if (!confirm(`Deseja mover as ${ids.length} peças selecionadas para a Lixeira (retenção de 30 dias)?`)) {
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    try {
+      const userPayload = activeMember
+        ? { id: activeMember.id, nome: activeMember.nome, cargo: activeMember.cargo }
+        : { nome: 'Administrador', cargo: 'dono' };
+
+      const res = await bulkMoveToTrashProducts(ids, userPayload);
+      if (res.success) {
+        const agora = new Date().toISOString();
+        const expiraEm = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        setProducts((prev) =>
+          prev.map((p) =>
+            selectedProductIds.has(p.id)
+              ? {
+                  ...p,
+                  ativo: false,
+                  lixeira: true,
+                  arquivado: false,
+                  excluido_em: agora,
+                  expira_em: expiraEm,
+                  excluido_por: userPayload
+                }
+              : p
+          )
+        );
+        showToast(`${res.count} peças enviadas para a Lixeira!`, 'success');
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao enviar para a lixeira em massa.', 'error');
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkRestoreAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    if (!podeExcluir) {
+      showToast('Perfil sem permissão para restaurar peças.', 'error');
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkRestoreProducts(ids);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            selectedProductIds.has(p.id)
+              ? { ...p, lixeira: false, excluido_em: null, expira_em: null, excluido_por: null }
+              : p
+          )
+        );
+        showToast(`${res.count} peças restauradas para o catálogo!`, 'success');
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao restaurar peças em massa.', 'error');
       }
     } finally {
       setIsBulkActionRunning(false);
@@ -1486,61 +1763,132 @@ export default function AdminProdutosPage() {
     }
   };
 
-  // Categorias para filtro
-  const categoriesFilter = [
+  // Contagens dinâmicas para abas de ciclo de vida
+  const countAtivas = useMemo(
+    () => products.filter((p) => p.ativo && !p.arquivado && !p.lixeira).length,
+    [products]
+  );
+  const countPausadas = useMemo(
+    () => products.filter((p) => !p.ativo && !p.arquivado && !p.lixeira).length,
+    [products]
+  );
+  const countArquivadas = useMemo(
+    () => products.filter((p) => Boolean(p.arquivado)).length,
+    [products]
+  );
+  const countLixeira = useMemo(
+    () => products.filter((p) => Boolean(p.lixeira)).length,
+    [products]
+  );
+  const countTotalCatalogo = useMemo(
+    () => countAtivas + countPausadas,
+    [countAtivas, countPausadas]
+  );
+  const countTodasGeral = useMemo(
+    () => products.filter((p) => !p.lixeira).length,
+    [products]
+  );
+
+  // Categorias para filtro (baseado em produtos que não estão na lixeira)
+  const categoriesFilter = useMemo(() => [
     'todas',
-    ...Array.from(new Set(products.map((p) => p.categoria_nome || 'Geral')))
-  ];
+    ...Array.from(new Set(products.filter((p) => !p.lixeira).map((p) => p.categoria_nome || 'Geral')))
+  ], [products]);
 
-  // Filtro de Busca e Estoque
-  const filteredProducts = products.filter((p) => {
-    if (selectedCategory !== 'todas' && p.categoria_nome !== selectedCategory) {
-      return false;
-    }
-    if (stockFilter === 'criticos') {
-      const temCritico = p.estoque_total <= 2 || (p.variacoes && p.variacoes.some((v) => v.estoque <= 2));
-      if (!temCritico) return false;
-    } else if (stockFilter === 'esgotados') {
-      if (p.estoque_total > 0) return false;
-    } else if (stockFilter === 'ativos') {
-      if (!p.ativo) return false;
-    } else if (stockFilter === 'pausados') {
-      if (p.ativo) return false;
-    } else if (stockFilter === 'destaques') {
-      if (!p.destaque) return false;
-    } else if (stockFilter === 'outlet') {
-      if (!p.outlet) return false;
-    } else if (stockFilter === 'mais_vendidos') {
-      if (!p.mais_vendido) return false;
-    } else if (stockFilter === 'ultimas_pecas') {
-      if (!p.ultimas_pecas) return false;
-    }
+  // Filtro de Busca, Ciclo de Vida e Estoque
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      // 1. Filtro estrito de Ciclo de Vida
+      if (lifecycleTab === 'ativas') {
+        if (!p.ativo || p.arquivado || p.lixeira) return false;
+      } else if (lifecycleTab === 'pausadas') {
+        if (p.ativo || p.arquivado || p.lixeira) return false;
+      } else if (lifecycleTab === 'arquivadas') {
+        if (!p.arquivado) return false;
+      } else if (lifecycleTab === 'lixeira') {
+        if (!p.lixeira) return false;
+      } else if (lifecycleTab === 'todas') {
+        // Todas as peças operacionais do catálogo exceto lixeira
+        if (p.lixeira) return false;
+      }
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+      // 2. Filtro de Categoria
+      if (selectedCategory !== 'todas' && p.categoria_nome !== selectedCategory) {
+        return false;
+      }
+
+      // 3. Filtro de Estoque / Badges Promocionais
+      if (stockFilter === 'criticos') {
+        const temCritico = p.estoque_total <= 2 || (p.variacoes && p.variacoes.some((v) => v.estoque <= 2));
+        if (!temCritico) return false;
+      } else if (stockFilter === 'esgotados') {
+        if (p.estoque_total > 0) return false;
+      } else if (stockFilter === 'destaques') {
+        if (!p.destaque) return false;
+      } else if (stockFilter === 'outlet') {
+        if (!p.outlet) return false;
+      } else if (stockFilter === 'mais_vendidos') {
+        if (!p.mais_vendido) return false;
+      } else if (stockFilter === 'ultimas_pecas') {
+        if (!p.ultimas_pecas) return false;
+      }
+
+      // 4. Busca textual (nome, slug ou SKU)
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchName = p.nome.toLowerCase().includes(term);
+        const matchSlug = p.slug.toLowerCase().includes(term);
+        const matchSku = p.variacoes && p.variacoes.some((v) => v.sku && v.sku.toLowerCase().includes(term));
+        return matchName || matchSlug || matchSku;
+      }
+      return true;
+    });
+  }, [products, lifecycleTab, selectedCategory, stockFilter, searchTerm]);
+
+  // Produtos operacionais para métricas (exclui lixeira e arquivadas para não distorcer contabilidade)
+  const produtosOperacionais = useMemo(() => {
+    return products.filter((p) => !p.lixeira && !p.arquivado);
+  }, [products]);
+
+  const totalAtivos = countAtivas;
+  const totalPausados = countPausadas;
+  const estoqueTotalPecas = useMemo(() => {
+    return produtosOperacionais.reduce((acc, p) => acc + (p.estoque_total || 0), 0);
+  }, [produtosOperacionais]);
+
+  const valorTotalCatalogo = useMemo(() => {
+    return produtosOperacionais.reduce((acc, p) => acc + (p.preco * (p.estoque_total || 0)), 0);
+  }, [produtosOperacionais]);
+
+  const pecasCriticasCount = useMemo(() => {
+    return produtosOperacionais.filter((p) => (p.estoque_total || 0) <= 2).length;
+  }, [produtosOperacionais]);
+
+  const taxaAtivas = useMemo(() => {
+    if (countTotalCatalogo === 0) return 0;
+    return Math.round((totalAtivos / countTotalCatalogo) * 100);
+  }, [countTotalCatalogo, totalAtivos]);
+
+  // Busca contextual em outras abas quando a aba atual retorna zero resultados
+  const searchResultsInOtherTabs = useMemo(() => {
+    if (!searchTerm.trim()) return null;
+    const term = searchTerm.toLowerCase();
+    const matches = products.filter((p) => {
       const matchName = p.nome.toLowerCase().includes(term);
       const matchSlug = p.slug.toLowerCase().includes(term);
       return matchName || matchSlug;
+    });
+
+    if (lifecycleTab === 'ativas' && filteredProducts.length === 0) {
+      const pausadas = matches.filter((p) => !p.ativo && !p.arquivado && !p.lixeira).length;
+      const arquivadas = matches.filter((p) => p.arquivado).length;
+      const lixeira = matches.filter((p) => p.lixeira).length;
+      if (pausadas > 0 || arquivadas > 0 || lixeira > 0) {
+        return { pausadas, arquivadas, lixeira };
+      }
     }
-    return true;
-  });
-
-  const totalAtivos = products.filter((p) => p.ativo).length;
-  const totalPausados = products.filter((p) => !p.ativo).length;
-  const estoqueTotalPecas = products.reduce((acc, p) => acc + (p.estoque_total || 0), 0);
-
-  const valorTotalCatalogo = useMemo(() => {
-    return products.reduce((acc, p) => acc + (p.preco * (p.estoque_total || 0)), 0);
-  }, [products]);
-
-  const pecasCriticasCount = useMemo(() => {
-    return products.filter((p) => (p.estoque_total || 0) <= 2).length;
-  }, [products]);
-
-  const taxaAtivas = useMemo(() => {
-    if (products.length === 0) return 0;
-    return Math.round((totalAtivos / products.length) * 100);
-  }, [products.length, totalAtivos]);
+    return null;
+  }, [searchTerm, products, lifecycleTab, filteredProducts.length]);
 
   // Contagem de filtros ativos
   const activeFiltersCount = useMemo(() => {
@@ -1604,10 +1952,10 @@ export default function AdminProdutosPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
           {
-            id: 'todos',
-            label: 'Total de Peças',
+            id: 'todas',
+            label: 'Catálogo Operacional',
             icon: Package,
-            value: products.length,
+            value: countTotalCatalogo,
             unit: 'modelos',
             subValue: formatCurrency(valorTotalCatalogo),
             subLabel: 'em estoque',
@@ -1615,14 +1963,14 @@ export default function AdminProdutosPage() {
             border: 'border-slate-200',
             activeBorder: 'ring-2 ring-slate-700 border-slate-700',
             iconColor: 'text-slate-600',
-            isSelected: stockFilter === 'todos' && selectedCategory === 'todas',
+            isSelected: lifecycleTab === 'todas',
             action: () => {
-              setStockFilter('todos');
-              setSelectedCategory('todas');
+              setLifecycleTab('todas');
+              setSelectedProductIds(new Set());
             }
           },
           {
-            id: 'ativos',
+            id: 'ativas',
             label: 'Ativas na Vitrine',
             icon: CheckCircle2,
             value: totalAtivos,
@@ -1633,11 +1981,14 @@ export default function AdminProdutosPage() {
             border: 'border-emerald-200',
             activeBorder: 'ring-2 ring-emerald-500 border-emerald-500',
             iconColor: 'text-emerald-600',
-            isSelected: stockFilter === 'ativos',
-            action: () => setStockFilter(stockFilter === 'ativos' ? 'todos' : 'ativos')
+            isSelected: lifecycleTab === 'ativas',
+            action: () => {
+              setLifecycleTab('ativas');
+              setSelectedProductIds(new Set());
+            }
           },
           {
-            id: 'pausados',
+            id: 'pausadas',
             label: 'Pausadas',
             icon: EyeOff,
             value: totalPausados,
@@ -1648,8 +1999,11 @@ export default function AdminProdutosPage() {
             border: 'border-amber-200',
             activeBorder: 'ring-2 ring-amber-500 border-amber-500',
             iconColor: 'text-amber-600',
-            isSelected: stockFilter === 'pausados',
-            action: () => setStockFilter(stockFilter === 'pausados' ? 'todos' : 'pausados')
+            isSelected: lifecycleTab === 'pausadas',
+            action: () => {
+              setLifecycleTab('pausadas');
+              setSelectedProductIds(new Set());
+            }
           },
           {
             id: 'grade',
@@ -1700,7 +2054,76 @@ export default function AdminProdutosPage() {
         })}
       </div>
 
-      {/* 3. TOOLBAR COMPACTA EM LINHA ÚNICA (ESTILO PEDIDOS) */}
+      {/* 3. NAVEGAÇÃO DE STATUS & CICLO DE VIDA (ABAS DINÂMICAS) */}
+      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto pb-px scrollbar-none">
+        {[
+          {
+            id: 'ativas',
+            label: 'Ativas na Vitrine',
+            count: countAtivas,
+            icon: CheckCircle2,
+            activeColor: 'text-emerald-700 border-emerald-500 bg-emerald-50/60 font-bold',
+            badgeColor: 'bg-emerald-100 text-emerald-800'
+          },
+          {
+            id: 'pausadas',
+            label: 'Pausadas',
+            count: countPausadas,
+            icon: EyeOff,
+            activeColor: 'text-rose-700 border-rose-500 bg-rose-50/60 font-bold',
+            badgeColor: 'bg-rose-100 text-rose-800'
+          },
+          {
+            id: 'arquivadas',
+            label: 'Arquivadas',
+            count: countArquivadas,
+            icon: Archive,
+            activeColor: 'text-slate-800 border-slate-600 bg-slate-100 font-bold',
+            badgeColor: 'bg-slate-200 text-slate-800'
+          },
+          {
+            id: 'lixeira',
+            label: 'Lixeira (30 dias)',
+            count: countLixeira,
+            icon: Trash2,
+            activeColor: 'text-rose-800 border-rose-600 bg-rose-100/70 font-bold',
+            badgeColor: 'bg-rose-200 text-rose-900'
+          },
+          {
+            id: 'todas',
+            label: 'Todas as Peças',
+            count: countTodasGeral,
+            icon: Layers,
+            activeColor: 'text-slate-900 border-slate-900 bg-slate-50 font-bold',
+            badgeColor: 'bg-slate-200 text-slate-700'
+          }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = lifecycleTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setLifecycleTab(tab.id as any);
+                setSelectedProductIds(new Set());
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs border-b-2 transition-all whitespace-nowrap cursor-pointer rounded-t-lg ${
+                isActive
+                  ? tab.activeColor
+                  : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-50/80 font-medium'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{tab.label}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${tab.badgeColor}`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 4. TOOLBAR COMPACTA EM LINHA ÚNICA (MENU DE AÇÕES CONSOLIDADO) */}
       <div className="space-y-2">
         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs flex flex-wrap items-center gap-2">
           {/* Campo de Busca Rápida */}
@@ -1791,9 +2214,7 @@ export default function AdminProdutosPage() {
                       { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
                       { id: 'outlet', label: '🏷️ Outlet' },
                       { id: 'ultimas_pecas', label: '⏳ Últimas Peças' },
-                      { id: 'esgotados', label: '⛔ Esgotados' },
-                      { id: 'ativos', label: '✅ Ativas Vitrine' },
-                      { id: 'pausados', label: '⏸️ Pausadas' }
+                      { id: 'esgotados', label: '⛔ Esgotados' }
                     ].map((st) => {
                       const checked = stockFilter === st.id;
                       return (
@@ -1855,61 +2276,125 @@ export default function AdminProdutosPage() {
             )}
           </div>
 
-          <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
-
-          {/* Botão Exportar Excel (.xlsx) */}
-          <button
-            onClick={handleExportCatalogXLSX}
-            title="Exportar planilha Excel (.xlsx) completa com estoque, grades e margem"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden md:inline">Exportar Excel</span>
-            <span className="md:hidden">Excel</span>
-          </button>
-
-          {/* Botão Atualizar */}
+          {/* Botão Atualizar (Ícone Compacto) */}
           <button
             onClick={fetchProductsData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            className="inline-flex items-center justify-center p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer shrink-0"
             title="Atualizar listagem de produtos do catálogo"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
-            <span className="hidden md:inline">Atualizar</span>
           </button>
 
-          {/* Botão Gerenciar Sinalizadores */}
-          <button
-            onClick={() => setIsSinalizadoresModalOpen(true)}
-            className="admin-btn-secondary px-3 py-2 text-xs font-bold shrink-0"
-            title="Gerenciar cores, nomes e ícones oficiais de todos os sinalizadores da boutique"
-          >
-            <Tag className="w-3.5 h-3.5 text-amber-700" />
-            <span className="hidden md:inline">Sinalizadores</span>
-          </button>
+          <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
-          {/* Botão Importar em Lote */}
-          <button
-            onClick={() => setIsBatchImportOpen(true)}
-            className="admin-btn-secondary px-3 py-2 text-xs font-bold uppercase tracking-wider shrink-0"
-            title="Importar peças em lote por planilha Excel ou CSV"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Importar em Lote</span>
-            <span className="sm:hidden">Lote</span>
-          </button>
+          {/* Menu Dropdown Consolidado: + Ações do Catálogo */}
+          <div className="relative" ref={actionsDropdownRef}>
+            <button
+              onClick={() => setIsActionsDropdownOpen(!isActionsDropdownOpen)}
+              className="admin-btn-primary px-3.5 py-2 text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Ações e ferramentas do catálogo"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Ações do Catálogo</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${isActionsDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          {/* Botão Cadastrar Nova Peça */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="admin-btn-primary px-3 py-2 text-xs font-bold uppercase tracking-wider shrink-0"
-            title="Cadastrar nova peça no catálogo"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Cadastrar Peça</span>
-            <span className="sm:hidden">Nova Peça</span>
-          </button>
+            {isActionsDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1.5 border-b border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Ferramentas do Catálogo
+                  </span>
+                </div>
+
+                {/* 1. Cadastrar Peça */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    if (!podeGerenciarCatalogo) {
+                      showToast('Perfil sem permissão para cadastrar peças.', 'error');
+                      return;
+                    }
+                    setIsCreateModalOpen(true);
+                  }}
+                  disabled={!podeGerenciarCatalogo}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="w-6 h-6 rounded-md bg-amber-500 text-slate-950 flex items-center justify-center shrink-0">
+                    <Plus className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold block">Cadastrar Peça</span>
+                    <span className="text-[10px] text-slate-400 block">Nova peça com grade e fotos</span>
+                  </div>
+                </button>
+
+                {/* 2. Importar em Lote */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    if (!podeGerenciarCatalogo) {
+                      showToast('Perfil sem permissão para importar peças.', 'error');
+                      return;
+                    }
+                    setIsBatchImportOpen(true);
+                  }}
+                  disabled={!podeGerenciarCatalogo}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-semibold block">Importar em Lote</span>
+                    <span className="text-[10px] text-slate-400 block">Planilha Excel (.xlsx) ou CSV</span>
+                  </div>
+                </button>
+
+                {/* 3. Sinalizadores Comerciais */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    if (!podeGerenciarCatalogo) {
+                      showToast('Perfil sem permissão para gerenciar sinalizadores.', 'error');
+                      return;
+                    }
+                    setIsSinalizadoresModalOpen(true);
+                  }}
+                  disabled={!podeGerenciarCatalogo}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
+                    <Tag className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-semibold block">Sinalizadores Comerciais</span>
+                    <span className="text-[10px] text-slate-400 block">Badges, tags e destaques</span>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* 4. Exportar Excel */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    handleExportCatalogXLSX();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                    <Download className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-semibold block">Exportar para Excel</span>
+                    <span className="text-[10px] text-slate-400 block">Planilha com estoques e margem</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
@@ -1952,6 +2437,36 @@ export default function AdminProdutosPage() {
             </button>
           </div>
         </div>
+
+        {/* Alerta de Busca Contextual em Outras Abas */}
+        {searchResultsInOtherTabs && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between text-xs text-amber-900 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                Nenhuma peça ativa encontrada com esse termo. Mas encontramos{' '}
+                {searchResultsInOtherTabs.pausadas > 0 && (
+                  <strong>{searchResultsInOtherTabs.pausadas} peça(s) pausada(s)</strong>
+                )}
+                {searchResultsInOtherTabs.arquivadas > 0 && (
+                  <span> e <strong>{searchResultsInOtherTabs.arquivadas} arquivada(s)</strong></span>
+                )}
+                {searchResultsInOtherTabs.lixeira > 0 && (
+                  <span> e <strong>{searchResultsInOtherTabs.lixeira} na lixeira</strong></span>
+                )}
+                .
+              </span>
+            </div>
+            {searchResultsInOtherTabs.pausadas > 0 && (
+              <button
+                onClick={() => setLifecycleTab('pausadas')}
+                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer transition-colors shrink-0"
+              >
+                Ver Pausadas
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Chips de Filtros Ativos */}
         {activeFiltersCount > 0 && (
@@ -2082,12 +2597,25 @@ export default function AdminProdutosPage() {
             const custo = product.preco_custo || product.preco * 0.4;
             const margemBruta = product.preco > 0 ? ((product.preco - custo) / product.preco) * 100 : 0;
 
+            const isPausada = !product.ativo && !product.lixeira && !product.arquivado;
+            const isLixeira = Boolean(product.lixeira);
+            const isArquivada = Boolean(product.arquivado);
+            const diasRestantesLixeira = product.expira_em
+              ? Math.max(0, Math.ceil((new Date(product.expira_em).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+              : 30;
+
+            const cardBgClass = isLixeira
+              ? 'border-rose-400 bg-rose-50/90 dark:bg-rose-950/35 dark:border-rose-900/80 shadow-xs'
+              : isPausada
+              ? 'border-rose-300 bg-rose-50/75 dark:bg-rose-950/25 dark:border-rose-900/60 shadow-xs'
+              : isArquivada
+              ? 'border-slate-300 bg-slate-50/80 dark:bg-slate-900/40 opacity-80 shadow-2xs'
+              : 'border-slate-200 hover:border-amber-400 bg-white shadow-xs';
+
             return (
               <div
                 key={product.id}
-                className={`bg-white border rounded-xl overflow-hidden shadow-xs transition-all ${
-                  product.ativo ? 'border-slate-200 hover:border-amber-400' : 'border-rose-200 bg-rose-50/20 opacity-80'
-                }`}
+                className={`border rounded-xl overflow-hidden transition-all ${cardBgClass}`}
               >
                 {/* Linha Principal da Peça */}
                 <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2134,11 +2662,24 @@ export default function AdminProdutosPage() {
                         <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                           {product.categoria_nome}
                         </span>
-                        {!product.ativo && (
-                          <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold uppercase">
-                            Pausada
+
+                        {/* Badges de Ciclo de Vida */}
+                        {isPausada && (
+                          <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs">
+                            PAUSADA (FORA DA VITRINE)
                           </span>
                         )}
+                        {isLixeira && (
+                          <span className="text-[10px] bg-rose-700 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs flex items-center gap-1">
+                            <Trash2 className="w-3 h-3" /> LIXEIRA • {diasRestantesLixeira} DIAS RESTANTES
+                          </span>
+                        )}
+                        {isArquivada && (
+                          <span className="text-[10px] bg-slate-700 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs flex items-center gap-1">
+                            <Archive className="w-3 h-3" /> ARQUIVADA (FORA DE LINHA)
+                          </span>
+                        )}
+
                         {product.destaque && (
                           <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase">
                             🌟 Destaque
@@ -2159,12 +2700,12 @@ export default function AdminProdutosPage() {
                             ⏳ Últimas Peças
                           </span>
                         )}
-                        {reservedStockMap[product.id] > 0 && (
+                        {reservedStockMap[product.id] > 0 && !isPausada && !isLixeira && (
                           <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase animate-pulse flex items-center gap-1">
                             👗 {reservedStockMap[product.id]} no provador
                           </span>
                         )}
-                        {(aviseMeSummary[product.id] || 0) > 0 && (
+                        {(aviseMeSummary[product.id] || 0) > 0 && !isPausada && !isLixeira && (
                           <button
                             type="button"
                             onClick={() => {
@@ -2235,119 +2776,187 @@ export default function AdminProdutosPage() {
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Ver na Vitrine Pública */}
-                      <Link
-                        href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
-                        target="_blank"
-                        title="Ver peça na vitrine pública da boutique"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Link>
+                    {isLixeira ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleRestoreProduct(product)}
+                          title="Restaurar peça da lixeira para o catálogo"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurar Peça</span>
+                        </button>
 
-                      {/* Editar Completo (Destaque Principal) */}
-                      <button
-                        onClick={() => handleOpenFullEdit(product)}
-                        title="Editar Cadastro Completo: Fotos e Vídeos, Descrição, Grade e Estilo"
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Editar</span>
-                      </button>
+                        {isDono && (
+                          <button
+                            onClick={() => setPermanentDeleteModalProduct(product)}
+                            title="Excluir permanentemente do banco e mídias"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Excluir Definitivo</span>
+                          </button>
+                        )}
+                      </div>
+                    ) : isArquivada ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => handleUnarchiveProduct(product)}
+                          title="Desarquivar e retornar ao catálogo operacional"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                          <span>Desarquivar</span>
+                        </button>
 
-                      {/* Editar Preços Rápido */}
-                      <button
-                        onClick={() => handleOpenEdit(product)}
-                        title="Ajuste Rápido de Preços e CMV"
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <DollarSign className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="hidden sm:inline">Preços</span>
-                      </button>
+                        <button
+                          onClick={() => handleRequestEdit(product)}
+                          title="Editar Cadastro da Peça"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
 
-                      {/* Botão Provador / Reserva (30 min) */}
-                      <button
-                        onClick={() => {
-                          setSelectedFittingProduct(product);
-                          setIsFittingModalOpen(true);
-                        }}
-                        title="Travar peça no provador por 30 minutos (evita venda dupla no site)"
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border ${
-                          (reservedStockMap[product.id] || 0) > 0
-                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 font-bold'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                        }`}
-                      >
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span className="hidden sm:inline">
-                          {(reservedStockMap[product.id] || 0) > 0
-                            ? `${reservedStockMap[product.id]} no provador`
-                            : 'Provador'}
-                        </span>
-                      </button>
+                        <button
+                          onClick={() => handleOpenDeleteModal(product)}
+                          title="Mover para lixeira"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Ver na Vitrine Pública (se ativa) */}
+                        <Link
+                          href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
+                          target="_blank"
+                          title="Ver peça na vitrine pública da boutique"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Link>
 
-                      {/* Botão Fila de Espera / Avise-me */}
-                      {(aviseMeSummary[product.id] || 0) > 0 && (
+                        {/* Editar Cadastro Completo */}
+                        <button
+                          onClick={() => handleRequestEdit(product)}
+                          title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Editar Cadastro Completo da Peça'}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
+
+                        {/* Editar Preços Rápido (desabilitado se pausada) */}
+                        <button
+                          onClick={() => !isPausada && handleOpenEdit(product)}
+                          disabled={isPausada}
+                          title={isPausada ? 'Peça pausada: reative na vitrine ou use Editar para alterar' : 'Ajuste Rápido de Preços e CMV'}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
+                            isPausada
+                              ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 cursor-pointer'
+                          }`}
+                        >
+                          <DollarSign className="w-3.5 h-3.5 text-slate-500" />
+                          <span className="hidden sm:inline">Preços</span>
+                        </button>
+
+                        {/* Botão Provador / Reserva (30 min) (desabilitado se pausada) */}
                         <button
                           onClick={() => {
-                            setSelectedWaitlistProduct(product);
-                            setIsWaitlistModalOpen(true);
+                            if (isPausada) return;
+                            setSelectedFittingProduct(product);
+                            setIsFittingModalOpen(true);
                           }}
-                          title="Ver clientes aguardando reposição desta peça e notificar no WhatsApp"
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs"
+                          disabled={isPausada}
+                          title={isPausada ? 'Peça pausada: não é possível reservar no provador' : 'Travar peça no provador por 30 minutos'}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
+                            isPausada
+                              ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
+                              : (reservedStockMap[product.id] || 0) > 0
+                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 font-bold cursor-pointer'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 cursor-pointer'
+                          }`}
                         >
-                          <Bell className="w-3.5 h-3.5 text-purple-600" />
+                          <Clock className="w-3.5 h-3.5 text-amber-600" />
                           <span className="hidden sm:inline">
-                            Fila ({aviseMeSummary[product.id]})
+                            {(reservedStockMap[product.id] || 0) > 0
+                              ? `${reservedStockMap[product.id]} no provador`
+                              : 'Provador'}
                           </span>
                         </button>
-                      )}
 
-                      {/* Pausar / Ativar */}
-                      <button
-                        onClick={() => handleToggleActive(product)}
-                        title={product.ativo ? 'Pausar da vitrine' : 'Ativar na vitrine'}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border ${
-                          product.ativo
-                            ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-800 border-slate-300'
-                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
-                        }`}
-                      >
-                        {product.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        <span className="hidden sm:inline">{product.ativo ? 'Pausar' : 'Ativar'}</span>
-                      </button>
+                        {/* Fila de Espera */}
+                        {(aviseMeSummary[product.id] || 0) > 0 && !isPausada && (
+                          <button
+                            onClick={() => {
+                              setSelectedWaitlistProduct(product);
+                              setIsWaitlistModalOpen(true);
+                            }}
+                            title="Ver clientes aguardando reposição"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs"
+                          >
+                            <Bell className="w-3.5 h-3.5 text-purple-600" />
+                            <span className="hidden sm:inline">Fila ({aviseMeSummary[product.id]})</span>
+                          </button>
+                        )}
 
-                      {/* Duplicar Peça */}
-                      <button
-                        onClick={() => handleDuplicateProduct(product)}
-                        disabled={duplicatingId === product.id}
-                        title="Duplicar peça em 1 clique (clona fotos, categorias e variações)"
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">Duplicar</span>
-                      </button>
+                        {/* Pausar / Ativar */}
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          title={product.ativo ? 'Pausar da vitrine pública' : 'Ativar na vitrine pública'}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border ${
+                            product.ativo
+                              ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-800 border-slate-300'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-2xs'
+                          }`}
+                        >
+                          {product.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          <span className="hidden sm:inline">{product.ativo ? 'Pausar' : 'Ativar'}</span>
+                        </button>
 
-                      {/* Excluir / Arquivar (Abre Modal Visual) */}
-                      <button
-                        onClick={() => handleOpenDeleteModal(product)}
-                        title="Excluir ou arquivar peça"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Duplicar Peça */}
+                        <button
+                          onClick={() => handleDuplicateProduct(product)}
+                          disabled={duplicatingId === product.id}
+                          title="Duplicar peça em 1 clique"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
+                          <span className="hidden sm:inline">Duplicar</span>
+                        </button>
 
-                      {/* Expandir Grade */}
-                      <button
-                        data-testid="btn-expand-product-grid"
-                        onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-                        title={isExpanded ? 'Recolher grade' : 'Ver variações de cor e tamanho'}
-                      >
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    </div>
+                        {/* Arquivar Peça */}
+                        <button
+                          onClick={() => handleArchiveProduct(product)}
+                          title="Arquivar peça fora de linha"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+                        >
+                          <Archive className="w-4 h-4" />
+                        </button>
+
+                        {/* Excluir (Mover para Lixeira) */}
+                        <button
+                          onClick={() => handleOpenDeleteModal(product)}
+                          title="Mover peça para a Lixeira (30 dias)"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        {/* Expandir Grade */}
+                        <button
+                          data-testid="btn-expand-product-grid"
+                          onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title={isExpanded ? 'Recolher grade' : 'Ver variações de cor e tamanho'}
+                        >
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2479,13 +3088,25 @@ export default function AdminProdutosPage() {
                   const custo = product.preco_custo || product.preco * 0.4;
                   const margemBruta = product.preco > 0 ? ((product.preco - custo) / product.preco) * 100 : 0;
 
+                  const isPausada = !product.ativo && !product.lixeira && !product.arquivado;
+                  const isLixeira = Boolean(product.lixeira);
+                  const isArquivada = Boolean(product.arquivado);
+                  const diasRestantesLixeira = product.expira_em
+                    ? Math.max(0, Math.ceil((new Date(product.expira_em).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : 30;
+
+                  const rowClass = isSelected
+                    ? 'bg-amber-50/50'
+                    : isLixeira
+                    ? 'bg-rose-50/90 text-rose-950 border-l-4 border-rose-600'
+                    : isPausada
+                    ? 'bg-rose-50/70 dark:bg-rose-950/25 text-rose-950 border-l-4 border-rose-500'
+                    : isArquivada
+                    ? 'bg-slate-50/70 opacity-75'
+                    : 'hover:bg-slate-50/80';
+
                   return (
-                    <tr
-                      key={product.id}
-                      className={`hover:bg-slate-50/80 transition-colors ${
-                        isSelected ? 'bg-amber-50/50' : !product.ativo ? 'bg-slate-50/40 opacity-75' : ''
-                      }`}
-                    >
+                    <tr key={product.id} className={`transition-colors ${rowClass}`}>
                       {/* Checkbox */}
                       <td className="p-3 text-center">
                         <input
@@ -2520,11 +3141,26 @@ export default function AdminProdutosPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span
                             className="font-bold text-slate-900 block hover:text-amber-700 transition-colors cursor-pointer"
-                            onClick={() => handleOpenFullEdit(product)}
-                            title="Clique para abrir o dossiê da peça"
+                            onClick={() => handleRequestEdit(product)}
+                            title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Clique para abrir o dossiê da peça'}
                           >
                             {product.nome}
                           </span>
+                          {isPausada && (
+                            <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-black uppercase">
+                              Pausada
+                            </span>
+                          )}
+                          {isLixeira && (
+                            <span className="text-[9px] bg-rose-700 text-white px-1.5 py-0.2 rounded font-black uppercase">
+                              Lixeira ({diasRestantesLixeira}d)
+                            </span>
+                          )}
+                          {isArquivada && (
+                            <span className="text-[9px] bg-slate-700 text-white px-1.5 py-0.2 rounded font-black uppercase">
+                              Arquivada
+                            </span>
+                          )}
                           {product.destaque && (
                             <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-bold uppercase">
                               🌟 Destaque
@@ -2608,64 +3244,134 @@ export default function AdminProdutosPage() {
 
                       {/* Status com Toggle Direto */}
                       <td className="p-3 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleActive(product)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                            product.ativo
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
-                          }`}
-                          title={product.ativo ? 'Clique para pausar da vitrine' : 'Clique para ativar na vitrine'}
-                        >
-                          {product.ativo ? (
-                            <>
-                              <Eye className="w-3 h-3 text-emerald-600" />
-                              <span>Ativa</span>
-                            </>
-                          ) : (
-                            <>
-                              <EyeOff className="w-3 h-3 text-rose-600" />
-                              <span>Pausada</span>
-                            </>
-                          )}
-                        </button>
+                        {isLixeira ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            <Trash2 className="w-3 h-3" /> Lixeira ({diasRestantesLixeira}d)
+                          </span>
+                        ) : isArquivada ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800">
+                            <Archive className="w-3 h-3" /> Arquivada
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleActive(product)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                              product.ativo
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                            }`}
+                            title={product.ativo ? 'Clique para pausar da vitrine' : 'Clique para ativar na vitrine'}
+                          >
+                            {product.ativo ? (
+                              <>
+                                <Eye className="w-3 h-3 text-emerald-600" />
+                                <span>Ativa</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3 h-3 text-rose-600" />
+                                <span>Pausada</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </td>
 
                       {/* Ações */}
                       <td className="p-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleOpenEdit(product)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-                            title="Edição rápida de preço e estoque"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isLixeira ? (
+                            <>
+                              <button
+                                onClick={() => handleRestoreProduct(product)}
+                                className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                title="Restaurar peça da lixeira"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                              {isDono && (
+                                <button
+                                  onClick={() => setPermanentDeleteModalProduct(product)}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Excluir permanentemente"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
+                          ) : isArquivada ? (
+                            <>
+                              <button
+                                onClick={() => handleUnarchiveProduct(product)}
+                                className="p-1.5 rounded-lg text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+                                title="Desarquivar peça"
+                              >
+                                <ArchiveRestore className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleRequestEdit(product)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Editar dados"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleOpenDeleteModal(product)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Mover para lixeira"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => !isPausada && handleOpenEdit(product)}
+                                disabled={isPausada}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isPausada
+                                    ? 'opacity-30 cursor-not-allowed text-slate-400'
+                                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                                }`}
+                                title={isPausada ? 'Peça pausada: não é possível alterar preços rápidos' : 'Edição rápida de preço e estoque'}
+                              >
+                                <DollarSign className="w-3.5 h-3.5" />
+                              </button>
 
-                          <button
-                            onClick={() => handleOpenFullEdit(product)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-amber-800 transition-colors cursor-pointer"
-                            title="Abrir dossiê completo da peça"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
+                              <button
+                                onClick={() => handleRequestEdit(product)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-amber-800 transition-colors cursor-pointer"
+                                title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Abrir dossiê completo da peça'}
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
 
-                          <button
-                            onClick={() => handleDuplicateProduct(product)}
-                            disabled={duplicatingId === product.id}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
-                            title="Duplicar peça em 1 clique"
-                          >
-                            <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
-                          </button>
+                              <button
+                                onClick={() => handleDuplicateProduct(product)}
+                                disabled={duplicatingId === product.id}
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
+                                title="Duplicar peça em 1 clique"
+                              >
+                                <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
+                              </button>
 
-                          <button
-                            onClick={() => handleOpenDeleteModal(product)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                            title="Excluir ou arquivar peça"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                              <button
+                                onClick={() => handleArchiveProduct(product)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+                                title="Arquivar peça fora de linha"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenDeleteModal(product)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Mover para a lixeira (30 dias)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -2976,50 +3682,74 @@ export default function AdminProdutosPage() {
             </span>
           </div>
 
-          <button
-            onClick={() => handleBulkToggle(true)}
-            disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Ativar</span>
-          </button>
+          {lifecycleTab === 'lixeira' ? (
+            <>
+              <button
+                onClick={handleBulkRestoreAction}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restaurar Selecionadas</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => handleBulkToggle(true)}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Ativar</span>
+              </button>
 
-          <button
-            onClick={() => handleBulkToggle(false)}
-            disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <EyeOff className="w-3.5 h-3.5" />
-            <span>Pausar</span>
-          </button>
+              <button
+                onClick={() => handleBulkToggle(false)}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+                <span>Pausar</span>
+              </button>
 
-          <button
-            onClick={() => setShowBulkDiscountModal(true)}
-            disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>% Desconto</span>
-          </button>
+              <button
+                onClick={() => setShowBulkDiscountModal(true)}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>% Desconto</span>
+              </button>
 
-          <button
-            onClick={() => setShowBulkCategoryModal(true)}
-            disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Mover Categoria</span>
-          </button>
+              <button
+                onClick={() => setShowBulkCategoryModal(true)}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Mover Categoria</span>
+              </button>
 
-          <button
-            onClick={handleBulkArchiveAction}
-            disabled={isBulkActionRunning}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>Arquivar</span>
-          </button>
+              <button
+                onClick={handleBulkArchiveAction}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Archive className="w-3.5 h-3.5 text-slate-300" />
+                <span>Arquivar</span>
+              </button>
+
+              <button
+                onClick={handleBulkMoveToTrashAction}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>Lixeira (30d)</span>
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => setSelectedProductIds(new Set())}
@@ -3032,15 +3762,91 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
-      {/* MODAL VISUAL DE EXCLUSÃO / ARQUIVAMENTO COM PROTEÇÃO CONTÁBIL */}
+      {/* MODAL DE CONFIRMAÇÃO: EDIÇÃO DE PEÇA PAUSADA */}
+      {pausedConfirmProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+              Esta peça está pausada
+            </h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              A peça <strong className="text-slate-900">{pausedConfirmProduct.nome}</strong> está atualmente fora da vitrine da sua loja.
+            </p>
+            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+              Você pode alterar informações, fotos, grade e preços normalmente. Porém, saiba que nenhuma alteração ficará visível para os seus clientes até que você reative a peça na vitrine.
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPausedConfirmProduct(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmEditPaused}
+                className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-lg cursor-pointer transition-colors shadow-2xs"
+              >
+                Sim, Continuar Edição
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EXCLUSÃO DEFINITIVA (HARD DELETE NA LIXEIRA) */}
+      {permanentDeleteModalProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+              Excluir definitivamente?
+            </h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Você está prestes a apagar permanentemente a peça <strong className="text-slate-900">{permanentDeleteModalProduct.nome}</strong>.
+            </p>
+            <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 leading-relaxed">
+              Esta ação removerá fotos e variações de estoque. Caso a peça já possua vendas registradas, o registro contábil e fiscal é preservado de forma anônima.
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPermanentDeleteModalProduct(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePermanentDelete(permanentDeleteModalProduct)}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer transition-colors shadow-2xs"
+              >
+                Excluir Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VISUAL DE ENVIO PARA A LIXEIRA (30 DIAS DE RETENÇÃO) */}
       {deleteModalProduct && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-fade-in">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-rose-600" />
+                <Trash2 className="w-5 h-5 text-rose-600" />
                 <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                  {productOrdersCount > 0 ? 'Arquivar Peça do Catálogo' : 'Excluir Peça Definitivamente'}
+                  Mover Peça para a Lixeira
                 </h3>
               </div>
               <button
@@ -3080,32 +3886,15 @@ export default function AdminProdutosPage() {
               </div>
             </div>
 
-            {isCheckingOrdersCount ? (
-              <div className="p-4 rounded-xl bg-slate-50 text-center text-xs text-slate-500">
-                <RefreshCw className="w-4 h-4 animate-spin text-amber-600 mx-auto mb-1" />
-                Verificando histórico contábil e de pedidos...
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Período de Retenção de 30 Dias</span>
               </div>
-            ) : productOrdersCount > 0 ? (
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
-                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Peça com {productOrdersCount} pedido(s) registrado(s)</span>
-                </div>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  Esta peça já foi vendida anteriormente. Para proteger a <strong>integridade contábil</strong>, a <strong>apuração de DRE</strong> e o <strong>histórico de pedidos das clientes</strong>, a peça será <strong>arquivada e pausada da vitrine pública</strong> (Soft-Delete). As fotos e registros de vendas permanecerão preservados.
-                </p>
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
-                <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
-                  <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>Sem vendas registradas: exclusão física permitida</span>
-                </div>
-                <p className="text-xs text-rose-800 leading-relaxed">
-                  Esta peça nunca foi comprada por clientes. Ela será <strong>removida definitivamente</strong> do catálogo e banco de dados, incluindo suas variações de grade e mídias associadas.
-                </p>
-              </div>
-            )}
+              <p className="text-xs text-amber-800 leading-relaxed">
+                A peça será desativada da vitrine da loja e movida para a <strong>Lixeira</strong>. Ela não aparecerá no catálogo diário, mas ficará guardada com segurança por 30 dias para você restaurar a qualquer momento caso deseje.
+              </p>
+            </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
@@ -3117,18 +3906,10 @@ export default function AdminProdutosPage() {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                disabled={isDeletingProduct || isCheckingOrdersCount}
-                className={`px-4 py-2 rounded-lg text-xs font-bold text-white transition-colors cursor-pointer shadow-sm ${
-                  productOrdersCount > 0
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-rose-600 hover:bg-rose-700'
-                }`}
+                disabled={isDeletingProduct}
+                className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors cursor-pointer shadow-sm"
               >
-                {isDeletingProduct
-                  ? 'Processando...'
-                  : productOrdersCount > 0
-                  ? 'Confirmar Arquivamento Seguro'
-                  : 'Excluir Peça Definitivamente'}
+                {isDeletingProduct ? 'Movendo...' : 'Mover para Lixeira (30 dias)'}
               </button>
             </div>
           </div>

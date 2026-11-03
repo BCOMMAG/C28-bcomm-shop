@@ -602,3 +602,59 @@ export function checkWorkingHoursAccess(member: MembroEquipe): { permitido: bool
 
   return { permitido: true };
 }
+
+/**
+ * Recupera o membro da equipe ativo gravado na sessão local (com fallback de dono)
+ */
+export function getStoredActiveMember(): MembroEquipe | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem('leidy_admin_colaborador');
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Permissão para gerenciar e editar catálogo (Cadastrar, Alterar fotos, descrições e mídias)
+ */
+export function canManageCatalog(member: MembroEquipe | null, isMaster: boolean = false): boolean {
+  if (isMaster) return true;
+  if (!member) return true; // Default admin session
+  if (member.cargo === 'dono') return true;
+  return Boolean(member.permissoes?.editar_catalogo);
+}
+
+/**
+ * Permissão para excluir ou mover para a lixeira peças do catálogo
+ */
+export function canDeleteProduct(member: MembroEquipe | null, isMaster: boolean = false): boolean {
+  if (isMaster) return true;
+  if (!member) return true;
+  if (member.cargo === 'dono') return true;
+  return Boolean(member.permissoes?.excluir_catalogo);
+}
+
+/**
+ * Permissão para alterar preços de tabela e descontos comerciais
+ */
+export function canChangePrices(member: MembroEquipe | null, isMaster: boolean = false): boolean {
+  if (isMaster) return true;
+  if (!member) return true;
+  if (member.cargo === 'dono') return true;
+  if (member.cargo === 'gerente') return true;
+  return false;
+}
+
+/**
+ * Permissão para ajustar contagem física de estoque nas variações
+ */
+export function canAdjustStock(member: MembroEquipe | null, isMaster: boolean = false): boolean {
+  if (isMaster) return true;
+  if (!member) return true;
+  if (member.cargo === 'dono' || member.cargo === 'gerente' || member.cargo === 'estoquista') return true;
+  return Boolean(member.permissoes?.ajustar_estoque);
+}
+
