@@ -271,19 +271,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Package
     },
     {
-      title: 'Categorias & Subs',
-      href: '/admin/categorias/',
-      icon: FolderTree
-    },
-    {
-      title: 'Finanças',
-      href: '/admin/financas/',
-      icon: DollarSign
-    },
-    {
-      title: 'Clientes & CRM',
-      href: '/admin/clientes/',
-      icon: Users
+      title: 'Configurações da Loja',
+      href: '/admin/loja/',
+      icon: Store
     },
     {
       title: 'Cupons & Descontos',
@@ -291,14 +281,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Tag
     },
     {
-      title: 'Vitrine & Banners',
-      href: '/admin/banners/',
-      icon: Sparkles
+      title: 'Clientes & CRM',
+      href: '/admin/clientes/',
+      icon: Users
     },
     {
-      title: 'Menus da Vitrine',
-      href: '/admin/menu/',
-      icon: Sliders
+      title: 'Finanças',
+      href: '/admin/financas/',
+      icon: DollarSign
     },
     {
       title: 'Equipe & Acessos',
@@ -311,7 +301,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Layers
     },
     {
-      title: 'Configurações',
+      title: 'Configurações Gerais',
       href: '/admin/configuracoes/',
       icon: Settings
     }
@@ -322,9 +312,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
     if (item.href === '/admin/cupons/' && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return false;
-    if (item.href === '/admin/banners/' && activeMember.cargo !== 'gerente') return false;
-    if (item.href === '/admin/menu/' && activeMember.cargo !== 'gerente') return false;
-    if (item.href === '/admin/categorias/' && activeMember.cargo === 'estoquista') return false;
+    if (item.href === '/admin/loja/' && activeMember.cargo === 'estoquista') return false;
     if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
     if (item.href === '/admin/configuracoes/' && !activeMember.permissoes?.configuracoes_loja) return false;
     if (item.href === '/admin/equipe/' && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return false;
@@ -336,6 +324,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
     if (cleanPath.startsWith('/admin/configuracoes') && !activeMember.permissoes?.configuracoes_loja) return true;
     if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/loja') && activeMember.cargo === 'estoquista') return true;
     if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/menu') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/categorias') && activeMember.cargo === 'estoquista') return true;

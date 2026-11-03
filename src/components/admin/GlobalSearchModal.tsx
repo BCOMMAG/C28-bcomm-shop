@@ -317,18 +317,18 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                     color: 'text-rose-700 bg-rose-50 border-rose-200'
                   },
                   {
-                    title: 'Banners Hero & Topbar',
-                    desc: 'Mídia 16:9 e 9:16 da vitrine',
-                    href: '/admin/banners/',
-                    icon: Sparkles,
+                    title: 'Configurações da Loja',
+                    desc: 'Aparência, vitrines, menus e categorias',
+                    href: '/admin/loja/aparencia',
+                    icon: Store,
                     color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
                   },
                   {
-                    title: 'Aparência da Loja Virtual',
-                    desc: 'Cores, logotipo, banners e vitrine',
-                    href: '/admin/configuracoes/aparencia',
-                    icon: Palette,
-                    color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                    title: 'Banners Hero & Topbar',
+                    desc: 'Mídia 16:9 e 9:16 da vitrine',
+                    href: '/admin/loja/banners',
+                    icon: Sparkles,
+                    color: 'text-amber-700 bg-amber-50 border-amber-200'
                   },
                   {
                     title: 'Tema do Painel Administrativo',

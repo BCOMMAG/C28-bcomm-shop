@@ -112,10 +112,10 @@ const SETTINGS_SECTIONS: NavSection[] = [
     items: [
       {
         label: 'Aparência da Loja',
-        href: '/admin/configuracoes/aparencia',
+        href: '/admin/loja/aparencia',
         icon: Palette,
         description: 'Cores, logo, banners e seções da vitrine',
-        badge: 'Consumidor',
+        badge: 'Hub Loja',
         badgeColor: 'bg-indigo-100 text-indigo-800'
       },
       {

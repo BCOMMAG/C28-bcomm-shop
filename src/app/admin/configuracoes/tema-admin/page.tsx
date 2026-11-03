@@ -388,11 +388,11 @@ export default function AdminThemeSettingsPage() {
 
         {/* Link Rápido para a Vitrine da Loja */}
         <Link
-          href="/admin/configuracoes/aparencia"
+          href="/admin/loja/aparencia"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition-all shadow-2xs self-start md:self-auto cursor-pointer"
         >
           <Store className="w-4 h-4 text-indigo-600" />
-          <span>Editar Vitrine da Loja (Clientes)</span>
+          <span>Configurações da Loja (Clientes)</span>
           <ArrowRight className="w-3.5 h-3.5 text-indigo-400" />
         </Link>
       </div>
@@ -913,8 +913,8 @@ export default function AdminThemeSettingsPage() {
           <Store className="w-5 h-5 text-indigo-700 shrink-0 mt-0.5" />
           <div className="text-xs text-indigo-950 leading-relaxed">
             <strong>Logotipo Oficial no Topo da Sidebar:</strong> O painel administrativo herda automaticamente o logotipo oficial da boutique configurado em{' '}
-            <Link href="/admin/configuracoes/aparencia" className="font-bold underline text-indigo-700 hover:text-indigo-900">
-              Aparência da Loja Virtual
+            <Link href="/admin/loja/aparencia" className="font-bold underline text-indigo-700 hover:text-indigo-900">
+              Configurações da Loja &gt; Aparência
             </Link>
             . Dessa forma você nunca precisa subir o mesmo arquivo de logo duas vezes.
           </div>
