@@ -7,7 +7,8 @@ import {
   Palette,
   Sparkles,
   Sliders,
-  FolderTree
+  FolderTree,
+  Tag
 } from 'lucide-react';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { cn } from '@/lib/chart-utils';
@@ -22,6 +23,22 @@ interface StoreTabItem {
 }
 
 const STORE_TABS: StoreTabItem[] = [
+  {
+    id: 'cupons',
+    label: 'Cupons & Descontos',
+    subtitle: 'Campanhas & Códigos Promocionais',
+    href: '/admin/loja/cupons',
+    icon: Tag,
+    badge: 'Promo'
+  },
+  {
+    id: 'categorias',
+    label: 'Categorias & Subs',
+    subtitle: 'Taxonomia & Catálogo',
+    href: '/admin/loja/categorias',
+    icon: FolderTree,
+    badge: 'Estrutura'
+  },
   {
     id: 'aparencia',
     label: 'Aparência da Loja',
@@ -45,14 +62,6 @@ const STORE_TABS: StoreTabItem[] = [
     href: '/admin/loja/menu',
     icon: Sliders,
     badge: 'Links'
-  },
-  {
-    id: 'categorias',
-    label: 'Categorias & Subs',
-    subtitle: 'Taxonomia & Catálogo',
-    href: '/admin/loja/categorias',
-    icon: FolderTree,
-    badge: 'Estrutura'
   }
 ];
 
@@ -74,13 +83,13 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
           BARRA DE SUBMENUS / ABAS SUPERIORES (TABS BAR)
           ========================================================================= */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-2 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
           {STORE_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive =
               pathname === tab.href ||
               pathname?.startsWith(tab.href + '/') ||
-              (pathname === '/admin/loja' && tab.id === 'aparencia');
+              (pathname === '/admin/loja' && tab.id === 'cupons');
 
             return (
               <Link

@@ -7,7 +7,7 @@ export default function LojaVirtualRootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/admin/loja/aparencia');
+    router.replace('/admin/loja/cupons');
   }, [router]);
 
   return (

@@ -312,14 +312,14 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                   {
                     title: 'Cupons & Descontos',
                     desc: 'Gerenciar códigos promocionais',
-                    href: '/admin/cupons/',
+                    href: '/admin/loja/cupons',
                     icon: Tag,
                     color: 'text-rose-700 bg-rose-50 border-rose-200'
                   },
                   {
                     title: 'Configurações da Loja',
-                    desc: 'Aparência, vitrines, menus e categorias',
-                    href: '/admin/loja/aparencia',
+                    desc: 'Cupons, categorias, aparência, banners e menus',
+                    href: '/admin/loja/',
                     icon: Store,
                     color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
                   },

@@ -276,11 +276,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       icon: Store
     },
     {
-      title: 'Cupons & Descontos',
-      href: '/admin/cupons/',
-      icon: Tag
-    },
-    {
       title: 'Clientes & CRM',
       href: '/admin/clientes/',
       icon: Users
@@ -311,7 +306,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (!activeMember || activeMember.cargo === 'dono') return true;
     if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
-    if (item.href === '/admin/cupons/' && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return false;
     if (item.href === '/admin/loja/' && activeMember.cargo === 'estoquista') return false;
     if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
     if (item.href === '/admin/configuracoes/' && !activeMember.permissoes?.configuracoes_loja) return false;
@@ -324,7 +318,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
     if (cleanPath.startsWith('/admin/configuracoes') && !activeMember.permissoes?.configuracoes_loja) return true;
     if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/loja/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
     if (cleanPath.startsWith('/admin/loja') && activeMember.cargo === 'estoquista') return true;
+    if (cleanPath.startsWith('/admin/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
     if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/menu') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/categorias') && activeMember.cargo === 'estoquista') return true;
