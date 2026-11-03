@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Store,
   Building,
@@ -19,7 +20,9 @@ import {
   Video,
   Globe,
   Copy,
-  Check
+  Check,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -337,6 +340,26 @@ export default function StoreSettingsPage() {
           </span>
         </div>
 
+        {/* Banner de Atalho para o Hub de Domínio Dedicado com Teste de DNS */}
+        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>Central Especializada de Domínios & Teste de DNS</span>
+            </div>
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              Consulte se seu CNAME já propagou em tempo real, veja instruções para Registro.br, Hostinger e HostGator, ou desconecte seu domínio com reversão imediata.
+            </p>
+          </div>
+          <Link
+            href="/admin/configuracoes/dominio"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0"
+          >
+            <span>Gerenciar Domínio Completo</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
         {/* 1. Endereço Padrão da Plataforma */}
         <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -390,7 +413,7 @@ export default function StoreSettingsPage() {
               Conectar Domínio Próprio Personalizado (Opcional)
             </label>
             <p className="text-[11px] text-slate-500 mb-2">
-              Se você possui um domínio registrado (ex.: Registro.br, GoDaddy, Cloudflare), insira o endereço abaixo.
+              Se você possui um domínio registrado (ex.: Registro.br, Hostinger, GoDaddy), insira o endereço abaixo.
             </p>
             <div className="flex items-center gap-2">
               <span className="text-slate-500 font-mono text-xs bg-slate-100 px-3 py-2.5 rounded-lg border border-slate-200 shrink-0 font-semibold">
@@ -416,14 +439,14 @@ export default function StoreSettingsPage() {
             </div>
           </div>
 
-          {/* Guia de Configuração DNS */}
+          {/* Guia Rápido de Configuração DNS */}
           <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 text-xs space-y-2">
             <span className="font-bold text-amber-900 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-amber-700" />
-              Como apontar seu domínio no Registro.br ou Cloudflare:
+              Como apontar seu domínio no Registro.br, Hostinger ou Cloudflare:
             </span>
             <p className="text-amber-800 text-[11px] leading-relaxed">
-              Acesse a zona de DNS do seu provedor de domínio e crie a seguinte entrada:
+              Acesse a zona de DNS do seu provedor de domínio e crie a seguinte entrada CNAME:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white/80 p-2.5 rounded-lg border border-amber-200 font-mono text-[11px]">
               <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Tipo:</strong> CNAME</div>
@@ -431,7 +454,7 @@ export default function StoreSettingsPage() {
               <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Destino / Valor:</strong> bcomm-shop.pages.dev</div>
             </div>
             <p className="text-slate-500 text-[10px] italic">
-              * Após salvar as alterações nesta página, todos os botões &quot;Abrir Vitrine da Loja&quot; do painel redirecionarão automaticamente para seu domínio próprio com certificado SSL seguro.
+              * Para testar se o DNS já propagou ou ver instruções detalhadas para seu provedor, acesse a <Link href="/admin/configuracoes/dominio" className="text-amber-700 underline font-bold">Central de Domínio Personalizado</Link>.
             </p>
           </div>
         </div>

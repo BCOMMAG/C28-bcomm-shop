@@ -3658,6 +3658,179 @@ export async function saveStoreGeneralSettings(
 }
 
 /**
+ * Salva, altera ou desconecta o domínio próprio de uma loja.
+ * Passar domain = null ou string vazia remove o domínio e reverte a loja para o subdomínio gratuito oficial.
+ */
+export async function saveCustomDomain(
+  lojaId: string = DEFAULT_TENANT_ID,
+  domain: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    let cleanDomain: string | null = null;
+    if (domain && domain.trim()) {
+      cleanDomain = domain
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/+$/, '')
+        .replace(/\s+/g, '');
+    }
+
+    // Se estiver conectando um domínio, verifica se não conflita com domínio reservado da plataforma
+    if (cleanDomain) {
+      const reserved = ['bcomm.shop', 'bcomm.com.br', 'bcomm-shop.pages.dev', 'localhost', '127.0.0.1'];
+      if (reserved.some((r) => cleanDomain === r || cleanDomain?.endsWith(`.${r}`))) {
+        return {
+          success: false,
+          error: 'Este domínio pertence à infraestrutura da plataforma BCOMM e não pode ser usado como domínio próprio.'
+        };
+      }
+    }
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        dominio_proprio: cleanDomain || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', lojaId);
+
+    if (updErr) {
+      if (updErr.code === '23505' || updErr.message?.includes('duplicate key') || updErr.message?.includes('unique')) {
+        return {
+          success: false,
+          error: 'Este domínio já está cadastrado por outra loja na plataforma. Se você for o proprietário legítimo deste domínio, entre em contato com o suporte.'
+        };
+      }
+      throw updErr;
+    }
+
+    // Limpa cache de tenants em memória
+    clearTenantCache();
+
+    // Sincronização imediata no cache do localStorage e BroadcastChannel
+    if (typeof window !== 'undefined') {
+      try {
+        const { data: freshLoja } = await supabase
+          .from('lojas')
+          .select('*')
+          .eq('id', lojaId)
+          .single();
+
+        if (freshLoja) {
+          const canonical = (freshLoja.slug || '').replace(/[^a-z0-9-]/g, '');
+          localStorage.setItem(`bcomm_tenant_${freshLoja.slug}`, JSON.stringify(freshLoja));
+          localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(freshLoja));
+          localStorage.setItem('bcomm_tenant_last', JSON.stringify(freshLoja));
+
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('bcomm_tenant_sync');
+            bc.postMessage({ type: 'tenant_update', tenant: freshLoja, timestamp: Date.now() });
+            setTimeout(() => bc.close(), 200);
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Erro ao atualizar cache local da loja:', cacheErr);
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('bcomm:tenant_updated', {
+          detail: { lojaId, dominioProprio: cleanDomain }
+        })
+      );
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Supabase] Erro ao salvar domínio próprio:', err);
+    return { success: false, error: err?.message || 'Erro inesperado ao salvar domínio.' };
+  }
+}
+
+/**
+ * Consulta pública via DNS-over-HTTPS (DoH) para verificar se o CNAME do domínio está apontando para a BCOMM.
+ */
+export async function checkDomainDns(
+  domain: string
+): Promise<{
+  status: 'verified' | 'pending' | 'incorrect' | 'not_found' | 'error';
+  cname?: string;
+  message: string;
+}> {
+  if (!domain || !domain.trim()) {
+    return {
+      status: 'not_found',
+      message: 'Informe um domínio válido para testar o apontamento.'
+    };
+  }
+
+  const cleanDomain = domain
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
+    .replace(/\s+/g, '');
+
+  try {
+    const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(cleanDomain)}&type=CNAME`, {
+      headers: {
+        Accept: 'application/dns-json'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Resposta HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    if (data.Status !== 0) {
+      return {
+        status: 'not_found',
+        message: 'Nenhum registro CNAME foi encontrado para este endereço ainda. Se você acabou de salvar no registrador, aguarde alguns minutos pela propagação mundial.'
+      };
+    }
+
+    const answers = data.Answer || [];
+    const cnameRecord = answers.find((a: any) => a.type === 5); // Type 5 = CNAME
+
+    if (!cnameRecord) {
+      return {
+        status: 'not_found',
+        message: 'Nenhum registro CNAME ativo foi localizado. Certifique-se de ter criado a entrada "www" apontando para bcomm-shop.pages.dev.'
+      };
+    }
+
+    const target = (cnameRecord.data || '').toLowerCase().replace(/\.+$/, '');
+    const isTargetValid =
+      target.includes('bcomm-shop.pages.dev') ||
+      target.includes('bcomm.shop') ||
+      target.includes('pages.dev');
+
+    if (isTargetValid) {
+      return {
+        status: 'verified',
+        cname: target,
+        message: 'Apontamento DNS verificado com sucesso! Seu domínio está apontando corretamente para a BCOMM e apto para receber visitas.'
+      };
+    }
+
+    return {
+      status: 'incorrect',
+      cname: target,
+      message: `O domínio está apontando para "${target}", e não para bcomm-shop.pages.dev. Corrija o destino do CNAME no seu registrador.`
+    };
+  } catch (e: any) {
+    return {
+      status: 'error',
+      message: `Não foi possível consultar os servidores DNS no momento (${e?.message || 'erro de rede'}). Você pode tentar novamente em alguns instantes.`
+    };
+  }
+}
+
+/**
  * Lista os módulos contratáveis da loja e seu estado ativo.
  */
 export async function getStoreModules(lojaId: string = DEFAULT_TENANT_ID): Promise<StoreModuleConfig[]> {

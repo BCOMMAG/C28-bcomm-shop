@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Sliders,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Globe
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { cn } from '@/lib/chart-utils';
@@ -84,6 +85,14 @@ const SETTINGS_SECTIONS: NavSection[] = [
         href: '/admin/configuracoes/loja',
         icon: Store,
         description: 'Razão social, endereço, horários e termos'
+      },
+      {
+        label: 'Domínio Personalizado',
+        href: '/admin/configuracoes/dominio',
+        icon: Globe,
+        description: 'Conecte seu próprio domínio (Registro.br, Hostinger, etc.)',
+        badge: 'White-Label',
+        badgeColor: 'bg-emerald-100 text-emerald-800'
       },
       {
         label: 'Pagamentos & PIX',

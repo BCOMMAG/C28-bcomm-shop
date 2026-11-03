@@ -438,6 +438,47 @@ export async function getTenantByHost(host: string): Promise<Loja> {
     console.warn(`Erro ao resolver tenant para o host ${cleanHost}:`, error);
   }
 
+  // 5. Se for um domínio próprio não encontrado no banco (evita vazamento de produtos entre lojas)
+  const isPlatformHost =
+    cleanHost === 'localhost' ||
+    cleanHost === '127.0.0.1' ||
+    cleanHost.endsWith('.pages.dev') ||
+    cleanHost === 'bcomm.com.br' ||
+    cleanHost === 'www.bcomm.com.br' ||
+    cleanHost === 'bcomm.shop' ||
+    cleanHost === 'www.bcomm.shop';
+
+  if (!isPlatformHost) {
+    return {
+      id: `unregistered-${rawHost}`,
+      nome: 'Loja em Configuração',
+      slug: 'em-configuracao',
+      dominio_proprio: cleanHost,
+      whatsapp: '',
+      email: '',
+      configuracoes_visuais: {
+        cor_primaria: '#DFBE76',
+        cor_secundaria: '#1A1918',
+        cor_fundo: '#FAF8F5',
+        logo_url: '/images/Logo sem fundo.png',
+        frete_gratis_valor: 0,
+        slogan: 'Este domínio está em processo de vinculação na plataforma BCOMM.',
+        tagline: 'Em Breve Uma Nova Loja Exclusiva',
+        barra_aviso: 'Domínio em fase de configuração de DNS.',
+        barra_aviso_ativa: true
+      },
+      modulos_ativos: {
+        frete_automatico: false,
+        rastreio_whatsapp: false,
+        recuperacao_carrinho: false,
+        checkout_transparente: false
+      },
+      ativo: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+
   return DEFAULT_LEIDY_TENANT;
 }
 

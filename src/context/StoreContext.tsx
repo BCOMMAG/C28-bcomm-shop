@@ -282,39 +282,55 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (firstSegment && !knownRoutes.includes(firstSegment)) {
           tenant = await getTenantBySlug(firstSegment);
         } else {
-          // Em rotas globais como /checkout, prioriza a loja ativa recentemente pelo usuário antes de cair no host fallback
-          let lastTenant: Loja | null = null;
-          try {
-            const rawLast = localStorage.getItem('bcomm_tenant_last');
-            if (rawLast) {
-              const parsed = JSON.parse(rawLast);
-              if (parsed?.id && parsed?.slug) {
-                if (
-                  parsed.configuracoes_visuais?.logistica_avancada?.origem_coordenadas?.bairro === 'Cascatinha' &&
-                  (parsed.configuracoes_visuais?.logistica_avancada?.cep_origem || '').replace(/\D/g, '') === '82010600'
-                ) {
-                  const healed = {
-                    latitude: -25.4223,
-                    longitude: -49.3346,
-                    cidade: 'Curitiba',
-                    uf: 'PR',
-                    bairro: 'Santo Inácio',
-                    logradouro: 'Rua José Boiko',
-                    cep: '82010600'
-                  };
-                  parsed.configuracoes_visuais.logistica_avancada.origem_coordenadas = healed;
-                  if (parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy) {
-                    parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy.origem_coordenadas = healed;
-                  }
-                }
-                lastTenant = parsed;
-              }
-            }
-          } catch {}
-          if (lastTenant) {
-            tenant = lastTenant;
+          // Se estiver em domínio próprio customizado (não é host da plataforma),
+          // o hostname tem prioridade máxima absoluta sobre qualquer localStorage residual de outra loja!
+          const currentHost = window.location.hostname.toLowerCase();
+          const isPlatformHost =
+            currentHost === 'localhost' ||
+            currentHost === '127.0.0.1' ||
+            currentHost.endsWith('.pages.dev') ||
+            currentHost === 'bcomm.com.br' ||
+            currentHost === 'www.bcomm.com.br' ||
+            currentHost === 'bcomm.shop' ||
+            currentHost === 'www.bcomm.shop';
+
+          if (!isPlatformHost) {
+            tenant = await getTenantByHost(currentHost);
           } else {
-            tenant = await getTenantByHost(window.location.hostname);
+            // Em rotas globais da plataforma base (ex: /checkout em bcomm-shop.pages.dev), prioriza a loja ativa recentemente
+            let lastTenant: Loja | null = null;
+            try {
+              const rawLast = localStorage.getItem('bcomm_tenant_last');
+              if (rawLast) {
+                const parsed = JSON.parse(rawLast);
+                if (parsed?.id && parsed?.slug) {
+                  if (
+                    parsed.configuracoes_visuais?.logistica_avancada?.origem_coordenadas?.bairro === 'Cascatinha' &&
+                    (parsed.configuracoes_visuais?.logistica_avancada?.cep_origem || '').replace(/\D/g, '') === '82010600'
+                  ) {
+                    const healed = {
+                      latitude: -25.4223,
+                      longitude: -49.3346,
+                      cidade: 'Curitiba',
+                      uf: 'PR',
+                      bairro: 'Santo Inácio',
+                      logradouro: 'Rua José Boiko',
+                      cep: '82010600'
+                    };
+                    parsed.configuracoes_visuais.logistica_avancada.origem_coordenadas = healed;
+                    if (parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy) {
+                      parsed.configuracoes_visuais.logistica_avancada.entrega_motoboy.origem_coordenadas = healed;
+                    }
+                  }
+                  lastTenant = parsed;
+                }
+              }
+            } catch {}
+            if (lastTenant) {
+              tenant = lastTenant;
+            } else {
+              tenant = await getTenantByHost(currentHost);
+            }
           }
         }
         setCurrentTenant(tenant);
