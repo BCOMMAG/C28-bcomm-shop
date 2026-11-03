@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { AdminCustomThemeConfig, DEFAULT_ADMIN_CUSTOM_THEME } from '@/lib/admin';
 
@@ -351,48 +351,57 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   });
 
-  // Sincroniza quando o tenant do StoreContext é atualizado (reatividade em tempo real)
+  // Sincroniza quando o tenant do StoreContext é atualizado (reatividade em tempo real com memoização serializada)
+  const tenantCustomSerialized = useMemo(() => JSON.stringify(tenantCustom || {}), [tenantCustom]);
+
   useEffect(() => {
     if (tenantPalette && ADMIN_PALETTES[tenantPalette]) {
-      setPaletteState(tenantPalette);
+      setPaletteState((curr) => (curr !== tenantPalette ? tenantPalette : curr));
     }
-    if (tenantCustom) {
-      setCustomTheme((prev) => ({
-        ...prev,
-        ...tenantCustom,
-        typography: {
-          ...prev.typography,
-          ...(tenantCustom.typography || {})
-        },
-        buttons: {
-          ...prev.buttons,
-          ...(tenantCustom.buttons || {})
-        },
-        cards: {
-          ...prev.cards,
-          ...(tenantCustom.cards || {})
-        },
-        sidebar: {
-          ...prev.sidebar,
-          ...(tenantCustom.sidebar || {})
-        },
-        accents: {
-          ...prev.accents,
-          ...(tenantCustom.accents || {})
+    if (tenantCustom && Object.keys(tenantCustom).length > 0) {
+      setCustomTheme((prev) => {
+        const merged: AdminCustomThemeConfig = {
+          ...prev,
+          ...tenantCustom,
+          typography: {
+            ...prev.typography,
+            ...(tenantCustom.typography || {})
+          },
+          buttons: {
+            ...prev.buttons,
+            ...(tenantCustom.buttons || {})
+          },
+          cards: {
+            ...prev.cards,
+            ...(tenantCustom.cards || {})
+          },
+          sidebar: {
+            ...prev.sidebar,
+            ...(tenantCustom.sidebar || {})
+          },
+          accents: {
+            ...prev.accents,
+            ...(tenantCustom.accents || {})
+          }
+        };
+        // Evita re-render se o conteúdo mesclado for estritamente idêntico ao estado prévio
+        if (JSON.stringify(merged) === JSON.stringify(prev)) {
+          return prev;
         }
-      }));
+        return merged;
+      });
     }
-  }, [tenantPalette, tenantCustom]);
+  }, [tenantPalette, tenantCustomSerialized]);
 
-  const setPalette = (key: AdminPaletteKey) => {
+  const setPalette = useCallback((key: AdminPaletteKey) => {
     if (!ADMIN_PALETTES[key]) return;
     setPaletteState(key);
     try {
       localStorage.setItem(STORAGE_PALETTE_KEY, key);
     } catch {}
-  };
+  }, []);
 
-  const applyPaletteToCustom = (key: AdminPaletteKey) => {
+  const applyPaletteToCustom = useCallback((key: AdminPaletteKey) => {
     const pal = ADMIN_PALETTES[key];
     if (!pal) return;
     setPalette(key);
@@ -418,9 +427,9 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         softAccent: pal.colors.accentSoft
       }
     }));
-  };
+  }, [setPalette]);
 
-  const updateThemeSection = <K extends keyof AdminCustomThemeConfig>(
+  const updateThemeSection = useCallback(<K extends keyof AdminCustomThemeConfig>(
     section: K,
     values: Partial<AdminCustomThemeConfig[K]>
   ) => {
@@ -431,14 +440,17 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ...values
       }
     }));
-  };
+  }, []);
 
-  const resetToDefault = () => {
+  const resetToDefault = useCallback(() => {
     setPalette('midnight-gold');
     setCustomTheme(DEFAULT_ADMIN_CUSTOM_THEME);
-  };
+  }, [setPalette]);
 
-  const paletteConfig = ADMIN_PALETTES[palette] || ADMIN_PALETTES['midnight-gold'];
+  const paletteConfig = useMemo(
+    () => ADMIN_PALETTES[palette] || ADMIN_PALETTES['midnight-gold'],
+    [palette]
+  );
 
   // Aplicação Dinâmica de CSS Variables diretamente em :root
   useEffect(() => {
@@ -495,20 +507,31 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     root.style.setProperty('--admin-page-bg', pageBg);
   }, [customTheme, paletteConfig]);
 
+  const availablePalettes = useMemo(() => Object.values(ADMIN_PALETTES), []);
+
+  const contextValue = useMemo<AdminThemeContextType>(() => ({
+    palette,
+    paletteConfig,
+    setPalette,
+    availablePalettes,
+    customTheme,
+    setCustomTheme,
+    updateThemeSection,
+    applyPaletteToCustom,
+    resetToDefault
+  }), [
+    palette,
+    paletteConfig,
+    setPalette,
+    availablePalettes,
+    customTheme,
+    updateThemeSection,
+    applyPaletteToCustom,
+    resetToDefault
+  ]);
+
   return (
-    <AdminThemeContext.Provider
-      value={{
-        palette,
-        paletteConfig,
-        setPalette,
-        availablePalettes: Object.values(ADMIN_PALETTES),
-        customTheme,
-        setCustomTheme,
-        updateThemeSection,
-        applyPaletteToCustom,
-        resetToDefault
-      }}
-    >
+    <AdminThemeContext.Provider value={contextValue}>
       {children}
     </AdminThemeContext.Provider>
   );

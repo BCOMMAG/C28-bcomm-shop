@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Paintbrush,
@@ -27,6 +27,7 @@ import { useStore } from '@/context/StoreContext';
 import {
   useAdminTheme,
   AdminPaletteKey,
+  ADMIN_PALETTES,
   getContrastingTextColor,
   getRadiusPixels
 } from '@/context/AdminThemeContext';
@@ -47,6 +48,7 @@ export default function AdminThemeSettingsPage() {
   const { palette, setPalette, availablePalettes, setCustomTheme } = useAdminTheme();
   const { setIsDirty, registerSaveHandler, setFormName } = useAdminUnsavedChanges();
   const initialSnapshotRef = useRef<string>('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     setFormName('Tema do Painel Administrativo');
@@ -82,9 +84,30 @@ export default function AdminThemeSettingsPage() {
   const [adminPageBg, setAdminPageBg] = useState('#F8FAFC');
   const [adminTextColor, setAdminTextColor] = useState('#0F172A');
 
-  // Gerador de Snapshot dos valores atuais
-  const getSnapshot = () =>
-    JSON.stringify({
+  // Gerador de Snapshot dos valores atuais (Memoizado para evitar recriação desnecessária)
+  const getSnapshot = useCallback(
+    () =>
+      JSON.stringify({
+        palette,
+        adminHeadingFont,
+        adminBodyFont,
+        adminBtnRadius,
+        adminBtnPrimaryBg,
+        adminBtnPrimaryText,
+        adminBtnPrimaryHover,
+        adminBtnSecondaryBg,
+        adminBtnSecondaryText,
+        adminBtnSecondaryBorder,
+        adminCardBg,
+        adminCardBorder,
+        adminSidebarBg,
+        adminSidebarText,
+        adminSidebarActive,
+        adminAccentColor,
+        adminPageBg,
+        adminTextColor
+      }),
+    [
       palette,
       adminHeadingFont,
       adminBodyFont,
@@ -103,10 +126,13 @@ export default function AdminThemeSettingsPage() {
       adminAccentColor,
       adminPageBg,
       adminTextColor
-    });
+    ]
+  );
 
-  // Carregar dados salvos no Supabase
+  // Carregar dados salvos no Supabase (Blindado contra loops de re-renderização)
   useEffect(() => {
+    if (hasLoadedRef.current) return;
+
     async function loadThemeSettings() {
       try {
         setLoading(true);
@@ -143,9 +169,10 @@ export default function AdminThemeSettingsPage() {
           else if (ac.pageBgLight) setAdminPageBg(ac.pageBgLight);
         }
 
-        if (data?.adminPalette) {
+        if (data?.adminPalette && ADMIN_PALETTES[data.adminPalette as AdminPaletteKey]) {
           setPalette(data.adminPalette as AdminPaletteKey);
         }
+        hasLoadedRef.current = true;
       } catch (err) {
         console.error('Erro ao carregar configurações de tema do admin:', err);
       } finally {
@@ -154,14 +181,14 @@ export default function AdminThemeSettingsPage() {
     }
 
     loadThemeSettings();
-  }, [tenantId, setPalette]);
+  }, [tenantId]);
 
-  // Snapshot inicial quando o carregamento termina
+  // Snapshot inicial quando o carregamento termina (Protegido contra sobrescrita acidental)
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !initialSnapshotRef.current) {
       initialSnapshotRef.current = getSnapshot();
     }
-  }, [loading]);
+  }, [loading, getSnapshot]);
 
   // Detecção de Dirty State reativa
   useEffect(() => {
@@ -169,28 +196,7 @@ export default function AdminThemeSettingsPage() {
       const current = getSnapshot();
       setIsDirty(current !== initialSnapshotRef.current);
     }
-  }, [
-    loading,
-    palette,
-    adminHeadingFont,
-    adminBodyFont,
-    adminBtnRadius,
-    adminBtnPrimaryBg,
-    adminBtnPrimaryText,
-    adminBtnPrimaryHover,
-    adminBtnSecondaryBg,
-    adminBtnSecondaryText,
-    adminBtnSecondaryBorder,
-    adminCardBg,
-    adminCardBorder,
-    adminSidebarBg,
-    adminSidebarText,
-    adminSidebarActive,
-    adminAccentColor,
-    adminPageBg,
-    adminTextColor,
-    setIsDirty
-  ]);
+  }, [loading, getSnapshot, setIsDirty]);
 
   // Aplicação de paleta aos campos do formulário
   const applyPaletteToForm = (key: AdminPaletteKey) => {
@@ -310,38 +316,49 @@ export default function AdminThemeSettingsPage() {
     }
   };
 
-  // Registrar salvamento automático pelo Guardião de Mudanças
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+
+  // Registrar salvamento automático pelo Guardião de Mudanças (Descolado das renderizações frequentes)
   useEffect(() => {
     registerSaveHandler(async () => {
-      await handleSave();
+      if (handleSaveRef.current) {
+        await handleSaveRef.current();
+      }
     });
-  }, [
-    registerSaveHandler,
-    palette,
-    adminHeadingFont,
-    adminBodyFont,
-    adminBtnRadius,
-    adminBtnPrimaryBg,
-    adminBtnPrimaryText,
-    adminBtnPrimaryHover,
-    adminBtnSecondaryBg,
-    adminBtnSecondaryText,
-    adminBtnSecondaryBorder,
-    adminCardBg,
-    adminCardBorder,
-    adminSidebarBg,
-    adminSidebarText,
-    adminSidebarActive,
-    adminAccentColor,
-    adminPageBg,
-    adminTextColor
-  ]);
+  }, [registerSaveHandler]);
 
   if (loading) {
     return (
-      <div className="py-24 text-center space-y-3">
-        <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-        <p className="text-sm font-semibold text-slate-700">Carregando configurações de tema do painel...</p>
+      <div className="space-y-8 pb-16">
+        {/* CABEÇALHO ESTÁVEL DA PÁGINA (Evita saltos visuais de layout) */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Equipe & Gestão Interna
+              </span>
+              <span className="text-xs text-slate-500">• Loja: {tenantSlug}</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+              <Sliders className="w-6 h-6 text-amber-600" />
+              Tema do Painel Administrativo
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Personalize a identidade visual exclusiva da retaguarda e do sistema da sua equipe.
+            </p>
+          </div>
+        </div>
+
+        {/* CONTAINER DE CARREGAMENTO SUAVE */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
+          <RefreshCw className="w-8 h-8 animate-spin text-amber-600 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-800">Carregando configurações do painel...</p>
+          <p className="text-xs text-slate-400 mt-1">Carregando paletas executivas e tipografia da loja.</p>
+        </div>
       </div>
     );
   }

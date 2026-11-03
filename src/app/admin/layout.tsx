@@ -351,7 +351,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const c = paletteConfig.colors;
 
   const vis = currentTenant?.configuracoes_visuais as any;
-  const adminCustom = vis?.admin_custom;
+  const adminCustom = customTheme || vis?.admin_custom;
   const adminLogoSrc = vis?.logo_dark_url || vis?.logo_url || '/images/Logo sem fundo.png';
 
   return (
@@ -363,33 +363,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         fontFamily: 'var(--admin-body-font)'
       }}
     >
-      {/* Estilos dinâmicos customizados do painel administrativo */}
-      {adminCustom && (
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            ${adminCustom.buttonBg ? `
-              button[type="submit"], .btn-admin-primary {
-                background-color: ${adminCustom.buttonBg} !important;
-              }
-            ` : ''}
-            ${adminCustom.buttonText ? `
-              button[type="submit"], .btn-admin-primary {
-                color: ${adminCustom.buttonText} !important;
-              }
-            ` : ''}
-            ${adminCustom.buttonRadius ? `
-              button[type="submit"], .btn-admin-primary {
-                border-radius: ${
-                  adminCustom.buttonRadius === 'rounded-none' ? '0px' :
-                  adminCustom.buttonRadius === 'rounded-lg' ? '0.5rem' :
-                  adminCustom.buttonRadius === 'rounded-xl' ? '0.75rem' :
-                  adminCustom.buttonRadius === 'rounded-full' ? '9999px' : '0.75rem'
-                } !important;
-              }
-            ` : ''}
-          `
-        }} />
-      )}
       {/* =========================================================================
           1. SIDEBAR LATERAL FIXA NO DESKTOP (Minimizável com Tooltips)
       ========================================================================= */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AdminUnsavedChangesContextType {
@@ -108,23 +108,36 @@ export const AdminUnsavedChangesProvider: React.FC<{ children: React.ReactNode }
     }
   }, [targetHref, router]);
 
+  const contextValue = useMemo<AdminUnsavedChangesContextType>(() => ({
+    isDirty,
+    setIsDirty,
+    registerSaveHandler,
+    requestNavigation,
+    isModalOpen,
+    targetHref,
+    isSaving,
+    confirmDiscard,
+    cancelNavigation,
+    saveAndNavigate,
+    formName,
+    setFormName
+  }), [
+    isDirty,
+    setIsDirty,
+    registerSaveHandler,
+    requestNavigation,
+    isModalOpen,
+    targetHref,
+    isSaving,
+    confirmDiscard,
+    cancelNavigation,
+    saveAndNavigate,
+    formName,
+    setFormName
+  ]);
+
   return (
-    <AdminUnsavedChangesContext.Provider
-      value={{
-        isDirty,
-        setIsDirty,
-        registerSaveHandler,
-        requestNavigation,
-        isModalOpen,
-        targetHref,
-        isSaving,
-        confirmDiscard,
-        cancelNavigation,
-        saveAndNavigate,
-        formName,
-        setFormName
-      }}
-    >
+    <AdminUnsavedChangesContext.Provider value={contextValue}>
       {children}
     </AdminUnsavedChangesContext.Provider>
   );
