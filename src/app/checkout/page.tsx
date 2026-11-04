@@ -38,6 +38,7 @@ import {
 import { useStore } from '@/context/StoreContext';
 import { Product } from '@/types';
 import { STORE_INFO, PRODUCTS } from '@/data/products';
+import { DEFAULT_TENANT_ID } from '@/lib/products';
 import {
   saveCustomerLead,
   createOrderInDatabase,
@@ -162,7 +163,8 @@ export default function CheckoutPage() {
   }>({ isOpen: false, divergences: [] });
   const [aviseMeData, setAviseMeData] = useState<{ product: Product; color: string; size: string } | null>(null);
 
-  const PIX_KEY = currentTenant?.configuracoes_financeiras?.chave_pix || '554197347601';
+  const isLeidyTenant = currentTenant?.slug === 'leidy-boutique' || currentTenant?.id === DEFAULT_TENANT_ID;
+  const PIX_KEY = currentTenant?.configuracoes_financeiras?.chave_pix || (isLeidyTenant ? '554197347601' : '');
   const storeWhatsapp = currentTenant?.whatsapp || STORE_INFO.whatsapp;
 
   // Estados do Programa VIP & Reconhecimento do Cliente

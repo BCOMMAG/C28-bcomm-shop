@@ -721,7 +721,7 @@ export default function CustomDomainSettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 p-3 bg-slate-50 border-b border-slate-200 gap-2 font-sans font-bold text-slate-700">
                 <div>Tipo: CNAME</div>
                 <div>Nome: www</div>
-                <div>Destino: lojas.bcomm-ag.space</div>
+                <div>Destino: stores.bcomm-ag.space</div>
               </div>
             </div>
 
@@ -743,7 +743,7 @@ export default function CustomDomainSettingsPage() {
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 1. No Portal do Cliente HostGator ou cPanel, acesse a ferramenta <strong>Zone Editor</strong> (Editor de Zona DNS).<br />
                 2. Ao lado do seu domínio, clique em <strong>Gerenciar</strong>.<br />
-                3. Localize o registro CNAME existente com nome <code className="font-mono">www</code> e altere seu destino para <strong className="font-mono">lojas.bcomm-ag.space</strong> (se não existir, clique em <strong>+ Adicionar Registro</strong> e selecione Tipo CNAME).
+                3. Localize o registro CNAME existente com nome <code className="font-mono">www</code> e altere seu destino para <strong className="font-mono">stores.bcomm-ag.space</strong> (se não existir, clique em <strong>+ Adicionar Registro</strong> e selecione Tipo CNAME).
               </p>
             </div>
 
@@ -763,7 +763,7 @@ export default function CustomDomainSettingsPage() {
                 Instruções para Cloudflare / GoDaddy:
               </span>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                1. No gerenciador de DNS da Cloudflare ou GoDaddy, crie o registro CNAME com Nome <code className="font-mono font-bold">www</code> e Destino <code className="font-mono font-bold">lojas.bcomm-ag.space</code>.<br />
+                1. No gerenciador de DNS da Cloudflare ou GoDaddy, crie o registro CNAME com Nome <code className="font-mono font-bold">www</code> e Destino <code className="font-mono font-bold">stores.bcomm-ag.space</code>.<br />
                 2. Na Cloudflare, se o Proxy (nuvem laranja) estiver ativado, selecione modo <strong>SSL/TLS Completo (Full)</strong>.<br />
                 3. Na GoDaddy, use a ferramenta <strong>Encaminhamento de Domínio</strong> para direcionar a raiz (@) para <code className="font-mono">{`https://www.${dominioSalvo ? cleanDomainString(dominioSalvo).replace(/^www\./, '') : 'sualoja.com.br'}`}</code>.
               </p>

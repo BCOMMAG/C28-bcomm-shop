@@ -175,6 +175,33 @@ export async function onRequestPost(context: any) {
         cfData = createJson.result;
       }
 
+      // 1.2.1 Também cadastra o domínio raiz (Apex sem www) na Cloudflare for SaaS para suporte a redirecionamento 301
+      const rawApex = clean.replace(/^www\./, '');
+      if (clean.startsWith('www.') && rawApex.includes('.')) {
+        try {
+          await fetch(
+            `https://api.cloudflare.com/client/v4/zones/${zoneId}/custom_hostnames`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                hostname: rawApex,
+                ssl: {
+                  method: 'http',
+                  type: 'dv',
+                  settings: { min_tls_version: '1.2' }
+                }
+              })
+            }
+          );
+        } catch (apexErr) {
+          console.warn('⚠️ [Cloudflare Apex Register Notice]:', apexErr);
+        }
+      }
+
       // 1.3 Adiciona o domínio automaticamente no Cloudflare Pages (autoriza a vitrine no Edge)
       try {
         await fetch(

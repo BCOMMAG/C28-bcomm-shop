@@ -808,7 +808,7 @@ export default function AppearanceSettingsPage() {
               Prévia do Compartilhamento no WhatsApp
             </span>
             <h4 className="text-xs font-bold text-slate-900 truncate">
-              Leidy Boutique | Curadoria Exclusiva em Moda Feminina
+              {currentTenant?.nome || 'Minha Boutique'} | Curadoria Exclusiva
             </h4>
             <p className="text-[11px] text-slate-500 truncate mt-0.5">
               {slogan}

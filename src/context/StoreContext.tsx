@@ -657,30 +657,46 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const vis = currentTenant?.configuracoes_visuais as any;
     if (!vis) return;
 
-    // 1. Atualizar Favicon se houver URL personalizada no Cloudflare R2
-    if (vis.favicon_url) {
-      const existingIcons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+    const storeName = currentTenant?.nome || 'Boutique';
+    const slogan = vis.slogan || vis.tagline || 'Moda Feminina Autêntica & Elegância Diária';
+    const pageTitle = `${storeName} | ${slogan}`;
+
+    // 1. Atualizar Título da Aba do Navegador (exceto quando estiver navegando no painel Admin)
+    const isInsideAdmin =
+      window.location.pathname.startsWith('/admin') ||
+      window.location.pathname.startsWith('/super-admin');
+    if (!isInsideAdmin) {
+      document.title = pageTitle;
+    }
+
+    // 2. Atualizar Favicon com fallback inteligente para logo_url se não houver favicon_url específico
+    const effectiveFavicon = vis.favicon_url || vis.logo_url;
+    if (effectiveFavicon) {
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+        "link[rel*='icon'], link[rel='apple-touch-icon']"
+      );
       if (existingIcons.length > 0) {
         existingIcons.forEach((el) => {
-          el.href = vis.favicon_url;
+          el.href = effectiveFavicon;
         });
       } else {
         const link = document.createElement('link');
         link.rel = 'icon';
-        link.href = vis.favicon_url;
+        link.href = effectiveFavicon;
         document.head.appendChild(link);
       }
     }
 
-    // 2. Atualizar OG Image se houver URL personalizada
-    if (vis.og_image_url) {
+    // 3. Atualizar OG Image se houver URL personalizada ou logo da loja
+    const effectiveOgImage = vis.og_image_url || vis.logo_url;
+    if (effectiveOgImage) {
       let ogMeta = document.querySelector<HTMLMetaElement>("meta[property='og:image']");
       if (!ogMeta) {
         ogMeta = document.createElement('meta');
         ogMeta.setAttribute('property', 'og:image');
         document.head.appendChild(ogMeta);
       }
-      ogMeta.content = vis.og_image_url;
+      ogMeta.content = effectiveOgImage;
 
       let twitterMeta = document.querySelector<HTMLMetaElement>("meta[name='twitter:image']");
       if (!twitterMeta) {
@@ -688,15 +704,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         twitterMeta.setAttribute('name', 'twitter:image');
         document.head.appendChild(twitterMeta);
       }
-      twitterMeta.content = vis.og_image_url;
+      twitterMeta.content = effectiveOgImage;
     }
 
-    // 3. Atualizar Slogan / Descrição
-    if (vis.slogan) {
+    // 4. Atualizar Metatags de Título Social
+    let ogTitleMeta = document.querySelector<HTMLMetaElement>("meta[property='og:title']");
+    if (ogTitleMeta) ogTitleMeta.content = pageTitle;
+    let twitterTitleMeta = document.querySelector<HTMLMetaElement>("meta[name='twitter:title']");
+    if (twitterTitleMeta) twitterTitleMeta.content = pageTitle;
+
+    let ogSiteNameMeta = document.querySelector<HTMLMetaElement>("meta[property='og:site_name']");
+    if (ogSiteNameMeta) ogSiteNameMeta.content = storeName;
+
+    // 5. Atualizar Slogan / Descrição
+    if (slogan) {
       let ogDesc = document.querySelector<HTMLMetaElement>("meta[property='og:description']");
-      if (ogDesc) ogDesc.content = vis.slogan;
+      if (ogDesc) ogDesc.content = slogan;
+      let twitterDesc = document.querySelector<HTMLMetaElement>("meta[name='twitter:description']");
+      if (twitterDesc) twitterDesc.content = slogan;
       let desc = document.querySelector<HTMLMetaElement>("meta[name='description']");
-      if (desc) desc.content = vis.slogan;
+      if (desc) desc.content = slogan;
     }
   }, [currentTenant]);
 
