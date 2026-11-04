@@ -854,18 +854,18 @@ export default function CheckoutPage() {
     });
 
     msg += `\n💳 *Forma de Pagamento:* ${paymentMethod === 'pix'
-        ? 'PIX (com 5% de desconto à vista)'
-        : paymentMethod === 'credit_card'
-          ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
-          : 'Combinar Pagamento no WhatsApp'
+      ? 'PIX (com 5% de desconto à vista)'
+      : paymentMethod === 'credit_card'
+        ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
+        : 'Combinar Pagamento no WhatsApp'
       }\n`;
 
     const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de R$ ${shippingDiscount.toFixed(2).replace('.', ',')})` : '';
     const shippingLabelText = isCustomerVip
       ? 'Frete Exclusivo VIP (Grátis)'
       : isStorePromoFreeShipping
-      ? 'Frete Cortesia da Loja (Grátis)'
-      : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`;
+        ? 'Frete Cortesia da Loja (Grátis)'
+        : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`;
     msg += `🚚 *Envio:* ${shippingLabelText}\n`;
 
     if (appliedCoupon) {
@@ -1158,12 +1158,12 @@ export default function CheckoutPage() {
                       {/* Círculo do Ícone / Número */}
                       <div
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 border-2 ${isActive
-                            ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] shadow-md scale-110'
-                            : isConfirmed
-                              ? 'bg-[#22C55E] text-white border-[#22C55E] shadow-xs'
-                              : isPreFilled
-                                ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
-                                : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
+                          ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] shadow-md scale-110'
+                          : isConfirmed
+                            ? 'bg-[#22C55E] text-white border-[#22C55E] shadow-xs'
+                            : isPreFilled
+                              ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
+                              : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
                           }`}
                       >
                         {isConfirmed ? (
@@ -1177,12 +1177,12 @@ export default function CheckoutPage() {
                       <div className="flex flex-col items-center">
                         <span
                           className={`text-xs uppercase tracking-wider font-bold transition-colors ${isActive
-                              ? 'text-[#C5A059] dark:text-[#DFBE76]'
-                              : isConfirmed
-                                ? 'text-[#1A1918] dark:text-[#FAF8F5]'
-                                : isPreFilled
-                                  ? 'text-[#1A1918] dark:text-[#FAF8F5] group-hover:text-[#2563EB]'
-                                  : 'text-[#78716C] dark:text-[#A8A29E]'
+                            ? 'text-[#C5A059] dark:text-[#DFBE76]'
+                            : isConfirmed
+                              ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                              : isPreFilled
+                                ? 'text-[#1A1918] dark:text-[#FAF8F5] group-hover:text-[#2563EB]'
+                                : 'text-[#78716C] dark:text-[#A8A29E]'
                             }`}
                         >
                           {step.number}. {step.label}
@@ -1238,12 +1238,12 @@ export default function CheckoutPage() {
                         {/* Círculo Compacto */}
                         <div
                           className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] transition-all border-2 ${isActive
-                              ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] scale-110 shadow-xs'
-                              : isConfirmed
-                                ? 'bg-[#22C55E] text-white border-[#22C55E]'
-                                : isPreFilled
-                                  ? 'bg-[#2563EB] text-white border-[#2563EB]'
-                                  : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
+                            ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-[#C5A059] scale-110 shadow-xs'
+                            : isConfirmed
+                              ? 'bg-[#22C55E] text-white border-[#22C55E]'
+                              : isPreFilled
+                                ? 'bg-[#2563EB] text-white border-[#2563EB]'
+                                : 'bg-white dark:bg-[#201D1B] text-[#78716C] dark:text-[#A8A29E] border-[#C5A059]/30'
                             }`}
                         >
                           {isConfirmed ? (
@@ -1257,12 +1257,12 @@ export default function CheckoutPage() {
                         <div className="flex flex-col items-center leading-tight">
                           <span
                             className={`text-[10px] font-bold tracking-tight ${isActive
-                                ? 'text-[#C5A059] dark:text-[#DFBE76]'
-                                : isConfirmed
-                                  ? 'text-[#1A1918] dark:text-[#FAF8F5]'
-                                  : isPreFilled
-                                    ? 'text-[#2563EB] dark:text-blue-400'
-                                    : 'text-[#78716C] dark:text-[#A8A29E]'
+                              ? 'text-[#C5A059] dark:text-[#DFBE76]'
+                              : isConfirmed
+                                ? 'text-[#1A1918] dark:text-[#FAF8F5]'
+                                : isPreFilled
+                                  ? 'text-[#2563EB] dark:text-blue-400'
+                                  : 'text-[#78716C] dark:text-[#A8A29E]'
                               }`}
                           >
                             {step.id === 'dados' ? 'Dados' : step.shortLabel}
@@ -1482,11 +1482,10 @@ export default function CheckoutPage() {
                               return (
                                 <label
                                   key={opt.id}
-                                  className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${
-                                    isSelected
+                                  className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${isSelected
                                       ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
                                       : 'bg-white dark:bg-[#1A1918] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                                  }`}
+                                    }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <input
@@ -1813,8 +1812,8 @@ export default function CheckoutPage() {
                               <label
                                 key={opt.id}
                                 className={`p-2.5 sm:p-3 border flex items-center justify-between cursor-pointer transition-all ${selectedShippingId === opt.id
-                                    ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
-                                    : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
+                                  ? 'bg-[#C5A059]/10 border-[#C5A059] shadow-xs'
+                                  : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
                                   }`}
                               >
                                 <div className="flex items-center gap-2">
@@ -2098,11 +2097,10 @@ export default function CheckoutPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {/* Opção 1: PIX */}
                         <label
-                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
-                            paymentMethod === 'pix'
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${paymentMethod === 'pix'
                               ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
                               : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -2127,11 +2125,10 @@ export default function CheckoutPage() {
 
                         {/* Opção 2: Cartão */}
                         <label
-                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
-                            paymentMethod === 'credit_card'
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${paymentMethod === 'credit_card'
                               ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
                               : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -2156,11 +2153,10 @@ export default function CheckoutPage() {
 
                         {/* Opção 3: WhatsApp */}
                         <label
-                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${
-                            paymentMethod === 'whatsapp'
+                          className={`p-2.5 border flex items-center gap-2.5 cursor-pointer transition-all ${paymentMethod === 'whatsapp'
                               ? 'bg-[#C5A059]/15 border-[#C5A059] shadow-xs ring-1 ring-[#C5A059]/50'
                               : 'bg-white dark:bg-[#201D1B] border-[#C5A059]/25 hover:border-[#C5A059]/50'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -2220,19 +2216,18 @@ export default function CheckoutPage() {
                                   ? 'Embalagem especial de presente cortesia VIP'
                                   : `Caixa rígida, papel de seda e laço (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`
                                 : isVipGiftFree
-                                ? 'Privilégio VIP: Embalagem cortesia inclusa sem custos'
-                                : `Adicione embalagem de luxo exclusiva (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`}
+                                  ? 'Privilégio VIP: Embalagem cortesia inclusa sem custos'
+                                  : `Adicione embalagem de luxo exclusiva (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`}
                             </span>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => setIsGift(!isGift)}
-                          className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold shrink-0 transition-colors cursor-pointer ${
-                            isGift
+                          className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold shrink-0 transition-colors cursor-pointer ${isGift
                               ? 'bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
                               : 'bg-[#C5A059] text-black hover:bg-[#DFBE76]'
-                          }`}
+                            }`}
                         >
                           {isGift ? 'Remover' : '+ Incluir Presente'}
                         </button>
@@ -2810,8 +2805,8 @@ export default function CheckoutPage() {
                       Cor: {div.color} | Tam: {div.size}
                     </p>
                     <span className={`inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 ${div.esgotado
-                        ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
-                        : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                      : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
                       }`}>
                       {div.esgotado
                         ? 'Acabou de Esgotar'

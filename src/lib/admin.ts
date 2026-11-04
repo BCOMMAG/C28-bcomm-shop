@@ -1424,6 +1424,12 @@ export async function createAdminProduct(
         mais_vendido: Boolean(input.mais_vendido),
         outlet: Boolean(input.outlet),
         ultimas_pecas: Boolean(input.ultimas_pecas),
+        status_badges: [
+          ...(input.destaque ? ['Lançamento'] : []),
+          ...(input.mais_vendido ? ['Mais Vendido'] : []),
+          ...(input.outlet ? ['OUTLET'] : []),
+          ...(input.ultimas_pecas ? ['Últimas Peças'] : [])
+        ],
         estoque_total: Number(input.estoque_total || 0),
         paired_with_slug: input.paired_with_slug || null,
         detalhes: hasDetalhesData ? detalhesFinal : null,
@@ -1742,6 +1748,16 @@ export async function updateAdminProductFull(
     if (input.ativo !== undefined) updateFields.ativo = Boolean(input.ativo);
     if (input.paired_with_slug !== undefined) updateFields.paired_with_slug = input.paired_with_slug;
     if (input.foto_principal !== undefined) updateFields.foto_principal = input.foto_principal;
+
+    // Sincroniza fielmente o array status_badges para refletir os atributos oficiais e evitar tags residuais legadas
+    if (input.destaque !== undefined || input.mais_vendido !== undefined || input.outlet !== undefined || input.ultimas_pecas !== undefined) {
+      const synchedBadges: string[] = [];
+      if (input.destaque) synchedBadges.push('Lançamento');
+      if (input.mais_vendido) synchedBadges.push('Mais Vendido');
+      if (input.outlet) synchedBadges.push('OUTLET');
+      if (input.ultimas_pecas) synchedBadges.push('Últimas Peças');
+      updateFields.status_badges = synchedBadges;
+    }
 
     // Preservação e mesclagem de detalhes JSONB (precos_diferenciados, fotos_por_cor, especificações, badges)
     if (input.detalhes !== undefined || input.precos_diferenciados !== undefined || input.fotos_por_cor !== undefined) {
@@ -3081,6 +3097,9 @@ export interface TipografiaMenuConfig {
 
 export interface SecaoEstiloConfig {
   ativo: boolean;
+  customizado?: boolean;
+  titulo?: string;
+  subtitulo?: string;
   bgLight?: string;
   bgDark?: string;
   tituloFont?: string;
@@ -3097,6 +3116,7 @@ export interface SecoesVitrineConfig {
   maisVendidos?: SecaoEstiloConfig;
   outlet?: SecaoEstiloConfig;
   ultimasPecas?: SecaoEstiloConfig;
+  todasAsPecas?: SecaoEstiloConfig;
 }
 
 export interface CoresModoClaroEscuro {

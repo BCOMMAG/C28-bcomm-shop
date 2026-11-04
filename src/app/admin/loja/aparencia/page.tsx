@@ -115,7 +115,8 @@ export default function AppearanceSettingsPage() {
   const [secaoGlobalSubtituloDark, setSecaoGlobalSubtituloDark] = useState('#FAF8F5');
 
   // Seção Lançamentos
-  const [secaoLancamentosAtivo, setSecaoLancamentosAtivo] = useState(false);
+  const [secaoLancamentosAtivo, setSecaoLancamentosAtivo] = useState(true);
+  const [secaoLancamentosCustomizado, setSecaoLancamentosCustomizado] = useState(false);
   const [secaoLancamentosFont, setSecaoLancamentosFont] = useState('Playfair Display');
   const [secaoLancamentosBgLight, setSecaoLancamentosBgLight] = useState('');
   const [secaoLancamentosBgDark, setSecaoLancamentosBgDark] = useState('');
@@ -125,7 +126,8 @@ export default function AppearanceSettingsPage() {
   const [secaoLancamentosSubtituloDark, setSecaoLancamentosSubtituloDark] = useState('#FAF8F5');
 
   // Seção Mais Vendidos
-  const [secaoMaisVendidosAtivo, setSecaoMaisVendidosAtivo] = useState(false);
+  const [secaoMaisVendidosAtivo, setSecaoMaisVendidosAtivo] = useState(true);
+  const [secaoMaisVendidosCustomizado, setSecaoMaisVendidosCustomizado] = useState(false);
   const [secaoMaisVendidosFont, setSecaoMaisVendidosFont] = useState('Playfair Display');
   const [secaoMaisVendidosBgLight, setSecaoMaisVendidosBgLight] = useState('');
   const [secaoMaisVendidosBgDark, setSecaoMaisVendidosBgDark] = useState('');
@@ -135,7 +137,8 @@ export default function AppearanceSettingsPage() {
   const [secaoMaisVendidosSubtituloDark, setSecaoMaisVendidosSubtituloDark] = useState('#FAF8F5');
 
   // Seção OUTLET
-  const [secaoOutletAtivo, setSecaoOutletAtivo] = useState(false);
+  const [secaoOutletAtivo, setSecaoOutletAtivo] = useState(true);
+  const [secaoOutletCustomizado, setSecaoOutletCustomizado] = useState(false);
   const [secaoOutletFont, setSecaoOutletFont] = useState('Playfair Display');
   const [secaoOutletBgLight, setSecaoOutletBgLight] = useState('');
   const [secaoOutletBgDark, setSecaoOutletBgDark] = useState('');
@@ -145,7 +148,8 @@ export default function AppearanceSettingsPage() {
   const [secaoOutletSubtituloDark, setSecaoOutletSubtituloDark] = useState('#FAF8F5');
 
   // Seção Últimas Peças
-  const [secaoUltimasPecasAtivo, setSecaoUltimasPecasAtivo] = useState(false);
+  const [secaoUltimasPecasAtivo, setSecaoUltimasPecasAtivo] = useState(true);
+  const [secaoUltimasPecasCustomizado, setSecaoUltimasPecasCustomizado] = useState(false);
   const [secaoUltimasPecasFont, setSecaoUltimasPecasFont] = useState('Playfair Display');
   const [secaoUltimasPecasBgLight, setSecaoUltimasPecasBgLight] = useState('');
   const [secaoUltimasPecasBgDark, setSecaoUltimasPecasBgDark] = useState('');
@@ -153,6 +157,19 @@ export default function AppearanceSettingsPage() {
   const [secaoUltimasPecasTituloDark, setSecaoUltimasPecasTituloDark] = useState('#FFFFFF');
   const [secaoUltimasPecasSubtituloLight, setSecaoUltimasPecasSubtituloLight] = useState('#FAF8F5');
   const [secaoUltimasPecasSubtituloDark, setSecaoUltimasPecasSubtituloDark] = useState('#FAF8F5');
+
+  // Seção Todas as Peças (Catálogo Geral da Vitrine)
+  const [secaoTodasAsPecasAtivo, setSecaoTodasAsPecasAtivo] = useState(true);
+  const [secaoTodasAsPecasCustomizado, setSecaoTodasAsPecasCustomizado] = useState(false);
+  const [secaoTodasAsPecasTitulo, setSecaoTodasAsPecasTitulo] = useState('Todas as Peças');
+  const [secaoTodasAsPecasSubtitulo, setSecaoTodasAsPecasSubtitulo] = useState('Conheça todas as criações e modelos exclusivos disponíveis na boutique.');
+  const [secaoTodasAsPecasFont, setSecaoTodasAsPecasFont] = useState('Playfair Display');
+  const [secaoTodasAsPecasBgLight, setSecaoTodasAsPecasBgLight] = useState('');
+  const [secaoTodasAsPecasBgDark, setSecaoTodasAsPecasBgDark] = useState('');
+  const [secaoTodasAsPecasTituloLight, setSecaoTodasAsPecasTituloLight] = useState('#FFFFFF');
+  const [secaoTodasAsPecasTituloDark, setSecaoTodasAsPecasTituloDark] = useState('#FFFFFF');
+  const [secaoTodasAsPecasSubtituloLight, setSecaoTodasAsPecasSubtituloLight] = useState('#FAF8F5');
+  const [secaoTodasAsPecasSubtituloDark, setSecaoTodasAsPecasSubtituloDark] = useState('#FAF8F5');
 
   // Configuração Global de Visibilidade de Estoque para o Consumidor
   const [exibirQuantidadeEstoqueConsumidor, setExibirQuantidadeEstoqueConsumidor] = useState(true);
@@ -216,7 +233,8 @@ export default function AppearanceSettingsPage() {
               setSecaoGlobalSubtituloDark(data.secoesVitrine.global.subtituloCorDark || '#FAF8F5');
             }
             if (data.secoesVitrine.lancamentos) {
-              setSecaoLancamentosAtivo(Boolean(data.secoesVitrine.lancamentos.ativo));
+              setSecaoLancamentosAtivo(data.secoesVitrine.lancamentos.ativo !== false);
+              setSecaoLancamentosCustomizado(Boolean(data.secoesVitrine.lancamentos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.lancamentos.ativo)));
               setSecaoLancamentosFont(data.secoesVitrine.lancamentos.tituloFont || 'Playfair Display');
               setSecaoLancamentosBgLight(data.secoesVitrine.lancamentos.bgLight || '');
               setSecaoLancamentosBgDark(data.secoesVitrine.lancamentos.bgDark || '');
@@ -226,7 +244,8 @@ export default function AppearanceSettingsPage() {
               setSecaoLancamentosSubtituloDark(data.secoesVitrine.lancamentos.subtituloCorDark || '#FAF8F5');
             }
             if (data.secoesVitrine.maisVendidos) {
-              setSecaoMaisVendidosAtivo(Boolean(data.secoesVitrine.maisVendidos.ativo));
+              setSecaoMaisVendidosAtivo(data.secoesVitrine.maisVendidos.ativo !== false);
+              setSecaoMaisVendidosCustomizado(Boolean(data.secoesVitrine.maisVendidos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.maisVendidos.ativo)));
               setSecaoMaisVendidosFont(data.secoesVitrine.maisVendidos.tituloFont || 'Playfair Display');
               setSecaoMaisVendidosBgLight(data.secoesVitrine.maisVendidos.bgLight || '');
               setSecaoMaisVendidosBgDark(data.secoesVitrine.maisVendidos.bgDark || '');
@@ -236,7 +255,8 @@ export default function AppearanceSettingsPage() {
               setSecaoMaisVendidosSubtituloDark(data.secoesVitrine.maisVendidos.subtituloCorDark || '#FAF8F5');
             }
             if (data.secoesVitrine.outlet) {
-              setSecaoOutletAtivo(Boolean(data.secoesVitrine.outlet.ativo));
+              setSecaoOutletAtivo(data.secoesVitrine.outlet.ativo !== false);
+              setSecaoOutletCustomizado(Boolean(data.secoesVitrine.outlet.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.outlet.ativo)));
               setSecaoOutletFont(data.secoesVitrine.outlet.tituloFont || 'Playfair Display');
               setSecaoOutletBgLight(data.secoesVitrine.outlet.bgLight || '');
               setSecaoOutletBgDark(data.secoesVitrine.outlet.bgDark || '');
@@ -246,7 +266,8 @@ export default function AppearanceSettingsPage() {
               setSecaoOutletSubtituloDark(data.secoesVitrine.outlet.subtituloCorDark || '#FAF8F5');
             }
             if (data.secoesVitrine.ultimasPecas) {
-              setSecaoUltimasPecasAtivo(Boolean(data.secoesVitrine.ultimasPecas.ativo));
+              setSecaoUltimasPecasAtivo(data.secoesVitrine.ultimasPecas.ativo !== false);
+              setSecaoUltimasPecasCustomizado(Boolean(data.secoesVitrine.ultimasPecas.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.ultimasPecas.ativo)));
               setSecaoUltimasPecasFont(data.secoesVitrine.ultimasPecas.tituloFont || 'Playfair Display');
               setSecaoUltimasPecasBgLight(data.secoesVitrine.ultimasPecas.bgLight || '');
               setSecaoUltimasPecasBgDark(data.secoesVitrine.ultimasPecas.bgDark || '');
@@ -254,6 +275,19 @@ export default function AppearanceSettingsPage() {
               setSecaoUltimasPecasTituloDark(data.secoesVitrine.ultimasPecas.tituloCorDark || '#FFFFFF');
               setSecaoUltimasPecasSubtituloLight(data.secoesVitrine.ultimasPecas.subtituloCorLight || '#FAF8F5');
               setSecaoUltimasPecasSubtituloDark(data.secoesVitrine.ultimasPecas.subtituloCorDark || '#FAF8F5');
+            }
+            if (data.secoesVitrine.todasAsPecas) {
+              setSecaoTodasAsPecasAtivo(data.secoesVitrine.todasAsPecas.ativo !== false);
+              setSecaoTodasAsPecasCustomizado(Boolean(data.secoesVitrine.todasAsPecas.customizado));
+              setSecaoTodasAsPecasTitulo(data.secoesVitrine.todasAsPecas.titulo || 'Todas as Peças');
+              setSecaoTodasAsPecasSubtitulo(data.secoesVitrine.todasAsPecas.subtitulo || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.');
+              setSecaoTodasAsPecasFont(data.secoesVitrine.todasAsPecas.tituloFont || 'Playfair Display');
+              setSecaoTodasAsPecasBgLight(data.secoesVitrine.todasAsPecas.bgLight || '');
+              setSecaoTodasAsPecasBgDark(data.secoesVitrine.todasAsPecas.bgDark || '');
+              setSecaoTodasAsPecasTituloLight(data.secoesVitrine.todasAsPecas.tituloCorLight || '#FFFFFF');
+              setSecaoTodasAsPecasTituloDark(data.secoesVitrine.todasAsPecas.tituloCorDark || '#FFFFFF');
+              setSecaoTodasAsPecasSubtituloLight(data.secoesVitrine.todasAsPecas.subtituloCorLight || '#FAF8F5');
+              setSecaoTodasAsPecasSubtituloDark(data.secoesVitrine.todasAsPecas.subtituloCorDark || '#FAF8F5');
             }
           }
 
@@ -279,14 +313,17 @@ export default function AppearanceSettingsPage() {
       menuFontFamily, menuFontSize, menuCorTextoLight, menuCorTextoDark, menuCorHoverLight, menuCorHoverDark,
       secoesModoIndependente, secaoGlobalFont, secaoGlobalBgLight, secaoGlobalBgDark,
       secaoGlobalTituloLight, secaoGlobalTituloDark, secaoGlobalSubtituloLight, secaoGlobalSubtituloDark,
-      secaoLancamentosAtivo, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
+      secaoLancamentosAtivo, secaoLancamentosCustomizado, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
       secaoLancamentosTituloLight, secaoLancamentosTituloDark, secaoLancamentosSubtituloLight, secaoLancamentosSubtituloDark,
-      secaoMaisVendidosAtivo, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
+      secaoMaisVendidosAtivo, secaoMaisVendidosCustomizado, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
       secaoMaisVendidosTituloLight, secaoMaisVendidosTituloDark, secaoMaisVendidosSubtituloLight, secaoMaisVendidosSubtituloDark,
-      secaoOutletAtivo, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
+      secaoOutletAtivo, secaoOutletCustomizado, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
       secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
-      secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
+      secaoUltimasPecasAtivo, secaoUltimasPecasCustomizado, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
       secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
+      secaoTodasAsPecasAtivo, secaoTodasAsPecasCustomizado, secaoTodasAsPecasTitulo, secaoTodasAsPecasSubtitulo, secaoTodasAsPecasFont,
+      secaoTodasAsPecasBgLight, secaoTodasAsPecasBgDark, secaoTodasAsPecasTituloLight, secaoTodasAsPecasTituloDark,
+      secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
       exibirQuantidadeEstoqueConsumidor
     });
   }, [
@@ -296,14 +333,17 @@ export default function AppearanceSettingsPage() {
     menuFontFamily, menuFontSize, menuCorTextoLight, menuCorTextoDark, menuCorHoverLight, menuCorHoverDark,
     secoesModoIndependente, secaoGlobalFont, secaoGlobalBgLight, secaoGlobalBgDark,
     secaoGlobalTituloLight, secaoGlobalTituloDark, secaoGlobalSubtituloLight, secaoGlobalSubtituloDark,
-    secaoLancamentosAtivo, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
+    secaoLancamentosAtivo, secaoLancamentosCustomizado, secaoLancamentosFont, secaoLancamentosBgLight, secaoLancamentosBgDark,
     secaoLancamentosTituloLight, secaoLancamentosTituloDark, secaoLancamentosSubtituloLight, secaoLancamentosSubtituloDark,
-    secaoMaisVendidosAtivo, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
+    secaoMaisVendidosAtivo, secaoMaisVendidosCustomizado, secaoMaisVendidosFont, secaoMaisVendidosBgLight, secaoMaisVendidosBgDark,
     secaoMaisVendidosTituloLight, secaoMaisVendidosTituloDark, secaoMaisVendidosSubtituloLight, secaoMaisVendidosSubtituloDark,
-    secaoOutletAtivo, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
+    secaoOutletAtivo, secaoOutletCustomizado, secaoOutletFont, secaoOutletBgLight, secaoOutletBgDark,
     secaoOutletTituloLight, secaoOutletTituloDark, secaoOutletSubtituloLight, secaoOutletSubtituloDark,
-    secaoUltimasPecasAtivo, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
+    secaoUltimasPecasAtivo, secaoUltimasPecasCustomizado, secaoUltimasPecasFont, secaoUltimasPecasBgLight, secaoUltimasPecasBgDark,
     secaoUltimasPecasTituloLight, secaoUltimasPecasTituloDark, secaoUltimasPecasSubtituloLight, secaoUltimasPecasSubtituloDark,
+    secaoTodasAsPecasAtivo, secaoTodasAsPecasCustomizado, secaoTodasAsPecasTitulo, secaoTodasAsPecasSubtitulo, secaoTodasAsPecasFont,
+    secaoTodasAsPecasBgLight, secaoTodasAsPecasBgDark, secaoTodasAsPecasTituloLight, secaoTodasAsPecasTituloDark,
+    secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
     exibirQuantidadeEstoqueConsumidor
   ]);
 
@@ -416,43 +456,55 @@ export default function AppearanceSettingsPage() {
         },
         lancamentos: {
           ativo: secaoLancamentosAtivo,
-          tituloFont: secaoLancamentosFont,
-          bgLight: secaoLancamentosBgLight || undefined,
-          bgDark: secaoLancamentosBgDark || undefined,
-          tituloCorLight: secaoLancamentosTituloLight,
-          tituloCorDark: secaoLancamentosTituloDark,
-          subtituloCorLight: secaoLancamentosSubtituloLight,
-          subtituloCorDark: secaoLancamentosSubtituloDark
+          tituloFont: secaoLancamentosCustomizado ? secaoLancamentosFont : secaoGlobalFont,
+          bgLight: (secaoLancamentosCustomizado ? secaoLancamentosBgLight : secaoGlobalBgLight) || undefined,
+          bgDark: (secaoLancamentosCustomizado ? secaoLancamentosBgDark : secaoGlobalBgDark) || undefined,
+          tituloCorLight: secaoLancamentosCustomizado ? secaoLancamentosTituloLight : secaoGlobalTituloLight,
+          tituloCorDark: secaoLancamentosCustomizado ? secaoLancamentosTituloDark : secaoGlobalTituloDark,
+          subtituloCorLight: secaoLancamentosCustomizado ? secaoLancamentosSubtituloLight : secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoLancamentosCustomizado ? secaoLancamentosSubtituloDark : secaoGlobalSubtituloDark
         },
         maisVendidos: {
           ativo: secaoMaisVendidosAtivo,
-          tituloFont: secaoMaisVendidosFont,
-          bgLight: secaoMaisVendidosBgLight || undefined,
-          bgDark: secaoMaisVendidosBgDark || undefined,
-          tituloCorLight: secaoMaisVendidosTituloLight,
-          tituloCorDark: secaoMaisVendidosTituloDark,
-          subtituloCorLight: secaoMaisVendidosSubtituloLight,
-          subtituloCorDark: secaoMaisVendidosSubtituloDark
+          tituloFont: secaoMaisVendidosCustomizado ? secaoMaisVendidosFont : secaoGlobalFont,
+          bgLight: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgLight : secaoGlobalBgLight) || undefined,
+          bgDark: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgDark : secaoGlobalBgDark) || undefined,
+          tituloCorLight: secaoMaisVendidosCustomizado ? secaoMaisVendidosTituloLight : secaoGlobalTituloLight,
+          tituloCorDark: secaoMaisVendidosCustomizado ? secaoMaisVendidosTituloDark : secaoGlobalTituloDark,
+          subtituloCorLight: secaoMaisVendidosCustomizado ? secaoMaisVendidosSubtituloLight : secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoMaisVendidosCustomizado ? secaoMaisVendidosSubtituloDark : secaoGlobalSubtituloDark
         },
         outlet: {
           ativo: secaoOutletAtivo,
-          tituloFont: secaoOutletFont,
-          bgLight: secaoOutletBgLight || undefined,
-          bgDark: secaoOutletBgDark || undefined,
-          tituloCorLight: secaoOutletTituloLight,
-          tituloCorDark: secaoOutletTituloDark,
-          subtituloCorLight: secaoOutletSubtituloLight,
-          subtituloCorDark: secaoOutletSubtituloDark
+          tituloFont: secaoOutletCustomizado ? secaoOutletFont : secaoGlobalFont,
+          bgLight: (secaoOutletCustomizado ? secaoOutletBgLight : secaoGlobalBgLight) || undefined,
+          bgDark: (secaoOutletCustomizado ? secaoOutletBgDark : secaoGlobalBgDark) || undefined,
+          tituloCorLight: secaoOutletCustomizado ? secaoOutletTituloLight : secaoGlobalTituloLight,
+          tituloCorDark: secaoOutletCustomizado ? secaoOutletTituloDark : secaoGlobalTituloDark,
+          subtituloCorLight: secaoOutletCustomizado ? secaoOutletSubtituloLight : secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoOutletCustomizado ? secaoOutletSubtituloDark : secaoGlobalSubtituloDark
         },
         ultimasPecas: {
           ativo: secaoUltimasPecasAtivo,
-          tituloFont: secaoUltimasPecasFont,
-          bgLight: secaoUltimasPecasBgLight || undefined,
-          bgDark: secaoUltimasPecasBgDark || undefined,
-          tituloCorLight: secaoUltimasPecasTituloLight,
-          tituloCorDark: secaoUltimasPecasTituloDark,
-          subtituloCorLight: secaoUltimasPecasSubtituloLight,
-          subtituloCorDark: secaoUltimasPecasSubtituloDark
+          tituloFont: secaoUltimasPecasCustomizado ? secaoUltimasPecasFont : secaoGlobalFont,
+          bgLight: (secaoUltimasPecasCustomizado ? secaoUltimasPecasBgLight : secaoGlobalBgLight) || undefined,
+          bgDark: (secaoUltimasPecasCustomizado ? secaoUltimasPecasBgDark : secaoGlobalBgDark) || undefined,
+          tituloCorLight: secaoUltimasPecasCustomizado ? secaoUltimasPecasTituloLight : secaoGlobalTituloLight,
+          tituloCorDark: secaoUltimasPecasCustomizado ? secaoUltimasPecasTituloDark : secaoGlobalTituloDark,
+          subtituloCorLight: secaoUltimasPecasCustomizado ? secaoUltimasPecasSubtituloLight : secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoUltimasPecasCustomizado ? secaoUltimasPecasSubtituloDark : secaoGlobalSubtituloDark
+        },
+        todasAsPecas: {
+          ativo: secaoTodasAsPecasAtivo,
+          titulo: secaoTodasAsPecasTitulo.trim() || 'Todas as Peças',
+          subtitulo: secaoTodasAsPecasSubtitulo.trim() || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.',
+          tituloFont: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasFont : secaoGlobalFont,
+          bgLight: (secaoTodasAsPecasCustomizado ? secaoTodasAsPecasBgLight : secaoGlobalBgLight) || undefined,
+          bgDark: (secaoTodasAsPecasCustomizado ? secaoTodasAsPecasBgDark : secaoGlobalBgDark) || undefined,
+          tituloCorLight: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasTituloLight : secaoGlobalTituloLight,
+          tituloCorDark: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasTituloDark : secaoGlobalTituloDark,
+          subtituloCorLight: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasSubtituloLight : secaoGlobalSubtituloLight,
+          subtituloCorDark: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasSubtituloDark : secaoGlobalSubtituloDark
         }
       };
 
@@ -1778,25 +1830,37 @@ export default function AppearanceSettingsPage() {
 
           {/* 1. Lançamentos Exclusivos */}
           <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="sec-lanc"
+                  id="sec-lanc-ativo"
                   checked={secaoLancamentosAtivo}
                   onChange={(e) => setSecaoLancamentosAtivo(e.target.checked)}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
-                <label htmlFor="sec-lanc" className="font-bold text-slate-900 cursor-pointer">
+                <label htmlFor="sec-lanc-ativo" className="font-bold text-slate-900 cursor-pointer">
                   1. Seção Lançamentos Exclusivos (#lancamentos)
                 </label>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoLancamentosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                  {secaoLancamentosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400">
-                {secaoLancamentosAtivo ? 'Customizado' : 'Herdando padrão global'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  id="sec-lanc-cust"
+                  checked={secaoLancamentosCustomizado}
+                  onChange={(e) => setSecaoLancamentosCustomizado(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-lanc-cust" className="text-[11px] text-slate-600 cursor-pointer">
+                  Personalizar fontes e cores
+                </label>
+              </div>
             </div>
 
-            {secaoLancamentosAtivo && (
+            {secaoLancamentosCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
@@ -1852,25 +1916,37 @@ export default function AppearanceSettingsPage() {
 
           {/* 2. Mais Vendidos */}
           <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="sec-mv"
+                  id="sec-mv-ativo"
                   checked={secaoMaisVendidosAtivo}
                   onChange={(e) => setSecaoMaisVendidosAtivo(e.target.checked)}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
-                <label htmlFor="sec-mv" className="font-bold text-slate-900 cursor-pointer">
+                <label htmlFor="sec-mv-ativo" className="font-bold text-slate-900 cursor-pointer">
                   2. Seção Mais Vendidos (#mais-vendidos)
                 </label>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoMaisVendidosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                  {secaoMaisVendidosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400">
-                {secaoMaisVendidosAtivo ? 'Customizado' : 'Herdando padrão global'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  id="sec-mv-cust"
+                  checked={secaoMaisVendidosCustomizado}
+                  onChange={(e) => setSecaoMaisVendidosCustomizado(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-mv-cust" className="text-[11px] text-slate-600 cursor-pointer">
+                  Personalizar fontes e cores
+                </label>
+              </div>
             </div>
 
-            {secaoMaisVendidosAtivo && (
+            {secaoMaisVendidosCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
@@ -1926,25 +2002,37 @@ export default function AppearanceSettingsPage() {
 
           {/* 3. OUTLET */}
           <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="sec-outlet"
+                  id="sec-outlet-ativo"
                   checked={secaoOutletAtivo}
                   onChange={(e) => setSecaoOutletAtivo(e.target.checked)}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
-                <label htmlFor="sec-outlet" className="font-bold text-slate-900 cursor-pointer">
+                <label htmlFor="sec-outlet-ativo" className="font-bold text-slate-900 cursor-pointer">
                   3. Seção OUTLET & BAZAR (#outlet)
                 </label>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoOutletAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                  {secaoOutletAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400">
-                {secaoOutletAtivo ? 'Customizado' : 'Herdando padrão global'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  id="sec-outlet-cust"
+                  checked={secaoOutletCustomizado}
+                  onChange={(e) => setSecaoOutletCustomizado(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-outlet-cust" className="text-[11px] text-slate-600 cursor-pointer">
+                  Personalizar fontes e cores
+                </label>
+              </div>
             </div>
 
-            {secaoOutletAtivo && (
+            {secaoOutletCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
@@ -2000,25 +2088,37 @@ export default function AppearanceSettingsPage() {
 
           {/* 4. Últimas Peças */}
           <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="sec-up"
+                  id="sec-up-ativo"
                   checked={secaoUltimasPecasAtivo}
                   onChange={(e) => setSecaoUltimasPecasAtivo(e.target.checked)}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
-                <label htmlFor="sec-up" className="font-bold text-slate-900 cursor-pointer">
+                <label htmlFor="sec-up-ativo" className="font-bold text-slate-900 cursor-pointer">
                   4. Seção Últimas Peças (#ultimas-pecas)
                 </label>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoUltimasPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                  {secaoUltimasPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400">
-                {secaoUltimasPecasAtivo ? 'Customizado' : 'Herdando padrão global'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  id="sec-up-cust"
+                  checked={secaoUltimasPecasCustomizado}
+                  onChange={(e) => setSecaoUltimasPecasCustomizado(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-up-cust" className="text-[11px] text-slate-600 cursor-pointer">
+                  Personalizar fontes e cores
+                </label>
+              </div>
             </div>
 
-            {secaoUltimasPecasAtivo && (
+            {secaoUltimasPecasCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
@@ -2062,6 +2162,115 @@ export default function AppearanceSettingsPage() {
                     <button
                       type="button"
                       onClick={() => setSecaoUltimasPecasBgDark('')}
+                      className="text-[10px] text-slate-500 underline cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Todas as Peças (Catálogo Geral da Vitrine) */}
+          <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="sec-todas-ativo"
+                  checked={secaoTodasAsPecasAtivo}
+                  onChange={(e) => setSecaoTodasAsPecasAtivo(e.target.checked)}
+                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-todas-ativo" className="font-bold text-slate-900 cursor-pointer">
+                  5. Seção Todas as Peças (#todas-as-pecas)
+                </label>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoTodasAsPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                  {secaoTodasAsPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  id="sec-todas-cust"
+                  checked={secaoTodasAsPecasCustomizado}
+                  onChange={(e) => setSecaoTodasAsPecasCustomizado(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="sec-todas-cust" className="text-[11px] text-slate-600 cursor-pointer">
+                  Personalizar fontes e cores
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Título da Seção</label>
+                <input
+                  type="text"
+                  value={secaoTodasAsPecasTitulo}
+                  onChange={(e) => setSecaoTodasAsPecasTitulo(e.target.value)}
+                  placeholder="Ex: Todas as Peças ou Coleção Completa"
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Subtítulo Explicativo</label>
+                <input
+                  type="text"
+                  value={secaoTodasAsPecasSubtitulo}
+                  onChange={(e) => setSecaoTodasAsPecasSubtitulo(e.target.value)}
+                  placeholder="Ex: Conheça todas as criações exclusivas disponíveis..."
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+
+            {secaoTodasAsPecasCustomizado && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <select
+                    value={secaoTodasAsPecasFont}
+                    onChange={(e) => setSecaoTodasAsPecasFont(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                  >
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Cinzel">Cinzel</option>
+                    <option value="Cormorant Garamond">Cormorant Garamond</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="color"
+                      value={secaoTodasAsPecasTituloDark}
+                      onChange={(e) => setSecaoTodasAsPecasTituloDark(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                    />
+                    <input
+                      type="text"
+                      value={secaoTodasAsPecasTituloDark}
+                      onChange={(e) => setSecaoTodasAsPecasTituloDark(e.target.value)}
+                      className="w-24 px-2 py-1 text-xs font-mono uppercase rounded border border-slate-200 bg-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="color"
+                      value={secaoTodasAsPecasBgDark || '#141312'}
+                      onChange={(e) => setSecaoTodasAsPecasBgDark(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer border border-slate-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSecaoTodasAsPecasBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
                       Limpar

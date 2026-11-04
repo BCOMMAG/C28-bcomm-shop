@@ -231,26 +231,19 @@ export function mapDbProductToProduct(dbProd: any): Product {
   const isLastPieces = Boolean(dbProd.ultimas_pecas) ? isCriticalStock : isCriticalStock;
   const remainingPieces = isCriticalStock ? computedTotalStock : undefined;
 
-  // Sanitiza badges para evitar que produtos reabastecidos (> 5 un) exibam selos residuais de escassez
-  let resolvedBadge = Array.isArray(dbProd.status_badges) && dbProd.status_badges.length > 0 ? dbProd.status_badges[0] : undefined;
-  if (resolvedBadge && (resolvedBadge.includes('peça') || resolvedBadge.includes('Últimas')) && !isCriticalStock) {
-    resolvedBadge = undefined;
-  }
-
-  const sanitizedStatusList = Array.isArray(dbProd.status_badges)
-    ? dbProd.status_badges.filter((b: string) => {
-        if ((b.includes('peça') || b.includes('Últimas')) && !isCriticalStock) return false;
-        return true;
-      })
-    : [];
-
-  // Extrai badges comerciais personalizados adicionados na peça
+  // Extrai badges comerciais personalizados adicionados explicitamente na peça
   const customBadgesList: string[] = [];
-  const coreFilter = ['destaque', 'mais_vendido', 'outlet', 'ultimas_pecas', 'Lançamento', 'Destaque', 'Mais Vendido', 'Outlet', 'Últimas Peças'];
+  const coreFilter = new Set([
+    'destaque', 'mais_vendido', 'mais vendido', 'outlet', 'ultimas_pecas', 'ultimas pecas', 'últimas peças',
+    'lançamento', 'lancamento', 'novidade', 'novidades'
+  ]);
+
   if (Array.isArray(dbProd.status_badges)) {
     dbProd.status_badges.forEach((b: string) => {
       const clean = b.replace('[Badge] ', '').trim();
-      if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+      if (clean && !coreFilter.has(clean.toLowerCase())) {
+        customBadgesList.push(clean);
+      }
     });
   }
   if (dbProd.detalhes) {
@@ -258,17 +251,48 @@ export function mapDbProductToProduct(dbProd: any): Product {
       dbProd.detalhes.forEach((d: any) => {
         if (typeof d === 'string' && d.startsWith('[Badge] ')) {
           const clean = d.replace('[Badge] ', '').trim();
-          if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+          if (clean && !coreFilter.has(clean.toLowerCase())) customBadgesList.push(clean);
         }
       });
     } else if (typeof dbProd.detalhes === 'object' && Array.isArray(dbProd.detalhes.badges)) {
       dbProd.detalhes.badges.forEach((b: any) => {
         if (typeof b === 'string') {
           const clean = b.replace('[Badge] ', '').trim();
-          if (clean && !coreFilter.includes(clean)) customBadgesList.push(clean);
+          if (clean && !coreFilter.has(clean.toLowerCase())) customBadgesList.push(clean);
         }
       });
     }
+  }
+
+  // Monta a lista oficial de status baseada exclusivamente nas configurações reais do lojista
+  const activeStatusSet = new Set<string>();
+  if (Boolean(dbProd.destaque)) {
+    activeStatusSet.add('Lançamento');
+  }
+  if (Boolean(dbProd.mais_vendido)) {
+    activeStatusSet.add('Mais Vendido');
+  }
+  if (Boolean(dbProd.outlet) || hasRealDiscount) {
+    activeStatusSet.add('OUTLET');
+  }
+  if (isLastPieces) {
+    activeStatusSet.add('Últimas Peças');
+  }
+  customBadgesList.forEach((b) => activeStatusSet.add(b));
+  const sanitizedStatusList = Array.from(activeStatusSet);
+
+  // Determina o badge principal apenas com base no estado real
+  let resolvedBadge: string | undefined = undefined;
+  if (discountBadge) {
+    resolvedBadge = discountBadge;
+  } else if (Boolean(dbProd.destaque)) {
+    resolvedBadge = 'Lançamento';
+  } else if (Boolean(dbProd.mais_vendido)) {
+    resolvedBadge = 'Mais Vendido';
+  } else if (isLastPieces) {
+    resolvedBadge = 'Últimas Peças';
+  } else if (customBadgesList.length > 0) {
+    resolvedBadge = customBadgesList[0];
   }
 
   return {

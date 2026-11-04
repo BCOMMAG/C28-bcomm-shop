@@ -65,7 +65,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "subtituloCorLight": "#FAF8F5"
       },
       "outlet": {
-        "ativo": false,
+        "ativo": true,
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -73,7 +73,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "subtituloCorLight": "#FAF8F5"
       },
       "lancamentos": {
-        "ativo": false,
+        "ativo": true,
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -81,7 +81,17 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "subtituloCorLight": "#FAF8F5"
       },
       "maisVendidos": {
-        "ativo": false,
+        "ativo": true,
+        "tituloFont": "Playfair Display",
+        "tituloCorDark": "#FFFFFF",
+        "tituloCorLight": "#FFFFFF",
+        "subtituloCorDark": "#FAF8F5",
+        "subtituloCorLight": "#FAF8F5"
+      },
+      "todasAsPecas": {
+        "ativo": true,
+        "titulo": "Todas as Peças",
+        "subtitulo": "Conheça todas as criações e modelos exclusivos disponíveis na boutique.",
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -89,7 +99,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "subtituloCorLight": "#FAF8F5"
       },
       "ultimasPecas": {
-        "ativo": false,
+        "ativo": true,
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -304,7 +314,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-04T15:09:21.208+00:00",
+  "updated_at": "2026-11-04T23:22:42.173897+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
