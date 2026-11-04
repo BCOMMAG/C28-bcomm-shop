@@ -246,7 +246,13 @@ export const Header: React.FC<HeaderProps> = ({
 
   // O menu superior é transparente na home da loja até o usuário rolar a página
   const tenantSlug = normalizeTenantSlug(currentTenant?.slug);
-  const isHome = pathname === '/' || pathname === `/${tenantSlug}` || pathname === `/${tenantSlug}/`;
+  const unhyphenated = tenantSlug.replace(/-/g, '');
+  const isHome =
+    pathname === '/' ||
+    pathname === `/${tenantSlug}` ||
+    pathname === `/${tenantSlug}/` ||
+    pathname === `/${unhyphenated}` ||
+    pathname === `/${unhyphenated}/`;
   const isTransparent = isHome && !isScrolled && !isSubpage;
 
   // Logo dinâmico da loja (com alternância inteligente para light/dark mode)

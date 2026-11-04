@@ -20,16 +20,16 @@
 import { Loja } from '@/types/database';
 
 /**
- * Normaliza o slug da loja para formatos amigáveis e canônicos
+ * Normaliza o slug da loja para o formato canônico oficial cadastrado no banco de dados
  */
 export function normalizeTenantSlug(slug?: string | null): string {
-  if (!slug) return 'leidyboutique';
+  if (!slug) return 'leidy-boutique';
   const clean = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-  if (clean === 'leidy-boutique' || clean === 'leidyboutique') {
-    return 'leidyboutique';
+  if (clean === 'leidy-boutique' || clean === 'leidyboutique' || clean === '') {
+    return 'leidy-boutique';
   }
   if (clean === 'aura-privee' || clean === 'auraprivee') {
-    return 'auraprivee';
+    return 'aura-privee';
   }
   return clean;
 }
@@ -65,7 +65,7 @@ export function getTenantPathPrefix(slugOrTenant?: string | Loja | null): string
     return '';
   }
 
-  let slug: string = 'leidyboutique';
+  let slug: string = 'leidy-boutique';
   if (typeof slugOrTenant === 'string') {
     slug = normalizeTenantSlug(slugOrTenant);
   } else if (slugOrTenant && slugOrTenant.slug) {

@@ -592,10 +592,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsGift(false);
     setGiftMessage('');
     try {
-      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidy-boutique';
+      const unhyphenated = tenantKey.replace(/-/g, '');
       localStorage.removeItem(`bcomm_cart_${tenantKey}`);
+      localStorage.removeItem(`bcomm_cart_${unhyphenated}`);
       localStorage.removeItem(`bcomm_gift_${tenantKey}`);
+      localStorage.removeItem(`bcomm_gift_${unhyphenated}`);
       localStorage.removeItem(`bcomm_gift_msg_${tenantKey}`);
+      localStorage.removeItem(`bcomm_gift_msg_${unhyphenated}`);
     } catch (e) {
       console.error(e);
     }
@@ -605,17 +609,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
-      const savedWishlist = localStorage.getItem(`bcomm_wishlist_${tenantKey}`);
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidy-boutique';
+      const unhyphenatedKey = tenantKey.replace(/-/g, '');
+
+      const savedWishlist =
+        localStorage.getItem(`bcomm_wishlist_${tenantKey}`) ||
+        localStorage.getItem(`bcomm_wishlist_${unhyphenatedKey}`);
       setWishlistIds(savedWishlist ? JSON.parse(savedWishlist) : []);
 
-      const savedCart = localStorage.getItem(`bcomm_cart_${tenantKey}`);
+      const savedCart =
+        localStorage.getItem(`bcomm_cart_${tenantKey}`) ||
+        localStorage.getItem(`bcomm_cart_${unhyphenatedKey}`);
       setCartItems(savedCart ? JSON.parse(savedCart) : []);
 
-      const savedGift = localStorage.getItem(`bcomm_gift_${tenantKey}`);
+      const savedGift =
+        localStorage.getItem(`bcomm_gift_${tenantKey}`) ||
+        localStorage.getItem(`bcomm_gift_${unhyphenatedKey}`);
       if (savedGift) setIsGift(JSON.parse(savedGift));
 
-      const savedGiftMsg = localStorage.getItem(`bcomm_gift_msg_${tenantKey}`);
+      const savedGiftMsg =
+        localStorage.getItem(`bcomm_gift_msg_${tenantKey}`) ||
+        localStorage.getItem(`bcomm_gift_msg_${unhyphenatedKey}`);
       if (savedGiftMsg) setGiftMessage(savedGiftMsg);
 
       const savedRecent = localStorage.getItem(`bcomm_recent_${tenantKey}`);
@@ -714,7 +728,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidy-boutique';
       localStorage.setItem(`bcomm_wishlist_${tenantKey}`, JSON.stringify(wishlistIds));
     } catch (e) {
       console.error(e);
@@ -725,7 +739,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidyboutique';
+      const tenantKey = normalizeTenantSlug(currentTenant.slug) || 'leidy-boutique';
       localStorage.setItem(`bcomm_cart_${tenantKey}`, JSON.stringify(cartItems));
       localStorage.setItem(`bcomm_gift_${tenantKey}`, JSON.stringify(isGift));
       localStorage.setItem(`bcomm_gift_msg_${tenantKey}`, giftMessage);
