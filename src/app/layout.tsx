@@ -1,66 +1,8 @@
 import type { Metadata } from 'next';
-import {
-  Montserrat,
-  Playfair_Display,
-  Cinzel,
-  Cormorant_Garamond,
-  Inter,
-  Poppins,
-  Plus_Jakarta_Sans
-} from 'next/font/google';
 import './globals.css';
 import { StoreProvider } from '@/context/StoreContext';
 import { BottomCartBar } from '@/components/BottomCartBar';
 import { BackgroundVideo } from '@/components/BackgroundVideo';
-
-const montserrat = Montserrat({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-montserrat',
-  weight: ['300', '400', '500', '600', '700'],
-});
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-playfair',
-  weight: ['400', '600', '700'],
-});
-
-const cinzel = Cinzel({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-cinzel',
-  weight: ['400', '600', '700'],
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-cormorant',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-  weight: ['400', '500', '600', '700'],
-});
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-poppins',
-  weight: ['400', '500', '600', '700'],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-plus-jakarta',
-  weight: ['400', '500', '600', '700'],
-});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://leidyboutique.pages.dev';
 
@@ -121,8 +63,14 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon-apple-touch-icon180x180.png" />
         <link rel="manifest" href="/site.webmanifest" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body className={`${montserrat.className} ${playfair.variable} ${cinzel.variable} ${cormorant.variable} ${inter.variable} ${poppins.variable} ${plusJakartaSans.variable} antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full`}>
+      <body className="font-sans antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full">
         <StoreProvider>
           <BackgroundVideo />
           {children}
