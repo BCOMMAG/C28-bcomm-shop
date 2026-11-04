@@ -46,6 +46,9 @@ export function isPlatformHostname(hostname?: string): boolean {
     host === 'localhost' ||
     host === '127.0.0.1' ||
     host.endsWith('.pages.dev') ||
+    host === 'bcomm-ag.space' ||
+    host === 'www.bcomm-ag.space' ||
+    host.endsWith('.bcomm-ag.space') ||
     host === 'bcomm.com.br' ||
     host === 'www.bcomm.com.br'
   );
@@ -147,6 +150,6 @@ export function getStorefrontUrl(
     return `/${slug}${subPath}`;
   }
 
-  return `https://bcomm-shop.pages.dev/${slug}${subPath}`;
+  return `https://bcomm-ag.space/${slug}${subPath}`;
 }
 

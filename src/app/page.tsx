@@ -25,6 +25,9 @@ export default function RootHomePage() {
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname.endsWith('.pages.dev') ||
+      hostname === 'bcomm-ag.space' ||
+      hostname === 'www.bcomm-ag.space' ||
+      hostname.endsWith('.bcomm-ag.space') ||
       hostname === 'bcomm.com.br' ||
       hostname === 'www.bcomm.com.br';
 

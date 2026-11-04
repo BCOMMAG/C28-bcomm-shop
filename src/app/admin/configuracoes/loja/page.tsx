@@ -375,7 +375,7 @@ export default function StoreSettingsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const url = `https://bcomm-shop.pages.dev/${slug || 'leidy-boutique'}`;
+                  const url = `https://bcomm-ag.space/${slug || 'leidy-boutique'}`;
                   navigator.clipboard.writeText(url);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2500);
@@ -389,7 +389,7 @@ export default function StoreSettingsPage() {
               </button>
 
               <a
-                href={`https://bcomm-shop.pages.dev/${slug || 'leidy-boutique'}`}
+                href={`https://bcomm-ag.space/${slug || 'leidy-boutique'}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
@@ -402,7 +402,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-lg p-2.5 font-mono text-xs text-amber-900 font-semibold break-all select-all flex items-center justify-between">
-            <span>https://bcomm-shop.pages.dev/{slug || 'leidy-boutique'}</span>
+            <span>https://bcomm-ag.space/{slug || 'leidy-boutique'}</span>
           </div>
         </div>
 
@@ -451,7 +451,7 @@ export default function StoreSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white/80 p-2.5 rounded-lg border border-amber-200 font-mono text-[11px]">
               <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Tipo:</strong> CNAME</div>
               <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Nome / Host:</strong> www</div>
-              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Destino / Valor:</strong> bcomm-shop.pages.dev</div>
+              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Destino / Valor:</strong> lojas.bcomm-ag.space</div>
             </div>
             <p className="text-slate-500 text-[10px] italic">
               * Para testar se o DNS já propagou ou ver instruções detalhadas para seu provedor, acesse a <Link href="/admin/configuracoes/dominio" className="text-amber-700 underline font-bold">Central de Domínio Personalizado</Link>.

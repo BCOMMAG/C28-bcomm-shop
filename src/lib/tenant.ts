@@ -391,17 +391,19 @@ export async function getTenantByHost(host: string): Promise<Loja> {
   const cleanHost = host.split(':')[0].toLowerCase();
   const rawHost = cleanHost.replace(/^www\./, '');
 
-  // 1. Se for ambiente local ou raiz padrão da Cloudflare Pages, consulta pelo slug padrão
+  // 1. Se for ambiente local ou raiz padrão da Cloudflare Pages ou domínio da plataforma, consulta pelo slug padrão
   if (
     cleanHost === 'localhost' ||
     cleanHost === '127.0.0.1' ||
-    cleanHost === 'bcomm-shop.pages.dev'
+    cleanHost === 'bcomm-shop.pages.dev' ||
+    cleanHost === 'bcomm-ag.space' ||
+    cleanHost === 'www.bcomm-ag.space'
   ) {
     return getTenantBySlug('leidy-boutique');
   }
 
-  // 2. Detecção de Subdomínio SaaS da Plataforma (ex: leidy.bcomm.shop, auraprivee.bcomm.shop)
-  const saasDomains = ['bcomm.shop', 'bcomm.com.br', 'bcomm-shop.pages.dev'];
+  // 2. Detecção de Subdomínio SaaS da Plataforma (ex: leidy.bcomm-ag.space, auraprivee.bcomm-ag.space)
+  const saasDomains = ['bcomm-ag.space', 'bcomm.shop', 'bcomm.com.br', 'bcomm-shop.pages.dev'];
   for (const baseDom of saasDomains) {
     if (cleanHost.endsWith(`.${baseDom}`)) {
       const subdomain = cleanHost.replace(`.${baseDom}`, '').replace(/^www\./, '');
@@ -443,6 +445,9 @@ export async function getTenantByHost(host: string): Promise<Loja> {
     cleanHost === 'localhost' ||
     cleanHost === '127.0.0.1' ||
     cleanHost.endsWith('.pages.dev') ||
+    cleanHost === 'bcomm-ag.space' ||
+    cleanHost === 'www.bcomm-ag.space' ||
+    cleanHost.endsWith('.bcomm-ag.space') ||
     cleanHost === 'bcomm.com.br' ||
     cleanHost === 'www.bcomm.com.br' ||
     cleanHost === 'bcomm.shop' ||

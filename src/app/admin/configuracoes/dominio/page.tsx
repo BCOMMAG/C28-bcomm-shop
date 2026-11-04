@@ -162,10 +162,22 @@ export default function CustomDomainSettingsPage() {
 
     setIsSaving(true);
     try {
-      const res = await saveCustomDomain(tenantId, finalDomain);
-      if (res.success) {
+      // 1. Chama a API Next.js que conecta autonomamente na Cloudflare for SaaS e salva no Supabase
+      const apiRes = await fetch('/api/admin/dominio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'connect',
+          lojaId: tenantId,
+          domain: finalDomain
+        })
+      });
+
+      const apiData = await apiRes.json();
+
+      if (apiData.success) {
         setDominioSalvo(finalDomain);
-        showToast(`Domínio "${finalDomain}" salvo com sucesso!`, 'success');
+        showToast(`Domínio "${finalDomain}" conectado e autorizado com sucesso na Cloudflare!`, 'success');
         try {
           await refreshProducts();
           if (refreshTenant) await refreshTenant();
@@ -173,7 +185,7 @@ export default function CustomDomainSettingsPage() {
         // Dispara teste de DNS após salvar
         checkDnsStatus(finalDomain, false);
       } else {
-        showToast(res.error || 'Erro ao conectar domínio.', 'error');
+        showToast(apiData.error || 'Erro ao conectar domínio na Cloudflare.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao salvar domínio.', 'error');
@@ -185,19 +197,30 @@ export default function CustomDomainSettingsPage() {
   const handleDisconnectDomain = async () => {
     setIsDisconnecting(true);
     try {
-      const res = await saveCustomDomain(tenantId, null);
-      if (res.success) {
+      // 2. Chama a API Next.js que remove autonomamente da Cloudflare for SaaS e limpa no Supabase
+      const apiRes = await fetch('/api/admin/dominio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'disconnect',
+          lojaId: tenantId
+        })
+      });
+
+      const apiData = await apiRes.json();
+
+      if (apiData.success) {
         setDominioSalvo('');
         setDominioInput('');
         setDnsResult(null);
         setIsDisconnectModalOpen(false);
-        showToast('Domínio desconectado! A loja voltou ao link padrão BCOMM.', 'success');
+        showToast('Domínio desconectado da Cloudflare! A loja voltou ao link padrão.', 'success');
         try {
           await refreshProducts();
           if (refreshTenant) await refreshTenant();
         } catch {}
       } else {
-        showToast(res.error || 'Erro ao desconectar domínio.', 'error');
+        showToast(apiData.error || 'Erro ao desconectar domínio na Cloudflare.', 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao desconectar domínio.', 'error');
@@ -208,9 +231,9 @@ export default function CustomDomainSettingsPage() {
 
   const activeStorefrontUrl = dominioSalvo
     ? `https://${dominioSalvo}`
-    : `https://bcomm-shop.pages.dev/${slug || 'leidy-boutique'}`;
+    : `https://bcomm-ag.space/${slug || 'leidy-boutique'}`;
 
-  const defaultFreeUrl = `https://bcomm-shop.pages.dev/${slug || 'leidy-boutique'}`;
+  const defaultFreeUrl = `https://bcomm-ag.space/${slug || 'leidy-boutique'}`;
 
   if (loading) {
     return (
@@ -631,11 +654,11 @@ export default function CustomDomainSettingsPage() {
                   <tr className="hover:bg-slate-50/50">
                     <td className="p-3 font-bold text-amber-700">CNAME</td>
                     <td className="p-3 text-slate-900 font-bold">www</td>
-                    <td className="p-3 text-slate-900 font-bold">bcomm-shop.pages.dev</td>
+                    <td className="p-3 text-slate-900 font-bold">lojas.bcomm-ag.space</td>
                     <td className="p-3 text-right font-sans">
                       <button
                         type="button"
-                        onClick={() => copyToClipboard('bcomm-shop.pages.dev', 'cname_target')}
+                        onClick={() => copyToClipboard('lojas.bcomm-ag.space', 'cname_target')}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
                       >
                         {copiedField === 'cname_target' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
@@ -686,7 +709,7 @@ export default function CustomDomainSettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 p-3 bg-slate-50 border-b border-slate-200 gap-2 font-sans font-bold text-slate-700">
                 <div>Tipo: CNAME</div>
                 <div>Nome: www</div>
-                <div>Destino: bcomm-shop.pages.dev</div>
+                <div>Destino: lojas.bcomm-ag.space</div>
               </div>
             </div>
 
@@ -708,7 +731,7 @@ export default function CustomDomainSettingsPage() {
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 1. No Portal do Cliente HostGator ou cPanel, acesse a ferramenta <strong>Zone Editor</strong> (Editor de Zona DNS).<br />
                 2. Ao lado do seu domínio, clique em <strong>Gerenciar</strong>.<br />
-                3. Localize o registro CNAME existente com nome <code className="font-mono">www</code> e altere seu destino para <strong className="font-mono">bcomm-shop.pages.dev</strong> (se não existir, clique em <strong>+ Adicionar Registro</strong> e selecione Tipo CNAME).
+                3. Localize o registro CNAME existente com nome <code className="font-mono">www</code> e altere seu destino para <strong className="font-mono">lojas.bcomm-ag.space</strong> (se não existir, clique em <strong>+ Adicionar Registro</strong> e selecione Tipo CNAME).
               </p>
             </div>
 
@@ -728,7 +751,7 @@ export default function CustomDomainSettingsPage() {
                 Instruções para Cloudflare / GoDaddy:
               </span>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                1. No gerenciador de DNS da Cloudflare ou GoDaddy, crie o registro CNAME com Nome <code className="font-mono font-bold">www</code> e Destino <code className="font-mono font-bold">bcomm-shop.pages.dev</code>.<br />
+                1. No gerenciador de DNS da Cloudflare ou GoDaddy, crie o registro CNAME com Nome <code className="font-mono font-bold">www</code> e Destino <code className="font-mono font-bold">lojas.bcomm-ag.space</code>.<br />
                 2. Na Cloudflare, se o Proxy (nuvem laranja) estiver ativado, selecione modo <strong>SSL/TLS Completo (Full)</strong>.<br />
                 3. Na GoDaddy, use a ferramenta <strong>Encaminhamento de Domínio</strong> para direcionar a raiz (@) para <code className="font-mono">{`https://www.${dominioSalvo ? cleanDomainString(dominioSalvo).replace(/^www\./, '') : 'sualoja.com.br'}`}</code>.
               </p>

@@ -3799,12 +3799,14 @@ export async function checkDomainDns(
     if (!cnameRecord) {
       return {
         status: 'not_found',
-        message: 'Nenhum registro CNAME ativo foi localizado. Certifique-se de ter criado a entrada "www" apontando para bcomm-shop.pages.dev.'
+        message: 'Nenhum registro CNAME ativo foi localizado. Certifique-se de ter criado a entrada "www" apontando para lojas.bcomm-ag.space.'
       };
     }
 
     const target = (cnameRecord.data || '').toLowerCase().replace(/\.+$/, '');
     const isTargetValid =
+      target.includes('lojas.bcomm-ag.space') ||
+      target.includes('bcomm-ag.space') ||
       target.includes('bcomm-shop.pages.dev') ||
       target.includes('bcomm.shop') ||
       target.includes('pages.dev');
@@ -3820,7 +3822,7 @@ export async function checkDomainDns(
     return {
       status: 'incorrect',
       cname: target,
-      message: `O domínio está apontando para "${target}", e não para bcomm-shop.pages.dev. Corrija o destino do CNAME no seu registrador.`
+      message: `O domínio está apontando para "${target}", e não para lojas.bcomm-ag.space. Corrija o destino do CNAME no seu registrador.`
     };
   } catch (e: any) {
     return {
