@@ -8,7 +8,7 @@ import { ViaCepResponse } from '@/utils/shipping';
 import { Loja, BarraAvisoEstilo } from '@/types/database';
 import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT, getCanonicalDbSlug } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
-import { normalizeTenantSlug } from '@/lib/routes';
+import { normalizeTenantSlug, isPlatformHostname } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getActiveReservations, ReservaEstoque } from '@/lib/reservas';
 
@@ -285,14 +285,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Se estiver em domínio próprio customizado (não é host da plataforma),
           // o hostname tem prioridade máxima absoluta sobre qualquer localStorage residual de outra loja!
           const currentHost = window.location.hostname.toLowerCase();
-          const isPlatformHost =
-            currentHost === 'localhost' ||
-            currentHost === '127.0.0.1' ||
-            currentHost.endsWith('.pages.dev') ||
-            currentHost === 'bcomm.com.br' ||
-            currentHost === 'www.bcomm.com.br' ||
-            currentHost === 'bcomm.shop' ||
-            currentHost === 'www.bcomm.shop';
+          const isPlatformHost = isPlatformHostname(currentHost);
 
           if (!isPlatformHost) {
             tenant = await getTenantByHost(currentHost);

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BoutiqueStorefront } from '@/components/BoutiqueStorefront';
 import { PlatformPortal } from '@/components/PlatformPortal';
+import { isPlatformHostname } from '@/lib/routes';
 
 export default function RootHomePage() {
   const [isStoreMode, setIsStoreMode] = useState<boolean | null>(null);
@@ -20,24 +21,16 @@ export default function RootHomePage() {
       return;
     }
 
-    // 2. Se o acesso vier por um domínio customizado de cliente (ex: www.leidyboutique.com.br)
-    const isPlatformHost =
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.endsWith('.pages.dev') ||
-      hostname === 'bcomm-ag.space' ||
-      hostname === 'www.bcomm-ag.space' ||
-      hostname.endsWith('.bcomm-ag.space') ||
-      hostname === 'bcomm.com.br' ||
-      hostname === 'www.bcomm.com.br';
+    // 2. Se o acesso vier por um domínio customizado de cliente (ex: www.boutiqueleidy.com.br)
+    const isPlatform = isPlatformHostname(hostname);
 
-    if (!isPlatformHost) {
+    if (!isPlatform) {
       // É um domínio próprio de loja!
       setIsStoreMode(true);
       return;
     }
 
-    // 3. Caso contrário, na raiz bcomm-shop.pages.dev/ sem parâmetros, exibe o Portal BCOMM SaaS
+    // 3. Caso contrário, na raiz bcomm-ag.space/ ou bcomm-shop.pages.dev/ sem parâmetros, exibe o Portal BCOMM SaaS
     setIsStoreMode(false);
   }, []);
 

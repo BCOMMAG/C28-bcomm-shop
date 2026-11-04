@@ -162,7 +162,7 @@ export default function CustomDomainSettingsPage() {
 
     setIsSaving(true);
     try {
-      // 1. Chama a API Next.js que conecta autonomamente na Cloudflare for SaaS e salva no Supabase
+      // 1. Chama a API (Pages Function ou Next.js) que conecta autonomamente na Cloudflare for SaaS e salva no Supabase
       const apiRes = await fetch('/api/admin/dominio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,9 +173,15 @@ export default function CustomDomainSettingsPage() {
         })
       });
 
-      const apiData = await apiRes.json();
+      let apiData: any = {};
+      try {
+        const text = await apiRes.text();
+        apiData = text ? JSON.parse(text) : {};
+      } catch {
+        apiData = { success: false, error: `Resposta inválida do servidor (HTTP ${apiRes.status})` };
+      }
 
-      if (apiData.success) {
+      if (apiRes.ok && apiData.success) {
         setDominioSalvo(finalDomain);
         showToast(`Domínio "${finalDomain}" conectado e autorizado com sucesso na Cloudflare!`, 'success');
         try {
@@ -185,7 +191,7 @@ export default function CustomDomainSettingsPage() {
         // Dispara teste de DNS após salvar
         checkDnsStatus(finalDomain, false);
       } else {
-        showToast(apiData.error || 'Erro ao conectar domínio na Cloudflare.', 'error');
+        showToast(apiData.error || `Erro ao conectar domínio (HTTP ${apiRes.status}).`, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao salvar domínio.', 'error');
@@ -197,7 +203,7 @@ export default function CustomDomainSettingsPage() {
   const handleDisconnectDomain = async () => {
     setIsDisconnecting(true);
     try {
-      // 2. Chama a API Next.js que remove autonomamente da Cloudflare for SaaS e limpa no Supabase
+      // 2. Chama a API (Pages Function ou Next.js) que remove autonomamente da Cloudflare for SaaS e limpa no Supabase
       const apiRes = await fetch('/api/admin/dominio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,9 +213,15 @@ export default function CustomDomainSettingsPage() {
         })
       });
 
-      const apiData = await apiRes.json();
+      let apiData: any = {};
+      try {
+        const text = await apiRes.text();
+        apiData = text ? JSON.parse(text) : {};
+      } catch {
+        apiData = { success: false, error: `Resposta inválida do servidor (HTTP ${apiRes.status})` };
+      }
 
-      if (apiData.success) {
+      if (apiRes.ok && apiData.success) {
         setDominioSalvo('');
         setDominioInput('');
         setDnsResult(null);
@@ -220,7 +232,7 @@ export default function CustomDomainSettingsPage() {
           if (refreshTenant) await refreshTenant();
         } catch {}
       } else {
-        showToast(apiData.error || 'Erro ao desconectar domínio na Cloudflare.', 'error');
+        showToast(apiData.error || `Erro ao desconectar domínio (HTTP ${apiRes.status}).`, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao desconectar domínio.', 'error');
