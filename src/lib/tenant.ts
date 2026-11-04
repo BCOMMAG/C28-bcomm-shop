@@ -31,7 +31,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   "id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
   "nome": "Leidy Boutique",
   "slug": "leidy-boutique",
-  "dominio_proprio": null,
+  "dominio_proprio": "www.boutiqueleidy.com.br",
   "whatsapp": "554197347601",
   "email": "contato@leidyboutique.com.br",
   "configuracoes_visuais": {
@@ -304,7 +304,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-02T20:34:24.873+00:00",
+  "updated_at": "2026-11-04T15:09:21.208+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

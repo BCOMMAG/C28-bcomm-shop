@@ -44,7 +44,30 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
-      // 1.2 Atualiza o banco de dados Supabase
+      // 1.2 Adiciona o domínio automaticamente no Cloudflare Pages
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '47ce862c285bb81ad80e052f7ed16ae5';
+      const pagesProject = process.env.CLOUDFLARE_PAGES_PROJECT || 'bcomm-shop';
+      const apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+
+      if (apiToken) {
+        try {
+          await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${pagesProject}/domains`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ name: clean })
+            }
+          );
+        } catch (pagesErr) {
+          console.warn('⚠️ [Cloudflare Pages Domain Add Warning]:', pagesErr);
+        }
+      }
+
+      // 1.3 Atualiza o banco de dados Supabase
       const { error: dbErr } = await supabase
         .from('lojas')
         .update({
@@ -86,9 +109,30 @@ export async function POST(request: NextRequest) {
 
       const currentDom = loja?.dominio_proprio;
 
-      // 2.2 Se tinha domínio cadastrado, remove da Cloudflare
+      // 2.2 Se tinha domínio cadastrado, remove da Cloudflare for SaaS e do Pages
       if (currentDom) {
         await deleteCloudflareCustomHostname(currentDom);
+
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '47ce862c285bb81ad80e052f7ed16ae5';
+        const pagesProject = process.env.CLOUDFLARE_PAGES_PROJECT || 'bcomm-shop';
+        const apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+
+        if (apiToken) {
+          try {
+            await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${pagesProject}/domains/${encodeURIComponent(currentDom)}`,
+              {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${apiToken}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+          } catch (pagesDelErr) {
+            console.warn('⚠️ [Cloudflare Pages Domain Delete Warning]:', pagesDelErr);
+          }
+        }
       }
 
       // 2.3 Seta como NULL no Supabase

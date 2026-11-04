@@ -51,6 +51,16 @@ export async function onRequestPost(context: any) {
       process.env.CLOUDFLARE_ZONE_ID ||
       '70260e837b225659f69b4a463c5223ba';
 
+    const accountId =
+      context.env?.CLOUDFLARE_ACCOUNT_ID ||
+      process.env.CLOUDFLARE_ACCOUNT_ID ||
+      '47ce862c285bb81ad80e052f7ed16ae5';
+
+    const pagesProject =
+      context.env?.CLOUDFLARE_PAGES_PROJECT ||
+      process.env.CLOUDFLARE_PAGES_PROJECT ||
+      'bcomm-shop';
+
     const apiToken =
       context.env?.CLOUDFLARE_API_TOKEN ||
       process.env.CLOUDFLARE_API_TOKEN ||
@@ -165,7 +175,24 @@ export async function onRequestPost(context: any) {
         cfData = createJson.result;
       }
 
-      // 1.3 Atualiza a tabela `lojas` no Supabase
+      // 1.3 Adiciona o domínio automaticamente no Cloudflare Pages (autoriza a vitrine no Edge)
+      try {
+        await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${pagesProject}/domains`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: clean })
+          }
+        );
+      } catch (pagesErr) {
+        console.warn('⚠️ [Cloudflare Pages Domain Add Warning]:', pagesErr);
+      }
+
+      // 1.4 Atualiza a tabela `lojas` no Supabase
       const { error: dbErr } = await supabase
         .from('lojas')
         .update({
@@ -240,6 +267,22 @@ export async function onRequestPost(context: any) {
           }
         } catch (err) {
           console.warn('[Cloudflare Delete Error]:', err);
+        }
+
+        // 2.2 Remove automaticamente do Cloudflare Pages
+        try {
+          await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${pagesProject}/domains/${encodeURIComponent(currentDom)}`,
+            {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        } catch (pagesDelErr) {
+          console.warn('⚠️ [Cloudflare Pages Domain Delete Warning]:', pagesDelErr);
         }
       }
 
