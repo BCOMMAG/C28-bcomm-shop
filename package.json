@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:upload": "node scripts/upload_dev_server.js",
     "prebuild": "node scripts/sync-tenant-defaults.js",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint ."
   },
