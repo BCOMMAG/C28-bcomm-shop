@@ -666,11 +666,11 @@ export default function CustomDomainSettingsPage() {
                   <tr className="hover:bg-slate-50/50">
                     <td className="p-3 font-bold text-amber-700">CNAME</td>
                     <td className="p-3 text-slate-900 font-bold">www</td>
-                    <td className="p-3 text-slate-900 font-bold">lojas.bcomm-ag.space</td>
+                    <td className="p-3 text-slate-900 font-bold">stores.bcomm-ag.space</td>
                     <td className="p-3 text-right font-sans">
                       <button
                         type="button"
-                        onClick={() => copyToClipboard('lojas.bcomm-ag.space', 'cname_target')}
+                        onClick={() => copyToClipboard('stores.bcomm-ag.space', 'cname_target')}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
                       >
                         {copiedField === 'cname_target' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
