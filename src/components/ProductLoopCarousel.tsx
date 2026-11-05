@@ -33,12 +33,12 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(true);
 
-  // Se houver poucos produtos, duplicamos para garantir o looping contínuo suave
+  // Se houver poucos produtos, duplicamos para garantir o looping contínuo suave apenas quando houver 5 ou mais peças
   const items = products.length > 0 ? products : [];
   const baseCount = items.length;
 
-  // Criamos uma lista estendida para suportar looping infinito perfeito
-  const loopList = [...items, ...items, ...items, ...items];
+  // Criamos uma lista estendida para suportar looping infinito perfeito quando houver peças suficientes (>= 5)
+  const loopList = baseCount >= 5 ? [...items, ...items, ...items] : items;
   const [currentIndex, setCurrentIndex] = useState<number>(baseCount);
 
   // Manipuladores de deslize por toque (Swipe no Mobile)
@@ -176,6 +176,97 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
     return null;
   }
 
+  // MODO HÍBRIDO INTELIGENTE: Se houver de 1 a 4 produtos, renderiza como Grade Estática Nobre
+  // Elimina categoricamente qualquer repetição de cards na tela, setas desnecessárias ou giros artificiais
+  if (baseCount < 5) {
+    if (baseCount === 1) {
+      return (
+        <div className="w-full flex justify-center py-2 animate-fadeIn">
+          <div className="w-full max-w-xs sm:max-w-sm">
+            <ProductCard
+              product={items[0]}
+              columnsCount={1}
+              isOutletSection={isOutletSection}
+              isNewReleasesSection={isNewReleasesSection}
+              isLastPiecesSection={isLastPiecesSection}
+              onOpenDetails={onOpenDetails}
+              onQuickAdd={onQuickAdd}
+              isWishlisted={isWishlisted(items[0].id)}
+              onToggleWishlist={onToggleWishlist}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (baseCount === 2) {
+      return (
+        <div className="w-full flex justify-center py-2 animate-fadeIn">
+          <div className="w-full max-w-2xl grid grid-cols-2 gap-3 sm:gap-6">
+            {items.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                columnsCount={2}
+                isOutletSection={isOutletSection}
+                isNewReleasesSection={isNewReleasesSection}
+                isLastPiecesSection={isLastPiecesSection}
+                onOpenDetails={onOpenDetails}
+                onQuickAdd={onQuickAdd}
+                isWishlisted={isWishlisted(product.id)}
+                onToggleWishlist={onToggleWishlist}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (baseCount === 3) {
+      return (
+        <div className="w-full flex justify-center py-2 animate-fadeIn">
+          <div className="w-full max-w-4xl grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+            {items.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                columnsCount={3}
+                isOutletSection={isOutletSection}
+                isNewReleasesSection={isNewReleasesSection}
+                isLastPiecesSection={isLastPiecesSection}
+                onOpenDetails={onOpenDetails}
+                onQuickAdd={onQuickAdd}
+                isWishlisted={isWishlisted(product.id)}
+                onToggleWishlist={onToggleWishlist}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Se houver exatamente 4 produtos, exibe em grade completa e alinhada
+    return (
+      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 py-2 animate-fadeIn">
+        {items.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            columnsCount={4}
+            isOutletSection={isOutletSection}
+            isNewReleasesSection={isNewReleasesSection}
+            isLastPiecesSection={isLastPiecesSection}
+            onOpenDetails={onOpenDetails}
+            onQuickAdd={onQuickAdd}
+            isWishlisted={isWishlisted(product.id)}
+            onToggleWishlist={onToggleWishlist}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // MODO CARROSSEL INFINITO (Ativado automaticamente a partir de 5 produtos)
   // Deslocamento em porcentagem de acordo com o número de itens visíveis
   const stepPercentage = 100 / visibleCount;
   // Garantia matemática: o índice visual nunca pode ultrapassar o último produto da lista

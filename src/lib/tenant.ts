@@ -314,7 +314,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-04T23:22:42.173897+00:00",
+  "updated_at": "2026-11-05T00:15:43.889677+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

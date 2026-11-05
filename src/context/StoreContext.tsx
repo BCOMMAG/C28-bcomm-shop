@@ -1036,8 +1036,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const recentlyViewedProducts = useMemo(() => {
+    // Busca estritamente no catálogo oficial do tenant ativo.
+    // Impede categoricamente o vazamento de produtos mockados de teste com tags ou status obsoletos.
+    if (!products || products.length === 0) return [];
     return recentlyViewedIds
-      .map((id) => products.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id))
+      .map((id) => products.find((p) => p.id === id))
       .filter(Boolean) as Product[];
   }, [recentlyViewedIds, products]);
 

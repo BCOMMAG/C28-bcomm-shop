@@ -17,7 +17,7 @@ interface ProductCardProps {
   isOutletSection?: boolean;
   isNewReleasesSection?: boolean;
   isLastPiecesSection?: boolean;
-  columnsCount?: 2 | 3 | 4 | 5;
+  columnsCount?: 1 | 2 | 3 | 4 | 5;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -161,7 +161,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Variações de estilo baseadas na densidade de colunas
   const isCompact = columnsCount === 5;
   const isMedium = columnsCount === 4;
-  const isSpacious = columnsCount === 2 || columnsCount === 3;
+  const isSpacious = columnsCount === 1 || columnsCount === 2 || columnsCount === 3;
 
   const [isJustAdded, setIsJustAdded] = useState(false);
   const router = useRouter();
