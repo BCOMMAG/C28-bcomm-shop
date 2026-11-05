@@ -57,12 +57,14 @@ import {
   AlertTriangle,
   Info,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Flame
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ProductBatchImportModal } from '@/components/admin/products/ProductBatchImportModal';
 import { ProductFullFormModal } from '@/components/admin/products/ProductFullFormModal';
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
+import { AdminCollectionsManagerModal } from '@/components/admin/products/AdminCollectionsManagerModal';
 import {
   getAdminProducts,
   toggleAdminProductActive,
@@ -86,6 +88,9 @@ import {
   bulkArchiveProducts,
   bulkMoveToTrashProducts,
   bulkRestoreProducts,
+  toggleProductPromotionalFlag,
+  bulkUpdatePromotionalFlags,
+  bulkUpdateProductCategory,
   AdminProductItem,
   AdminCategoryFull,
   CreateProductInput,
@@ -190,9 +195,10 @@ export default function AdminProdutosPage() {
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
   const [selectedWaitlistProduct, setSelectedWaitlistProduct] = useState<AdminProductItem | null>(null);
 
-  // Modal de Criação de Produto
+  // Modal de Criação de Produto e Gestão de Vitrines
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
+  const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
 
   // Callback unificado de salvamento (Criação e Edição Completa)
   const handleProductSavedFromFullModal = (savedProduct: AdminProductItem, isNew: boolean) => {
@@ -1306,6 +1312,77 @@ export default function AdminProdutosPage() {
     }
   };
 
+  // Ações rápidas de Sinalizador Individual (1 clique na tabela/card)
+  const handleToggleProductFlag = async (
+    productId: string,
+    flag: 'destaque' | 'mais_vendido' | 'outlet' | 'ultimas_pecas',
+    currentValue: boolean
+  ) => {
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para alterar vitrines.', 'error');
+      return;
+    }
+    const newValue = !currentValue;
+    // Otimista
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, [flag]: newValue } : p))
+    );
+
+    const labels: Record<string, string> = {
+      destaque: newValue ? 'adicionada a Lançamentos/Destaque' : 'removida de Lançamentos/Destaque',
+      mais_vendido: newValue ? 'marcada como Mais Vendido' : 'removida de Mais Vendidos',
+      outlet: newValue ? 'adicionada ao Bazar/Outlet' : 'removida do Bazar/Outlet',
+      ultimas_pecas: newValue ? 'marcada como Últimas Peças' : 'removida de Últimas Peças',
+    };
+
+    const res = await toggleProductPromotionalFlag(productId, flag, newValue);
+    if (res.success) {
+      showToast(`Peça ${labels[flag]}!`);
+    } else {
+      showToast(res.error || 'Erro ao alterar vitrine da peça.', 'error');
+      fetchProductsData();
+    }
+  };
+
+  // Ações em massa para vitrines e sinalizadores
+  const handleBulkPromotionalFlagAction = async (
+    flag: 'destaque' | 'mais_vendido' | 'outlet' | 'ultimas_pecas',
+    value: boolean
+  ) => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    if (!podeGerenciarCatalogo) {
+      showToast('Perfil sem permissão para gerenciar vitrines.', 'error');
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    setProducts((prev) =>
+      prev.map((p) => (selectedProductIds.has(p.id) ? { ...p, [flag]: value } : p))
+    );
+
+    const labels: Record<string, string> = {
+      destaque: value ? 'adicionadas a Lançamentos' : 'removidas de Lançamentos',
+      mais_vendido: value ? 'adicionadas a Mais Vendidos' : 'removidas de Mais Vendidos',
+      outlet: value ? 'adicionadas ao Outlet' : 'removidas do Outlet',
+      ultimas_pecas: value ? 'marcadas como Últimas Peças' : 'removidas de Últimas Peças',
+    };
+
+    try {
+      const res = await bulkUpdatePromotionalFlags(ids, flag, value);
+      if (res.success) {
+        showToast(`${res.count} peças ${labels[flag]} com sucesso!`);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao atualizar peças.', 'error');
+        fetchProductsData();
+      }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
   // Exportar Catálogo em CSV
   const handleExportCatalogCSV = () => {
     try {
@@ -2286,6 +2363,16 @@ export default function AdminProdutosPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
           </button>
 
+          {/* Botão de Destaque: Gestor de Vitrines & Coleções */}
+          <button
+            onClick={() => setIsCollectionsModalOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer shadow-2xs shrink-0"
+            title="Curadoria direta de Vitrines: Lançamentos, Mais Vendidos, Outlet e Categorias"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Vitrines & Destaques</span>
+          </button>
+
           <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
           {/* Menu Dropdown Consolidado: + Ações do Catálogo */}
@@ -2371,6 +2458,28 @@ export default function AdminProdutosPage() {
                   <div>
                     <span className="font-semibold block">Sinalizadores Comerciais</span>
                     <span className="text-[10px] text-slate-400 block">Badges, tags e destaques</span>
+                  </div>
+                </button>
+
+                {/* 4. Gestor de Vitrines & Destaques */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    if (!podeGerenciarCatalogo) {
+                      showToast('Perfil sem permissão para gerenciar vitrines.', 'error');
+                      return;
+                    }
+                    setIsCollectionsModalOpen(true);
+                  }}
+                  disabled={!podeGerenciarCatalogo}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-slate-900">Gestor de Vitrines & Coleções</span>
+                    <span className="text-[10px] text-slate-400 block">Lançamentos, Mais Vendidos e Outlet</span>
                   </div>
                 </button>
 
@@ -2682,24 +2791,60 @@ export default function AdminProdutosPage() {
                         )}
 
                         {product.destaque && (
-                          <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase">
-                            🌟 Destaque
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleProductFlag(product.id, 'destaque', true);
+                            }}
+                            className="text-[10px] bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
+                            title="🌟 Lançamento/Destaque: clique para remover da vitrine"
+                          >
+                            <span>🌟 Destaque</span>
+                            <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                          </button>
                         )}
                         {product.mais_vendido && (
-                          <span className="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded font-bold uppercase">
-                            🔥 Mais Vendido
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleProductFlag(product.id, 'mais_vendido', true);
+                            }}
+                            className="text-[10px] bg-purple-50 text-purple-800 hover:bg-purple-100 hover:border-purple-300 border border-purple-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
+                            title="🔥 Mais Vendido: clique para remover da vitrine"
+                          >
+                            <span>🔥 Mais Vendido</span>
+                            <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                          </button>
                         )}
                         {product.outlet && (
-                          <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 rounded font-bold uppercase">
-                            🏷️ Outlet
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleProductFlag(product.id, 'outlet', true);
+                            }}
+                            className="text-[10px] bg-rose-50 text-rose-800 hover:bg-rose-100 hover:border-rose-300 border border-rose-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
+                            title="🏷️ Outlet: clique para remover do Bazar/Outlet"
+                          >
+                            <span>🏷️ Outlet</span>
+                            <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                          </button>
                         )}
                         {product.ultimas_pecas && (
-                          <span className="text-[10px] bg-orange-50 text-orange-800 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase">
-                            ⏳ Últimas Peças
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleProductFlag(product.id, 'ultimas_pecas', true);
+                            }}
+                            className="text-[10px] bg-orange-50 text-orange-800 hover:bg-orange-100 hover:border-orange-300 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
+                            title="⏳ Últimas Peças: clique para remover"
+                          >
+                            <span>⏳ Últimas Peças</span>
+                            <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                          </button>
                         )}
                         {reservedStockMap[product.id] > 0 && !isPausada && !isLixeira && (
                           <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase animate-pulse flex items-center gap-1">
@@ -3163,19 +3308,46 @@ export default function AdminProdutosPage() {
                             </span>
                           )}
                           {product.destaque && (
-                            <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-bold uppercase">
-                              🌟 Destaque
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleProductFlag(product.id, 'destaque', true);
+                              }}
+                              className="text-[9px] bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400 border border-amber-300 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
+                              title="🌟 Lançamento/Destaque: clique para remover da vitrine"
+                            >
+                              <span>🌟 Destaque</span>
+                              <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                            </button>
                           )}
                           {product.mais_vendido && (
-                            <span className="text-[9px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded font-bold uppercase">
-                              🔥 Mais Vendido
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleProductFlag(product.id, 'mais_vendido', true);
+                              }}
+                              className="text-[9px] bg-purple-50 text-purple-800 hover:bg-purple-100 hover:border-purple-300 border border-purple-200 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
+                              title="🔥 Mais Vendido: clique para remover da vitrine"
+                            >
+                              <span>🔥 Mais Vendido</span>
+                              <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                            </button>
                           )}
                           {product.outlet && (
-                            <span className="text-[9px] bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.2 rounded font-bold uppercase">
-                              🏷️ Outlet
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleProductFlag(product.id, 'outlet', true);
+                              }}
+                              className="text-[9px] bg-rose-50 text-rose-800 hover:bg-rose-100 hover:border-rose-300 border border-rose-200 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
+                              title="🏷️ Outlet: clique para remover da vitrine"
+                            >
+                              <span>🏷️ Outlet</span>
+                              <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+                            </button>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
@@ -3749,6 +3921,38 @@ export default function AdminProdutosPage() {
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                 <span>Lixeira (30d)</span>
               </button>
+
+              <div className="h-4 w-[1px] bg-slate-700 hidden sm:block" />
+
+              <button
+                onClick={() => handleBulkPromotionalFlagAction('destaque', true)}
+                disabled={isBulkActionRunning}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                title="Adicionar selecionadas à vitrine de Lançamentos/Destaque"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Lançamentos</span>
+              </button>
+
+              <button
+                onClick={() => handleBulkPromotionalFlagAction('mais_vendido', true)}
+                disabled={isBulkActionRunning}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                title="Adicionar selecionadas à vitrine de Mais Vendidos"
+              >
+                <Flame className="w-3.5 h-3.5 text-purple-400" />
+                <span>+ Mais Vendidos</span>
+              </button>
+
+              <button
+                onClick={() => handleBulkPromotionalFlagAction('outlet', true)}
+                disabled={isBulkActionRunning}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                title="Adicionar selecionadas ao Bazar & Outlet"
+              >
+                <Tag className="w-3.5 h-3.5 text-rose-400" />
+                <span>+ Outlet</span>
+              </button>
             </>
           )}
 
@@ -4071,6 +4275,21 @@ export default function AdminProdutosPage() {
             setStoreAttributes((prev) => ({ ...prev, sinalizadores: updatedList }));
             fetchProductsData();
             showToast('Sinalizadores comerciais da loja atualizados com sucesso!');
+          }}
+          onToast={showToast}
+        />
+      )}
+
+      {/* MODAL DE GESTÃO DE VITRINES, DESTAQUES E COLEÇÕES */}
+      {isCollectionsModalOpen && (
+        <AdminCollectionsManagerModal
+          isOpen={isCollectionsModalOpen}
+          onClose={() => setIsCollectionsModalOpen(false)}
+          products={products}
+          categoriesList={categoriesList}
+          onUpdated={() => {
+            fetchProductsData();
+            showToast('Vitrines e coleções atualizadas com sucesso!');
           }}
           onToast={showToast}
         />

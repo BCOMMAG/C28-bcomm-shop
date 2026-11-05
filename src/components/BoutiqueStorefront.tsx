@@ -345,6 +345,7 @@ export function BoutiqueStorefront() {
               {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
               <ProductLoopCarousel
                 products={bestSellerProducts}
+                isBestSellerSection={true}
                 onOpenDetails={openProduct}
                 onQuickAdd={handleSafeQuickAdd}
                 isWishlisted={(id) => wishlistIds.includes(id)}

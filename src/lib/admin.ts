@@ -3036,6 +3036,8 @@ export interface StoreSettingsData {
   reservaEstoqueAtiva: boolean;
   tempoReservaMinutos: number;
   exibirQuantidadeEstoqueConsumidor?: boolean;
+  exibirBadgesNaVitrine?: boolean;
+  exibirSeloEscassezFoto?: boolean;
 
   // Inatividade e Limpeza de Pedidos no WhatsApp
   autoDescartarInativosWhatsapp?: boolean;
@@ -3286,6 +3288,8 @@ export interface SaveStoreSettingsInput {
   reservaEstoqueAtiva?: boolean;
   tempoReservaMinutos?: number;
   exibirQuantidadeEstoqueConsumidor?: boolean;
+  exibirBadgesNaVitrine?: boolean;
+  exibirSeloEscassezFoto?: boolean;
 
   // Inatividade e Limpeza de Pedidos no WhatsApp
   autoDescartarInativosWhatsapp?: boolean;
@@ -3402,6 +3406,8 @@ export async function getStoreSettings(
       reservaEstoqueAtiva: vis.reserva_estoque_ativa ?? true,
       tempoReservaMinutos: Number(vis.tempo_reserva_minutos ?? 20),
       exibirQuantidadeEstoqueConsumidor: vis.exibir_quantidade_estoque_consumidor ?? true,
+      exibirBadgesNaVitrine: vis.exibir_badges_na_vitrine ?? false,
+      exibirSeloEscassezFoto: vis.exibir_selo_escassez_foto ?? false,
 
       // Inatividade de Pedidos no WhatsApp
       autoDescartarInativosWhatsapp: vis.auto_descartar_inativos_whatsapp ?? true,
@@ -3563,6 +3569,8 @@ export async function saveStoreGeneralSettings(
       ...(input.reservaEstoqueAtiva !== undefined ? { reserva_estoque_ativa: Boolean(input.reservaEstoqueAtiva) } : {}),
       ...(input.tempoReservaMinutos !== undefined ? { tempo_reserva_minutos: Number(input.tempoReservaMinutos) } : {}),
       ...(input.exibirQuantidadeEstoqueConsumidor !== undefined ? { exibir_quantidade_estoque_consumidor: Boolean(input.exibirQuantidadeEstoqueConsumidor) } : {}),
+      ...(input.exibirBadgesNaVitrine !== undefined ? { exibir_badges_na_vitrine: Boolean(input.exibirBadgesNaVitrine) } : {}),
+      ...(input.exibirSeloEscassezFoto !== undefined ? { exibir_selo_escassez_foto: Boolean(input.exibirSeloEscassezFoto) } : {}),
       ...(input.autoDescartarInativosWhatsapp !== undefined ? { auto_descartar_inativos_whatsapp: Boolean(input.autoDescartarInativosWhatsapp) } : {}),
       ...(input.prazoInatividadeWhatsappDias !== undefined ? { prazo_inatividade_whatsapp_dias: Number(input.prazoInatividadeWhatsappDias) } : {}),
       ...(input.destinoInativosWhatsapp !== undefined ? { destino_inativos_whatsapp: input.destinoInativosWhatsapp } : {}),
@@ -4466,6 +4474,113 @@ export async function updateAdminVariationStockDirect(
   } catch (err: any) {
     console.error('Falha ao atualizar estoque direto:', err);
     return { success: false, error: err?.message || 'Erro ao atualizar estoque.' };
+  }
+}
+
+/**
+ * Invalida o cache local SWR da vitrine e dispara evento para sincronização instantânea em 0ms.
+ */
+export function invalidateClientStoreCache(): void {
+  if (typeof window !== 'undefined') {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('bcomm_products_')) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      window.dispatchEvent(new CustomEvent('bcomm_catalog_updated'));
+    } catch {}
+  }
+}
+
+/**
+ * Alterna rapidamente uma flag comercial (Destaque, Mais Vendido, Outlet, Últimas Peças) de um produto com 1 clique.
+ */
+export async function toggleProductPromotionalFlag(
+  productId: string,
+  flag: 'destaque' | 'mais_vendido' | 'outlet' | 'ultimas_pecas',
+  value: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        [flag]: value,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId);
+
+    if (error) throw error;
+    invalidateClientStoreCache();
+    return { success: true };
+  } catch (err: any) {
+    console.error(`Erro ao atualizar flag comercial ${flag}:`, err);
+    return { success: false, error: err?.message || 'Erro ao atualizar flag comercial.' };
+  }
+}
+
+/**
+ * Atualiza flags comerciais em massa para múltiplos produtos selecionados.
+ */
+export async function bulkUpdatePromotionalFlags(
+  productIds: string[],
+  flag: 'destaque' | 'mais_vendido' | 'outlet' | 'ultimas_pecas',
+  value: boolean
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  if (!productIds || productIds.length === 0) return { success: true, count: 0 };
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        [flag]: value,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds);
+
+    if (error) throw error;
+    invalidateClientStoreCache();
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error(`Erro ao atualizar flag em massa ${flag}:`, err);
+    return { success: false, error: err?.message || 'Erro ao atualizar produtos em massa.' };
+  }
+}
+
+/**
+ * Atualiza a categoria principal em massa para múltiplos produtos selecionados.
+ */
+export async function bulkUpdateProductCategory(
+  productIds: string[],
+  categoriaId: string,
+  categoriaNome?: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  if (!productIds || productIds.length === 0) return { success: true, count: 0 };
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const payload: any = {
+      categoria_id: categoriaId,
+      updated_at: new Date().toISOString()
+    };
+    if (categoriaNome) {
+      payload.categoria_nome = categoriaNome;
+    }
+
+    const { error } = await supabase
+      .from('produtos')
+      .update(payload)
+      .in('id', productIds);
+
+    if (error) throw error;
+    invalidateClientStoreCache();
+    return { success: true, count: productIds.length };
+  } catch (err: any) {
+    console.error('Erro ao mover produtos de categoria em massa:', err);
+    return { success: false, error: err?.message || 'Erro ao mover produtos de categoria.' };
   }
 }
 

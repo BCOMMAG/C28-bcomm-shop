@@ -16,6 +16,7 @@ interface ProductCardProps {
   onToggleWishlist: (productId: string) => void;
   isOutletSection?: boolean;
   isNewReleasesSection?: boolean;
+  isBestSellerSection?: boolean;
   isLastPiecesSection?: boolean;
   columnsCount?: 1 | 2 | 3 | 4 | 5;
 }
@@ -28,6 +29,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onToggleWishlist,
   isOutletSection = false,
   isNewReleasesSection = false,
+  isBestSellerSection = false,
   isLastPiecesSection = false,
   columnsCount = 4
 }) => {
@@ -270,17 +272,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Gradiente sutil inferior */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-15" />
 
-        {/* Badge de Destaque com Regras de Exibição */}
+        {/* Badge de Destaque com Regras Estritas de Exibição (Só aparece se o lojista configurar expressamente) */}
         {(() => {
+          const visuais = (currentTenant as any)?.configuracoes_visuais || {};
+          // Se o lojista NÃO ativou expressamente para aparecer na vitrine, a foto permanece 100% limpa (Minimal Luxury)
+          const exibirBadgesVitrine = visuais.exibir_badges_na_vitrine === true;
+          const exibirSeloEscassezFoto = visuais.exibir_selo_escassez_foto === true;
+
           // Sinalizadores dinâmicos configurados no tenant
-          const tenantSinalizadores: any[] = (currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || [];
+          const tenantSinalizadores: any[] = visuais.atributos_pecas?.sinalizadores || [];
           const getBadgeConfig = (idOrName: string) => {
-            return tenantSinalizadores.find(
+            const found = tenantSinalizadores.find(
               (s) => s.id === idOrName || (s.nome && s.nome.toLowerCase() === idOrName.toLowerCase()) || (s.label && s.label.toLowerCase() === idOrName.toLowerCase())
             );
+            // Se o sinalizador existir e estiver desativado pelo lojista, não exibe
+            if (found && (found.ativo === false || found.exibir_na_foto === false)) return null;
+            return found;
           };
 
-          // 0. Produto Esgotado no Estoque Físico
+          // 0. Produto Esgotado no Estoque Físico (aviso operacional crítico)
           if (isOutOfStock) {
             return (
               <div
@@ -307,38 +317,44 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             );
           }
 
-          // 1. Regra para Seção de Lançamentos Exclusivos:
+          // Se o lojista NÃO configurou para exibir selos sobre as fotos na vitrine, mantém a fotografia limpa
+          if (!exibirBadgesVitrine) {
+            return null;
+          }
+
+          // 1. Regra para Seção de Lançamentos Exclusivos: omite selo idêntico
           if (isNewReleasesSection) {
             return null;
           }
 
-          // 2. Prioridade Comercial: Seção OUTLET ou produtos com desconto ativo
-          // Garante que o cliente veja o selo de OUTLET/Promoção mesmo se houver estoque baixo (a escassez é exibida no rodapé do card)
-          const isOutletItem = isOutletSection || product.isOutlet || (product.discountBadge && product.discountBadge.includes('OUTLET'));
-          if (isOutletItem || product.discountBadge) {
+          // 2. Seção OUTLET ou produtos com desconto ativo (só exibe fora da seção outlet)
+          const isOutletItem = !isOutletSection && (product.isOutlet || (product.discountBadge && product.discountBadge.includes('OUTLET')));
+          if (isOutletItem || (product.discountBadge && !isOutletSection)) {
             const outletCfg = getBadgeConfig('outlet');
-            const outletBg = outletCfg?.cor || outletCfg?.color || '#C5A059';
-            const badgeText = product.discountBadge || (isOutletItem ? 'OUTLET' : null);
+            if (outletCfg !== null) {
+              const outletBg = outletCfg?.cor || outletCfg?.color || '#C5A059';
+              const badgeText = product.discountBadge || (isOutletItem ? 'OUTLET' : null);
 
-            if (badgeText) {
-              return (
-                <div
-                  className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
-                    isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
-                  }`}
-                  style={{ backgroundColor: outletBg, color: outletCfg?.textColor || '#ffffff' }}
-                >
-                  {outletCfg?.icone && <span className="text-[11px] leading-none">{outletCfg.icone}</span>}
-                  <span>{badgeText}</span>
-                </div>
-              );
+              if (badgeText) {
+                return (
+                  <div
+                    className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                      isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                    }`}
+                    style={{ backgroundColor: outletBg, color: outletCfg?.textColor || '#ffffff' }}
+                  >
+                    {outletCfg?.icone && <span className="text-[11px] leading-none">{outletCfg.icone}</span>}
+                    <span>{badgeText}</span>
+                  </div>
+                );
+              }
             }
           }
 
-          // 3. Seção "Últimas Peças" / Estoque Crítico (somente quando na seção de últimas peças ou quando o lojista marcou a flag)
+          // 3. Seção "Últimas Peças" / Estoque Crítico (somente se lojista autorizou explicitamente selo de escassez na foto)
           const isRealCriticalStock = (product.totalStock ?? 0) > 0 && (product.totalStock ?? 0) <= 5;
           const ultimasPecasCfg = getBadgeConfig('ultimas_pecas');
-          if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces)) {
+          if (exibirSeloEscassezFoto && isRealCriticalStock && !isLastPiecesSection && product.isLastPieces && ultimasPecasCfg !== null) {
             const count = product.remainingPieces || product.totalStock || 5;
             let label = 'Últimas peças';
             if (showStockQty) {
@@ -367,58 +383,66 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           if (Array.isArray(product.customBadges) && product.customBadges.length > 0) {
             const firstBadgeName = product.customBadges[0];
             const foundCfg = getBadgeConfig(firstBadgeName);
-            const badgeBg = foundCfg?.cor || foundCfg?.color || '#C5A059';
-            const badgeIcon = foundCfg?.icone || foundCfg?.icon || '✨';
-            return (
-              <div
-                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
-                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
-                }`}
-                style={{ backgroundColor: badgeBg, color: foundCfg?.textColor || '#ffffff' }}
-              >
-                <span className="text-[11px] leading-none">{badgeIcon}</span>
-                <span>{foundCfg?.nome || firstBadgeName}</span>
-              </div>
-            );
+            if (foundCfg !== null && foundCfg !== undefined) {
+              const badgeBg = foundCfg?.cor || foundCfg?.color || '#C5A059';
+              const badgeIcon = foundCfg?.icone || foundCfg?.icon || '✨';
+              return (
+                <div
+                  className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                    isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                  }`}
+                  style={{ backgroundColor: badgeBg, color: foundCfg?.textColor || '#ffffff' }}
+                >
+                  <span className="text-[11px] leading-none">{badgeIcon}</span>
+                  <span>{foundCfg?.nome || firstBadgeName}</span>
+                </div>
+              );
+            }
           }
 
-          // 5. Mais Vendido
-          if (product.isBestSeller) {
+          // 5. Mais Vendido (NUNCA exibe na seção de Mais Vendidos por redundância visual)
+          if (product.isBestSeller && !isBestSellerSection) {
             const mvCfg = getBadgeConfig('mais_vendido');
-            const mvBg = mvCfg?.cor || mvCfg?.color || '#9333EA';
-            return (
-              <div
-                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
-                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
-                }`}
-                style={{ backgroundColor: mvBg, color: mvCfg?.textColor || '#ffffff' }}
-              >
-                <span className="text-[11px] leading-none">{mvCfg?.icone || '🔥'}</span>
-                <span>{mvCfg?.nome || 'Mais Vendido'}</span>
-              </div>
-            );
+            if (mvCfg !== null) {
+              const mvBg = mvCfg?.cor || mvCfg?.color || '#9333EA';
+              return (
+                <div
+                  className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                    isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                  }`}
+                  style={{ backgroundColor: mvBg, color: mvCfg?.textColor || '#ffffff' }}
+                >
+                  <span className="text-[11px] leading-none">{mvCfg?.icone || '🔥'}</span>
+                  <span>{mvCfg?.nome || 'Mais Vendido'}</span>
+                </div>
+              );
+            }
           }
 
-          // 6. Lançamento
-          if (product.isNewArrival) {
+          // 6. Lançamento (NUNCA exibe na seção de Lançamentos por redundância visual)
+          if (product.isNewArrival && !isNewReleasesSection) {
             const destCfg = getBadgeConfig('destaque');
-            const destBg = destCfg?.cor || destCfg?.color || '#C5A059';
-            return (
-              <div
-                className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
-                  isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
-                }`}
-                style={{ backgroundColor: destBg, color: destCfg?.textColor || '#ffffff' }}
-              >
-                <span className="text-[11px] leading-none">{destCfg?.icone || '🌟'}</span>
-                <span>{destCfg?.nome || 'Lançamento'}</span>
-              </div>
-            );
+            if (destCfg !== null) {
+              const destBg = destCfg?.cor || destCfg?.color || '#C5A059';
+              return (
+                <div
+                  className={`absolute top-2.5 left-2.5 uppercase tracking-wider font-bold rounded-none backdrop-blur-sm shadow-xs flex items-center gap-1 ${
+                    isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'
+                  }`}
+                  style={{ backgroundColor: destBg, color: destCfg?.textColor || '#ffffff' }}
+                >
+                  <span className="text-[11px] leading-none">{destCfg?.icone || '🌟'}</span>
+                  <span>{destCfg?.nome || 'Lançamento'}</span>
+                </div>
+              );
+            }
           }
 
-          // 7. Badges de escassez padrão para outros cards
+          // 7. Badges de escassez padrão para outros cards (somente se autorizado)
           if (
+            exibirSeloEscassezFoto &&
             isRealCriticalStock &&
+            !isLastPiecesSection &&
             (product.badge?.includes('Restam') ||
               product.badge?.includes('peça') ||
               product.badge?.includes('Faltam'))

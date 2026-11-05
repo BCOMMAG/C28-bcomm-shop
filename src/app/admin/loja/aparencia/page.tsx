@@ -183,6 +183,10 @@ export default function AppearanceSettingsPage() {
   // Configuração Global de Visibilidade de Estoque para o Consumidor
   const [exibirQuantidadeEstoqueConsumidor, setExibirQuantidadeEstoqueConsumidor] = useState(true);
 
+  // Configuração Global de Visibilidade de Badges e Escassez sobre as Fotos na Vitrine
+  const [exibirBadgesNaVitrine, setExibirBadgesNaVitrine] = useState(false);
+  const [exibirSeloEscassezFoto, setExibirSeloEscassezFoto] = useState(false);
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -311,6 +315,12 @@ export default function AppearanceSettingsPage() {
           if (data.exibirQuantidadeEstoqueConsumidor !== undefined) {
             setExibirQuantidadeEstoqueConsumidor(data.exibirQuantidadeEstoqueConsumidor);
           }
+          if (data.exibirBadgesNaVitrine !== undefined) {
+            setExibirBadgesNaVitrine(data.exibirBadgesNaVitrine);
+          }
+          if (data.exibirSeloEscassezFoto !== undefined) {
+            setExibirSeloEscassezFoto(data.exibirSeloEscassezFoto);
+          }
         }
       } catch (err) {
         console.error('Erro ao carregar dados visuais:', err);
@@ -341,7 +351,9 @@ export default function AppearanceSettingsPage() {
       secaoTodasAsPecasAtivo, secaoTodasAsPecasCustomizado, secaoTodasAsPecasTitulo, secaoTodasAsPecasSubtitulo, secaoTodasAsPecasFont,
       secaoTodasAsPecasBgLight, secaoTodasAsPecasBgDark, secaoTodasAsPecasTituloLight, secaoTodasAsPecasTituloDark,
       secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
-      exibirQuantidadeEstoqueConsumidor
+      exibirQuantidadeEstoqueConsumidor,
+      exibirBadgesNaVitrine,
+      exibirSeloEscassezFoto
     });
   }, [
     logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
@@ -361,7 +373,9 @@ export default function AppearanceSettingsPage() {
     secaoTodasAsPecasAtivo, secaoTodasAsPecasCustomizado, secaoTodasAsPecasTitulo, secaoTodasAsPecasSubtitulo, secaoTodasAsPecasFont,
     secaoTodasAsPecasBgLight, secaoTodasAsPecasBgDark, secaoTodasAsPecasTituloLight, secaoTodasAsPecasTituloDark,
     secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
-    exibirQuantidadeEstoqueConsumidor
+    exibirQuantidadeEstoqueConsumidor,
+    exibirBadgesNaVitrine,
+    exibirSeloEscassezFoto
   ]);
 
   // Carrega o snapshot inicial assim que os dados terminam de carregar
@@ -543,7 +557,9 @@ export default function AppearanceSettingsPage() {
         planoFundoMenu,
         tipografiaMenu,
         secoesVitrine,
-        exibirQuantidadeEstoqueConsumidor
+        exibirQuantidadeEstoqueConsumidor,
+        exibirBadgesNaVitrine,
+        exibirSeloEscassezFoto
       });
 
       if (res.success) {
@@ -2734,16 +2750,25 @@ export default function AppearanceSettingsPage() {
     </div>
 
     {/* BLOCO 9: SINALIZADORES COMERCIAIS DA VITRINE (BADGES) */}
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <Tag className="w-4 h-4 text-amber-600" />
-            9. Sinalizadores Comerciais da Vitrine (Badges)
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Personalize cores oficiais, nomes e emojis das tags que aparecem sobre as fotos das peças na loja.
-          </p>
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+            <Tag className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                9. Sinalizadores Comerciais da Vitrine (Badges)
+              </h2>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${exibirBadgesNaVitrine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                {exibirBadgesNaVitrine ? 'Badges Ativos na Vitrine' : 'Visual Limpo (Minimal Luxury)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Escolha se as fotos das peças na vitrine pública devem exibir selos sobrepostos (ex: Lançamento, Mais Vendido, Outlet) ou manter as imagens 100% limpas.
+            </p>
+          </div>
         </div>
 
         <button
@@ -2756,7 +2781,94 @@ export default function AppearanceSettingsPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Interruptores de Exibição de Selos sobre as Fotos */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Interruptor 1: Badges Comerciais Gerais */}
+        <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-bold text-slate-900 text-xs block">
+                Exibir Selos Comerciais nas Fotos
+              </span>
+              <span className="text-[10px] text-slate-500">
+                (Mais Vendido, Lançamento, Outlet, Badges Personalizados)
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setExibirBadgesNaVitrine(!exibirBadgesNaVitrine)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs',
+                exibirBadgesNaVitrine
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+              )}
+            >
+              {exibirBadgesNaVitrine ? (
+                <>
+                  <ToggleRight className="w-4 h-4 text-emerald-600" />
+                  <span>Exibindo</span>
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="w-4 h-4 text-slate-400" />
+                  <span>Ocultos (Foto Limpa)</span>
+                </>
+              )}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {exibirBadgesNaVitrine
+              ? '✓ Os sinalizadores que você configurar aparecerão sobre a foto das peças no catálogo (com inteligência de contexto para não repetir selo na própria seção).'
+              : '🔒 As imagens das peças na loja ficam 100% livres de selos flutuantes, valorizando o ensaio fotográfico e o acabamento nobre.'}
+          </p>
+        </div>
+
+        {/* Interruptor 2: Selo de Escassez na Foto */}
+        <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-bold text-slate-900 text-xs block">
+                Exibir Selo de Escassez na Foto
+              </span>
+              <span className="text-[10px] text-slate-500">
+                (Adesivo &quot;Restam X peças&quot; ou &quot;Última peça&quot; sobreposto à foto)
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setExibirSeloEscassezFoto(!exibirSeloEscassezFoto)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs',
+                exibirSeloEscassezFoto
+                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+              )}
+            >
+              {exibirSeloEscassezFoto ? (
+                <>
+                  <ToggleRight className="w-4 h-4 text-amber-600" />
+                  <span>Exibindo Selo</span>
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="w-4 h-4 text-slate-400" />
+                  <span>Foto Sem Selo</span>
+                </>
+              )}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {exibirSeloEscassezFoto
+              ? '✓ Peças com estoque baixo (&le; 5 unidades) colarão um selo marrom de urgência sobre a imagem.'
+              : '🔒 A escassez será comunicada apenas no modal e no botão de sacola, mantendo o card da vitrine visualmente elegante.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
         <span className="text-xs font-semibold text-slate-600">Badges ativos da boutique:</span>
         {((currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || []).map((s: any) => (
           <div

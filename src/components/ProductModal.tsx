@@ -752,56 +752,69 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {product.name}
               </h2>
 
-              {/* Sinalizadores Comerciais Oficiais da Peça */}
+              {/* Sinalizadores Comerciais Oficiais da Peça (Só exibidos se ativados pelo lojista) */}
               {(() => {
-                const tenantSinalizadores: any[] = (currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || [];
+                const visuais = (currentTenant as any)?.configuracoes_visuais || {};
+                if (visuais.exibir_badges_na_vitrine !== true) return null;
+
+                const tenantSinalizadores: any[] = visuais.atributos_pecas?.sinalizadores || [];
                 const activeBadges: Array<{ nome: string; icone: string; cor: string; textColor: string }> = [];
 
                 if (product.isOutlet) {
                   const cfg = tenantSinalizadores.find((s) => s.id === 'outlet');
-                  activeBadges.push({
-                    nome: cfg?.nome || 'Outlet',
-                    icone: cfg?.icone || '🏷️',
-                    cor: cfg?.cor || '#E11D48',
-                    textColor: cfg?.textColor || '#ffffff'
-                  });
+                  if (!cfg || (cfg.ativo !== false && cfg.exibir_na_foto !== false)) {
+                    activeBadges.push({
+                      nome: cfg?.nome || 'Outlet',
+                      icone: cfg?.icone || '🏷️',
+                      cor: cfg?.cor || '#E11D48',
+                      textColor: cfg?.textColor || '#ffffff'
+                    });
+                  }
                 }
                 if (product.isNewArrival) {
                   const cfg = tenantSinalizadores.find((s) => s.id === 'destaque');
-                  activeBadges.push({
-                    nome: cfg?.nome || 'Lançamento',
-                    icone: cfg?.icone || '🌟',
-                    cor: cfg?.cor || '#C5A059',
-                    textColor: cfg?.textColor || '#ffffff'
-                  });
+                  if (!cfg || (cfg.ativo !== false && cfg.exibir_na_foto !== false)) {
+                    activeBadges.push({
+                      nome: cfg?.nome || 'Lançamento',
+                      icone: cfg?.icone || '🌟',
+                      cor: cfg?.cor || '#C5A059',
+                      textColor: cfg?.textColor || '#ffffff'
+                    });
+                  }
                 }
                 if (product.isBestSeller) {
                   const cfg = tenantSinalizadores.find((s) => s.id === 'mais_vendido');
-                  activeBadges.push({
-                    nome: cfg?.nome || 'Mais Vendido',
-                    icone: cfg?.icone || '🔥',
-                    cor: cfg?.cor || '#9333EA',
-                    textColor: cfg?.textColor || '#ffffff'
-                  });
+                  if (!cfg || (cfg.ativo !== false && cfg.exibir_na_foto !== false)) {
+                    activeBadges.push({
+                      nome: cfg?.nome || 'Mais Vendido',
+                      icone: cfg?.icone || '🔥',
+                      cor: cfg?.cor || '#9333EA',
+                      textColor: cfg?.textColor || '#ffffff'
+                    });
+                  }
                 }
                 if (product.isLastPieces) {
                   const cfg = tenantSinalizadores.find((s) => s.id === 'ultimas_pecas');
-                  activeBadges.push({
-                    nome: cfg?.nome || 'Últimas Peças',
-                    icone: cfg?.icone || '⏳',
-                    cor: cfg?.cor || '#8B5A2B',
-                    textColor: cfg?.textColor || '#ffffff'
-                  });
+                  if (!cfg || (cfg.ativo !== false && cfg.exibir_na_foto !== false)) {
+                    activeBadges.push({
+                      nome: cfg?.nome || 'Últimas Peças',
+                      icone: cfg?.icone || '⏳',
+                      cor: cfg?.cor || '#8B5A2B',
+                      textColor: cfg?.textColor || '#ffffff'
+                    });
+                  }
                 }
                 if (Array.isArray(product.customBadges)) {
                   product.customBadges.forEach((bName) => {
                     const cfg = tenantSinalizadores.find((s) => s.id === bName || s.nome === bName || s.label === bName);
-                    activeBadges.push({
-                      nome: cfg?.nome || bName,
-                      icone: cfg?.icone || '✨',
-                      cor: cfg?.cor || '#C5A059',
-                      textColor: cfg?.textColor || '#ffffff'
-                    });
+                    if (!cfg || (cfg.ativo !== false && cfg.exibir_na_foto !== false)) {
+                      activeBadges.push({
+                        nome: cfg?.nome || bName,
+                        icone: cfg?.icone || '✨',
+                        cor: cfg?.cor || '#C5A059',
+                        textColor: cfg?.textColor || '#ffffff'
+                      });
+                    }
                   });
                 }
 

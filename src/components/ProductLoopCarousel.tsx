@@ -13,6 +13,7 @@ interface ProductLoopCarouselProps {
   onToggleWishlist: (productId: string) => void;
   isOutletSection?: boolean;
   isNewReleasesSection?: boolean;
+  isBestSellerSection?: boolean;
   isLastPiecesSection?: boolean;
   autoPlayInterval?: number; // Milissegundos entre cada avanço (padrão 3500ms)
 }
@@ -25,6 +26,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
   onToggleWishlist,
   isOutletSection = false,
   isNewReleasesSection = false,
+  isBestSellerSection = false,
   isLastPiecesSection = false,
   autoPlayInterval = 3600
 }) => {
@@ -188,6 +190,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
               columnsCount={1}
               isOutletSection={isOutletSection}
               isNewReleasesSection={isNewReleasesSection}
+              isBestSellerSection={isBestSellerSection}
               isLastPiecesSection={isLastPiecesSection}
               onOpenDetails={onOpenDetails}
               onQuickAdd={onQuickAdd}
@@ -210,6 +213,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
                 columnsCount={2}
                 isOutletSection={isOutletSection}
                 isNewReleasesSection={isNewReleasesSection}
+                isBestSellerSection={isBestSellerSection}
                 isLastPiecesSection={isLastPiecesSection}
                 onOpenDetails={onOpenDetails}
                 onQuickAdd={onQuickAdd}
@@ -233,6 +237,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
                 columnsCount={3}
                 isOutletSection={isOutletSection}
                 isNewReleasesSection={isNewReleasesSection}
+                isBestSellerSection={isBestSellerSection}
                 isLastPiecesSection={isLastPiecesSection}
                 onOpenDetails={onOpenDetails}
                 onQuickAdd={onQuickAdd}
@@ -255,6 +260,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
             columnsCount={4}
             isOutletSection={isOutletSection}
             isNewReleasesSection={isNewReleasesSection}
+            isBestSellerSection={isBestSellerSection}
             isLastPiecesSection={isLastPiecesSection}
             onOpenDetails={onOpenDetails}
             onQuickAdd={onQuickAdd}
@@ -308,6 +314,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
                 columnsCount={visibleCount === 4 ? 4 : 2}
                 isOutletSection={isOutletSection}
                 isNewReleasesSection={isNewReleasesSection}
+                isBestSellerSection={isBestSellerSection}
                 isLastPiecesSection={isLastPiecesSection}
                 onOpenDetails={(p) => {
                   setIsPaused(true);
