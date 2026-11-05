@@ -2619,7 +2619,7 @@ export default function AdminProdutosPage() {
               >
                 {/* Linha Principal da Peça */}
                 <div className="p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 max-w-2xl">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 max-w-md xl:max-w-xl">
                     {/* Checkbox de Seleção em Massa */}
                     <button
                       type="button"
@@ -2732,7 +2732,7 @@ export default function AdminProdutosPage() {
                   </div>
 
                   {/* Preço, Custo e Estoque */}
-                  <div className="flex flex-wrap xl:flex-nowrap items-center justify-between xl:justify-end gap-4 sm:gap-6 shrink-0">
+                  <div className="flex items-center justify-between xl:justify-end gap-3 sm:gap-6 shrink-0 flex-nowrap">
                     <div className="w-24 sm:w-28 shrink-0 text-left">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Preço de Venda</span>
                       {hasPromo ? (
