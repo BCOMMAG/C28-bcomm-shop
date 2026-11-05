@@ -3039,10 +3039,15 @@ export interface StoreSettingsData {
   exibirBadgesNaVitrine?: boolean;
   exibirSeloEscassezFoto?: boolean;
 
-  // Inatividade e Limpeza de Pedidos no WhatsApp
+  // Inatividade e Limpeza de Pedidos no WhatsApp & Follow-up
   autoDescartarInativosWhatsapp?: boolean;
   prazoInatividadeWhatsappDias?: number;
+  tempoInatividadeWhatsappValor?: number;
+  tempoInatividadeWhatsappUnidade?: 'minutos' | 'horas' | 'dias';
   destinoInativosWhatsapp?: 'cancelado' | 'coluna_inativos';
+  autoCancelarNaoFinalizados?: boolean;
+  prazoCancelamentoNaoFinalizadosValor?: number;
+  prazoCancelamentoNaoFinalizadosUnidade?: 'minutos' | 'horas' | 'dias';
 
   // Marca & Identidade Visual
   logoUrl?: string;
@@ -3480,10 +3485,15 @@ export interface SaveStoreSettingsInput {
   exibirBadgesNaVitrine?: boolean;
   exibirSeloEscassezFoto?: boolean;
 
-  // Inatividade e Limpeza de Pedidos no WhatsApp
+  // Inatividade e Limpeza de Pedidos no WhatsApp & Follow-up
   autoDescartarInativosWhatsapp?: boolean;
   prazoInatividadeWhatsappDias?: number;
+  tempoInatividadeWhatsappValor?: number;
+  tempoInatividadeWhatsappUnidade?: 'minutos' | 'horas' | 'dias';
   destinoInativosWhatsapp?: 'cancelado' | 'coluna_inativos';
+  autoCancelarNaoFinalizados?: boolean;
+  prazoCancelamentoNaoFinalizadosValor?: number;
+  prazoCancelamentoNaoFinalizadosUnidade?: 'minutos' | 'horas' | 'dias';
 
   // Marca & Identidade Visual
   logoUrl?: string;
@@ -3598,10 +3608,15 @@ export async function getStoreSettings(
       exibirBadgesNaVitrine: vis.exibir_badges_na_vitrine ?? false,
       exibirSeloEscassezFoto: vis.exibir_selo_escassez_foto ?? false,
 
-      // Inatividade de Pedidos no WhatsApp
+      // Inatividade de Pedidos no WhatsApp & Follow-up
       autoDescartarInativosWhatsapp: vis.auto_descartar_inativos_whatsapp ?? true,
       prazoInatividadeWhatsappDias: Number(vis.prazo_inatividade_whatsapp_dias ?? 7),
-      destinoInativosWhatsapp: vis.destino_inativos_whatsapp || 'cancelado',
+      tempoInatividadeWhatsappValor: Number(vis.tempo_inatividade_whatsapp_valor ?? (vis.prazo_inatividade_whatsapp_dias ? vis.prazo_inatividade_whatsapp_dias * 24 : 48)),
+      tempoInatividadeWhatsappUnidade: vis.tempo_inatividade_whatsapp_unidade || 'horas',
+      destinoInativosWhatsapp: vis.destino_inativos_whatsapp || 'coluna_inativos',
+      autoCancelarNaoFinalizados: vis.auto_cancelar_nao_finalizados ?? true,
+      prazoCancelamentoNaoFinalizadosValor: Number(vis.prazo_cancelamento_nao_finalizados_valor ?? 30),
+      prazoCancelamentoNaoFinalizadosUnidade: vis.prazo_cancelamento_nao_finalizados_unidade || 'dias',
 
       // Marca & Identidade Visual
       logoUrl: vis.logo_url || '',
@@ -3752,7 +3767,12 @@ export async function saveStoreGeneralSettings(
       ...(input.exibirSeloEscassezFoto !== undefined ? { exibir_selo_escassez_foto: Boolean(input.exibirSeloEscassezFoto) } : {}),
       ...(input.autoDescartarInativosWhatsapp !== undefined ? { auto_descartar_inativos_whatsapp: Boolean(input.autoDescartarInativosWhatsapp) } : {}),
       ...(input.prazoInatividadeWhatsappDias !== undefined ? { prazo_inatividade_whatsapp_dias: Number(input.prazoInatividadeWhatsappDias) } : {}),
+      ...(input.tempoInatividadeWhatsappValor !== undefined ? { tempo_inatividade_whatsapp_valor: Number(input.tempoInatividadeWhatsappValor) } : {}),
+      ...(input.tempoInatividadeWhatsappUnidade !== undefined ? { tempo_inatividade_whatsapp_unidade: input.tempoInatividadeWhatsappUnidade } : {}),
       ...(input.destinoInativosWhatsapp !== undefined ? { destino_inativos_whatsapp: input.destinoInativosWhatsapp } : {}),
+      ...(input.autoCancelarNaoFinalizados !== undefined ? { auto_cancelar_nao_finalizados: Boolean(input.autoCancelarNaoFinalizados) } : {}),
+      ...(input.prazoCancelamentoNaoFinalizadosValor !== undefined ? { prazo_cancelamento_nao_finalizados_valor: Number(input.prazoCancelamentoNaoFinalizadosValor) } : {}),
+      ...(input.prazoCancelamentoNaoFinalizadosUnidade !== undefined ? { prazo_cancelamento_nao_finalizados_unidade: input.prazoCancelamentoNaoFinalizadosUnidade } : {}),
 
       // Marca
       ...(input.logoUrl !== undefined ? { logo_url: input.logoUrl.trim() } : {}),
@@ -3863,6 +3883,11 @@ export async function saveStoreGeneralSettings(
     return { success: false, error: err?.message };
   }
 }
+
+/**
+ * Alias de compatibilidade para salvar configurações gerais da loja.
+ */
+export const updateStoreSettings = saveStoreGeneralSettings;
 
 /**
  * Salva, altera ou desconecta o domínio próprio de uma loja.

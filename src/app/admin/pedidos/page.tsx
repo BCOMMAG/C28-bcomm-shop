@@ -61,7 +61,8 @@ import {
   getAdminOrders,
   updateAdminOrderStatusWithStock,
   updateAdminOrderTracking,
-  getStoreSettings
+  getStoreSettings,
+  updateStoreSettings
 } from '@/lib/admin';
 import { CustomerOrder, isOrderGift, getOrderGiftDetails } from '@/lib/orders';
 import {
@@ -85,9 +86,9 @@ type PaymentFilter = 'todos' | 'pix' | 'cartao';
 type SortOrder = 'recentes' | 'antigos' | 'maior_valor' | 'menor_valor';
 
 export interface KanbanColumnDef {
-  id: CustomerOrder['status'];
+  id: string;
   label: string;
-  next: CustomerOrder['status'] | null;
+  next: string | null;
   color: string;
   badge: string;
 }
@@ -98,6 +99,7 @@ const ALL_KANBAN_COLUMNS: KanbanColumnDef[] = [
   { id: 'em_separacao', label: 'Em Separação', next: 'enviado', color: 'border-sky-400 bg-sky-50/40 text-sky-900', badge: 'bg-sky-100 text-sky-800 border-sky-300' },
   { id: 'enviado', label: 'Enviados (Correios)', next: 'entregue', color: 'border-indigo-400 bg-indigo-50/40 text-indigo-900', badge: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   { id: 'entregue', label: 'Entregues', next: null, color: 'border-teal-400 bg-teal-50/40 text-teal-900', badge: 'bg-teal-100 text-teal-800 border-teal-300' },
+  { id: 'inativo', label: 'Não Finalizados (Follow-up)', next: null, color: 'border-purple-400 bg-purple-50/40 text-purple-950', badge: 'bg-purple-100 text-purple-800 border-purple-300' },
   { id: 'cancelado', label: 'Cancelados', next: null, color: 'border-rose-400 bg-rose-50/40 text-rose-950', badge: 'bg-rose-100 text-rose-800 border-rose-300' }
 ];
 
@@ -184,10 +186,19 @@ export default function AdminPedidosPage() {
   const [discardModalOrder, setDiscardModalOrder] = useState<CustomerOrder | null>(null);
   const [isDiscardingOrder, setIsDiscardingOrder] = useState(false);
 
-  // Regras de Inatividade de Pedidos no WhatsApp
+  // Regras de Inatividade de Pedidos no WhatsApp e Funil de Follow-up
   const [autoDescartarInativosWhatsapp, setAutoDescartarInativosWhatsapp] = useState(true);
   const [prazoInatividadeWhatsappDias, setPrazoInatividadeWhatsappDias] = useState(7);
-  const [destinoInativosWhatsapp, setDestinoInativosWhatsapp] = useState<'cancelado' | 'coluna_inativos'>('cancelado');
+  const [tempoInatividadeWhatsappValor, setTempoInatividadeWhatsappValor] = useState(48);
+  const [tempoInatividadeWhatsappUnidade, setTempoInatividadeWhatsappUnidade] = useState<'minutos' | 'horas' | 'dias'>('horas');
+  const [destinoInativosWhatsapp, setDestinoInativosWhatsapp] = useState<'cancelado' | 'coluna_inativos'>('coluna_inativos');
+  const [autoCancelarNaoFinalizados, setAutoCancelarNaoFinalizados] = useState(true);
+  const [prazoCancelamentoNaoFinalizadosValor, setPrazoCancelamentoNaoFinalizadosValor] = useState(30);
+  const [prazoCancelamentoNaoFinalizadosUnidade, setPrazoCancelamentoNaoFinalizadosUnidade] = useState<'minutos' | 'horas' | 'dias'>('dias');
+
+  // Modal de Governança de Regras de Inatividade
+  const [isGovernanceModalOpen, setIsGovernanceModalOpen] = useState(false);
+  const [isSavingGovernance, setIsSavingGovernance] = useState(false);
 
   // Toast de Notificação
   const [feedbackToast, setFeedbackToast] = useState<{
@@ -284,22 +295,10 @@ export default function AdminPedidosPage() {
     } catch {}
   };
 
-  // Lista dinâmica de colunas do Kanban (adiciona 'Não Finalizados' se configurado)
+  // Lista dinâmica de colunas do Kanban
   const allKanbanColumnsList = useMemo<KanbanColumnDef[]>(() => {
-    if (autoDescartarInativosWhatsapp && destinoInativosWhatsapp === 'coluna_inativos') {
-      return [
-        ...ALL_KANBAN_COLUMNS,
-        {
-          id: 'inativo' as any,
-          label: 'Não Finalizados',
-          next: null,
-          color: 'border-slate-400 bg-slate-50/40 text-slate-900',
-          badge: 'bg-slate-100 text-slate-800 border-slate-300'
-        }
-      ];
-    }
     return ALL_KANBAN_COLUMNS;
-  }, [autoDescartarInativosWhatsapp, destinoInativosWhatsapp]);
+  }, []);
 
   // Controle de Rolagem Horizontal Suave do Kanban
   const updateKanbanScrollBounds = useCallback(() => {
@@ -352,8 +351,23 @@ export default function AdminPedidosPage() {
         if (settingsData.prazoInatividadeWhatsappDias !== undefined) {
           setPrazoInatividadeWhatsappDias(settingsData.prazoInatividadeWhatsappDias);
         }
+        if (settingsData.tempoInatividadeWhatsappValor !== undefined) {
+          setTempoInatividadeWhatsappValor(settingsData.tempoInatividadeWhatsappValor);
+        }
+        if (settingsData.tempoInatividadeWhatsappUnidade !== undefined) {
+          setTempoInatividadeWhatsappUnidade(settingsData.tempoInatividadeWhatsappUnidade);
+        }
         if (settingsData.destinoInativosWhatsapp !== undefined) {
           setDestinoInativosWhatsapp(settingsData.destinoInativosWhatsapp);
+        }
+        if (settingsData.autoCancelarNaoFinalizados !== undefined) {
+          setAutoCancelarNaoFinalizados(settingsData.autoCancelarNaoFinalizados);
+        }
+        if (settingsData.prazoCancelamentoNaoFinalizadosValor !== undefined) {
+          setPrazoCancelamentoNaoFinalizadosValor(settingsData.prazoCancelamentoNaoFinalizadosValor);
+        }
+        if (settingsData.prazoCancelamentoNaoFinalizadosUnidade !== undefined) {
+          setPrazoCancelamentoNaoFinalizadosUnidade(settingsData.prazoCancelamentoNaoFinalizadosUnidade);
         }
       }
       setSelectedOrderIds([]);
@@ -547,147 +561,6 @@ export default function AdminPedidosPage() {
     });
   };
 
-  // Verificação de SLA de Atraso
-  const getOrderSlaAlert = (order: CustomerOrder) => {
-    if (!order.created_at) return null;
-    if (order.status === 'entregue' || order.status === 'cancelado') return null;
-
-    const createdTime = new Date(order.created_at).getTime();
-    const now = Date.now();
-    const diffHours = (now - createdTime) / (1000 * 60 * 60);
-
-    if ((order.status === 'pendente' || order.status === 'aguardando_whatsapp') && diffHours > 24) {
-      return {
-        label: `${Math.floor(diffHours / 24)}d no WhatsApp`,
-        severity: 'warning'
-      };
-    }
-
-    if ((order.status === 'pago' || order.status === 'em_separacao') && diffHours > 48) {
-      return {
-        label: `${Math.floor(diffHours / 24)}d sem envio`,
-        severity: 'danger'
-      };
-    }
-
-    return null;
-  };
-
-  // Badge de Status
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'entregue':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Entregue
-          </span>
-        );
-      case 'enviado':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-            <Truck className="w-3 h-3 text-indigo-600" /> Enviado
-          </span>
-        );
-      case 'em_separacao':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
-            <Package className="w-3 h-3 text-sky-600" /> Em Separação
-          </span>
-        );
-      case 'pago':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Pago
-          </span>
-        );
-      case 'cancelado':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-            <AlertCircle className="w-3 h-3 text-rose-600" /> Cancelado
-          </span>
-        );
-      case 'pendente':
-      case 'aguardando_whatsapp':
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-            <Clock className="w-3 h-3 text-amber-600" /> Aguardando WhatsApp
-          </span>
-        );
-    }
-  };
-
-  // Cálculo dos 6 KPIs Operacionais no Topo
-  const kpis = useMemo(() => {
-    const counts = {
-      pendente: { count: 0, total: 0 },
-      pago: { count: 0, total: 0 },
-      em_separacao: { count: 0, total: 0 },
-      enviado: { count: 0, total: 0 },
-      entregue: { count: 0, total: 0 },
-      cancelado: { count: 0, total: 0 }
-    };
-
-    orders.forEach((o) => {
-      const rawStatus = o.status;
-      const st = (rawStatus === 'aguardando_whatsapp' ? 'pendente' : rawStatus) as keyof typeof counts;
-      if (counts[st]) {
-        counts[st].count += 1;
-        counts[st].total += Number(o.total || 0);
-      }
-    });
-
-    return counts;
-  }, [orders]);
-
-  // Alternar Status na Multi-seleção
-  const toggleStatusFilter = (statusId: string) => {
-    setSelectedStatuses((prev) => {
-      if (prev.includes(statusId)) {
-        return prev.filter((s) => s !== statusId);
-      } else {
-        return [...prev, statusId];
-      }
-    });
-  };
-
-  // Clique no Card de KPI: se já for o único selecionado, limpa; senão filtra apenas ele
-  const handleKpiCardClick = (statusId: string) => {
-    // Se o status clicado estiver oculto no Kanban, desarquiva/exibe a coluna automaticamente
-    if (hiddenKanbanColumns.includes(statusId)) {
-      setHiddenKanbanColumns((prev) => {
-        const next = prev.filter((id) => id !== statusId);
-        try {
-          localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    }
-
-    if (selectedStatuses.length === 1 && selectedStatuses[0] === statusId) {
-      setSelectedStatuses([]);
-    } else {
-      setSelectedStatuses([statusId]);
-    }
-
-    // Se estiver no modo Kanban, rola suavemente até a coluna correspondente
-    if (viewMode === 'kanban') {
-      setTimeout(() => {
-        const targetId = statusId === 'aguardando_whatsapp' ? 'pendente' : statusId;
-        const colEl = document.querySelector(`[data-kanban-col-id="${targetId}"]`);
-        if (colEl) {
-          colEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
-      }, 100);
-    }
-  };
-
-  // Selecionar Apenas Operacionais (Pagos + Em Separação)
-  const handleSelectOperacionais = () => {
-    setSelectedStatuses(['pago', 'em_separacao']);
-    setIsFilterPopoverOpen(false);
-  };
-
   // Obter Lista Completa de Variações de Telefones do Pedido
   const getCustomerPhoneList = (order: CustomerOrder): string[] => {
     const rawList = [
@@ -750,27 +623,292 @@ export default function AdminPedidosPage() {
     return reservations.filter((r) => r.status === 'pausada').length;
   }, [reservations]);
 
+  // Conversão segura de tempo configurado para milissegundos
+  const convertTimeToMs = (valor: number, unidade: 'minutos' | 'horas' | 'dias'): number => {
+    const v = Math.max(1, Number(valor) || 1);
+    if (unidade === 'minutos') return v * 60 * 1000;
+    if (unidade === 'horas') return v * 3600 * 1000;
+    return v * 24 * 3600 * 1000;
+  };
+
+  // Identifica o estágio operacional efetivo do pedido considerando prazos de inatividade e follow-up
+  const getOrderEffectiveStatus = useCallback(
+    (order: CustomerOrder): string => {
+      if (order.status === 'cancelado') return 'cancelado';
+      if (order.status === 'entregue') return 'entregue';
+      if (order.status === 'enviado') return 'enviado';
+      if (order.status === 'em_separacao') return 'em_separacao';
+      if (order.status === 'pago') return 'pago';
+
+      // Pedidos criados via WhatsApp (pendente ou aguardando_whatsapp)
+      if (order.status === 'pendente' || order.status === 'aguardando_whatsapp') {
+        if (!order.created_at) return 'pendente';
+
+        // Reservas pausadas/congeladas (clientes VIP ou atendimento ativo) nunca inativam
+        const res = getOrderReservation(order);
+        if (res?.status === 'pausada') return 'pendente';
+
+        if (!autoDescartarInativosWhatsapp) return 'pendente';
+
+        const ageMs = Date.now() - new Date(order.created_at).getTime();
+        const limiteMigracaoMs = convertTimeToMs(tempoInatividadeWhatsappValor, tempoInatividadeWhatsappUnidade);
+
+        if (ageMs >= limiteMigracaoMs) {
+          // Chegou ao estágio de Não Finalizados. Agora checa se atingiu o prazo de cancelamento definitivo
+          if (autoCancelarNaoFinalizados) {
+            const limiteCancelamentoMs =
+              limiteMigracaoMs +
+              convertTimeToMs(prazoCancelamentoNaoFinalizadosValor, prazoCancelamentoNaoFinalizadosUnidade);
+            if (ageMs >= limiteCancelamentoMs) {
+              return 'cancelado';
+            }
+          }
+          return 'inativo'; // Coluna e filtro 'Não Finalizados (Follow-up)'
+        }
+        return 'pendente'; // Aguardando WhatsApp recente
+      }
+
+      return order.status || 'pendente';
+    },
+    [
+      autoDescartarInativosWhatsapp,
+      tempoInatividadeWhatsappValor,
+      tempoInatividadeWhatsappUnidade,
+      autoCancelarNaoFinalizados,
+      prazoCancelamentoNaoFinalizadosValor,
+      prazoCancelamentoNaoFinalizadosUnidade,
+      reservations
+    ]
+  );
+
+  // Provador Balcão: Somente conta atendimentos com status ATIVO (não cancelados/expirados)
   const fittingRoomOrdersCount = useMemo(() => {
     return orders.filter(
       (o) =>
-        o.canal_venda === 'provador' ||
-        o.numero_pedido?.startsWith('PROV-') ||
-        o.observacoes?.includes('Provador')
+        o.status !== 'cancelado' &&
+        (o.canal_venda === 'provador' ||
+          o.numero_pedido?.startsWith('PROV-') ||
+          o.observacoes?.includes('Provador'))
     ).length;
   }, [orders]);
 
   // Identifica se um pedido de WhatsApp está inativo/abandonado
   const isOrderInactive = useCallback((order: CustomerOrder) => {
-    if (order.status !== 'pendente' && order.status !== 'aguardando_whatsapp') return false;
-    if (!order.created_at) return false;
+    const eff = getOrderEffectiveStatus(order);
+    return eff === 'inativo' || eff === 'cancelado';
+  }, [getOrderEffectiveStatus]);
 
-    // Pedidos com reservas congeladas/pausadas (clientes VIP) são blindados!
-    const res = getOrderReservation(order);
-    if (res?.status === 'pausada') return false;
+  // Verificação de SLA de Atraso
+  const getOrderSlaAlert = (order: CustomerOrder) => {
+    if (!order.created_at) return null;
+    const effStatus = getOrderEffectiveStatus(order);
+    if (effStatus === 'entregue' || effStatus === 'cancelado' || effStatus === 'inativo') return null;
 
-    const diffDays = (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60 * 24);
-    return diffDays >= prazoInatividadeWhatsappDias;
-  }, [prazoInatividadeWhatsappDias, reservations]);
+    const createdTime = new Date(order.created_at).getTime();
+    const now = Date.now();
+    const diffHours = (now - createdTime) / (1000 * 60 * 60);
+
+    if (effStatus === 'pendente' && diffHours > 24) {
+      return {
+        label: `${Math.floor(diffHours / 24)}d no WhatsApp`,
+        severity: 'warning'
+      };
+    }
+
+    if ((effStatus === 'pago' || effStatus === 'em_separacao') && diffHours > 48) {
+      return {
+        label: `${Math.floor(diffHours / 24)}d sem envio`,
+        severity: 'danger'
+      };
+    }
+
+    return null;
+  };
+
+  // Badge de Status com suporte completo ao estágio 'inativo' (Não Finalizados)
+  const getStatusBadge = (statusOrOrder: string | CustomerOrder) => {
+    const status = typeof statusOrOrder === 'string' ? statusOrOrder : getOrderEffectiveStatus(statusOrOrder);
+    switch (status) {
+      case 'entregue':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-200">
+            <CheckCircle2 className="w-3 h-3 text-teal-600" /> Entregue
+          </span>
+        );
+      case 'enviado':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+            <Truck className="w-3 h-3 text-indigo-600" /> Enviado
+          </span>
+        );
+      case 'em_separacao':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+            <Package className="w-3 h-3 text-sky-600" /> Em Separação
+          </span>
+        );
+      case 'pago':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Pago
+          </span>
+        );
+      case 'inativo':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
+            <Clock className="w-3 h-3 text-purple-600" /> Não Finalizado (Follow-up)
+          </span>
+        );
+      case 'cancelado':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+            <AlertCircle className="w-3 h-3 text-rose-600" /> Cancelado
+          </span>
+        );
+      case 'pendente':
+      case 'aguardando_whatsapp':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+            <Clock className="w-3 h-3 text-amber-600" /> Aguardando WhatsApp
+          </span>
+        );
+    }
+  };
+
+  // Cálculo dos 7 KPIs Operacionais no Topo
+  const kpis = useMemo(() => {
+    const counts = {
+      pendente: { count: 0, total: 0 },
+      pago: { count: 0, total: 0 },
+      em_separacao: { count: 0, total: 0 },
+      enviado: { count: 0, total: 0 },
+      entregue: { count: 0, total: 0 },
+      inativo: { count: 0, total: 0 },
+      cancelado: { count: 0, total: 0 }
+    };
+
+    orders.forEach((o) => {
+      const eff = getOrderEffectiveStatus(o) as keyof typeof counts;
+      if (counts[eff]) {
+        counts[eff].count += 1;
+        counts[eff].total += Number(o.total || 0);
+      }
+    });
+
+    return counts;
+  }, [orders]);
+
+  // Alternar Status na Multi-seleção
+  const toggleStatusFilter = (statusId: string) => {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(statusId)) {
+        return prev.filter((s) => s !== statusId);
+      } else {
+        return [...prev, statusId];
+      }
+    });
+  };
+
+  // Clique no Card de KPI: se já for o único selecionado, limpa; senão filtra apenas ele
+  const handleKpiCardClick = (statusId: string) => {
+    // Se o status clicado estiver oculto no Kanban, desarquiva/exibe a coluna automaticamente
+    if (hiddenKanbanColumns.includes(statusId)) {
+      setHiddenKanbanColumns((prev) => {
+        const next = prev.filter((id) => id !== statusId);
+        try {
+          localStorage.setItem('leidy_admin_kanban_hidden_columns', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+
+    if (selectedStatuses.length === 1 && selectedStatuses[0] === statusId) {
+      setSelectedStatuses([]);
+    } else {
+      setSelectedStatuses([statusId]);
+    }
+
+    // Se estiver no modo Kanban, rola suavemente até a coluna correspondente
+    if (viewMode === 'kanban') {
+      setTimeout(() => {
+        const targetId = statusId === 'aguardando_whatsapp' ? 'pendente' : statusId;
+        const colEl = document.querySelector(`[data-kanban-col-id="${targetId}"]`);
+        if (colEl) {
+          colEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      }, 100);
+    }
+  };
+
+  // Selecionar Apenas Operacionais (Pagos + Em Separação)
+  const handleSelectOperacionais = () => {
+    setSelectedStatuses(['pago', 'em_separacao']);
+    setIsFilterPopoverOpen(false);
+  };
+
+  // Estender Tempo do Provador
+  const handleExtendProvadorReservation = async (order: CustomerOrder, minutesToAdd: number) => {
+    setReservaActionLoading(order.id);
+    const authorName = activeMember?.nome || 'Atendente';
+    const phones = getCustomerPhoneList(order);
+    const displayNum = (order.numero_pedido || '').replace(/^#+/, '');
+
+    try {
+      const res = await extendOrderReservation(
+        tenantId,
+        order.numero_pedido,
+        phones,
+        minutesToAdd,
+        authorName
+      );
+      if (res.success) {
+        showToast(`⏱️ Provador #${displayNum} estendido em +${minutesToAdd} min! Peças continuam bloqueadas online.`, 'success');
+        const freshRes = await getActiveReservations(tenantId);
+        setReservations(freshRes);
+        notifyStockChangeCrossTab();
+      } else {
+        showToast(res.error || 'Erro ao estender provador.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao estender provador.', 'error');
+    } finally {
+      setReservaActionLoading(null);
+    }
+  };
+
+  // Salvar Regras de Inatividade e Follow-up do WhatsApp
+  const handleSaveGovernanceRules = async () => {
+    setIsSavingGovernance(true);
+    try {
+      const res = await updateStoreSettings(tenantId, {
+        autoDescartarInativosWhatsapp,
+        tempoInatividadeWhatsappValor,
+        tempoInatividadeWhatsappUnidade,
+        destinoInativosWhatsapp: 'coluna_inativos',
+        autoCancelarNaoFinalizados,
+        prazoCancelamentoNaoFinalizadosValor,
+        prazoCancelamentoNaoFinalizadosUnidade,
+        prazoInatividadeWhatsappDias:
+          tempoInatividadeWhatsappUnidade === 'dias'
+            ? tempoInatividadeWhatsappValor
+            : tempoInatividadeWhatsappUnidade === 'horas'
+            ? Math.max(1, Math.round(tempoInatividadeWhatsappValor / 24))
+            : Math.max(1, Math.round(tempoInatividadeWhatsappValor / 1440))
+      });
+
+      if (res.success) {
+        showToast('⚙️ Regras de inatividade e funil de follow-up salvas com sucesso!', 'success');
+        setIsGovernanceModalOpen(false);
+      } else {
+        showToast(res.error || 'Erro ao salvar regras.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao salvar regras.', 'error');
+    } finally {
+      setIsSavingGovernance(false);
+    }
+  };
 
   // Executar Descarte Rápido Manual (Retirar da Fila de Atendimento)
   const handleExecuteDiscard = async (order: CustomerOrder) => {
@@ -1019,12 +1157,12 @@ export default function AdminPedidosPage() {
   // Filtragem dos Pedidos
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      // 1. Multi-seleção de Status
+      // 1. Multi-seleção de Status (considerando status operacional efetivo)
       if (selectedStatuses.length > 0) {
-        const orderStatusNormalized = o.status === 'aguardando_whatsapp' ? 'pendente' : o.status;
+        const effStatus = getOrderEffectiveStatus(o);
         const matchesStatus =
-          selectedStatuses.includes(o.status) ||
-          selectedStatuses.includes(orderStatusNormalized);
+          selectedStatuses.includes(effStatus) ||
+          (effStatus === 'pendente' && selectedStatuses.includes('aguardando_whatsapp'));
         if (!matchesStatus) {
           return false;
         }
@@ -1391,7 +1529,7 @@ export default function AdminPedidosPage() {
       )}
 
       {/* 1. CARDS DE REFERÊNCIA OPERACIONAL NO TOPO (KPIS INTERATIVOS COM SIGILO RBAC) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
         {[
           {
             id: 'pendente',
@@ -1452,6 +1590,18 @@ export default function AdminPedidosPage() {
             activeBorder: 'ring-2 ring-teal-500 border-teal-500',
             text: 'text-teal-800',
             iconColor: 'text-teal-600'
+          },
+          {
+            id: 'inativo',
+            label: 'Não Finalizados',
+            icon: Clock,
+            count: kpis.inativo.count,
+            total: kpis.inativo.total,
+            bgLight: 'bg-purple-50/70',
+            border: 'border-purple-200',
+            activeBorder: 'ring-2 ring-purple-500 border-purple-500',
+            text: 'text-purple-800',
+            iconColor: 'text-purple-600'
           },
           {
             id: 'cancelado',
@@ -1581,6 +1731,7 @@ export default function AdminPedidosPage() {
                     { id: 'em_separacao', label: 'Em Separação' },
                     { id: 'enviado', label: 'Enviados' },
                     { id: 'entregue', label: 'Entregues' },
+                    { id: 'inativo', label: 'Não Finalizados' },
                     { id: 'cancelado', label: 'Cancelados' }
                   ].map((st) => {
                     const checked = selectedStatuses.includes(st.id);
@@ -1857,6 +2008,17 @@ export default function AdminPedidosPage() {
           <span className="hidden md:inline">Atualizar</span>
         </button>
 
+        {/* Botão Regras de Inatividade / Funil de WhatsApp */}
+        <button
+          type="button"
+          onClick={() => setIsGovernanceModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-2xs cursor-pointer"
+          title="Configurar Regras de Inatividade do WhatsApp e Funil de Não Finalizados (Follow-up)"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+          <span className="hidden md:inline">Regras de Inatividade</span>
+        </button>
+
         <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
 
         {/* Lado Direito: Gerenciador de Colunas (Kanban) e Alternador de Modos */}
@@ -2124,12 +2286,23 @@ export default function AdminPedidosPage() {
             const giftDetails = getOrderGiftDetails(order);
             const slaAlert = getOrderSlaAlert(order);
             const isSelected = selectedOrderIds.includes(order.id);
+            const isFittingRoom =
+              order.canal_venda === 'provador' ||
+              order.numero_pedido?.startsWith('PROV-') ||
+              order.observacoes?.includes('Provador');
+            const isFittingRoomActive = isFittingRoom && order.status !== 'cancelado';
 
             return (
               <div
                 key={order.id}
                 className={`bg-white border rounded-xl overflow-hidden shadow-2xs hover:border-amber-400 transition-all ${
-                  isSelected ? 'ring-2 ring-amber-500 border-amber-500' : giftDetails.isGift ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
+                  isSelected
+                    ? 'ring-2 ring-amber-500 border-amber-500'
+                    : isFittingRoomActive
+                    ? 'border-purple-300 ring-1 ring-purple-200'
+                    : giftDetails.isGift
+                    ? 'border-amber-300 ring-1 ring-amber-200'
+                    : 'border-slate-200'
                 }`}
               >
                 {/* Linha Resumo do Card (Clicável para expandir/recolher detalhes) */}
@@ -2154,6 +2327,15 @@ export default function AdminPedidosPage() {
                         <span className="font-mono text-sm font-extrabold text-amber-800 tracking-wide block">
                           #{order.numero_pedido}
                         </span>
+                        {isFittingRoomActive ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
+                            👗 Provador Ativo
+                          </span>
+                        ) : isFittingRoom ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            👗 Provador Devolvido
+                          </span>
+                        ) : null}
                         {giftDetails.isGift && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                             <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente VIP
@@ -2228,7 +2410,7 @@ export default function AdminPedidosPage() {
 
                     <div className="hidden sm:block h-7 w-[1px] bg-slate-200" />
 
-                    <div>{getStatusBadge(order.status)}</div>
+                    <div>{getStatusBadge(order)}</div>
                   </div>
 
                   {/* Ações Rápidas do Card (Cliques não acionam expansão) */}
@@ -2792,23 +2974,17 @@ export default function AdminPedidosPage() {
                   >
                     {visibleKanbanColumns.map((column) => {
                       const columnOrders = filteredOrders.filter((o) => {
-                        const isInactive = autoDescartarInativosWhatsapp && isOrderInactive(o);
-
+                        const eff = getOrderEffectiveStatus(o);
                         if (column.id === 'pendente') {
-                          return (o.status === 'pendente' || o.status === 'aguardando_whatsapp') && !isInactive;
+                          return eff === 'pendente';
                         }
-
-                        if ((column.id as string) === 'inativo') {
-                          return isInactive;
+                        if (column.id === 'inativo') {
+                          return eff === 'inativo';
                         }
-
                         if (column.id === 'cancelado') {
-                          if (o.status === 'cancelado') return true;
-                          if (destinoInativosWhatsapp === 'cancelado' && isInactive) return true;
-                          return false;
+                          return eff === 'cancelado';
                         }
-
-                        return o.status === column.id;
+                        return eff === column.id;
                       });
                       const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
@@ -2867,13 +3043,14 @@ export default function AdminPedidosPage() {
                         order.canal_venda === 'provador' ||
                         order.numero_pedido?.startsWith('PROV-') ||
                         order.observacoes?.includes('Provador');
+                      const isFittingRoomActive = isFittingRoom && order.status !== 'cancelado';
 
                       return (
                         <div
                           key={order.id}
                           onClick={() => setDetailsModalOrder(order)}
                           className={`bg-white border rounded-xl p-3 shadow-2xs space-y-2 hover:shadow-md transition-all cursor-pointer select-none group ${
-                            isFittingRoom
+                            isFittingRoomActive
                               ? 'border-purple-300 ring-1 ring-purple-200/80 hover:border-purple-500'
                               : giftDetails.isGift
                               ? 'border-amber-300 ring-1 ring-amber-200 hover:border-amber-400'
@@ -2887,11 +3064,15 @@ export default function AdminPedidosPage() {
                               <span className="font-mono text-xs font-extrabold text-amber-800 group-hover:text-amber-950 transition-colors">
                                 #{order.numero_pedido}
                               </span>
-                              {isFittingRoom && (
+                              {isFittingRoomActive ? (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-black text-purple-900 bg-purple-100 border border-purple-300 px-1.5 py-0.5 rounded-full shadow-2xs">
-                                  👗 Provador
+                                  👗 Provador Ativo
                                 </span>
-                              )}
+                              ) : isFittingRoom ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                                  👗 Provador Devolvido
+                                </span>
+                              ) : null}
                               {giftDetails.isGift && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-full">
                                   <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente
@@ -2940,14 +3121,56 @@ export default function AdminPedidosPage() {
                             </div>
                           </div>
 
-                          {/* Tag de Inatividade Automática */}
-                          {autoDescartarInativosWhatsapp && isOrderInactive(order) && (
+                          {/* Tag de Inatividade Automática / Follow-up */}
+                          {getOrderEffectiveStatus(order) === 'inativo' && (
                             <div
                               onClick={(e) => e.stopPropagation()}
-                              className="p-1.5 rounded-lg border border-amber-200/80 bg-amber-50/70 text-[10px] text-amber-900 flex items-center gap-1 font-semibold"
+                              className="p-1.5 rounded-lg border border-purple-200 bg-purple-50 text-[10px] text-purple-950 flex items-center justify-between font-semibold"
                             >
-                              <Clock className="w-3 h-3 text-amber-600 shrink-0" />
-                              <span>Inativo (+{prazoInatividadeWhatsappDias}d no WhatsApp)</span>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-purple-600 shrink-0" />
+                                <span>Lead Parado (Follow-up)</span>
+                              </div>
+                              {cleanPhone && (
+                                <a
+                                  href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                    `Olá ${order.cliente_nome}! Vimos que você estava finalizando o pedido #${order.numero_pedido} na ${lojaNome}. Ficou alguma dúvida sobre as peças? Podemos te enviar um cupom especial ou separar seu pacote agora mesmo!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[9px] font-black text-purple-800 hover:text-purple-950 underline cursor-pointer"
+                                  title="Enviar mensagem de follow-up no WhatsApp para converter a venda"
+                                >
+                                  Chamar ↗
+                                </a>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Ações de Extensão Rápida do Provador */}
+                          {isFittingRoomActive && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 rounded-lg border border-purple-200 bg-purple-50/70 text-[10px] space-y-1"
+                            >
+                              <div className="flex items-center justify-between text-purple-900 font-bold">
+                                <span>Estender Provador:</span>
+                                <span className="text-[9px] font-normal text-purple-700">mantém bloqueado</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {[15, 30, 60].map((mins) => (
+                                  <button
+                                    key={mins}
+                                    type="button"
+                                    onClick={() => handleExtendProvadorReservation(order, mins)}
+                                    disabled={reservaActionLoading === order.id}
+                                    className="flex-1 py-1 rounded bg-white hover:bg-purple-100 text-purple-900 border border-purple-300 text-[9px] font-bold transition-colors cursor-pointer"
+                                    title={`Adicionar +${mins} minutos no provador mantendo as peças fora da vitrine`}
+                                  >
+                                    +{mins}m
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           )}
 
@@ -4303,6 +4526,196 @@ export default function AdminPedidosPage() {
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
               >
                 Voltar / Manter Como Está
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE GOVERNANÇA TEMPORAL: INATIVIDADE WHATSAPP & FUNIL DE NÃO FINALIZADOS (Nível 3: z-[70]) */}
+      {isGovernanceModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSavingGovernance) setIsGovernanceModalOpen(false);
+          }}
+          style={{ zIndex: 70 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Cabeçalho */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <SlidersHorizontal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Regras de Inatividade e Funil de Follow-up
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Controle de prazos e fluxo operacional para pedidos do WhatsApp
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsGovernanceModalOpen(false)}
+                disabled={isSavingGovernance}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Explicação Inicial */}
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                Autonomia Temporal do Lojista
+              </p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Configure com precisão em <b>minutos</b>, <b>horas</b> ou <b>dias</b> quando um pedido deve sair da fila ativa de <i>Aguardando WhatsApp</i> e entrar na coluna de <i>Não Finalizados (Follow-up)</i> para recuperação de vendas, sem ser descartado de imediato.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Seção 1: Inatividade WhatsApp -> Não Finalizados */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-900 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoDescartarInativosWhatsapp}
+                      onChange={(e) => setAutoDescartarInativosWhatsapp(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <span>Ativar detecção de inatividade no WhatsApp</span>
+                  </label>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    autoDescartarInativosWhatsapp ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {autoDescartarInativosWhatsapp ? 'Ativo' : 'Desativado'}
+                  </span>
+                </div>
+
+                {autoDescartarInativosWhatsapp && (
+                  <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                    <label className="text-[11px] font-semibold text-slate-700 block">
+                      Mover para &quot;Não Finalizados&quot; após ausência de resposta:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <input
+                          type="number"
+                          min={1}
+                          value={tempoInatividadeWhatsappValor}
+                          onChange={(e) => setTempoInatividadeWhatsappValor(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <select
+                          value={tempoInatividadeWhatsappUnidade}
+                          onChange={(e) => setTempoInatividadeWhatsappUnidade(e.target.value as 'minutos' | 'horas' | 'dias')}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                        >
+                          <option value="minutos">Minutos</option>
+                          <option value="horas">Horas</option>
+                          <option value="dias">Dias</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Pedidos com mais de {tempoInatividadeWhatsappValor} {tempoInatividadeWhatsappUnidade} sem fechamento irão para o estágio <b>Não Finalizados (Follow-up)</b> para o lojista oferecer desconto ou esclarecer dúvidas.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Seção 2: Cancelamento Definitivo após Follow-up */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-900 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoCancelarNaoFinalizados}
+                      onChange={(e) => setAutoCancelarNaoFinalizados(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <span>Auto-cancelar pedidos após período de follow-up</span>
+                  </label>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    autoCancelarNaoFinalizados ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {autoCancelarNaoFinalizados ? 'Ativo' : 'Manual'}
+                  </span>
+                </div>
+
+                {autoCancelarNaoFinalizados ? (
+                  <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                    <label className="text-[11px] font-semibold text-slate-700 block">
+                      Cancelar definitivamente após permanecer em Não Finalizados por:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <input
+                          type="number"
+                          min={1}
+                          value={prazoCancelamentoNaoFinalizadosValor}
+                          onChange={(e) => setPrazoCancelamentoNaoFinalizadosValor(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <select
+                          value={prazoCancelamentoNaoFinalizadosUnidade}
+                          onChange={(e) => setPrazoCancelamentoNaoFinalizadosUnidade(e.target.value as 'minutos' | 'horas' | 'dias')}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                        >
+                          <option value="minutos">Minutos</option>
+                          <option value="horas">Horas</option>
+                          <option value="dias">Dias</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Caso o lead não seja convertido após {prazoCancelamentoNaoFinalizadosValor} {prazoCancelamentoNaoFinalizadosUnidade}, ele será arquivado como <b>Cancelado</b> com histórico mantido.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500">
+                    Com o auto-cancelamento desativado, os leads permanecem na coluna <b>Não Finalizados</b> até que a equipe decida manualmente converter ou cancelar.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Rodapé com Botões de Ação */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsGovernanceModalOpen(false)}
+                disabled={isSavingGovernance}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveGovernanceRules}
+                disabled={isSavingGovernance}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs cursor-pointer transition-all disabled:opacity-50"
+              >
+                {isSavingGovernance ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Salvando Regras...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Salvar Configurações</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
