@@ -21,6 +21,7 @@ import {
   AdminProductItem,
   AdminCategoryFull,
   toggleProductPromotionalFlag,
+  bulkUpdatePromotionalFlags,
   bulkUpdateProductCategory
 } from '@/lib/admin';
 
@@ -29,6 +30,8 @@ interface AdminCollectionsManagerModalProps {
   onClose: () => void;
   products: AdminProductItem[];
   categoriesList: AdminCategoryFull[];
+  initialTab?: CollectionTab;
+  initialCategoryId?: string;
   tenantId?: string;
   onProductsUpdated?: (updated: AdminProductItem[]) => void;
   onUpdated?: () => void;
@@ -100,15 +103,20 @@ export function AdminCollectionsManagerModal({
   onClose,
   products,
   categoriesList,
+  initialTab,
+  initialCategoryId,
   tenantId,
   onProductsUpdated,
   onUpdated,
   onToast
 }: AdminCollectionsManagerModalProps) {
-  const [activeTab, setActiveTab] = useState<CollectionTab>('destaque');
+  const [activeTab, setActiveTab] = useState<CollectionTab>(initialTab || 'destaque');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
-  const [selectedCatId, setSelectedCatId] = useState<string>(categoriesList[0]?.id || '');
+  const [selectedCatId, setSelectedCatId] = useState<string>(
+    initialCategoryId || categoriesList[0]?.id || ''
+  );
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
 
   if (!isOpen) return null;
 
@@ -254,6 +262,65 @@ export function AdminCollectionsManagerModal({
     } finally {
       setIsProcessingId(null);
     }
+  };
+
+  // Ação em massa: remover todas as peças selecionadas da coleção ativa
+  const handleBulkRemoveProducts = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+
+    setIsProcessingId('bulk');
+    try {
+      if (activeTab === 'categorias') {
+        const res = await bulkUpdateProductCategory(ids, '');
+        if (res.success) {
+          const idSet = new Set(ids);
+          const updated = products.map((p) =>
+            idSet.has(p.id) ? { ...p, categoria_id: undefined, categoria_nome: undefined } : p
+          );
+          notifyUpdated(updated);
+          showToast(`${ids.length} peças desvinculadas da categoria com sucesso!`);
+          setSelectedProductIds(new Set());
+        } else {
+          showToast(res.error || 'Erro ao remover peças em lote.', 'error');
+        }
+      } else {
+        const flag = currentTabCfg.flag!;
+        const res = await bulkUpdatePromotionalFlags(ids, flag, false);
+        if (res.success) {
+          const idSet = new Set(ids);
+          const updated = products.map((p) =>
+            idSet.has(p.id) ? { ...p, [flag]: false } : p
+          );
+          notifyUpdated(updated);
+          showToast(`${ids.length} peças removidas de ${currentTabCfg.title}!`);
+          setSelectedProductIds(new Set());
+        } else {
+          showToast(res.error || 'Erro ao remover peças em lote.', 'error');
+        }
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsProcessingId(null);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedProductIds.size === currentCollectionProducts.length) {
+      setSelectedProductIds(new Set());
+    } else {
+      setSelectedProductIds(new Set(currentCollectionProducts.map((p) => p.id)));
+    }
+  };
+
+  const handleToggleSelectProduct = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -429,6 +496,41 @@ export function AdminCollectionsManagerModal({
           </div>
         </div>
 
+        {/* Barra de Seleção e Ações em Lote */}
+        {currentCollectionProducts.length > 0 && (
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 text-xs">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedProductIds.size > 0 && selectedProductIds.size === currentCollectionProducts.length}
+                onChange={handleToggleSelectAll}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+              />
+              <span>
+                {selectedProductIds.size > 0
+                  ? `${selectedProductIds.size} peça(s) selecionada(s)`
+                  : 'Selecionar todas as peças desta seção'}
+              </span>
+            </label>
+
+            {selectedProductIds.size > 0 && (
+              <button
+                type="button"
+                disabled={isProcessingId === 'bulk'}
+                onClick={handleBulkRemoveProducts}
+                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  {isProcessingId === 'bulk'
+                    ? 'Removendo em lote...'
+                    : `Remover ${selectedProductIds.size} selecionadas`}
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Lista de Peças Atuais na Coleção (com Scroll) */}
         <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-2.5">
           {currentCollectionProducts.length === 0 ? (
@@ -447,6 +549,16 @@ export function AdminCollectionsManagerModal({
                 key={product.id}
                 className="p-3 bg-white border border-slate-200 hover:border-slate-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs transition-all"
               >
+                {/* Checkbox de Seleção */}
+                <div className="flex items-center shrink-0 pr-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedProductIds.has(product.id)}
+                    onChange={() => handleToggleSelectProduct(product.id)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                </div>
+
                 {/* Lado Esquerdo: Miniatura da Foto e Informações */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="relative w-12 h-14 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200 shadow-2xs">

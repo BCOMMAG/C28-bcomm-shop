@@ -14,7 +14,7 @@ import { RecentlyViewedSection } from '@/components/RecentlyViewedSection';
 import { Footer } from '@/components/Footer';
 import { useStore } from '@/context/StoreContext';
 import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
-import { SecoesVitrineConfig } from '@/lib/admin';
+import { SecoesVitrineConfig, SecaoHomeItem, normalizarSecoesVitrine } from '@/lib/admin';
 import { Product } from '@/types';
 
 export function BoutiqueStorefront() {
@@ -66,39 +66,11 @@ export function BoutiqueStorefront() {
     });
   };
 
-  const secoesConfig = currentTenant?.configuracoes_visuais?.secoes_vitrine as SecoesVitrineConfig | undefined;
-
-  const getSectionStyle = (sectionKey: 'lancamentos' | 'maisVendidos' | 'outlet' | 'ultimasPecas' | 'todasAsPecas') => {
-    const isDark = theme === 'dark';
-    const isIndependente = Boolean(secoesConfig?.modoIndependente);
-    const sec = isIndependente ? secoesConfig?.[sectionKey] : secoesConfig?.global;
-
-    const bg = isDark
-      ? (sec?.bgDark || undefined)
-      : (sec?.bgLight || undefined);
-
-    const tituloCor = isDark
-      ? (sec?.tituloCorDark || '#FFFFFF')
-      : (sec?.tituloCorLight || '#FFFFFF');
-
-    const tituloFont = sec?.tituloFont || 'Playfair Display';
-
-    const subtituloCor = isDark
-      ? (sec?.subtituloCorDark || 'rgba(255,255,255,0.85)')
-      : (sec?.subtituloCorLight || 'rgba(255,255,255,0.85)');
-
-    return {
-      containerStyle: bg ? { backgroundColor: bg } : undefined,
-      tituloStyle: { color: tituloCor, fontFamily: tituloFont },
-      subtituloStyle: { color: subtituloCor }
-    };
-  };
-
-  const lancamentosStyle = getSectionStyle('lancamentos');
-  const maisVendidosStyle = getSectionStyle('maisVendidos');
-  const outletStyle = getSectionStyle('outlet');
-  const ultimasPecasStyle = getSectionStyle('ultimasPecas');
-  const todasAsPecasStyle = getSectionStyle('todasAsPecas');
+  const secoesConfig = useMemo(() => {
+    return normalizarSecoesVitrine(
+      currentTenant?.configuracoes_visuais?.secoes_vitrine as Partial<SecoesVitrineConfig> | undefined
+    );
+  }, [currentTenant?.configuracoes_visuais?.secoes_vitrine]);
 
   // Produtos organizados para cada vitrine temática da Home (reativos aos produtos dinâmicos do Supabase)
   const newReleasesProducts = useMemo(
@@ -126,71 +98,131 @@ export function BoutiqueStorefront() {
     [products]
   );
 
-  // Controle inteligente de exibição: ATIVO nas configurações da loja E com PRODUTOS disponíveis!
-  const showLancamentos = secoesConfig?.lancamentos?.ativo !== false && newReleasesProducts.length > 0;
-  const showMaisVendidos = secoesConfig?.maisVendidos?.ativo !== false && bestSellerProducts.length > 0;
-  const showOutlet = secoesConfig?.outlet?.ativo !== false && outletProducts.length > 0;
-  const showUltimasPecas = secoesConfig?.ultimasPecas?.ativo !== false && lastPiecesProducts.length > 0;
-  const showTodasAsPecas = secoesConfig?.todasAsPecas?.ativo !== false && products.length > 0;
+  // Lista dinâmica de seções ativas com produtos disponíveis e estilos resolvidos
+  const renderedSections = useMemo(() => {
+    const isDark = theme === 'dark';
+    const isIndependente = Boolean(secoesConfig.modoIndependente);
+    const globalCfg = secoesConfig.global;
 
-  // Lista ordenada das seções ativas e visíveis na tela
-  const activeSectionsList = useMemo(() => {
-    const list: { id: string; label: string }[] = [];
-    if (showLancamentos) list.push({ id: 'lancamentos', label: secoesConfig?.lancamentos?.titulo || 'Lançamentos' });
-    if (showMaisVendidos) list.push({ id: 'mais-vendidos', label: secoesConfig?.maisVendidos?.titulo || 'Mais Vendidos' });
-    if (showOutlet) list.push({ id: 'outlet', label: secoesConfig?.outlet?.titulo || 'OUTLET' });
-    if (showUltimasPecas) list.push({ id: 'ultimas-pecas', label: secoesConfig?.ultimasPecas?.titulo || 'Últimas Peças' });
-    if (showTodasAsPecas) list.push({ id: 'todas-as-pecas', label: secoesConfig?.todasAsPecas?.titulo || 'Todas as Peças' });
+    const resolveSectionProducts = (sec: SecaoHomeItem): Product[] => {
+      if (sec.tipo === 'nativa_lancamentos') return newReleasesProducts;
+      if (sec.tipo === 'nativa_mais_vendidos') return bestSellerProducts;
+      if (sec.tipo === 'nativa_outlet') return outletProducts;
+      if (sec.tipo === 'nativa_ultimas_pecas') return lastPiecesProducts;
+      if (sec.tipo === 'nativa_todas_pecas') return products;
+      if (sec.tipo === 'categoria' && sec.categoriaNome) {
+        const catNomeLower = sec.categoriaNome.toLowerCase();
+        return products.filter(
+          (p) =>
+            (p.category && p.category.toLowerCase() === catNomeLower) ||
+            (p.subcategory && p.subcategory.toLowerCase() === catNomeLower)
+        );
+      }
+      if (sec.tipo === 'custom_curadoria' && sec.produtoIds && sec.produtoIds.length > 0) {
+        const idSet = new Set(sec.produtoIds);
+        return products.filter((p) => idSet.has(p.id));
+      }
+      return [];
+    };
+
+    const resolveCatalogHref = (sec: SecaoHomeItem): string => {
+      if (sec.tipo === 'nativa_lancamentos') return '/catalogo?status=Lançamento';
+      if (sec.tipo === 'nativa_mais_vendidos') return '/catalogo?categoria=Mais%20Vendidos';
+      if (sec.tipo === 'nativa_outlet') return '/catalogo?categoria=OUTLET';
+      if (sec.tipo === 'nativa_ultimas_pecas') return '/catalogo?categoria=Últimas%20Peças';
+      if (sec.tipo === 'categoria' && sec.categoriaNome) {
+        return `/catalogo?categoria=${encodeURIComponent(sec.categoriaNome)}`;
+      }
+      return '/catalogo';
+    };
+
+    const list: Array<{
+      id: string;
+      tipo: string;
+      titulo: string;
+      subtitulo?: string;
+      products: Product[];
+      catalogHref: string;
+      style: {
+        containerStyle?: React.CSSProperties;
+        tituloStyle: React.CSSProperties;
+        subtituloStyle: React.CSSProperties;
+      };
+    }> = [];
+
+    const secoes = secoesConfig.secoesLista || [];
+    for (const sec of secoes) {
+      if (!sec.ativo) continue;
+      const secProducts = resolveSectionProducts(sec);
+      // Proteção anti-flash e anti-espaço-vazio: só renderiza se tiver produtos disponíveis
+      if (!secProducts || secProducts.length === 0) continue;
+
+      const bg = isDark
+        ? (sec.customizado || isIndependente ? sec.bgDark : globalCfg.bgDark) || undefined
+        : (sec.customizado || isIndependente ? sec.bgLight : globalCfg.bgLight) || undefined;
+
+      const tituloCor = isDark
+        ? (sec.customizado || isIndependente ? sec.tituloCorDark : globalCfg.tituloCorDark) || '#FFFFFF'
+        : (sec.customizado || isIndependente ? sec.tituloCorLight : globalCfg.tituloCorLight) || '#FFFFFF';
+
+      const tituloFont = (sec.customizado || isIndependente ? sec.tituloFont : globalCfg.tituloFont) || 'Playfair Display';
+
+      const subtituloCor = isDark
+        ? (sec.customizado || isIndependente ? sec.subtituloCorDark : globalCfg.subtituloCorDark) || 'rgba(255,255,255,0.85)'
+        : (sec.customizado || isIndependente ? sec.subtituloCorLight : globalCfg.subtituloCorLight) || 'rgba(255,255,255,0.85)';
+
+      list.push({
+        id: sec.id,
+        tipo: sec.tipo,
+        titulo: sec.titulo,
+        subtitulo: sec.subtitulo,
+        products: secProducts,
+        catalogHref: resolveCatalogHref(sec),
+        style: {
+          containerStyle: bg ? { backgroundColor: bg } : undefined,
+          tituloStyle: { color: tituloCor, fontFamily: tituloFont },
+          subtituloStyle: { color: subtituloCor }
+        }
+      });
+    }
+
     return list;
-  }, [showLancamentos, showMaisVendidos, showOutlet, showUltimasPecas, showTodasAsPecas, secoesConfig]);
+  }, [
+    secoesConfig,
+    theme,
+    newReleasesProducts,
+    bestSellerProducts,
+    outletProducts,
+    lastPiecesProducts,
+    products
+  ]);
 
   // Primeira seção visível para rolar ao clicar em "Conhecer Coleção" no Banner Hero
   const firstVisibleSectionId = useMemo(() => {
-    return activeSectionsList[0]?.id || 'todas-as-pecas';
-  }, [activeSectionsList]);
-
-  // Função para pegar a próxima seção após um determinado ID
-  const getNextSectionAfter = useCallback(
-    (currentId: string) => {
-      const idx = activeSectionsList.findIndex((s) => s.id === currentId);
-      if (idx !== -1 && idx < activeSectionsList.length - 1) {
-        return activeSectionsList[idx + 1];
-      }
-      return null;
-    },
-    [activeSectionsList]
-  );
+    return renderedSections[0]?.id || 'catalogo';
+  }, [renderedSections]);
 
   const handleCategorySelection = (category: string) => {
     setActiveCategory(category);
     if (category === 'Todos') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (category === 'Mais Vendidos') {
-      if (showMaisVendidos) {
-        scrollToSection('mais-vendidos');
-      } else {
-        router.push('/catalogo?categoria=Mais%20Vendidos');
-      }
-    } else if (category === 'OUTLET') {
-      if (showOutlet) {
-        scrollToSection('outlet');
-      } else {
-        router.push('/catalogo?categoria=OUTLET');
-      }
-    } else if (category === 'Últimas Peças') {
-      if (showUltimasPecas) {
-        scrollToSection('ultimas-pecas');
-      } else {
-        router.push('/catalogo?categoria=Últimas%20Peças');
-      }
+      return;
+    }
+
+    // Procura se existe uma seção na vitrine correspondente à categoria selecionada
+    const targetSection = renderedSections.find(
+      (s) =>
+        s.titulo.toLowerCase() === category.toLowerCase() ||
+        (s.tipo === 'nativa_mais_vendidos' && category === 'Mais Vendidos') ||
+        (s.tipo === 'nativa_outlet' && category === 'OUTLET') ||
+        (s.tipo === 'nativa_ultimas_pecas' && category === 'Últimas Peças') ||
+        (s.tipo === 'categoria' && s.titulo.toLowerCase().includes(category.toLowerCase()))
+    );
+
+    if (targetSection) {
+      scrollToSection(targetSection.id);
     } else {
-      if (showLancamentos) {
-        scrollToSection('lancamentos');
-      } else if (showTodasAsPecas) {
-        scrollToSection('todas-as-pecas');
-      } else {
-        router.push('/catalogo?status=Lançamento');
-      }
+      router.push(`/catalogo?categoria=${encodeURIComponent(category)}`);
     }
   };
 
@@ -241,51 +273,59 @@ export function BoutiqueStorefront() {
           </section>
         )}
 
-        {/* 1. SEÇÃO: LANÇAMENTOS */}
-        {showLancamentos && (() => {
-          const nextSec = getNextSectionAfter('lancamentos');
+        {/* RENDERIZAÇÃO DINÂMICA DAS SEÇÕES DA VITRINE CONFIGURADAS PELO LOJISTA */}
+        {renderedSections.map((sec, idx) => {
+          const nextSec = idx < renderedSections.length - 1 ? renderedSections[idx + 1] : null;
+          const isLast = idx === renderedSections.length - 1;
+
           return (
             <section
-              id="lancamentos"
-              style={lancamentosStyle.containerStyle}
+              key={sec.id}
+              id={sec.id}
+              style={sec.style.containerStyle}
               className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
             >
               <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
                 <div>
                   <h2
-                    style={lancamentosStyle.tituloStyle}
+                    style={sec.style.tituloStyle}
                     className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
                   >
-                    {secoesConfig?.lancamentos?.titulo || 'Lançamentos Exclusivos'}
+                    {sec.titulo}
                   </h2>
                 </div>
-                <p
-                  style={lancamentosStyle.subtituloStyle}
-                  className="text-xs max-w-sm hidden sm:block"
-                >
-                  {secoesConfig?.lancamentos?.subtitulo || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.'}
-                </p>
+                {sec.subtitulo && (
+                  <p
+                    style={sec.style.subtituloStyle}
+                    className="text-xs max-w-sm hidden sm:block"
+                  >
+                    {sec.subtitulo}
+                  </p>
+                )}
               </div>
 
-              {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
+              {/* Carrossel em looping automático com cards de produtos */}
               <ProductLoopCarousel
-                products={newReleasesProducts}
-                isNewReleasesSection={true}
+                products={sec.products}
+                isNewReleasesSection={sec.tipo === 'nativa_lancamentos'}
+                isBestSellerSection={sec.tipo === 'nativa_mais_vendidos'}
+                isOutletSection={sec.tipo === 'nativa_outlet'}
+                isLastPiecesSection={sec.tipo === 'nativa_ultimas_pecas'}
                 onOpenDetails={openProduct}
                 onQuickAdd={handleSafeQuickAdd}
                 isWishlisted={(id) => wishlistIds.includes(id)}
                 onToggleWishlist={toggleWishlist}
               />
 
-              {/* Botões de Ação da Seção Lançamentos */}
+              {/* Botões de Ação da Seção */}
               <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
                 <Link
-                  href="/catalogo?status=Lançamento"
+                  href={sec.catalogHref}
                   className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                  title="Ver Lançamentos no Catálogo"
+                  title={`Ver ${sec.titulo} no Catálogo`}
                 >
-                  <span className="hidden sm:inline">Ver Todos os Lançamentos no Catálogo</span>
-                  <span className="sm:hidden">Ver no Catálogo</span>
+                  <span className="hidden sm:inline">Ver no Catálogo</span>
+                  <span className="sm:hidden">Catálogo</span>
                   <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                 </Link>
 
@@ -294,10 +334,10 @@ export function BoutiqueStorefront() {
                     type="button"
                     onClick={() => scrollToSection(nextSec.id)}
                     className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title={`Ir para ${nextSec.label}`}
+                    title={`Ir para ${nextSec.titulo}`}
                   >
-                    <span className="hidden sm:inline">Ir para {nextSec.label}</span>
-                    <span className="sm:hidden">{nextSec.label}</span>
+                    <span className="hidden sm:inline">Próxima Seção: {nextSec.titulo}</span>
+                    <span className="sm:hidden">{nextSec.titulo}</span>
                     <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
                   </button>
                 ) : (
@@ -311,221 +351,8 @@ export function BoutiqueStorefront() {
                     <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-x-0.5 transition-transform shrink-0" />
                   </Link>
                 )}
-              </div>
-            </section>
-          );
-        })()}
 
-        {/* 2. SEÇÃO: MAIS VENDIDOS */}
-        {showMaisVendidos && (() => {
-          const nextSec = getNextSectionAfter('mais-vendidos');
-          return (
-            <section
-              id="mais-vendidos"
-              style={maisVendidosStyle.containerStyle}
-              className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
-                <div>
-                  <h2
-                    style={maisVendidosStyle.tituloStyle}
-                    className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
-                  >
-                    {secoesConfig?.maisVendidos?.titulo || 'Mais Vendidos'}
-                  </h2>
-                </div>
-                <p
-                  style={maisVendidosStyle.subtituloStyle}
-                  className="text-xs max-w-sm hidden sm:block"
-                >
-                  {secoesConfig?.maisVendidos?.subtitulo || 'As peças com maior procura na nossa boutique, reconhecidas pelo caimento impecável e acabamento nobre.'}
-                </p>
-              </div>
-
-              {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
-              <ProductLoopCarousel
-                products={bestSellerProducts}
-                isBestSellerSection={true}
-                onOpenDetails={openProduct}
-                onQuickAdd={handleSafeQuickAdd}
-                isWishlisted={(id) => wishlistIds.includes(id)}
-                onToggleWishlist={toggleWishlist}
-              />
-
-              {/* Botões de Ação da Seção Mais Vendidos */}
-              <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
-                <Link
-                  href="/catalogo?categoria=Mais%20Vendidos"
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                  title="Ver Mais Vendidos no Catálogo"
-                >
-                  <span className="hidden sm:inline">Ver Mais Produtos Mais Vendidos</span>
-                  <span className="sm:hidden">Ver no Catálogo</span>
-                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                </Link>
-
-                {nextSec ? (
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(nextSec.id)}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title={`Ir para ${nextSec.label}`}
-                  >
-                    <span className="hidden sm:inline">Próxima Seção: {nextSec.label}</span>
-                    <span className="sm:hidden">{nextSec.label}</span>
-                    <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
-                  </button>
-                ) : (
-                  <Link
-                    href="/catalogo"
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title="Explorar Todo o Catálogo"
-                  >
-                    <span className="hidden sm:inline">Explorar Catálogo Completo</span>
-                    <span className="sm:hidden">Catálogo</span>
-                    <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </Link>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 3. SEÇÃO: OUTLET */}
-        {showOutlet && (() => {
-          const nextSec = getNextSectionAfter('outlet');
-          return (
-            <section
-              id="outlet"
-              style={outletStyle.containerStyle}
-              className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
-                <div>
-                  <h2
-                    style={outletStyle.tituloStyle}
-                    className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
-                  >
-                    {secoesConfig?.outlet?.titulo || 'OUTLET & Peças Selecionadas'}
-                  </h2>
-                </div>
-                <p
-                  style={outletStyle.subtituloStyle}
-                  className="text-xs max-w-sm hidden sm:block"
-                >
-                  {secoesConfig?.outlet?.subtitulo || 'Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.'}
-                </p>
-              </div>
-
-              {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
-              <ProductLoopCarousel
-                products={outletProducts}
-                isOutletSection={true}
-                onOpenDetails={openProduct}
-                onQuickAdd={handleSafeQuickAdd}
-                isWishlisted={(id) => wishlistIds.includes(id)}
-                onToggleWishlist={toggleWishlist}
-              />
-
-              {/* Botões de Ação da Seção OUTLET */}
-              <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
-                <Link
-                  href="/catalogo?categoria=OUTLET"
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                  title="Ver Peças do OUTLET no Catálogo"
-                >
-                  <span className="hidden sm:inline">Ver Mais Peças do OUTLET</span>
-                  <span className="sm:hidden">Ver no Catálogo</span>
-                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                </Link>
-
-                {nextSec ? (
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(nextSec.id)}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title={`Ir para ${nextSec.label}`}
-                  >
-                    <span className="hidden sm:inline">Próxima Seção: {nextSec.label}</span>
-                    <span className="sm:hidden">{nextSec.label}</span>
-                    <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
-                  </button>
-                ) : (
-                  <Link
-                    href="/catalogo"
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title="Explorar Todo o Catálogo"
-                  >
-                    <span className="hidden sm:inline">Explorar Catálogo Completo</span>
-                    <span className="sm:hidden">Catálogo</span>
-                    <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </Link>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 4. SEÇÃO: ÚLTIMAS PEÇAS */}
-        {showUltimasPecas && (() => {
-          const nextSec = getNextSectionAfter('ultimas-pecas');
-          return (
-            <section
-              id="ultimas-pecas"
-              style={ultimasPecasStyle.containerStyle}
-              className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
-                <div>
-                  <h2
-                    style={ultimasPecasStyle.tituloStyle}
-                    className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
-                  >
-                    {secoesConfig?.ultimasPecas?.titulo || 'Últimas Peças'}
-                  </h2>
-                </div>
-                <p
-                  style={ultimasPecasStyle.subtituloStyle}
-                  className="text-xs max-w-sm hidden sm:block"
-                >
-                  {secoesConfig?.ultimasPecas?.subtitulo || 'Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.'}
-                </p>
-              </div>
-
-              {/* Carrossel em looping automático com 4 cards (pausa no hover/clique) */}
-              <ProductLoopCarousel
-                products={lastPiecesProducts}
-                isLastPiecesSection={true}
-                onOpenDetails={openProduct}
-                onQuickAdd={handleSafeQuickAdd}
-                isWishlisted={(id) => wishlistIds.includes(id)}
-                onToggleWishlist={toggleWishlist}
-              />
-
-              {/* Botões de Ação da Seção Últimas Peças */}
-              <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
-                <Link
-                  href="/catalogo?status=Últimas%20Peças"
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                  title="Explorar Peças Restantes no Catálogo"
-                >
-                  <span className="hidden sm:inline">Explorar Todas as Peças Restantes no Catálogo</span>
-                  <span className="sm:hidden">Ver no Catálogo</span>
-                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                </Link>
-
-                {nextSec ? (
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(nextSec.id)}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title={`Ir para ${nextSec.label}`}
-                  >
-                    <span className="hidden sm:inline">Próxima Seção: {nextSec.label}</span>
-                    <span className="sm:hidden">{nextSec.label}</span>
-                    <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
-                  </button>
-                ) : (
+                {isLast && (
                   <button
                     type="button"
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -540,66 +367,7 @@ export function BoutiqueStorefront() {
               </div>
             </section>
           );
-        })()}
-
-        {/* 5. SEÇÃO: TODAS AS PEÇAS (CATÁLOGO GERAL DA VITRINE) */}
-        {showTodasAsPecas && (
-          <section
-            id="todas-as-pecas"
-            style={todasAsPecasStyle.containerStyle}
-            className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
-              <div>
-                <h2
-                  style={todasAsPecasStyle.tituloStyle}
-                  className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
-                >
-                  {secoesConfig?.todasAsPecas?.titulo || 'Todas as Peças'}
-                </h2>
-              </div>
-              <p
-                style={todasAsPecasStyle.subtituloStyle}
-                className="text-xs max-w-sm hidden sm:block"
-              >
-                {secoesConfig?.todasAsPecas?.subtitulo || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.'}
-              </p>
-            </div>
-
-            {/* Carrossel em looping contínuo com 1 linha de 4 cards (pausa no hover/clique) */}
-            <ProductLoopCarousel
-              products={products}
-              onOpenDetails={openProduct}
-              onQuickAdd={handleSafeQuickAdd}
-              isWishlisted={(id) => wishlistIds.includes(id)}
-              onToggleWishlist={toggleWishlist}
-            />
-
-            {/* Botões de Ação da Seção Todas as Peças */}
-            <div className="mt-6 sm:mt-12 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
-              <Link
-                href="/catalogo"
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                title="Ver Catálogo Completo com Filtros"
-              >
-                <span className="hidden sm:inline">Explorar Catálogo com Filtros</span>
-                <span className="sm:hidden">Ver Catálogo</span>
-                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                title="Voltar ao Topo da Página"
-              >
-                <span className="hidden sm:inline">Voltar ao Topo</span>
-                <span className="sm:hidden">Voltar ao Topo</span>
-                <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform shrink-0" />
-              </button>
-            </div>
-          </section>
-        )}
+        })}
 
         {/* 5. SEÇÃO: VISTOS RECENTEMENTE (Histórico Pessoal do Cliente) */}
         <RecentlyViewedSection

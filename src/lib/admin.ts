@@ -3111,14 +3111,203 @@ export interface SecaoEstiloConfig {
   subtituloCorDark?: string;
 }
 
+export interface SecaoHomeItem {
+  id: string; // Ex: 'lancamentos', 'mais-vendidos', 'outlet', 'ultimas-pecas', 'todas-as-pecas', 'sec_cat_xxx', 'sec_custom_yyy'
+  tipo:
+    | 'nativa_lancamentos'
+    | 'nativa_mais_vendidos'
+    | 'nativa_outlet'
+    | 'nativa_ultimas_pecas'
+    | 'nativa_todas_pecas'
+    | 'categoria'
+    | 'custom_curadoria';
+  titulo: string;
+  subtitulo?: string;
+  ativo: boolean;
+  ordem: number;
+
+  // Específico para Categoria
+  categoriaId?: string;
+  categoriaNome?: string;
+
+  // Específico para Curadoria Manual
+  produtoIds?: string[];
+
+  // Estilização Individual Opcional (Modo Independente)
+  customizado?: boolean;
+  tituloFont?: string;
+  bgLight?: string;
+  bgDark?: string;
+  tituloCorLight?: string;
+  tituloCorDark?: string;
+  subtituloCorLight?: string;
+  subtituloCorDark?: string;
+}
+
 export interface SecoesVitrineConfig {
   modoIndependente: boolean;
   global: SecaoEstiloConfig;
+  secoesLista?: SecaoHomeItem[];
   lancamentos?: SecaoEstiloConfig;
   maisVendidos?: SecaoEstiloConfig;
   outlet?: SecaoEstiloConfig;
   ultimasPecas?: SecaoEstiloConfig;
   todasAsPecas?: SecaoEstiloConfig;
+}
+
+export const SECOES_VITRINE_PADRAO: SecaoHomeItem[] = [
+  {
+    id: 'lancamentos',
+    tipo: 'nativa_lancamentos',
+    titulo: 'Lançamentos Exclusivos',
+    subtitulo: 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.',
+    ativo: true,
+    ordem: 0
+  },
+  {
+    id: 'mais-vendidos',
+    tipo: 'nativa_mais_vendidos',
+    titulo: 'Mais Vendidos & Queridinhos',
+    subtitulo: 'As criações favoritas e mais desejadas pelas nossas clientes.',
+    ativo: true,
+    ordem: 1
+  },
+  {
+    id: 'outlet',
+    tipo: 'nativa_outlet',
+    titulo: 'Bazar & Oportunidades',
+    subtitulo: 'Peças selecionadas com condições especiais por tempo limitado.',
+    ativo: true,
+    ordem: 2
+  },
+  {
+    id: 'ultimas-pecas',
+    tipo: 'nativa_ultimas_pecas',
+    titulo: 'Últimas Peças',
+    subtitulo: 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.',
+    ativo: true,
+    ordem: 3
+  },
+  {
+    id: 'todas-as-pecas',
+    tipo: 'nativa_todas_pecas',
+    titulo: 'Todas as Peças',
+    subtitulo: 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.',
+    ativo: true,
+    ordem: 4
+  }
+];
+
+export function normalizarSecoesVitrine(cfg?: Partial<SecoesVitrineConfig>): SecoesVitrineConfig {
+  const modoIndependente = Boolean(cfg?.modoIndependente);
+  const global = cfg?.global || {
+    ativo: true,
+    tituloFont: 'Playfair Display',
+    tituloCorLight: '#FFFFFF',
+    tituloCorDark: '#FFFFFF',
+    subtituloCorLight: '#FAF8F5',
+    subtituloCorDark: '#FAF8F5'
+  };
+
+  let secoesLista = cfg?.secoesLista;
+  if (!secoesLista || !Array.isArray(secoesLista) || secoesLista.length === 0) {
+    // Sintetiza a partir dos campos legados preservando customizações anteriores
+    secoesLista = [
+      {
+        id: 'lancamentos',
+        tipo: 'nativa_lancamentos',
+        titulo: cfg?.lancamentos?.titulo || 'Lançamentos Exclusivos',
+        subtitulo: cfg?.lancamentos?.subtitulo || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.',
+        ativo: cfg?.lancamentos?.ativo !== false,
+        ordem: 0,
+        customizado: cfg?.lancamentos?.customizado,
+        tituloFont: cfg?.lancamentos?.tituloFont,
+        bgLight: cfg?.lancamentos?.bgLight,
+        bgDark: cfg?.lancamentos?.bgDark,
+        tituloCorLight: cfg?.lancamentos?.tituloCorLight,
+        tituloCorDark: cfg?.lancamentos?.tituloCorDark,
+        subtituloCorLight: cfg?.lancamentos?.subtituloCorLight,
+        subtituloCorDark: cfg?.lancamentos?.subtituloCorDark
+      },
+      {
+        id: 'mais-vendidos',
+        tipo: 'nativa_mais_vendidos',
+        titulo: cfg?.maisVendidos?.titulo || 'Mais Vendidos & Queridinhos',
+        subtitulo: cfg?.maisVendidos?.subtitulo || 'As criações favoritas e mais desejadas pelas nossas clientes.',
+        ativo: cfg?.maisVendidos?.ativo !== false,
+        ordem: 1,
+        customizado: cfg?.maisVendidos?.customizado,
+        tituloFont: cfg?.maisVendidos?.tituloFont,
+        bgLight: cfg?.maisVendidos?.bgLight,
+        bgDark: cfg?.maisVendidos?.bgDark,
+        tituloCorLight: cfg?.maisVendidos?.tituloCorLight,
+        tituloCorDark: cfg?.maisVendidos?.tituloCorDark,
+        subtituloCorLight: cfg?.maisVendidos?.subtituloCorLight,
+        subtituloCorDark: cfg?.maisVendidos?.subtituloCorDark
+      },
+      {
+        id: 'outlet',
+        tipo: 'nativa_outlet',
+        titulo: cfg?.outlet?.titulo || 'Bazar & Oportunidades',
+        subtitulo: cfg?.outlet?.subtitulo || 'Peças selecionadas com condições especiais por tempo limitado.',
+        ativo: cfg?.outlet?.ativo !== false,
+        ordem: 2,
+        customizado: cfg?.outlet?.customizado,
+        tituloFont: cfg?.outlet?.tituloFont,
+        bgLight: cfg?.outlet?.bgLight,
+        bgDark: cfg?.outlet?.bgDark,
+        tituloCorLight: cfg?.outlet?.tituloCorLight,
+        tituloCorDark: cfg?.outlet?.tituloCorDark,
+        subtituloCorLight: cfg?.outlet?.subtituloCorLight,
+        subtituloCorDark: cfg?.outlet?.subtituloCorDark
+      },
+      {
+        id: 'ultimas-pecas',
+        tipo: 'nativa_ultimas_pecas',
+        titulo: cfg?.ultimasPecas?.titulo || 'Últimas Peças',
+        subtitulo: cfg?.ultimasPecas?.subtitulo || 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.',
+        ativo: cfg?.ultimasPecas?.ativo !== false,
+        ordem: 3,
+        customizado: cfg?.ultimasPecas?.customizado,
+        tituloFont: cfg?.ultimasPecas?.tituloFont,
+        bgLight: cfg?.ultimasPecas?.bgLight,
+        bgDark: cfg?.ultimasPecas?.bgDark,
+        tituloCorLight: cfg?.ultimasPecas?.tituloCorLight,
+        tituloCorDark: cfg?.ultimasPecas?.tituloCorDark,
+        subtituloCorLight: cfg?.ultimasPecas?.subtituloCorLight,
+        subtituloCorDark: cfg?.ultimasPecas?.subtituloCorDark
+      },
+      {
+        id: 'todas-as-pecas',
+        tipo: 'nativa_todas_pecas',
+        titulo: cfg?.todasAsPecas?.titulo || 'Todas as Peças',
+        subtitulo: cfg?.todasAsPecas?.subtitulo || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.',
+        ativo: cfg?.todasAsPecas?.ativo !== false,
+        ordem: 4,
+        customizado: cfg?.todasAsPecas?.customizado,
+        tituloFont: cfg?.todasAsPecas?.tituloFont,
+        bgLight: cfg?.todasAsPecas?.bgLight,
+        bgDark: cfg?.todasAsPecas?.bgDark,
+        tituloCorLight: cfg?.todasAsPecas?.tituloCorLight,
+        tituloCorDark: cfg?.todasAsPecas?.tituloCorDark,
+        subtituloCorLight: cfg?.todasAsPecas?.subtituloCorLight,
+        subtituloCorDark: cfg?.todasAsPecas?.subtituloCorDark
+      }
+    ];
+  }
+
+  const listaOrdenada = [...secoesLista].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+  return {
+    modoIndependente,
+    global,
+    secoesLista: listaOrdenada,
+    lancamentos: cfg?.lancamentos,
+    maisVendidos: cfg?.maisVendidos,
+    outlet: cfg?.outlet,
+    ultimasPecas: cfg?.ultimasPecas,
+    todasAsPecas: cfg?.todasAsPecas
+  };
 }
 
 export interface CoresModoClaroEscuro {
@@ -3438,17 +3627,7 @@ export async function getStoreSettings(
         corHoverLight: '#C5A059',
         corHoverDark: '#DFBE76'
       },
-      secoesVitrine: vis.secoes_vitrine || {
-        modoIndependente: false,
-        global: {
-          ativo: true,
-          tituloFont: 'Playfair Display',
-          tituloCorLight: '#FFFFFF',
-          tituloCorDark: '#FFFFFF',
-          subtituloCorLight: '#FAF8F5',
-          subtituloCorDark: '#FAF8F5'
-        }
-      },
+      secoesVitrine: normalizarSecoesVitrine(vis.secoes_vitrine),
       coresGlobais: vis.cores_globais || {
         primaryLight: '#FAF8F5',
         primaryDark: '#121110',

@@ -36,9 +36,19 @@ import {
   Tag,
   Store,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  Edit2,
+  GripVertical,
+  Clock,
+  Flame,
+  FolderOpen,
+  X
 } from 'lucide-react';
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
+import { AdminCollectionsManagerModal } from '@/components/admin/products/AdminCollectionsManagerModal';
 import { useStore } from '@/context/StoreContext';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
@@ -46,11 +56,18 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import {
   getStoreSettings,
   saveStoreGeneralSettings,
+  getAdminProducts,
+  getAdminCategoriesFull,
+  AdminProductItem,
+  AdminCategoryFull,
   PlanoFundoMenuConfig,
   PlanoFundoSiteConfig,
   TipografiaMenuConfig,
   SecoesVitrineConfig,
-  SecaoEstiloConfig
+  SecaoEstiloConfig,
+  SecaoHomeItem,
+  SECOES_VITRINE_PADRAO,
+  normalizarSecoesVitrine
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 
@@ -187,6 +204,18 @@ export default function AppearanceSettingsPage() {
   const [exibirBadgesNaVitrine, setExibirBadgesNaVitrine] = useState(false);
   const [exibirSeloEscassezFoto, setExibirSeloEscassezFoto] = useState(false);
 
+  // Gestão Dinâmica de Seções da Home (Bloco 7)
+  const [secoesLista, setSecoesLista] = useState<SecaoHomeItem[]>(SECOES_VITRINE_PADRAO);
+  const [catalogProducts, setCatalogProducts] = useState<AdminProductItem[]>([]);
+  const [categoriesList, setCategoriesList] = useState<AdminCategoryFull[]>([]);
+  const [isAddSectionModalOpen, setIsAddSectionModalOpen] = useState(false);
+  const [newSectionType, setNewSectionType] = useState<'categoria' | 'custom_curadoria' | 'restaurar_nativa'>('categoria');
+  const [selectedNewCatId, setSelectedNewCatId] = useState('');
+  const [newSectionTitle, setNewSectionTitle] = useState('');
+  const [newSectionSubtitle, setNewSectionSubtitle] = useState('');
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [curatingSection, setCuratingSection] = useState<SecaoHomeItem | null>(null);
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -195,11 +224,38 @@ export default function AppearanceSettingsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const refreshCatalogData = async () => {
+    try {
+      const [prodsRes, catsRes] = await Promise.all([
+        getAdminProducts(tenantId),
+        getAdminCategoriesFull(tenantId)
+      ]);
+      setCatalogProducts(prodsRes);
+      setCategoriesList(catsRes);
+      if (catsRes.length > 0 && !selectedNewCatId) {
+        setSelectedNewCatId(catsRes[0].id);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar catálogo para aparência:', e);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await getStoreSettings(tenantId);
+        const [data, prodsRes, catsRes] = await Promise.all([
+          getStoreSettings(tenantId),
+          getAdminProducts(tenantId).catch(() => []),
+          getAdminCategoriesFull(tenantId).catch(() => [])
+        ]);
+
+        setCatalogProducts(prodsRes);
+        setCategoriesList(catsRes);
+        if (catsRes.length > 0) {
+          setSelectedNewCatId(catsRes[0].id);
+        }
+
         if (data) {
           if (data.logoUrl) setLogoUrl(data.logoUrl);
           if (data.logoDarkUrl) setLogoDarkUrl(data.logoDarkUrl);
@@ -236,6 +292,9 @@ export default function AppearanceSettingsPage() {
 
           if (data.secoesVitrine) {
             setSecoesModoIndependente(Boolean(data.secoesVitrine.modoIndependente));
+            if (data.secoesVitrine.secoesLista && data.secoesVitrine.secoesLista.length > 0) {
+              setSecoesLista(data.secoesVitrine.secoesLista);
+            }
             if (data.secoesVitrine.global) {
               setSecaoGlobalFont(data.secoesVitrine.global.tituloFont || 'Playfair Display');
               setSecaoGlobalBgLight(data.secoesVitrine.global.bgLight || '');
@@ -353,7 +412,8 @@ export default function AppearanceSettingsPage() {
       secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
       exibirQuantidadeEstoqueConsumidor,
       exibirBadgesNaVitrine,
-      exibirSeloEscassezFoto
+      exibirSeloEscassezFoto,
+      secoesLista
     });
   }, [
     logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
@@ -375,7 +435,8 @@ export default function AppearanceSettingsPage() {
     secaoTodasAsPecasSubtituloLight, secaoTodasAsPecasSubtituloDark,
     exibirQuantidadeEstoqueConsumidor,
     exibirBadgesNaVitrine,
-    exibirSeloEscassezFoto
+    exibirSeloEscassezFoto,
+    secoesLista
   ]);
 
   // Carrega o snapshot inicial assim que os dados terminam de carregar
@@ -485,6 +546,7 @@ export default function AppearanceSettingsPage() {
           subtituloCorLight: secaoGlobalSubtituloLight,
           subtituloCorDark: secaoGlobalSubtituloDark
         },
+        secoesLista,
         lancamentos: {
           ativo: secaoLancamentosAtivo,
           titulo: secaoLancamentosTitulo.trim() || 'Lançamentos Exclusivos',
@@ -586,6 +648,153 @@ export default function AppearanceSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await executeSave();
+  };
+
+  // --- MÉTODOS DA GESTÃO DE SEÇÕES DA VITRINE (BLOCO 7) ---
+  const getSectionProductCount = (sec: SecaoHomeItem): number => {
+    if (sec.tipo === 'nativa_lancamentos') {
+      return catalogProducts.filter((p) => Boolean(p.destaque) && !p.lixeira && !p.arquivado).length;
+    }
+    if (sec.tipo === 'nativa_mais_vendidos') {
+      return catalogProducts.filter((p) => Boolean(p.mais_vendido) && !p.lixeira && !p.arquivado).length;
+    }
+    if (sec.tipo === 'nativa_outlet') {
+      return catalogProducts.filter((p) => Boolean(p.outlet) && !p.lixeira && !p.arquivado).length;
+    }
+    if (sec.tipo === 'nativa_ultimas_pecas') {
+      return catalogProducts.filter(
+        (p) => (Boolean(p.ultimas_pecas) || (p.estoque_total > 0 && p.estoque_total <= 5)) && !p.lixeira && !p.arquivado
+      ).length;
+    }
+    if (sec.tipo === 'nativa_todas_pecas') {
+      return catalogProducts.filter((p) => !p.lixeira && !p.arquivado).length;
+    }
+    if (sec.tipo === 'categoria' && sec.categoriaId) {
+      return catalogProducts.filter((p) => p.categoria_id === sec.categoriaId && !p.lixeira && !p.arquivado).length;
+    }
+    if (sec.tipo === 'custom_curadoria' && sec.produtoIds) {
+      const idSet = new Set(sec.produtoIds);
+      return catalogProducts.filter((p) => idSet.has(p.id) && !p.lixeira && !p.arquivado).length;
+    }
+    return 0;
+  };
+
+  const handleMoveSectionUp = (index: number) => {
+    if (index <= 0) return;
+    setSecoesLista((prev) => {
+      const next = [...prev];
+      const temp = next[index - 1];
+      next[index - 1] = next[index];
+      next[index] = temp;
+      return next.map((s, idx) => ({ ...s, ordem: idx }));
+    });
+  };
+
+  const handleMoveSectionDown = (index: number) => {
+    if (index >= secoesLista.length - 1) return;
+    setSecoesLista((prev) => {
+      const next = [...prev];
+      const temp = next[index + 1];
+      next[index + 1] = next[index];
+      next[index] = temp;
+      return next.map((s, idx) => ({ ...s, ordem: idx }));
+    });
+  };
+
+  const handleToggleSectionActive = (id: string) => {
+    setSecoesLista((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ativo: !s.ativo } : s))
+    );
+  };
+
+  const handleDeleteSection = (id: string) => {
+    const sec = secoesLista.find((s) => s.id === id);
+    if (!sec) return;
+    const confirmMsg = sec.tipo.startsWith('nativa_')
+      ? `Deseja remover a seção "${sec.titulo}" da vitrine da Home? Você poderá restaurá-la a qualquer momento em "+ Nova Seção".`
+      : `Deseja realmente excluir a seção personalizada "${sec.titulo}" da Home? As peças continuarão normalmente no catálogo.`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setSecoesLista((prev) => prev.filter((s) => s.id !== id).map((s, idx) => ({ ...s, ordem: idx })));
+    if (editingSectionId === id) setEditingSectionId(null);
+    showToast(`Seção "${sec.titulo}" removida da vitrine.`);
+  };
+
+  const handleUpdateSectionField = (id: string, field: keyof SecaoHomeItem, value: any) => {
+    setSecoesLista((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+    );
+  };
+
+  const handleCreateNewSection = () => {
+    if (newSectionType === 'categoria') {
+      const cat = categoriesList.find((c) => c.id === selectedNewCatId);
+      if (!cat) {
+        showToast('Selecione uma categoria válida.', 'error');
+        return;
+      }
+      const existing = secoesLista.find((s) => s.categoriaId === cat.id);
+      if (existing) {
+        showToast(`A categoria "${cat.nome}" já possui uma vitrine configurada.`, 'error');
+        return;
+      }
+
+      const novaSecao: SecaoHomeItem = {
+        id: `sec_cat_${cat.id}`,
+        tipo: 'categoria',
+        titulo: newSectionTitle.trim() || cat.nome,
+        subtitulo: newSectionSubtitle.trim() || `Confira as peças exclusivas da categoria ${cat.nome}.`,
+        ativo: true,
+        ordem: secoesLista.length,
+        categoriaId: cat.id,
+        categoriaNome: cat.nome
+      };
+
+      setSecoesLista((prev) => [...prev, novaSecao]);
+      showToast(`Vitrine da categoria "${cat.nome}" adicionada à Home!`);
+    } else if (newSectionType === 'custom_curadoria') {
+      if (!newSectionTitle.trim()) {
+        showToast('Informe um título para a seção personalizada.', 'error');
+        return;
+      }
+      const novaSecao: SecaoHomeItem = {
+        id: `sec_custom_${Date.now()}`,
+        tipo: 'custom_curadoria',
+        titulo: newSectionTitle.trim(),
+        subtitulo: newSectionSubtitle.trim() || 'Seleção especial com modelos selecionados pela boutique.',
+        ativo: true,
+        ordem: secoesLista.length,
+        produtoIds: []
+      };
+
+      setSecoesLista((prev) => [...prev, novaSecao]);
+      showToast(`Nova seção "${newSectionTitle}" criada! Clique em "Gerenciar Peças" para compor os produtos.`);
+    }
+
+    // Reset modal
+    setIsAddSectionModalOpen(false);
+    setNewSectionTitle('');
+    setNewSectionSubtitle('');
+  };
+
+  const handleRestoreNativeSection = (nativaId: string) => {
+    const padrao = SECOES_VITRINE_PADRAO.find((s) => s.id === nativaId);
+    if (!padrao) return;
+
+    if (secoesLista.some((s) => s.id === nativaId)) {
+      showToast('Esta seção já está presente na sua vitrine.', 'error');
+      return;
+    }
+
+    const restaurada: SecaoHomeItem = {
+      ...padrao,
+      ordem: secoesLista.length
+    };
+
+    setSecoesLista((prev) => [...prev, restaurada]);
+    showToast(`Seção "${padrao.titulo}" restaurada com sucesso!`);
+    setIsAddSectionModalOpen(false);
   };
 
   useEffect(() => {
@@ -2326,354 +2535,266 @@ export default function AppearanceSettingsPage() {
     </div>
 
     {/* BLOCO 7: SEÇÕES DA PÁGINA INICIAL (VITRINE HOME) */}
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold shrink-0">
             <Layout className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 7. Seções da Página Inicial (Vitrine Home)
               </h2>
-              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                Vitrine Ativa
+              <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                {secoesLista.filter((s) => s.ativo).length} ativas / {secoesLista.length} no total
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Controle a visibilidade, títulos de cabeçalho e frases de efeito de cada uma das 5 seções da página inicial da sua boutique.
+              Personalize a ordem de exibição, visibilidade, títulos e gerencie diretamente as peças de cada vitrine.
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsAddSectionModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-2xs cursor-pointer shrink-0 self-start sm:self-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Nova Seção na Home</span>
+        </button>
       </div>
 
-      {/* Lista das 5 Seções Oficiais da Vitrine */}
-      <div className="space-y-4">
-        {/* 1. Lançamentos Exclusivos */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-xs">
-                1
-              </span>
-              <span className="font-bold text-slate-900 text-sm">
-                Lançamentos Exclusivos
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                #lancamentos
-              </span>
-            </div>
+      {/* Lista Compacta de Seções (Luxury Studio Density) */}
+      <div className="space-y-2">
+        {secoesLista.map((secao, index) => {
+          const count = getSectionProductCount(secao);
+          const isExpanded = editingSectionId === secao.id;
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSecaoLancamentosAtivo(!secaoLancamentosAtivo)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
-                  secaoLancamentosAtivo
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                )}
-              >
-                {secaoLancamentosAtivo ? (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Ativa na Vitrine</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Oculta na Home</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          let badgeIcon = <Sparkles className="w-3.5 h-3.5 text-amber-600" />;
+          let badgeLabel = '🌟 Lançamento';
+          let badgeClass = 'bg-amber-50 text-amber-900 border-amber-200';
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
-              <input
-                type="text"
-                value={secaoLancamentosTitulo}
-                onChange={(e) => setSecaoLancamentosTitulo(e.target.value)}
-                placeholder="Lançamentos Exclusivos"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
-              <input
-                type="text"
-                value={secaoLancamentosSubtitulo}
-                onChange={(e) => setSecaoLancamentosSubtitulo(e.target.value)}
-                placeholder="As últimas novidades que acabaram de chegar na boutique..."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+          if (secao.tipo === 'nativa_mais_vendidos') {
+            badgeIcon = <Flame className="w-3.5 h-3.5 text-purple-600" />;
+            badgeLabel = '🔥 Mais Vendido';
+            badgeClass = 'bg-purple-50 text-purple-900 border-purple-200';
+          } else if (secao.tipo === 'nativa_outlet') {
+            badgeIcon = <Tag className="w-3.5 h-3.5 text-rose-600" />;
+            badgeLabel = '🏷️ Outlet';
+            badgeClass = 'bg-rose-50 text-rose-900 border-rose-200';
+          } else if (secao.tipo === 'nativa_ultimas_pecas') {
+            badgeIcon = <Clock className="w-3.5 h-3.5 text-orange-600" />;
+            badgeLabel = '⏳ Últimas Peças';
+            badgeClass = 'bg-orange-50 text-orange-900 border-orange-200';
+          } else if (secao.tipo === 'nativa_todas_pecas') {
+            badgeIcon = <Layers className="w-3.5 h-3.5 text-slate-600" />;
+            badgeLabel = '📁 Catálogo Geral';
+            badgeClass = 'bg-slate-100 text-slate-800 border-slate-200';
+          } else if (secao.tipo === 'categoria') {
+            badgeIcon = <FolderOpen className="w-3.5 h-3.5 text-sky-600" />;
+            badgeLabel = `📁 Categoria: ${secao.categoriaNome || 'Geral'}`;
+            badgeClass = 'bg-sky-50 text-sky-900 border-sky-200';
+          } else if (secao.tipo === 'custom_curadoria') {
+            badgeIcon = <Sparkles className="w-3.5 h-3.5 text-amber-600" />;
+            badgeLabel = '✨ Curadoria Especial';
+            badgeClass = 'bg-amber-100/60 text-amber-950 border-amber-300';
+          }
 
-        {/* 2. Mais Vendidos & Queridinhos */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-900 font-bold flex items-center justify-center text-xs">
-                2
-              </span>
-              <span className="font-bold text-slate-900 text-sm">
-                Mais Vendidos & Queridinhos
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                #mais-vendidos
-              </span>
-            </div>
+          return (
+            <div
+              key={secao.id}
+              className={cn(
+                'border rounded-xl transition-all duration-150',
+                secao.ativo
+                  ? 'border-slate-200 bg-white hover:border-slate-300'
+                  : 'border-slate-200/60 bg-slate-50/60 opacity-75'
+              )}
+            >
+              {/* Linha Principal da Seção (Horizontal Compacta ~52px) */}
+              <div className="p-3 sm:px-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Lado Esquerdo: Controles de Posição, Ícone e Título */}
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* Botões de Subir / Descer Ordem */}
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={() => handleMoveSectionUp(index)}
+                      className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                      title="Mover para cima na vitrine"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === secoesLista.length - 1}
+                      onClick={() => handleMoveSectionDown(index)}
+                      className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                      title="Mover para baixo na vitrine"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                  </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSecaoMaisVendidosAtivo(!secaoMaisVendidosAtivo)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
-                  secaoMaisVendidosAtivo
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                )}
-              >
-                {secaoMaisVendidosAtivo ? (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Ativa na Vitrine</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Oculta na Home</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+                  <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
+                    {index + 1}
+                  </span>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
-              <input
-                type="text"
-                value={secaoMaisVendidosTitulo}
-                onChange={(e) => setSecaoMaisVendidosTitulo(e.target.value)}
-                placeholder="Mais Vendidos & Queridinhos"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
-              <input
-                type="text"
-                value={secaoMaisVendidosSubtitulo}
-                onChange={(e) => setSecaoMaisVendidosSubtitulo(e.target.value)}
-                placeholder="As criações favoritas e mais desejadas pelas nossas clientes."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                        {secao.titulo}
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                          badgeClass
+                        )}
+                      >
+                        {badgeIcon}
+                        <span>{badgeLabel}</span>
+                      </span>
+                    </div>
+                    {secao.subtitulo && (
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5 hidden sm:block">
+                        {secao.subtitulo}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-        {/* 3. Bazar & Oportunidades (Outlet) */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-900 font-bold flex items-center justify-center text-xs">
-                3
-              </span>
-              <span className="font-bold text-slate-900 text-sm">
-                Bazar & Oportunidades (Outlet)
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                #outlet
-              </span>
-            </div>
+                {/* Lado Direito: Contagem de Peças, Ações e Toggle */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between md:justify-end shrink-0">
+                  {/* Badge de Contagem de Peças em Tempo Real */}
+                  <span
+                    className={cn(
+                      'text-[11px] px-2.5 py-1 rounded-lg font-mono font-semibold flex items-center gap-1',
+                      count > 0
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'bg-amber-50 text-amber-800 border border-amber-200'
+                    )}
+                    title={
+                      count === 0
+                        ? 'Atenção: como esta seção possui 0 peças qualificadas em estoque, a vitrine da Home oculta a seção automaticamente para evitar espaços em branco.'
+                        : `${count} peças prontas para exibição nesta vitrine`
+                    }
+                  >
+                    <span>{count} peça(s)</span>
+                    {count === 0 && <span className="text-[10px] font-sans font-bold text-amber-700 hidden sm:inline">(Oculta)</span>}
+                  </span>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSecaoOutletAtivo(!secaoOutletAtivo)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
-                  secaoOutletAtivo
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                )}
-              >
-                {secaoOutletAtivo ? (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Ativa na Vitrine</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Oculta na Home</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+                  {/* Botão Gerenciar Peças da Seção */}
+                  <button
+                    type="button"
+                    onClick={() => setCuratingSection(secao)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Adicionar ou remover peças desta seção com 1 clique"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Gerenciar Peças</span>
+                  </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
-              <input
-                type="text"
-                value={secaoOutletTitulo}
-                onChange={(e) => setSecaoOutletTitulo(e.target.value)}
-                placeholder="Bazar & Oportunidades"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
-              <input
-                type="text"
-                value={secaoOutletSubtitulo}
-                onChange={(e) => setSecaoOutletSubtitulo(e.target.value)}
-                placeholder="Peças selecionadas com condições especiais por tempo limitado."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+                  {/* Botão Editar Textos & Visual Inline */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingSectionId(isExpanded ? null : secao.id)}
+                    className={cn(
+                      'p-1.5 rounded-lg text-xs transition-colors cursor-pointer border',
+                      isExpanded
+                        ? 'bg-slate-900 text-amber-400 border-slate-900'
+                        : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
+                    )}
+                    title={isExpanded ? 'Fechar edição' : 'Editar título e subtítulo'}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
 
-        {/* 4. Últimas Peças */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-900 font-bold flex items-center justify-center text-xs">
-                4
-              </span>
-              <span className="font-bold text-slate-900 text-sm">
-                Últimas Peças
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                #ultimas-pecas
-              </span>
-            </div>
+                  {/* Switch Ativa / Oculta */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSectionActive(secao.id)}
+                    className={cn(
+                      'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                      secao.ativo
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                    )}
+                    title={secao.ativo ? 'Clique para ocultar da Home' : 'Clique para exibir na Home'}
+                  >
+                    {secao.ativo ? (
+                      <>
+                        <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="hidden sm:inline">Ativa</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="hidden sm:inline">Oculta</span>
+                      </>
+                    )}
+                  </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSecaoUltimasPecasAtivo(!secaoUltimasPecasAtivo)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
-                  secaoUltimasPecasAtivo
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                )}
-              >
-                {secaoUltimasPecasAtivo ? (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Ativa na Vitrine</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Oculta na Home</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+                  {/* Botão Excluir */}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSection(secao.id)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="Remover seção da vitrine da Home"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
-              <input
-                type="text"
-                value={secaoUltimasPecasTitulo}
-                onChange={(e) => setSecaoUltimasPecasTitulo(e.target.value)}
-                placeholder="Últimas Peças"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
-              <input
-                type="text"
-                value={secaoUltimasPecasSubtitulo}
-                onChange={(e) => setSecaoUltimasPecasSubtitulo(e.target.value)}
-                placeholder="Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+              {/* Gaveta de Edição de Textos e Cores (Inline Expansível) */}
+              {isExpanded && (
+                <div className="p-4 bg-slate-50/80 border-t border-slate-200 rounded-b-xl space-y-3 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Título Exibido na Vitrine:
+                      </label>
+                      <input
+                        type="text"
+                        value={secao.titulo}
+                        onChange={(e) => handleUpdateSectionField(secao.id, 'titulo', e.target.value)}
+                        placeholder="Ex: Lançamentos Exclusivos"
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Subtítulo / Descrição de Apoio:
+                      </label>
+                      <input
+                        type="text"
+                        value={secao.subtitulo || ''}
+                        onChange={(e) => handleUpdateSectionField(secao.id, 'subtitulo', e.target.value)}
+                        placeholder="Ex: As últimas novidades que acabaram de chegar..."
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900"
+                      />
+                    </div>
+                  </div>
 
-        {/* 5. Todas as Peças (Carrossel Contínuo da Home) */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-900 font-bold flex items-center justify-center text-xs">
-                5
-              </span>
-              <span className="font-bold text-slate-900 text-sm">
-                Todas as Peças (Carrossel Contínuo)
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                #todas-as-pecas
-              </span>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-slate-500">
+                      ID interno da seção: <code className="font-mono text-slate-700">#{secao.id}</code>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSectionId(null)}
+                      className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      Fechar Edição
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSecaoTodasAsPecasAtivo(!secaoTodasAsPecasAtivo)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
-                  secaoTodasAsPecasAtivo
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                )}
-              >
-                {secaoTodasAsPecasAtivo ? (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Ativa na Vitrine</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Oculta na Home</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
-              <input
-                type="text"
-                value={secaoTodasAsPecasTitulo}
-                onChange={(e) => setSecaoTodasAsPecasTitulo(e.target.value)}
-                placeholder="Todas as Peças"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
-              <input
-                type="text"
-                value={secaoTodasAsPecasSubtitulo}
-                onChange={(e) => setSecaoTodasAsPecasSubtitulo(e.target.value)}
-                placeholder="Conheça todas as criações e modelos exclusivos disponíveis na boutique."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>
 
@@ -2908,6 +3029,252 @@ export default function AppearanceSettingsPage() {
         onUpdated={() => {
           refreshProducts();
         }}
+      />
+    )}
+
+    {/* MODAL PARA ADICIONAR NOVA SEÇÃO NA HOME */}
+    {isAddSectionModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
+                <Plus className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                Adicionar Seção na Página Inicial
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddSectionModalOpen(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Abas do Tipo de Seção */}
+          <div className="flex rounded-xl bg-slate-100 p-1 gap-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setNewSectionType('categoria')}
+              className={cn(
+                'flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer text-center',
+                newSectionType === 'categoria'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Por Categoria
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewSectionType('custom_curadoria')}
+              className={cn(
+                'flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer text-center',
+                newSectionType === 'custom_curadoria'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Curadoria Manual
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewSectionType('restaurar_nativa')}
+              className={cn(
+                'flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer text-center',
+                newSectionType === 'restaurar_nativa'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Restaurar Seção
+            </button>
+          </div>
+
+          {/* Conteúdo da Modalidade 1: Por Categoria */}
+          {newSectionType === 'categoria' && (
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Selecione a Categoria da Loja:
+                </label>
+                <select
+                  value={selectedNewCatId}
+                  onChange={(e) => {
+                    setSelectedNewCatId(e.target.value);
+                    const cat = categoriesList.find((c) => c.id === e.target.value);
+                    if (cat && !newSectionTitle) {
+                      setNewSectionTitle(cat.nome);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-medium"
+                >
+                  {categoriesList.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nome} ({catalogProducts.filter((p) => p.categoria_id === cat.id).length} peças)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Título da Seção na Vitrine:
+                </label>
+                <input
+                  type="text"
+                  value={newSectionTitle}
+                  onChange={(e) => setNewSectionTitle(e.target.value)}
+                  placeholder="Ex: Vestidos & Macacões Nobres"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Subtítulo / Descrição de Apoio:
+                </label>
+                <input
+                  type="text"
+                  value={newSectionSubtitle}
+                  onChange={(e) => setNewSectionSubtitle(e.target.value)}
+                  placeholder="Ex: As peças com maior elegância e caimento impecável..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Conteúdo da Modalidade 2: Curadoria Manual */}
+          {newSectionType === 'custom_curadoria' && (
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Título da Coleção / Vitrine:
+                </label>
+                <input
+                  type="text"
+                  value={newSectionTitle}
+                  onChange={(e) => setNewSectionTitle(e.target.value)}
+                  placeholder="Ex: Coleção Réveillon 2026"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Subtítulo / Frase de Efeito:
+                </label>
+                <input
+                  type="text"
+                  value={newSectionSubtitle}
+                  onChange={(e) => setNewSectionSubtitle(e.target.value)}
+                  placeholder="Ex: Seleção especial de peças para comemorar os melhores momentos..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px]">
+                💡 <strong>Dica:</strong> Após criar esta seção, utilize o botão <strong>"Gerenciar Peças"</strong> na lista para selecionar exatamente quais modelos farão parte dela.
+              </div>
+            </div>
+          )}
+
+          {/* Conteúdo da Modalidade 3: Restaurar Seção Nativa */}
+          {newSectionType === 'restaurar_nativa' && (
+            <div className="space-y-2.5 text-xs">
+              <p className="text-slate-500 text-[11px]">
+                Se você excluiu alguma das seções comerciais padrão da vitrine, clique para restaurá-la:
+              </p>
+
+              {SECOES_VITRINE_PADRAO.filter((p) => !secoesLista.some((s) => s.id === p.id)).length === 0 ? (
+                <div className="p-4 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
+                  Todas as seções padrão já estão presentes na sua vitrine.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {SECOES_VITRINE_PADRAO.filter((p) => !secoesLista.some((s) => s.id === p.id)).map((padrao) => (
+                    <div
+                      key={padrao.id}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-900 block">{padrao.titulo}</span>
+                        <span className="text-[11px] text-slate-500 block">{padrao.subtitulo}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreNativeSection(padrao.id)}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
+                      >
+                        Restaurar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Botões do Rodapé do Modal */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsAddSectionModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            {newSectionType !== 'restaurar_nativa' && (
+              <button
+                type="button"
+                onClick={handleCreateNewSection}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-all shadow-2xs cursor-pointer"
+              >
+                Adicionar à Vitrine
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* MODAL DE CURADORIA DE PEÇAS DA SEÇÃO */}
+    {curatingSection && (
+      <AdminCollectionsManagerModal
+        isOpen={Boolean(curatingSection)}
+        onClose={() => setCuratingSection(null)}
+        products={catalogProducts}
+        categoriesList={categoriesList}
+        tenantId={tenantId}
+        initialTab={
+          curatingSection.tipo === 'nativa_lancamentos'
+            ? 'destaque'
+            : curatingSection.tipo === 'nativa_mais_vendidos'
+            ? 'mais_vendido'
+            : curatingSection.tipo === 'nativa_outlet'
+            ? 'outlet'
+            : curatingSection.tipo === 'nativa_ultimas_pecas'
+            ? 'ultimas_pecas'
+            : curatingSection.tipo === 'categoria'
+            ? 'categorias'
+            : 'destaque'
+        }
+        initialCategoryId={curatingSection.categoriaId}
+        onProductsUpdated={(updated) => {
+          setCatalogProducts(updated);
+        }}
+        onUpdated={async () => {
+          await refreshCatalogData();
+          try {
+            await refreshProducts();
+          } catch { }
+          showToast(`Peças da seção "${curatingSection.titulo}" atualizadas com sucesso!`);
+        }}
+        onToast={showToast}
       />
     )}
   </form>
