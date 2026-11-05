@@ -226,10 +226,10 @@ export function mapDbProductToProduct(dbProd: any): Product {
     ? variations.reduce((acc, v) => acc + v.stock, 0)
     : Number(dbProd.estoque_total || 0);
 
-  // Escassez real: uma peça só é "últimas peças" se o estoque físico disponível for entre 1 e 5 unidades
+  // Escassez real: uma peça só é "últimas peças" se o lojista ativou a flag e o estoque físico for entre 1 e 5 unidades
   const isCriticalStock = computedTotalStock > 0 && computedTotalStock <= 5;
-  const isLastPieces = Boolean(dbProd.ultimas_pecas) ? isCriticalStock : isCriticalStock;
-  const remainingPieces = isCriticalStock ? computedTotalStock : undefined;
+  const isLastPieces = Boolean(dbProd.ultimas_pecas) && isCriticalStock;
+  const remainingPieces = isLastPieces ? computedTotalStock : undefined;
 
   // Extrai badges comerciais personalizados adicionados explicitamente na peça
   const customBadgesList: string[] = [];

@@ -328,10 +328,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }
           }
 
-          // 3. Seção "Últimas Peças" / Estoque Crítico (somente produtos sem desconto promocional)
+          // 3. Seção "Últimas Peças" / Estoque Crítico (somente quando na seção de últimas peças ou quando o lojista marcou a flag)
           const isRealCriticalStock = (product.totalStock ?? 0) > 0 && (product.totalStock ?? 0) <= 5;
           const ultimasPecasCfg = getBadgeConfig('ultimas_pecas');
-          if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces || (product.remainingPieces && product.remainingPieces <= 5))) {
+          if (isRealCriticalStock && (isLastPiecesSection || product.isLastPieces)) {
             const count = product.remainingPieces || product.totalStock || 5;
             let label = 'Últimas peças';
             if (showStockQty) {
@@ -595,9 +595,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               )}
             </div>
 
-            {/* Indicador sutil de estoque baixo (restam 1 a 5 peças) */}
-            {((product.remainingPieces && product.remainingPieces > 0 && product.remainingPieces <= 5) ||
-              (product.totalStock && product.totalStock > 0 && product.totalStock <= 5)) && !isOutOfStock && !isAllReserved && (
+            {/* Indicador sutil de estoque baixo (somente se habilitado pelo lojista ou na seção de últimas peças) */}
+            {(product.isLastPieces || isLastPiecesSection) &&
+              product.totalStock && product.totalStock > 0 && product.totalStock <= 5 && !isOutOfStock && !isAllReserved && (
               <span className="text-[9px] font-semibold text-[#8B5A2B] dark:text-[#DFBE76] bg-[#8B5A2B]/10 dark:bg-[#DFBE76]/10 px-1.5 py-0.5 rounded-none whitespace-nowrap shrink-0 mt-0.5">
                 Restam {product.remainingPieces || product.totalStock}
               </span>
