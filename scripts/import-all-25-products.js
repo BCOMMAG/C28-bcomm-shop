@@ -776,7 +776,13 @@ async function run() {
   for (const item of PRODUCTS_DATA) {
     console.log(`\n📦 Processando ${item.folder}: "${item.nome}"...`);
     const targetProductDir = path.join(publicBaseDir, item.slug);
-    if (!fs.existsSync(targetProductDir)) {
+    if (fs.existsSync(targetProductDir)) {
+      // Limpar arquivos antigos para não deixar resíduos pesados (.jpg ou .mp4 antigos)
+      const existingFiles = fs.readdirSync(targetProductDir);
+      for (const ef of existingFiles) {
+        fs.unlinkSync(path.join(targetProductDir, ef));
+      }
+    } else {
       fs.mkdirSync(targetProductDir, { recursive: true });
     }
 
@@ -790,21 +796,16 @@ async function run() {
     for (const cor of item.cores) {
       fotosPorCor[cor.nome] = [];
       let corIndex = 1;
+      const cleanCorSlug = cor.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
       for (const arq of cor.arquivos) {
-        const ext = path.extname(arq).toLowerCase();
         const srcFile = path.join(folderSrc, arq);
-        const destFileName = `${cor.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${corIndex}.jpg`;
+        const destFileName = `${cleanCorSlug}-${corIndex}.webp`;
         const destPath = path.join(targetProductDir, destFileName);
         const publicUrl = `/products/${item.slug}/${destFileName}`;
 
-        if (!fs.existsSync(destPath)) {
-          if (ext === '.heic') {
-            execSync(`"${ffmpegPath}" -y -i "${srcFile}" -vframes 1 -q:v 2 "${destPath}"`, { stdio: 'ignore' });
-          } else {
-            fs.copyFileSync(srcFile, destPath);
-          }
-        }
+        // Converte diretamente para WebP 82% com downscale máximo de 1200px
+        execSync(`"${ffmpegPath}" -y -i "${srcFile}" -vf "scale='min(1200,iw)':-2" -c:v libwebp -quality 82 "${destPath}"`, { stdio: 'ignore' });
 
         if (!fotoPrincipalUrl) fotoPrincipalUrl = publicUrl;
         fotosPorCor[cor.nome].push(publicUrl);
@@ -824,13 +825,12 @@ async function run() {
         let vIndex = 1;
         for (const vid of cor.videos) {
           const srcVid = path.join(folderSrc, vid);
-          const destVidName = `video-${cor.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${vIndex}.mp4`;
+          const destVidName = `video-${cleanCorSlug}-${vIndex}.mp4`;
           const destVidPath = path.join(targetProductDir, destVidName);
           const publicVidUrl = `/products/${item.slug}/${destVidName}`;
 
-          if (!fs.existsSync(destVidPath)) {
-            execSync(`"${ffmpegPath}" -y -i "${srcVid}" -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart "${destVidPath}"`, { stdio: 'ignore' });
-          }
+          console.log(`      🎬 Otimizando vídeo para web mobile (30fps / 720p): ${destVidName}...`);
+          execSync(`"${ffmpegPath}" -y -i "${srcVid}" -vf "scale=-2:1280" -r 30 -c:v libx264 -crf 28 -preset fast -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart "${destVidPath}"`, { stdio: 'ignore' });
 
           mediaEntries.push({
             tipo: 'video',
@@ -924,7 +924,8 @@ async function run() {
 
     // Inserir variações de cor (5 unidades por cor)
     for (const cor of item.cores) {
-      const sku = `${item.slug}-${cor.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}-unico`;
+      const cleanCorSlug = cor.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const sku = `${item.slug}-${cleanCorSlug}-unico`;
       const imagemCor = fotosPorCor[cor.nome] ? fotosPorCor[cor.nome][0] : fotoPrincipalUrl;
 
       await client.query(`
