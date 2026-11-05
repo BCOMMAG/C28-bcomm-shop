@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Product, CartItem } from '@/types';
-import { PRODUCTS } from '@/data/products';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja, BarraAvisoEstilo } from '@/types/database';
@@ -152,8 +151,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     return DEFAULT_LEIDY_TENANT;
   });
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
-  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
+  // Inicialização instantânea dos produtos reais via cache local (SWR) para eliminar o "Flash of Mock" no F5
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        const firstSegment = pathSegments[0] || 'leidy-boutique';
+        const canonical = getCanonicalDbSlug(firstSegment);
+        const cached =
+          localStorage.getItem(`bcomm_products_${canonical}`) ||
+          localStorage.getItem(`bcomm_products_${firstSegment}`) ||
+          localStorage.getItem('bcomm_products_last');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -347,8 +366,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         getStoreProducts(tenant.id),
         getAdminHeroBanners(tenant.id)
       ]);
-      if (dynamicProds) {
+      if (dynamicProds && dynamicProds.length > 0) {
         setProducts(dynamicProds);
+        if (typeof window !== 'undefined') {
+          try {
+            const canonical = getCanonicalDbSlug(tenant.slug);
+            localStorage.setItem(`bcomm_products_${canonical}`, JSON.stringify(dynamicProds));
+            localStorage.setItem(`bcomm_products_${tenant.slug}`, JSON.stringify(dynamicProds));
+            localStorage.setItem('bcomm_products_last', JSON.stringify(dynamicProds));
+          } catch {}
+        }
+      } else if (dynamicProds && dynamicProds.length === 0) {
+        setProducts([]);
       }
       if (heroBanners && heroBanners.length > 0) {
         const activeList = heroBanners.filter((b) => b.ativo);
@@ -574,7 +603,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [currentTenant?.id]);
 
   const getProductById = (id: string) => {
-    return products.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id);
+    return products.find((p) => p.id === id);
   };
 
   const openSideDrawer = () => setIsSideDrawerOpen(true);
@@ -771,7 +800,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Avaliação detalhada de disponibilidade de uma combinação específica (Produto + Cor + Tamanho)
   const getVariationAvailability = useCallback(
     (productId: string, color: string, size: string): VariationAvailability => {
-      const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+      const prod = products.find((p) => p.id === productId);
       if (!prod) {
         return {
           status: 'disponivel',
@@ -849,7 +878,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Avaliação do status agregado de uma Cor (analisando todos os tamanhos daquela cor)
   const getColorAvailability = useCallback(
     (productId: string, colorName: string): 'disponivel' | 'em_reserva' | 'esgotado' => {
-      const prod = products.find((p) => p.id === productId) || PRODUCTS.find((p) => p.id === productId);
+      const prod = products.find((p) => p.id === productId);
       if (!prod) return 'disponivel';
 
       const sizes = prod.sizes && prod.sizes.length > 0 ? prod.sizes : ['Tamanho Único'];

@@ -356,19 +356,19 @@ export async function getStoreProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('⚠️ [Supabase] Erro ao buscar produtos dinâmicos, usando fallback local:', error.message);
-      return PRODUCTS;
+      console.warn('⚠️ [Supabase] Erro ao buscar produtos dinâmicos da loja:', error.message);
+      return [];
     }
 
     if (!data || data.length === 0) {
-      console.warn('⚠️ [Supabase] Nenhum produto ativo encontrado, usando fallback local.');
-      return PRODUCTS;
+      console.warn('⚠️ [Supabase] Nenhum produto ativo encontrado para este tenant.');
+      return [];
     }
 
     return data.map(mapDbProductToProduct);
   } catch (err) {
-    console.warn('⚠️ [Supabase] Falha de conexão ao carregar produtos, usando fallback local:', err);
-    return PRODUCTS;
+    console.warn('⚠️ [Supabase] Falha de conexão ao carregar produtos:', err);
+    return [];
   }
 }
 

@@ -41,6 +41,7 @@ export function BoutiqueStorefront() {
     closeSizeGuide,
     isCartOpen,
     products,
+    isLoadingProducts,
     currentTenant,
     theme
   } = useStore();
@@ -224,6 +225,21 @@ export function BoutiqueStorefront() {
             scrollToSection(firstVisibleSectionId);
           }}
         />
+
+        {/* Skeleton de Carregamento Elegante (exibido apenas no primeiro acesso sem cache) */}
+        {isLoadingProducts && products.length === 0 && (
+          <section className="pt-8 pb-14 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-2">
+              <div className="h-8 w-64 bg-slate-200 dark:bg-slate-800/80 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-slate-200 dark:bg-slate-800/80 rounded animate-pulse hidden sm:block" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="aspect-[3/4] bg-slate-100 dark:bg-slate-800/60 rounded-none animate-pulse border border-[#C5A059]/10" />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 1. SEÇÃO: LANÇAMENTOS */}
         {showLancamentos && (() => {

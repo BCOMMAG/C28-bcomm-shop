@@ -34,6 +34,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [hoverColorImage, setHoverColorImage] = useState<string | null>(null);
   const [hoverColorName, setHoverColorName] = useState<string | null>(null);
+  const [isSecondImageLoaded, setIsSecondImageLoaded] = useState(false);
 
   // Imagem exibida (permite troca dinâmica instantânea ao passar o mouse nas cores, garantindo que nunca seja vídeo)
   const safeThumbnail = !isVideoUrl(product.thumbnail) ? product.thumbnail : '/placeholder-product.jpg';
@@ -226,7 +227,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div
       className="group relative flex flex-col h-full bg-white dark:bg-[#1A1918] rounded-none overflow-hidden border border-[#C5A059]/20 dark:border-[#C5A059]/30 transition-all duration-300 hover:border-[#C5A059]/60 hover:shadow-xl cursor-pointer"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        if (secondaryImage && !isSecondImageLoaded && typeof window !== 'undefined') {
+          const preImg = new window.Image();
+          preImg.src = secondaryImage;
+          preImg.onload = () => setIsSecondImageLoaded(true);
+        }
+      }}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onOpenDetails(product)}
     >
@@ -235,33 +243,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         className="relative aspect-[3/4] catalog-card-image w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
         onClick={() => onOpenDetails(product)}
       >
-        {/* Imagem Principal do Produto */}
+        {/* Imagem Principal do Produto (Fixa na base z-0: nunca desaparece nem cria buraco cinza) */}
         <Image
           key={currentThumbnail}
           src={currentThumbnail}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          className={`object-cover object-top transition-all duration-500 ${
-            isHovered && secondaryImage ? 'opacity-0 scale-105' : 'opacity-100 group-hover:scale-105'
-          }`}
+          className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
         />
 
-        {/* Segunda Imagem no Hover (quando houver mais de uma foto cadastrada) */}
+        {/* Segunda Imagem no Hover (Sobreposta z-10: fade-in suave somente após carregada pelo browser) */}
         {secondaryImage && (
           <Image
             src={secondaryImage}
             alt={`${product.name} - Detalhe`}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className={`object-cover object-top transition-all duration-500 pointer-events-none absolute inset-0 ${
-              isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            onLoad={() => setIsSecondImageLoaded(true)}
+            className={`object-cover object-top transition-all duration-500 pointer-events-none absolute inset-0 z-10 ${
+              isHovered && isSecondImageLoaded ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
             }`}
           />
         )}
 
         {/* Gradiente sutil inferior */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-15" />
 
         {/* Badge de Destaque com Regras de Exibição */}
         {(() => {
