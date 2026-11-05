@@ -2618,8 +2618,8 @@ export default function AdminProdutosPage() {
                 className={`border rounded-xl overflow-hidden transition-all ${cardBgClass}`}
               >
                 {/* Linha Principal da Peça */}
-                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 sm:gap-4">
+                <div className="p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 max-w-2xl">
                     {/* Checkbox de Seleção em Massa */}
                     <button
                       type="button"
@@ -2641,6 +2641,7 @@ export default function AdminProdutosPage() {
                           src={product.foto_principal}
                           alt={product.nome}
                           fill
+                          unoptimized
                           sizes="64px"
                           className="object-cover"
                         />
@@ -2657,7 +2658,7 @@ export default function AdminProdutosPage() {
                     </div>
 
                     {/* Informações da Peça */}
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                           {product.categoria_nome}
@@ -2720,10 +2721,10 @@ export default function AdminProdutosPage() {
                           </button>
                         )}
                       </div>
-                      <h3 className="text-sm font-bold text-slate-900 mt-1">
+                      <h3 className="text-sm font-bold text-slate-900 mt-1 truncate" title={product.nome}>
                         {product.nome}
                       </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={`Slug: ${product.slug}${product.tecido ? ` • Tecido: ${product.tecido}` : ''}`}>
                         Slug: <span className="font-mono text-slate-700">{product.slug}</span>
                         {product.tecido && ` • Tecido: ${product.tecido}`}
                       </p>
@@ -2731,8 +2732,8 @@ export default function AdminProdutosPage() {
                   </div>
 
                   {/* Preço, Custo e Estoque */}
-                  <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                    <div>
+                  <div className="flex flex-wrap xl:flex-nowrap items-center justify-between xl:justify-end gap-4 sm:gap-6 shrink-0">
+                    <div className="w-24 sm:w-28 shrink-0 text-left">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Preço de Venda</span>
                       {hasPromo ? (
                         <div>
@@ -2750,7 +2751,7 @@ export default function AdminProdutosPage() {
                       )}
                     </div>
 
-                    <div>
+                    <div className="w-24 sm:w-28 shrink-0 text-left">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Custo (CMV)</span>
                       <span className="text-xs font-semibold text-slate-700 block">
                         {product.preco_custo ? formatCurrency(product.preco_custo) : formatCurrency(custo)}
@@ -2760,7 +2761,7 @@ export default function AdminProdutosPage() {
                       </span>
                     </div>
 
-                    <div>
+                    <div className="w-16 sm:w-20 shrink-0 text-left">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Estoque</span>
                       <span
                         className={`text-xs font-extrabold block ${
@@ -2777,7 +2778,7 @@ export default function AdminProdutosPage() {
 
                     {/* Botões de Ação */}
                     {isLixeira ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0 flex-nowrap">
                         <button
                           onClick={() => handleRestoreProduct(product)}
                           title="Restaurar peça da lixeira para o catálogo"
@@ -2799,7 +2800,7 @@ export default function AdminProdutosPage() {
                         )}
                       </div>
                     ) : isArquivada ? (
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
                         <button
                           onClick={() => handleUnarchiveProduct(product)}
                           title="Desarquivar e retornar ao catálogo operacional"
@@ -2827,7 +2828,7 @@ export default function AdminProdutosPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
                         {/* Ver na Vitrine Pública (se ativa) */}
                         <Link
                           href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}

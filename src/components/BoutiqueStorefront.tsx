@@ -135,13 +135,13 @@ export function BoutiqueStorefront() {
   // Lista ordenada das seções ativas e visíveis na tela
   const activeSectionsList = useMemo(() => {
     const list: { id: string; label: string }[] = [];
-    if (showLancamentos) list.push({ id: 'lancamentos', label: 'Lançamentos' });
-    if (showMaisVendidos) list.push({ id: 'mais-vendidos', label: 'Mais Vendidos' });
-    if (showOutlet) list.push({ id: 'outlet', label: 'OUTLET' });
-    if (showUltimasPecas) list.push({ id: 'ultimas-pecas', label: 'Últimas Peças' });
+    if (showLancamentos) list.push({ id: 'lancamentos', label: secoesConfig?.lancamentos?.titulo || 'Lançamentos' });
+    if (showMaisVendidos) list.push({ id: 'mais-vendidos', label: secoesConfig?.maisVendidos?.titulo || 'Mais Vendidos' });
+    if (showOutlet) list.push({ id: 'outlet', label: secoesConfig?.outlet?.titulo || 'OUTLET' });
+    if (showUltimasPecas) list.push({ id: 'ultimas-pecas', label: secoesConfig?.ultimasPecas?.titulo || 'Últimas Peças' });
     if (showTodasAsPecas) list.push({ id: 'todas-as-pecas', label: secoesConfig?.todasAsPecas?.titulo || 'Todas as Peças' });
     return list;
-  }, [showLancamentos, showMaisVendidos, showOutlet, showUltimasPecas, showTodasAsPecas, secoesConfig?.todasAsPecas?.titulo]);
+  }, [showLancamentos, showMaisVendidos, showOutlet, showUltimasPecas, showTodasAsPecas, secoesConfig]);
 
   // Primeira seção visível para rolar ao clicar em "Conhecer Coleção" no Banner Hero
   const firstVisibleSectionId = useMemo(() => {
@@ -240,14 +240,14 @@ export function BoutiqueStorefront() {
                     style={lancamentosStyle.tituloStyle}
                     className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
                   >
-                    Lançamentos Exclusivos
+                    {secoesConfig?.lancamentos?.titulo || 'Lançamentos Exclusivos'}
                   </h2>
                 </div>
                 <p
                   style={lancamentosStyle.subtituloStyle}
                   className="text-xs max-w-sm hidden sm:block"
                 >
-                  As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.
+                  {secoesConfig?.lancamentos?.subtitulo || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.'}
                 </p>
               </div>
 
@@ -315,14 +315,14 @@ export function BoutiqueStorefront() {
                     style={maisVendidosStyle.tituloStyle}
                     className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
                   >
-                    Mais Vendidos
+                    {secoesConfig?.maisVendidos?.titulo || 'Mais Vendidos'}
                   </h2>
                 </div>
                 <p
                   style={maisVendidosStyle.subtituloStyle}
                   className="text-xs max-w-sm hidden sm:block"
                 >
-                  As peças com maior procura na nossa boutique, reconhecidas pelo caimento impecável e acabamento nobre.
+                  {secoesConfig?.maisVendidos?.subtitulo || 'As peças com maior procura na nossa boutique, reconhecidas pelo caimento impecável e acabamento nobre.'}
                 </p>
               </div>
 
@@ -389,14 +389,14 @@ export function BoutiqueStorefront() {
                     style={outletStyle.tituloStyle}
                     className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
                   >
-                    OUTLET & Peças Selecionadas
+                    {secoesConfig?.outlet?.titulo || 'OUTLET & Peças Selecionadas'}
                   </h2>
                 </div>
                 <p
                   style={outletStyle.subtituloStyle}
                   className="text-xs max-w-sm hidden sm:block"
                 >
-                  Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.
+                  {secoesConfig?.outlet?.subtitulo || 'Peças exclusivas com valores promocionais e últimas unidades disponíveis na boutique.'}
                 </p>
               </div>
 
@@ -464,14 +464,14 @@ export function BoutiqueStorefront() {
                     style={ultimasPecasStyle.tituloStyle}
                     className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
                   >
-                    Últimas Peças
+                    {secoesConfig?.ultimasPecas?.titulo || 'Últimas Peças'}
                   </h2>
                 </div>
                 <p
                   style={ultimasPecasStyle.subtituloStyle}
                   className="text-xs max-w-sm hidden sm:block"
                 >
-                  Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.
+                  {secoesConfig?.ultimasPecas?.subtitulo || 'Modelos exclusivos prestes a esgotar definitivamente na boutique. Peças com apenas 5 unidades ou menos restantes no estoque.'}
                 </p>
               </div>
 
@@ -549,20 +549,14 @@ export function BoutiqueStorefront() {
               </p>
             </div>
 
-            {/* Grade Nobre de Produtos (2 colunas Mobile, 4 Desktop) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  columnsCount={4}
-                  onOpenDetails={openProduct}
-                  onQuickAdd={handleSafeQuickAdd}
-                  isWishlisted={wishlistIds.includes(product.id)}
-                  onToggleWishlist={toggleWishlist}
-                />
-              ))}
-            </div>
+            {/* Carrossel em looping contínuo com 1 linha de 4 cards (pausa no hover/clique) */}
+            <ProductLoopCarousel
+              products={products}
+              onOpenDetails={openProduct}
+              onQuickAdd={handleSafeQuickAdd}
+              isWishlisted={(id) => wishlistIds.includes(id)}
+              onToggleWishlist={toggleWishlist}
+            />
 
             {/* Botões de Ação da Seção Todas as Peças */}
             <div className="mt-6 sm:mt-12 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">

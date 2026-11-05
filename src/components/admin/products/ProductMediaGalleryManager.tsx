@@ -549,7 +549,7 @@ export function ProductMediaGalleryManager({
                 } ${parsed.isHidden ? 'opacity-50 grayscale-40' : ''}`}
               >
                 {/* Visual da Mídia */}
-                <div className="relative aspect-3/4 w-full bg-slate-900">
+                <div className="relative aspect-3/4 w-full bg-slate-100 overflow-hidden">
                   {/* Overlay de Uploading Otimista */}
                   {foto.isUploading && (
                     <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center text-white z-20 animate-fade-in">
@@ -576,7 +576,7 @@ export function ProductMediaGalleryManager({
                   )}
 
                   {isVideo ? (
-                    <div className="w-full h-full relative flex items-center justify-center">
+                    <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
                       <video src={foto.url} className="w-full h-full object-cover" muted playsInline />
                       <div className="absolute inset-0 bg-slate-950/25 flex items-center justify-center pointer-events-none">
                         <div className="w-8 h-8 rounded-full bg-slate-900/80 text-amber-400 flex items-center justify-center">
@@ -593,7 +593,7 @@ export function ProductMediaGalleryManager({
                       src={foto.url}
                       alt={parsed.cleanLabel || `Foto ${originalIndex + 1}`}
                       fill
-                      unoptimized={foto.url.startsWith('blob:')}
+                      unoptimized
                       sizes="220px"
                       className="object-cover"
                     />

@@ -18,6 +18,7 @@ import {
   Share2,
   Sliders,
   Eye,
+  EyeOff,
   Film,
   Layers,
   Layout,
@@ -124,6 +125,8 @@ export default function AppearanceSettingsPage() {
   const [secaoLancamentosTituloDark, setSecaoLancamentosTituloDark] = useState('#FFFFFF');
   const [secaoLancamentosSubtituloLight, setSecaoLancamentosSubtituloLight] = useState('#FAF8F5');
   const [secaoLancamentosSubtituloDark, setSecaoLancamentosSubtituloDark] = useState('#FAF8F5');
+  const [secaoLancamentosTitulo, setSecaoLancamentosTitulo] = useState('Lançamentos Exclusivos');
+  const [secaoLancamentosSubtitulo, setSecaoLancamentosSubtitulo] = useState('As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.');
 
   // Seção Mais Vendidos
   const [secaoMaisVendidosAtivo, setSecaoMaisVendidosAtivo] = useState(true);
@@ -135,6 +138,8 @@ export default function AppearanceSettingsPage() {
   const [secaoMaisVendidosTituloDark, setSecaoMaisVendidosTituloDark] = useState('#FFFFFF');
   const [secaoMaisVendidosSubtituloLight, setSecaoMaisVendidosSubtituloLight] = useState('#FAF8F5');
   const [secaoMaisVendidosSubtituloDark, setSecaoMaisVendidosSubtituloDark] = useState('#FAF8F5');
+  const [secaoMaisVendidosTitulo, setSecaoMaisVendidosTitulo] = useState('Mais Vendidos & Queridinhos');
+  const [secaoMaisVendidosSubtitulo, setSecaoMaisVendidosSubtitulo] = useState('As criações favoritas e mais desejadas pelas nossas clientes.');
 
   // Seção OUTLET
   const [secaoOutletAtivo, setSecaoOutletAtivo] = useState(true);
@@ -146,6 +151,8 @@ export default function AppearanceSettingsPage() {
   const [secaoOutletTituloDark, setSecaoOutletTituloDark] = useState('#FFFFFF');
   const [secaoOutletSubtituloLight, setSecaoOutletSubtituloLight] = useState('#FAF8F5');
   const [secaoOutletSubtituloDark, setSecaoOutletSubtituloDark] = useState('#FAF8F5');
+  const [secaoOutletTitulo, setSecaoOutletTitulo] = useState('Bazar & Oportunidades');
+  const [secaoOutletSubtitulo, setSecaoOutletSubtitulo] = useState('Peças selecionadas com condições especiais por tempo limitado.');
 
   // Seção Últimas Peças
   const [secaoUltimasPecasAtivo, setSecaoUltimasPecasAtivo] = useState(true);
@@ -157,6 +164,8 @@ export default function AppearanceSettingsPage() {
   const [secaoUltimasPecasTituloDark, setSecaoUltimasPecasTituloDark] = useState('#FFFFFF');
   const [secaoUltimasPecasSubtituloLight, setSecaoUltimasPecasSubtituloLight] = useState('#FAF8F5');
   const [secaoUltimasPecasSubtituloDark, setSecaoUltimasPecasSubtituloDark] = useState('#FAF8F5');
+  const [secaoUltimasPecasTitulo, setSecaoUltimasPecasTitulo] = useState('Últimas Peças');
+  const [secaoUltimasPecasSubtitulo, setSecaoUltimasPecasSubtitulo] = useState('Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.');
 
   // Seção Todas as Peças (Catálogo Geral da Vitrine)
   const [secaoTodasAsPecasAtivo, setSecaoTodasAsPecasAtivo] = useState(true);
@@ -234,6 +243,8 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.lancamentos) {
               setSecaoLancamentosAtivo(data.secoesVitrine.lancamentos.ativo !== false);
+              setSecaoLancamentosTitulo(data.secoesVitrine.lancamentos.titulo || 'Lançamentos Exclusivos');
+              setSecaoLancamentosSubtitulo(data.secoesVitrine.lancamentos.subtitulo || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.');
               setSecaoLancamentosCustomizado(Boolean(data.secoesVitrine.lancamentos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.lancamentos.ativo)));
               setSecaoLancamentosFont(data.secoesVitrine.lancamentos.tituloFont || 'Playfair Display');
               setSecaoLancamentosBgLight(data.secoesVitrine.lancamentos.bgLight || '');
@@ -245,6 +256,8 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.maisVendidos) {
               setSecaoMaisVendidosAtivo(data.secoesVitrine.maisVendidos.ativo !== false);
+              setSecaoMaisVendidosTitulo(data.secoesVitrine.maisVendidos.titulo || 'Mais Vendidos & Queridinhos');
+              setSecaoMaisVendidosSubtitulo(data.secoesVitrine.maisVendidos.subtitulo || 'As criações favoritas e mais desejadas pelas nossas clientes.');
               setSecaoMaisVendidosCustomizado(Boolean(data.secoesVitrine.maisVendidos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.maisVendidos.ativo)));
               setSecaoMaisVendidosFont(data.secoesVitrine.maisVendidos.tituloFont || 'Playfair Display');
               setSecaoMaisVendidosBgLight(data.secoesVitrine.maisVendidos.bgLight || '');
@@ -256,6 +269,8 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.outlet) {
               setSecaoOutletAtivo(data.secoesVitrine.outlet.ativo !== false);
+              setSecaoOutletTitulo(data.secoesVitrine.outlet.titulo || 'Bazar & Oportunidades');
+              setSecaoOutletSubtitulo(data.secoesVitrine.outlet.subtitulo || 'Peças selecionadas com condições especiais por tempo limitado.');
               setSecaoOutletCustomizado(Boolean(data.secoesVitrine.outlet.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.outlet.ativo)));
               setSecaoOutletFont(data.secoesVitrine.outlet.tituloFont || 'Playfair Display');
               setSecaoOutletBgLight(data.secoesVitrine.outlet.bgLight || '');
@@ -267,6 +282,8 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.ultimasPecas) {
               setSecaoUltimasPecasAtivo(data.secoesVitrine.ultimasPecas.ativo !== false);
+              setSecaoUltimasPecasTitulo(data.secoesVitrine.ultimasPecas.titulo || 'Últimas Peças');
+              setSecaoUltimasPecasSubtitulo(data.secoesVitrine.ultimasPecas.subtitulo || 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.');
               setSecaoUltimasPecasCustomizado(Boolean(data.secoesVitrine.ultimasPecas.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.ultimasPecas.ativo)));
               setSecaoUltimasPecasFont(data.secoesVitrine.ultimasPecas.tituloFont || 'Playfair Display');
               setSecaoUltimasPecasBgLight(data.secoesVitrine.ultimasPecas.bgLight || '');
@@ -456,6 +473,8 @@ export default function AppearanceSettingsPage() {
         },
         lancamentos: {
           ativo: secaoLancamentosAtivo,
+          titulo: secaoLancamentosTitulo.trim() || 'Lançamentos Exclusivos',
+          subtitulo: secaoLancamentosSubtitulo.trim() || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.',
           tituloFont: secaoLancamentosCustomizado ? secaoLancamentosFont : secaoGlobalFont,
           bgLight: (secaoLancamentosCustomizado ? secaoLancamentosBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoLancamentosCustomizado ? secaoLancamentosBgDark : secaoGlobalBgDark) || undefined,
@@ -466,6 +485,8 @@ export default function AppearanceSettingsPage() {
         },
         maisVendidos: {
           ativo: secaoMaisVendidosAtivo,
+          titulo: secaoMaisVendidosTitulo.trim() || 'Mais Vendidos & Queridinhos',
+          subtitulo: secaoMaisVendidosSubtitulo.trim() || 'As criações favoritas e mais desejadas pelas nossas clientes.',
           tituloFont: secaoMaisVendidosCustomizado ? secaoMaisVendidosFont : secaoGlobalFont,
           bgLight: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgDark : secaoGlobalBgDark) || undefined,
@@ -476,6 +497,8 @@ export default function AppearanceSettingsPage() {
         },
         outlet: {
           ativo: secaoOutletAtivo,
+          titulo: secaoOutletTitulo.trim() || 'Bazar & Oportunidades',
+          subtitulo: secaoOutletSubtitulo.trim() || 'Peças selecionadas com condições especiais por tempo limitado.',
           tituloFont: secaoOutletCustomizado ? secaoOutletFont : secaoGlobalFont,
           bgLight: (secaoOutletCustomizado ? secaoOutletBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoOutletCustomizado ? secaoOutletBgDark : secaoGlobalBgDark) || undefined,
@@ -486,6 +509,8 @@ export default function AppearanceSettingsPage() {
         },
         ultimasPecas: {
           ativo: secaoUltimasPecasAtivo,
+          titulo: secaoUltimasPecasTitulo.trim() || 'Últimas Peças',
+          subtitulo: secaoUltimasPecasSubtitulo.trim() || 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.',
           tituloFont: secaoUltimasPecasCustomizado ? secaoUltimasPecasFont : secaoGlobalFont,
           bgLight: (secaoUltimasPecasCustomizado ? secaoUltimasPecasBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoUltimasPecasCustomizado ? secaoUltimasPecasBgDark : secaoGlobalBgDark) || undefined,
@@ -2284,7 +2309,359 @@ export default function AppearanceSettingsPage() {
       )}
     </div>
 
-    {/* BLOCO: EXIBIÇÃO DE ESTOQUE PARA O CONSUMIDOR NA VITRINE & MODAL */}
+    {/* BLOCO 7: SEÇÕES DA PÁGINA INICIAL (VITRINE HOME) */}
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+            <Layout className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                7. Seções da Página Inicial (Vitrine Home)
+              </h2>
+              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                Vitrine Ativa
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Controle a visibilidade, títulos de cabeçalho e frases de efeito de cada uma das 5 seções da página inicial da sua boutique.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista das 5 Seções Oficiais da Vitrine */}
+      <div className="space-y-4">
+        {/* 1. Lançamentos Exclusivos */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-xs">
+                1
+              </span>
+              <span className="font-bold text-slate-900 text-sm">
+                Lançamentos Exclusivos
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                #lancamentos
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSecaoLancamentosAtivo(!secaoLancamentosAtivo)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                  secaoLancamentosAtivo
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                )}
+              >
+                {secaoLancamentosAtivo ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ativa na Vitrine</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Oculta na Home</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
+              <input
+                type="text"
+                value={secaoLancamentosTitulo}
+                onChange={(e) => setSecaoLancamentosTitulo(e.target.value)}
+                placeholder="Lançamentos Exclusivos"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
+              <input
+                type="text"
+                value={secaoLancamentosSubtitulo}
+                onChange={(e) => setSecaoLancamentosSubtitulo(e.target.value)}
+                placeholder="As últimas novidades que acabaram de chegar na boutique..."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Mais Vendidos & Queridinhos */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-900 font-bold flex items-center justify-center text-xs">
+                2
+              </span>
+              <span className="font-bold text-slate-900 text-sm">
+                Mais Vendidos & Queridinhos
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                #mais-vendidos
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSecaoMaisVendidosAtivo(!secaoMaisVendidosAtivo)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                  secaoMaisVendidosAtivo
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                )}
+              >
+                {secaoMaisVendidosAtivo ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ativa na Vitrine</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Oculta na Home</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
+              <input
+                type="text"
+                value={secaoMaisVendidosTitulo}
+                onChange={(e) => setSecaoMaisVendidosTitulo(e.target.value)}
+                placeholder="Mais Vendidos & Queridinhos"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
+              <input
+                type="text"
+                value={secaoMaisVendidosSubtitulo}
+                onChange={(e) => setSecaoMaisVendidosSubtitulo(e.target.value)}
+                placeholder="As criações favoritas e mais desejadas pelas nossas clientes."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Bazar & Oportunidades (Outlet) */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-900 font-bold flex items-center justify-center text-xs">
+                3
+              </span>
+              <span className="font-bold text-slate-900 text-sm">
+                Bazar & Oportunidades (Outlet)
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                #outlet
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSecaoOutletAtivo(!secaoOutletAtivo)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                  secaoOutletAtivo
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                )}
+              >
+                {secaoOutletAtivo ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ativa na Vitrine</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Oculta na Home</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
+              <input
+                type="text"
+                value={secaoOutletTitulo}
+                onChange={(e) => setSecaoOutletTitulo(e.target.value)}
+                placeholder="Bazar & Oportunidades"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
+              <input
+                type="text"
+                value={secaoOutletSubtitulo}
+                onChange={(e) => setSecaoOutletSubtitulo(e.target.value)}
+                placeholder="Peças selecionadas com condições especiais por tempo limitado."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Últimas Peças */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-900 font-bold flex items-center justify-center text-xs">
+                4
+              </span>
+              <span className="font-bold text-slate-900 text-sm">
+                Últimas Peças
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                #ultimas-pecas
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSecaoUltimasPecasAtivo(!secaoUltimasPecasAtivo)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                  secaoUltimasPecasAtivo
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                )}
+              >
+                {secaoUltimasPecasAtivo ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ativa na Vitrine</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Oculta na Home</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
+              <input
+                type="text"
+                value={secaoUltimasPecasTitulo}
+                onChange={(e) => setSecaoUltimasPecasTitulo(e.target.value)}
+                placeholder="Últimas Peças"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
+              <input
+                type="text"
+                value={secaoUltimasPecasSubtitulo}
+                onChange={(e) => setSecaoUltimasPecasSubtitulo(e.target.value)}
+                placeholder="Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Todas as Peças (Carrossel Contínuo da Home) */}
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-900 font-bold flex items-center justify-center text-xs">
+                5
+              </span>
+              <span className="font-bold text-slate-900 text-sm">
+                Todas as Peças (Carrossel Contínuo)
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                #todas-as-pecas
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSecaoTodasAsPecasAtivo(!secaoTodasAsPecasAtivo)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border',
+                  secaoTodasAsPecasAtivo
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                )}
+              >
+                {secaoTodasAsPecasAtivo ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ativa na Vitrine</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Oculta na Home</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Título da Seção:</label>
+              <input
+                type="text"
+                value={secaoTodasAsPecasTitulo}
+                onChange={(e) => setSecaoTodasAsPecasTitulo(e.target.value)}
+                placeholder="Todas as Peças"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Subtítulo / Descrição:</label>
+              <input
+                type="text"
+                value={secaoTodasAsPecasSubtitulo}
+                onChange={(e) => setSecaoTodasAsPecasSubtitulo(e.target.value)}
+                placeholder="Conheça todas as criações e modelos exclusivos disponíveis na boutique."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* BLOCO 8: EXIBIÇÃO DE ESTOQUE PARA O CONSUMIDOR NA VITRINE & MODAL */}
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -2294,7 +2671,7 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                Exibição de Estoque para o Consumidor
+                8. Exibição de Estoque para o Consumidor
               </h2>
               <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
                 Global
@@ -2356,13 +2733,13 @@ export default function AppearanceSettingsPage() {
       </div>
     </div>
 
-    {/* BLOCO: SINALIZADORES COMERCIAIS DA VITRINE (BADGES) */}
+    {/* BLOCO 9: SINALIZADORES COMERCIAIS DA VITRINE (BADGES) */}
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Tag className="w-4 h-4 text-amber-600" />
-            Sinalizadores Comerciais da Vitrine (Badges)
+            9. Sinalizadores Comerciais da Vitrine (Badges)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Personalize cores oficiais, nomes e emojis das tags que aparecem sobre as fotos das peças na loja.
