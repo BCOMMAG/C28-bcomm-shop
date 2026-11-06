@@ -45,7 +45,9 @@ import {
   Clock,
   Flame,
   FolderOpen,
-  X
+  X,
+  Play,
+  Percent
 } from 'lucide-react';
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { AdminCollectionsManagerModal } from '@/components/admin/products/AdminCollectionsManagerModal';
@@ -204,6 +206,17 @@ export default function AppearanceSettingsPage() {
   const [exibirBadgesNaVitrine, setExibirBadgesNaVitrine] = useState(false);
   const [exibirSeloEscassezFoto, setExibirSeloEscassezFoto] = useState(false);
 
+  // 3. Tela de Abertura & Carregamento da Boutique (Preloader de Luxo)
+  const [preloaderAtivo, setPreloaderAtivo] = useState(false);
+  const [preloaderModelo, setPreloaderModelo] = useState<'haute_couture' | 'monograma' | 'editorial_dark'>('haute_couture');
+  const [preloaderFundo, setPreloaderFundo] = useState('#FAF8F5');
+  const [preloaderCorPrimaria, setPreloaderCorPrimaria] = useState('#DFBE76');
+  const [preloaderCorTexto, setPreloaderCorTexto] = useState('#1A1918');
+  const [preloaderExibirPorcentagem, setPreloaderExibirPorcentagem] = useState(true);
+  const [preloaderExibirLogo, setPreloaderExibirLogo] = useState(true);
+  const [preloaderExibirSlogan, setPreloaderExibirSlogan] = useState(true);
+  const [preloaderFrequencia, setPreloaderFrequencia] = useState<'apenas_entrada' | 'todas_as_paginas'>('todas_as_paginas');
+
   // Gestão Dinâmica de Seções da Home (Bloco 7)
   const [secoesLista, setSecoesLista] = useState<SecaoHomeItem[]>(SECOES_VITRINE_PADRAO);
   const [catalogProducts, setCatalogProducts] = useState<AdminProductItem[]>([]);
@@ -262,6 +275,18 @@ export default function AppearanceSettingsPage() {
           if (data.faviconUrl) setFaviconUrl(data.faviconUrl);
           if (data.ogImageUrl) setOgImageUrl(data.ogImageUrl);
           if (data.slogan) setSlogan(data.slogan);
+
+          if (data.preloader) {
+            setPreloaderAtivo(Boolean(data.preloader.ativo));
+            setPreloaderModelo(data.preloader.modelo || 'haute_couture');
+            setPreloaderFundo(data.preloader.fundo || '#FAF8F5');
+            setPreloaderCorPrimaria(data.preloader.cor_primaria || '#DFBE76');
+            setPreloaderCorTexto(data.preloader.cor_texto || '#1A1918');
+            setPreloaderExibirPorcentagem(data.preloader.exibir_porcentagem !== undefined ? Boolean(data.preloader.exibir_porcentagem) : true);
+            setPreloaderExibirLogo(data.preloader.exibir_logo !== undefined ? Boolean(data.preloader.exibir_logo) : true);
+            setPreloaderExibirSlogan(data.preloader.exibir_slogan !== undefined ? Boolean(data.preloader.exibir_slogan) : true);
+            setPreloaderFrequencia(data.preloader.frequencia || 'todas_as_paginas');
+          }
 
           if (data.planoFundoSite) {
             setSiteBgTipo(data.planoFundoSite.tipo || 'solido');
@@ -413,7 +438,9 @@ export default function AppearanceSettingsPage() {
       exibirQuantidadeEstoqueConsumidor,
       exibirBadgesNaVitrine,
       exibirSeloEscassezFoto,
-      secoesLista
+      secoesLista,
+      preloaderAtivo, preloaderModelo, preloaderFundo, preloaderCorPrimaria, preloaderCorTexto,
+      preloaderExibirPorcentagem, preloaderExibirLogo, preloaderExibirSlogan, preloaderFrequencia
     });
   }, [
     logoUrl, logoDarkUrl, faviconUrl, ogImageUrl, slogan,
@@ -436,7 +463,9 @@ export default function AppearanceSettingsPage() {
     exibirQuantidadeEstoqueConsumidor,
     exibirBadgesNaVitrine,
     exibirSeloEscassezFoto,
-    secoesLista
+    secoesLista,
+    preloaderAtivo, preloaderModelo, preloaderFundo, preloaderCorPrimaria, preloaderCorTexto,
+    preloaderExibirPorcentagem, preloaderExibirLogo, preloaderExibirSlogan, preloaderFrequencia
   ]);
 
   // Carrega o snapshot inicial assim que os dados terminam de carregar
@@ -621,7 +650,20 @@ export default function AppearanceSettingsPage() {
         secoesVitrine,
         exibirQuantidadeEstoqueConsumidor,
         exibirBadgesNaVitrine,
-        exibirSeloEscassezFoto
+        exibirSeloEscassezFoto,
+        preloader: {
+          ativo: preloaderAtivo,
+          modelo: preloaderModelo,
+          fundo: preloaderFundo,
+          cor_primaria: preloaderCorPrimaria,
+          cor_texto: preloaderCorTexto,
+          exibir_porcentagem: preloaderExibirPorcentagem,
+          exibir_logo: preloaderExibirLogo,
+          exibir_slogan: preloaderExibirSlogan,
+          frequencia: preloaderFrequencia,
+          tempo_minimo_ms: 650,
+          timeout_seguranca_ms: 2500
+        }
       });
 
       if (res.success) {
@@ -648,6 +690,28 @@ export default function AppearanceSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await executeSave();
+  };
+
+  const handleTestPreloader = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('bcomm:test_preloader', {
+          detail: {
+            ativo: true,
+            modelo: preloaderModelo,
+            fundo: preloaderFundo,
+            cor_primaria: preloaderCorPrimaria,
+            cor_texto: preloaderCorTexto,
+            exibir_porcentagem: preloaderExibirPorcentagem,
+            exibir_logo: preloaderExibirLogo,
+            exibir_slogan: preloaderExibirSlogan,
+            frequencia: preloaderFrequencia
+          }
+        })
+      );
+      showToast('Simulando Tela de Abertura na sua tela!');
+    }
   };
 
   // --- MÉTODOS DA GESTÃO DE SEÇÕES DA VITRINE (BLOCO 7) ---
@@ -1580,7 +1644,339 @@ export default function AppearanceSettingsPage() {
       </div>
     </div>
 
-    {/* BLOCO 3: PLANO DE FUNDO DO MENU SUPERIOR (HEADER) */}
+    {/* BLOCO 3: TELA DE ABERTURA & CARREGAMENTO DA BOUTIQUE (PRELOADER DE LUXO) */}
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>3. Tela de Abertura & Carregamento da Boutique (Preloader de Luxo)</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                NOVO
+              </span>
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Cobre a vitrine enquanto os recursos carregam e revela a loja pronta (0% a 100%), eliminando o carregamento fragmentado de componentes.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleTestPreloader}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            title="Dispara a animação na sua tela agora para você testar"
+          >
+            <Play className="w-3.5 h-3.5 text-amber-600 fill-amber-600/30" />
+            <span>Testar Animação Agora</span>
+          </button>
+
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preloaderAtivo}
+              onChange={(e) => setPreloaderAtivo(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+            <span className="ml-2.5 text-xs font-bold text-slate-700">
+              {preloaderAtivo ? (
+                <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  🟢 Ativado na Vitrine
+                </span>
+              ) : (
+                <span className="text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                  ⏸️ Desativado (Padrão)
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* SELETOR DOS 3 MODELOS VISUAIS */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-slate-800 block">
+          Escolha o Modelo Visual da Tela de Abertura:
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Modelo 1: Haute Couture */}
+          <div
+            onClick={() => setPreloaderModelo('haute_couture')}
+            className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
+              preloaderModelo === 'haute_couture'
+                ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20 shadow-xs'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-900">1. Haute Couture (Recomendado)</span>
+                {preloaderModelo === 'haute_couture' && <Check className="w-4 h-4 text-amber-600" />}
+              </div>
+              <p className="text-[11px] text-slate-500 mb-3">
+                Contador grande de 00% a 100%, logotipo oficial da boutique no centro, barra dourada ultrafina e slogan.
+              </p>
+            </div>
+            {/* Miniatura Ilustrativa */}
+            <div className="h-20 rounded-lg bg-[#FAF8F5] border border-slate-200 flex flex-col items-center justify-center p-2 text-center">
+              <span className="text-[10px] font-serif-luxury font-bold text-slate-800 tracking-wider">LEIDY BOUTIQUE</span>
+              <span className="text-sm font-serif-luxury font-light text-slate-900 mt-1">78%</span>
+              <div className="w-20 h-[2px] bg-amber-500 rounded-full mt-1" />
+            </div>
+          </div>
+
+          {/* Modelo 2: Monograma */}
+          <div
+            onClick={() => setPreloaderModelo('monograma')}
+            className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
+              preloaderModelo === 'monograma'
+                ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20 shadow-xs'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-900">2. Monograma & Pulso Dourado</span>
+                {preloaderModelo === 'monograma' && <Check className="w-4 h-4 text-amber-600" />}
+              </div>
+              <p className="text-[11px] text-slate-500 mb-3">
+                Minimalismo refinado com monograma central pulsante, barra linear compacta e porcentagem sutil.
+              </p>
+            </div>
+            {/* Miniatura Ilustrativa */}
+            <div className="h-20 rounded-lg bg-white border border-slate-200 flex flex-col items-center justify-center p-2 text-center">
+              <div className="w-6 h-6 rounded-full border border-amber-500 flex items-center justify-center text-[9px] font-bold text-amber-700">
+                LB
+              </div>
+              <span className="text-[10px] font-mono font-semibold text-slate-600 mt-1">64%</span>
+              <div className="w-12 h-[1.5px] bg-amber-400 rounded-full mt-1" />
+            </div>
+          </div>
+
+          {/* Modelo 3: Editorial Dark */}
+          <div
+            onClick={() => setPreloaderModelo('editorial_dark')}
+            className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
+              preloaderModelo === 'editorial_dark'
+                ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20 shadow-xs'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-900">3. Editorial Dark Luxury</span>
+                {preloaderModelo === 'editorial_dark' && <Check className="w-4 h-4 text-amber-600" />}
+              </div>
+              <p className="text-[11px] text-slate-500 mb-3">
+                Fundo escuro acetinado com logotipo dourado e efeito cortina teatral que se recolhe verticalmente.
+              </p>
+            </div>
+            {/* Miniatura Ilustrativa */}
+            <div className="h-20 rounded-lg bg-[#1A1918] border border-slate-700 flex flex-col items-center justify-center p-2 text-center text-white">
+              <span className="text-[10px] font-serif-luxury font-bold text-amber-300 tracking-wider">BOUTIQUE</span>
+              <span className="text-sm font-serif-luxury font-light text-white mt-1">92%</span>
+              <div className="w-20 h-[2px] bg-amber-400 rounded-full mt-1" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CORES & PERSONALIZAÇÃO */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+        {/* Cor de Fundo */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800">Cor de Fundo da Abertura</span>
+            <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderFundo}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={preloaderFundo}
+              onChange={(e) => setPreloaderFundo(e.target.value)}
+              className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
+            />
+            <div className="flex flex-wrap gap-1">
+              {[
+                { name: 'Creme', color: '#FAF8F5' },
+                { name: 'Branco', color: '#FFFFFF' },
+                { name: 'Ônix', color: '#1A1918' },
+                { name: 'Preto', color: '#0D0C0B' }
+              ].map((c) => (
+                <button
+                  key={c.color}
+                  type="button"
+                  onClick={() => setPreloaderFundo(c.color)}
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200 bg-white hover:border-slate-400"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Cor Primária / Destaque */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800">Cor da Barra & Acentos</span>
+            <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderCorPrimaria}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={preloaderCorPrimaria}
+              onChange={(e) => setPreloaderCorPrimaria(e.target.value)}
+              className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
+            />
+            <div className="flex flex-wrap gap-1">
+              {[
+                { name: 'Champagne', color: '#DFBE76' },
+                { name: 'Dourado', color: '#C5A059' },
+                { name: 'Rosé', color: '#E0A99A' },
+                { name: 'Prata', color: '#94A3B8' }
+              ].map((c) => (
+                <button
+                  key={c.color}
+                  type="button"
+                  onClick={() => setPreloaderCorPrimaria(c.color)}
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200 bg-white hover:border-slate-400"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Cor do Texto / Dígitos */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800">Cor dos Dígitos (0-100%)</span>
+            <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderCorTexto}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={preloaderCorTexto}
+              onChange={(e) => setPreloaderCorTexto(e.target.value)}
+              className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
+            />
+            <div className="flex flex-wrap gap-1">
+              {[
+                { name: 'Escuro', color: '#1A1918' },
+                { name: 'Preto', color: '#000000' },
+                { name: 'Claro', color: '#FAF8F5' },
+                { name: 'Branco', color: '#FFFFFF' }
+              ].map((c) => (
+                <button
+                  key={c.color}
+                  type="button"
+                  onClick={() => setPreloaderCorTexto(c.color)}
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200 bg-white hover:border-slate-400"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ELEMENTOS VISÍVEIS & FREQUÊNCIA */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <span className="text-xs font-bold text-slate-800 block">Elementos Exibidos na Abertura:</span>
+          <div className="space-y-1.5 text-xs text-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preloaderExibirLogo}
+                onChange={(e) => setPreloaderExibirLogo(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+              />
+              <span>Exibir Logotipo Oficial da Boutique</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preloaderExibirPorcentagem}
+                onChange={(e) => setPreloaderExibirPorcentagem(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+              />
+              <span>Exibir Contador Numérico Percentual (0% a 100%)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preloaderExibirSlogan}
+                onChange={(e) => setPreloaderExibirSlogan(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+              />
+              <span>Exibir Slogan / Frase da Marca</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <span className="text-xs font-bold text-slate-800 block">Frequência de Exibição nas Páginas:</span>
+          <div className="space-y-2 text-xs">
+            <label
+              onClick={() => setPreloaderFrequencia('todas_as_paginas')}
+              className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+                preloaderFrequencia === 'todas_as_paginas'
+                  ? 'border-amber-600 bg-amber-50/70 text-amber-950 font-bold ring-1 ring-amber-500'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <input
+                type="radio"
+                name="preloaderFrequencia"
+                checked={preloaderFrequencia === 'todas_as_paginas'}
+                onChange={() => setPreloaderFrequencia('todas_as_paginas')}
+                className="mt-0.5 text-amber-600"
+              />
+              <div>
+                <span>Em Todas as Páginas e Trocas de Rota (Recomendado)</span>
+                <p className="text-[10px] font-normal text-slate-500 mt-0.5">
+                  Abertura completa na entrada e transição suave nas trocas para Catálogo, Favoritos, etc.
+                </p>
+              </div>
+            </label>
+
+            <label
+              onClick={() => setPreloaderFrequencia('apenas_entrada')}
+              className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+                preloaderFrequencia === 'apenas_entrada'
+                  ? 'border-amber-600 bg-amber-50/70 text-amber-950 font-bold ring-1 ring-amber-500'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <input
+                type="radio"
+                name="preloaderFrequencia"
+                checked={preloaderFrequencia === 'apenas_entrada'}
+                onChange={() => setPreloaderFrequencia('apenas_entrada')}
+                className="mt-0.5 text-amber-600"
+              />
+              <div>
+                <span>Apenas no Primeiro Acesso da Sessão (Home)</span>
+                <p className="text-[10px] font-normal text-slate-500 mt-0.5">
+                  Exibe a abertura na primeira vez que a cliente entra; nas páginas internas o carregamento é direto.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* BLOCO 4: PLANO DE FUNDO DO MENU SUPERIOR (HEADER) */}
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
       <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
         <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold">
@@ -1588,7 +1984,7 @@ export default function AppearanceSettingsPage() {
         </div>
         <div>
           <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            3. Plano de Fundo do Menu Superior (Header da Vitrine)
+            4. Plano de Fundo do Menu Superior (Header da Vitrine)
           </h2>
           <p className="text-[11px] text-slate-500">
             Personalize o comportamento do cabeçalho da loja sobre o banner e durante a rolagem.
@@ -1702,7 +2098,7 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              4. Faixa Superior de Avisos da Vitrine (Announcement Bar)
+              5. Faixa Superior de Avisos da Vitrine (Announcement Bar)
             </h2>
             <p className="text-[11px] text-slate-500">
               A faixa de destaque exibida no topo absoluto do site (frete grátis, avisos promocionais e atendimento).
@@ -1755,7 +2151,7 @@ export default function AppearanceSettingsPage() {
         </div>
         <div>
           <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            5. Tipografia & Cores Usadas no Menu Superior
+            6. Tipografia & Cores Usadas no Menu Superior
           </h2>
           <p className="text-[11px] text-slate-500">
             Personalize a fonte tipográfica, tamanho e cores dos links do cabeçalho da vitrine para modo claro e escuro.
@@ -1914,7 +2310,7 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              6. Tipografias & Cores Usadas no Site por Seção
+              7. Tipografias & Cores Usadas no Site por Seção
             </h2>
             <p className="text-[11px] text-slate-500">
               Configure se todas as seções compartilham o mesmo estilo ou se cada uma terá plano de fundo, fonte e cores exclusivas.
@@ -2512,7 +2908,7 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                7. Seções da Página Inicial (Vitrine Home)
+                8. Seções da Página Inicial (Vitrine Home)
               </h2>
               <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
                 {secoesLista.filter((s) => s.ativo).length} ativas / {secoesLista.length} no total
@@ -2776,7 +3172,7 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                8. Exibição de Estoque para o Consumidor
+                9. Exibição de Estoque para o Consumidor
               </h2>
               <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
                 Global
@@ -2848,7 +3244,7 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                9. Sinalizadores Comerciais da Vitrine (Badges)
+                10. Sinalizadores Comerciais da Vitrine (Badges)
               </h2>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${exibirBadgesNaVitrine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                 {exibirBadgesNaVitrine ? 'Badges Ativos na Vitrine' : 'Visual Limpo (Minimal Luxury)'}

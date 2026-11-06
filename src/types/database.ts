@@ -33,6 +33,20 @@ export interface ProgramaVIPConfig {
   mensagem_reconhecimento?: string;
 }
 
+export interface StorePreloaderConfig {
+  ativo: boolean;
+  modelo: 'haute_couture' | 'monograma' | 'editorial_dark';
+  fundo: string;
+  cor_primaria: string;
+  cor_texto: string;
+  exibir_porcentagem: boolean;
+  exibir_logo: boolean;
+  exibir_slogan: boolean;
+  frequencia: 'apenas_entrada' | 'todas_as_paginas';
+  tempo_minimo_ms?: number;
+  timeout_seguranca_ms?: number;
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
@@ -48,6 +62,7 @@ export interface LojaConfiguracoesVisuais {
   barra_aviso_estilo?: BarraAvisoEstilo;
   exibir_quantidade_estoque_consumidor?: boolean;
   programa_vip?: ProgramaVIPConfig;
+  preloader?: StorePreloaderConfig;
   [key: string]: any;
 }
 

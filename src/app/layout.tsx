@@ -3,6 +3,7 @@ import './globals.css';
 import { StoreProvider } from '@/context/StoreContext';
 import { BottomCartBar } from '@/components/BottomCartBar';
 import { BackgroundVideo } from '@/components/BackgroundVideo';
+import { StorePreloader } from '@/components/StorePreloader';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://leidyboutique.pages.dev';
 
@@ -72,6 +73,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full">
         <StoreProvider>
+          <StorePreloader />
           <BackgroundVideo />
           {children}
           <BottomCartBar />

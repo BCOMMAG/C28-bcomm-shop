@@ -1,7 +1,7 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner } from '@/types/database';
+import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig } from '@/types/database';
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -3050,6 +3050,7 @@ export interface StoreSettingsData {
   coresGlobais?: CoresModoClaroEscuro;
   adminCustom?: AdminCustomThemeConfig;
   adminPalette?: string;
+  preloader?: StorePreloaderConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -3496,6 +3497,7 @@ export interface SaveStoreSettingsInput {
   coresGlobais?: CoresModoClaroEscuro;
   adminCustom?: AdminCustomThemeConfig;
   adminPalette?: string;
+  preloader?: StorePreloaderConfig;
 
   // Marketing & SEO
   metaPixelId?: string;
@@ -3612,6 +3614,19 @@ export async function getStoreSettings(
       logoDarkUrl: vis.logo_dark_url || '',
       faviconUrl: vis.favicon_url || '',
       slogan: vis.slogan || 'Moda Feminina Autêntica & Elegância Diária',
+      preloader: vis.preloader || {
+        ativo: false,
+        modelo: 'haute_couture',
+        fundo: '#FAF8F5',
+        cor_primaria: '#DFBE76',
+        cor_texto: '#1A1918',
+        exibir_porcentagem: true,
+        exibir_logo: true,
+        exibir_slogan: true,
+        frequencia: 'todas_as_paginas',
+        tempo_minimo_ms: 650,
+        timeout_seguranca_ms: 2500
+      },
       planoFundoMenu: vis.plano_fundo_menu || {
         tipo: 'transparente',
         bg_light: '#FAF8F5',
@@ -3775,6 +3790,7 @@ export async function saveStoreGeneralSettings(
       ...(input.coresGlobais !== undefined ? { cores_globais: input.coresGlobais } : {}),
       ...(input.adminCustom !== undefined ? { admin_custom: input.adminCustom } : {}),
       ...(input.adminPalette !== undefined ? { admin_palette: input.adminPalette } : {}),
+      ...(input.preloader !== undefined ? { preloader: input.preloader } : {}),
 
       // Marketing & SEO
       ...(input.metaPixelId !== undefined ? { meta_pixel_id: input.metaPixelId.trim() } : {}),
