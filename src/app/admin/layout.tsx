@@ -306,9 +306,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     if (!activeMember || activeMember.cargo === 'dono') return true;
     if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
-    if (item.href === '/admin/loja/' && activeMember.cargo === 'estoquista') return false;
+    if (item.href === '/admin/loja/' && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return false;
     if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
-    if (item.href === '/admin/configuracoes/' && !activeMember.permissoes?.configuracoes_loja) return false;
+    if (item.href === '/admin/configuracoes/' && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return false;
     if (item.href === '/admin/equipe/' && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return false;
     return true;
   });
@@ -316,10 +316,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const isRouteBlocked = (() => {
     if (!activeMember || activeMember.cargo === 'dono') return false;
     if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
-    if (cleanPath.startsWith('/admin/configuracoes') && !activeMember.permissoes?.configuracoes_loja) return true;
+    if (cleanPath.startsWith('/admin/configuracoes/assinatura') && activeMember.cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/configuracoes/seguranca') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/loja/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
-    if (cleanPath.startsWith('/admin/loja') && activeMember.cargo === 'estoquista') return true;
+    if (cleanPath.startsWith('/admin/loja') && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return true;
     if (cleanPath.startsWith('/admin/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
     if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
     if (cleanPath.startsWith('/admin/menu') && activeMember.cargo !== 'gerente') return true;

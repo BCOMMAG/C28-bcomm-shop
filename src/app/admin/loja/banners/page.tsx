@@ -270,7 +270,7 @@ export default function AdminBannersPage() {
         setDesktopMediaUrl(res.url);
         if (file.type.startsWith('video/')) setTipoMidia('video');
         else if (file.type.startsWith('image/')) setTipoMidia('image');
-        showToast('Mídia Desktop enviada com sucesso para o Cloudflare R2!');
+        showToast('Mídia Desktop enviada com sucesso!');
       } else {
         showToast(res.error || 'Falha ao enviar mídia desktop', 'error');
       }
@@ -291,7 +291,7 @@ export default function AdminBannersPage() {
       const res = await uploadBrowserFileToR2(file, tenantSlug, 'banners');
       if (res.success && res.url) {
         setMobileMediaUrl(res.url);
-        showToast('Mídia Mobile (9:16) enviada com sucesso para o Cloudflare R2!');
+        showToast('Mídia Mobile (9:16) enviada com sucesso!');
       } else {
         showToast(res.error || 'Falha ao enviar mídia mobile', 'error');
       }
@@ -379,14 +379,9 @@ export default function AdminBannersPage() {
       {/* CABEÇALHO DA PÁGINA */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
-              Vitrine & Hero Banners Multi-Rotativos
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              Cloudflare R2 Ativo
-            </span>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
+            Vitrine & Hero Banners Multi-Rotativos
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
             Gerencie múltiplos banners com rotação automática em looping (6s), pausa inteligente na interação e links inteligentes para coleções, categorias ou peças únicas.
           </p>

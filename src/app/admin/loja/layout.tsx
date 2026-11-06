@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,7 +13,9 @@ import {
   Truck,
   ShoppingBag,
   CreditCard,
-  Globe
+  Globe,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { cn } from '@/lib/chart-utils';
@@ -21,7 +23,6 @@ import { cn } from '@/lib/chart-utils';
 interface StoreTabItem {
   id: string;
   label: string;
-  subtitle: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
@@ -31,14 +32,12 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'dados',
     label: 'Dados da Loja',
-    subtitle: 'Razão social, horários e termos',
     href: '/admin/loja/dados',
     icon: Store
   },
   {
     id: 'aparencia',
     label: 'Aparência da Loja',
-    subtitle: 'Logo, cores, fundos & seções',
     href: '/admin/loja/aparencia',
     icon: Palette,
     badge: 'Visual'
@@ -46,7 +45,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'banners',
     label: 'Banners & Vitrines',
-    subtitle: 'Hero banners & avisos',
     href: '/admin/loja/banners',
     icon: Sparkles,
     badge: 'Mídia'
@@ -54,7 +52,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'menu',
     label: 'Menus da Vitrine',
-    subtitle: 'Cabeçalho & navegação',
     href: '/admin/loja/menu',
     icon: Sliders,
     badge: 'Links'
@@ -62,7 +59,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'categorias',
     label: 'Categorias & Subs',
-    subtitle: 'Taxonomia & catálogo',
     href: '/admin/loja/categorias',
     icon: FolderTree,
     badge: 'Estrutura'
@@ -70,7 +66,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'cupons',
     label: 'Cupons & Descontos',
-    subtitle: 'Campanhas promocionais',
     href: '/admin/loja/cupons',
     icon: Tag,
     badge: 'Promo'
@@ -78,7 +73,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'logistica',
     label: 'Logística & Frete',
-    subtitle: 'Melhor Envio, frete grátis e motoboy',
     href: '/admin/loja/logistica',
     icon: Truck,
     badge: 'Envio'
@@ -86,7 +80,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'checkout',
     label: 'Checkout & Pedido',
-    subtitle: 'Presente, pedido mínimo e regras',
     href: '/admin/loja/checkout',
     icon: ShoppingBag,
     badge: 'Checkout'
@@ -94,7 +87,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'pagamentos',
     label: 'Pagamentos & PIX',
-    subtitle: 'Chave PIX e descontos',
     href: '/admin/loja/pagamentos',
     icon: CreditCard,
     badge: 'PIX'
@@ -102,7 +94,6 @@ const STORE_TABS: StoreTabItem[] = [
   {
     id: 'dominio',
     label: 'Domínio Próprio',
-    subtitle: 'Conexão DNS e white-label',
     href: '/admin/loja/dominio',
     icon: Globe,
     badge: 'White-Label'
@@ -112,6 +103,19 @@ const STORE_TABS: StoreTabItem[] = [
 export default function LojaVirtualHubLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { requestNavigation } = useAdminUnsavedChanges();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLAnchorElement>(null);
+
+  // Centraliza a aba ativa no viewport suavemente
+  useEffect(() => {
+    if (activeTabRef.current && scrollContainerRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest'
+      });
+    }
+  }, [pathname]);
 
   const handleProtectedNav = (e: React.MouseEvent, href: string) => {
     if (href === pathname) return;
@@ -121,13 +125,40 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
     }
   };
 
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -220, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 220, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* =========================================================================
-          BARRA DE SUBMENUS / ABAS SUPERIORES DA LOJA VIRTUAL (10 ABAS UNIFICADAS)
+          BARRA DE SUBMENUS / ABAS SUPERIORES DA LOJA VIRTUAL (LINHA ÚNICA COMPACTA)
           ========================================================================= */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-xs">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-5 gap-2">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs relative flex items-center">
+        {/* Botão de rolagem à esquerda para telas menores */}
+        <button
+          type="button"
+          onClick={scrollLeft}
+          className="hidden sm:flex items-center justify-center w-7 h-7 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/80 shrink-0 transition-colors cursor-pointer mr-1"
+          aria-label="Rolar abas para a esquerda"
+          title="Rolar para esquerda"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        {/* Trilho de abas em linha única com auto-scroll */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
+        >
           {STORE_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive =
@@ -138,62 +169,59 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
             return (
               <Link
                 key={tab.id}
+                ref={isActive ? activeTabRef : undefined}
                 href={tab.href}
                 onClick={(e) => handleProtectedNav(e, tab.href)}
                 className={cn(
-                  'flex items-center gap-3 p-2.5 rounded-xl transition-all select-none border',
+                  'group flex items-center gap-2 px-3 py-2 rounded-xl transition-all select-none border shrink-0',
                   isActive
                     ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                    : 'bg-slate-50/70 hover:bg-slate-100/90 text-slate-700 border-slate-200/60 hover:border-slate-300'
+                    : 'bg-slate-50/70 hover:bg-slate-100 text-slate-700 border-slate-200/60 hover:border-slate-300'
                 )}
               >
-                <div
+                <Icon
                   className={cn(
-                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-200 shadow-2xs'
+                    'w-4 h-4 shrink-0 transition-colors',
+                    isActive ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-800'
+                  )}
+                />
+
+                <span
+                  className={cn(
+                    'text-xs font-bold whitespace-nowrap',
+                    isActive ? 'text-white' : 'text-slate-800 group-hover:text-slate-950'
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                </div>
+                  {tab.label}
+                </span>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'text-xs font-bold truncate',
-                        isActive ? 'text-white' : 'text-slate-900'
-                      )}
-                    >
-                      {tab.label}
-                    </span>
-                    {tab.badge && (
-                      <span
-                        className={cn(
-                          'text-[9px] font-bold px-1.5 py-0.2 rounded-md uppercase tracking-wider shrink-0',
-                          isActive
-                            ? 'bg-white/20 text-amber-300'
-                            : 'bg-slate-200 text-slate-600'
-                        )}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p
+                {tab.badge && (
+                  <span
                     className={cn(
-                      'text-[10px] truncate mt-0.5',
-                      isActive ? 'text-slate-300' : 'text-slate-500'
+                      'text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 transition-colors',
+                      isActive
+                        ? 'bg-white/20 text-amber-300'
+                        : 'bg-slate-200/80 text-slate-600 group-hover:bg-slate-200'
                     )}
                   >
-                    {tab.subtitle}
-                  </p>
-                </div>
+                    {tab.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
         </div>
+
+        {/* Botão de rolagem à direita para telas menores */}
+        <button
+          type="button"
+          onClick={scrollRight}
+          className="hidden sm:flex items-center justify-center w-7 h-7 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/80 shrink-0 transition-colors cursor-pointer ml-1"
+          aria-label="Rolar abas para a direita"
+          title="Rolar para direita"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
       {/* =========================================================================

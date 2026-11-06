@@ -482,7 +482,7 @@ export default function AppearanceSettingsPage() {
           setSiteBgImageUrl(res.url);
           setSiteBgTipo('imagem');
         }
-        showToast('Arquivo enviado com sucesso para o Cloudflare R2!');
+        showToast('Arquivo enviado com sucesso!');
       } else {
         showToast(res.error || 'Erro no upload.', 'error');
       }
@@ -829,53 +829,21 @@ export default function AppearanceSettingsPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          CABEÇALHO DEDICADO À VITRINE & LOJA VIRTUAL (CONSUMIDOR FINAL)
-          ========================================================================= */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Store className="w-3.5 h-3.5 text-indigo-600" />
-              Consumidor Final & Catálogo
-            </span>
-            <span className="text-xs text-slate-500">• Loja: {tenantSlug}</span>
+      {/* BLOCO 1: LOGOTIPOS, FAVICON & OG IMAGE DA BOUTIQUE */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center font-bold">
+            <ImageIcon className="w-4 h-4" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Palette className="w-6 h-6 text-indigo-600" />
-            Aparência da Vitrine & Loja Virtual
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Personalize como os clientes finais e visitantes enxergam a sua boutique: logotipo oficial, favicon, cores da vitrine, banners, menus e tipografia de seções.
-          </p>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              1. Logotipos Oficiais, Favicon & OG Image da Boutique
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Gerencie a imagem principal da boutique para modo claro, modo escuro, aba do navegador e compartilhamento social.
+            </p>
+          </div>
         </div>
-
-        {/* Atalho Direto para o Tema do Admin */}
-        <Link
-          href="/admin/configuracoes/tema-admin"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs self-start md:self-auto cursor-pointer"
-        >
-          <Sliders className="w-4 h-4 text-amber-600" />
-          <span>Tema do Painel Administrativo (Equipe)</span>
-          <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
-        </Link>
-      </div>
-
-      {/* BLOCO 1: LOGOTIPOS, FAVICON & OG IMAGE (CLOUDFLARE R2) */}
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-      <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center font-bold">
-          <ImageIcon className="w-4 h-4" />
-        </div>
-        <div>
-          <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            1. Logotipos Oficiais, Favicon & OG Image (Cloudflare R2)
-          </h2>
-          <p className="text-[11px] text-slate-500">
-            Gerencie a imagem principal da boutique para modo claro, modo escuro, aba do navegador e compartilhamento social.
-          </p>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
         {/* Logo Light */}
@@ -1321,7 +1289,7 @@ export default function AppearanceSettingsPage() {
                   <div>
                     <h3 className="text-xs font-bold text-slate-900">Upload Próprio</h3>
                     <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
-                      Armazenada na sua nuvem Cloudflare R2.
+                      Armazenada com entrega de alta velocidade na nuvem da boutique.
                     </p>
                   </div>
 
