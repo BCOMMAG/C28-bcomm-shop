@@ -108,6 +108,11 @@ export const StorePreloader: React.FC = () => {
           try {
             const hasSeen = sessionStorage.getItem('bcomm_preloader_seen');
             if (hasSeen === 'true') {
+              if (typeof document !== 'undefined') {
+                document.documentElement.classList.remove('bcomm-veil-active');
+                const instantCurtain = document.getElementById('bcomm-instant-curtain');
+                if (instantCurtain) instantCurtain.style.display = 'none';
+              }
               return;
             }
             sessionStorage.setItem('bcomm_preloader_seen', 'true');
@@ -115,6 +120,13 @@ export const StorePreloader: React.FC = () => {
         }
         setIsRevealing(false);
         setIsVisible(true);
+      } else {
+        // Se inativo, garante liberação imediata de qualquer cortina estática
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.remove('bcomm-veil-active');
+          const instantCurtain = document.getElementById('bcomm-instant-curtain');
+          if (instantCurtain) instantCurtain.style.display = 'none';
+        }
       }
     }
   }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
@@ -175,6 +187,18 @@ export const StorePreloader: React.FC = () => {
 
       updateProgressDOM(100, effectiveConfig.modelo);
       setIsRevealing(true);
+
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('bcomm-veil-active');
+        const instantCurtain = document.getElementById('bcomm-instant-curtain');
+        if (instantCurtain) {
+          instantCurtain.style.opacity = '0';
+          instantCurtain.style.transition = 'opacity 500ms ease-out';
+          setTimeout(() => {
+            instantCurtain.style.display = 'none';
+          }, 500);
+        }
+      }
 
       closeTimer = setTimeout(() => {
         setIsVisible(false);
@@ -287,6 +311,11 @@ export const StorePreloader: React.FC = () => {
             setIsRevealing(false);
             setIsTestMode(false);
             document.body.style.overflow = '';
+            if (typeof document !== 'undefined') {
+              document.documentElement.classList.remove('bcomm-veil-active');
+              const instantCurtain = document.getElementById('bcomm-instant-curtain');
+              if (instantCurtain) instantCurtain.style.display = 'none';
+            }
           }}
           className="absolute top-5 right-5 z-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-bold border border-white/20 backdrop-blur-md cursor-pointer transition-all shadow-2xl active:scale-95"
         >

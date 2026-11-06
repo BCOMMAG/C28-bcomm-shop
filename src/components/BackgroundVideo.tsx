@@ -65,7 +65,7 @@ export const BackgroundVideo: React.FC = () => {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none bg-[#121110]"
+      className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none bg-[#121110] transition-opacity duration-700 ease-out"
     >
       <picture className="w-full h-full">
         {bgImageSrc.includes('plano-de-fundo') && (

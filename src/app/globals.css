@@ -52,6 +52,14 @@ body {
   transition: color 0.3s ease;
 }
 
+/* Cortina de Abertura Imediata em 0ms (Preloader de Luxo) */
+html.bcomm-veil-active body {
+  overflow: hidden !important;
+}
+html.bcomm-veil-active #bcomm-instant-curtain {
+  display: flex !important;
+}
+
 /* Tipografia de Luxo e Editorial */
 .font-serif-luxury {
   font-family: var(--font-playfair), "Playfair Display", Georgia, "Times New Roman", serif;
