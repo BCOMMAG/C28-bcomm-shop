@@ -156,6 +156,19 @@ export interface HeroBannerDB {
   created_at: string;
 }
 
+export interface AdminHeroBanner {
+  id: string;
+  titulo?: string | null;
+  subtitulo?: string | null;
+  cta_texto?: string | null;
+  cta_link?: string | null;
+  tipo_midia: 'video' | 'image';
+  desktop_media_url: string;
+  mobile_media_url: string;
+  display_order?: number;
+  ativo: boolean;
+}
+
 export interface MenuNavegacaoDB {
   id: string;
   loja_id: string;

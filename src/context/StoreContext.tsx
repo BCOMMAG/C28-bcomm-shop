@@ -5,7 +5,7 @@ import { Product, CartItem } from '@/types';
 import { getStoreProducts } from '@/lib/products';
 import { ViaCepResponse } from '@/utils/shipping';
 import { Loja, BarraAvisoEstilo } from '@/types/database';
-import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT, getCanonicalDbSlug } from '@/lib/tenant';
+import { getTenantBySlug, getTenantByHost, getTenantById, DEFAULT_LEIDY_TENANT, DEFAULT_LEIDY_BANNERS, getCanonicalDbSlug } from '@/lib/tenant';
 import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug, isPlatformHostname } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -185,8 +185,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [savedCep, setSavedCep] = useState<string>('');
   const [savedAddress, setSavedAddress] = useState<ViaCepResponse | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
-  const [heroBanner, setHeroBanner] = useState<AdminHeroBanner | null>(null);
-  const [heroBanners, setHeroBanners] = useState<AdminHeroBanner[]>([]);
+  const [heroBanners, setHeroBanners] = useState<AdminHeroBanner[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bcomm_hero_banners_last');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.filter((b: AdminHeroBanner) => b.ativo);
+          }
+        }
+      } catch {}
+    }
+    return DEFAULT_LEIDY_BANNERS.filter((b) => b.ativo);
+  });
+  const [heroBanner, setHeroBanner] = useState<AdminHeroBanner | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bcomm_hero_banners_last');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const active = parsed.filter((b: AdminHeroBanner) => b.ativo);
+            if (active.length > 0) return active[0];
+          }
+        }
+      } catch {}
+    }
+    const activeDefaults = DEFAULT_LEIDY_BANNERS.filter((b) => b.ativo);
+    return activeDefaults.length > 0 ? activeDefaults[0] : null;
+  });
 
   // Estados de Embalagem para Presente
   const [isGift, setIsGift] = useState<boolean>(false);
@@ -379,11 +407,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else if (dynamicProds && dynamicProds.length === 0) {
         setProducts([]);
       }
-      if (heroBanners && heroBanners.length > 0) {
-        const activeList = heroBanners.filter((b) => b.ativo);
-        const resolvedList = activeList.length > 0 ? activeList : [heroBanners[0]];
-        setHeroBanners(resolvedList);
-        setHeroBanner(resolvedList[0]);
+      const activeList = (heroBanners || []).filter((b) => b.ativo);
+      setHeroBanners(activeList);
+      setHeroBanner(activeList[0] || null);
+
+      if (typeof window !== 'undefined') {
+        try {
+          const canonical = getCanonicalDbSlug(tenant.slug);
+          localStorage.setItem(`bcomm_hero_banners_${canonical}`, JSON.stringify(activeList));
+          localStorage.setItem(`bcomm_hero_banners_${tenant.slug}`, JSON.stringify(activeList));
+          localStorage.setItem('bcomm_hero_banners_last', JSON.stringify(activeList));
+        } catch {}
       }
     } catch (err) {
       console.error('Falha ao carregar produtos e banners dinâmicos:', err);

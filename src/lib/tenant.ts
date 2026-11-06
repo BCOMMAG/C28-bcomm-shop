@@ -1,4 +1,4 @@
-import { Loja } from '@/types/database';
+import { Loja, AdminHeroBanner } from '@/types/database';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 // Cache em memória para resolução rápida de lojas (evita roundtrips desnecessários)
@@ -54,7 +54,9 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "cor_primaria": "#DFBE76",
     "og_image_url": "",
     "logo_dark_url": "",
+    "taxa_presente": 12,
     "cor_secundaria": "#1A1918",
+    "presente_ativo": false,
     "secoes_vitrine": {
       "global": {
         "ativo": true,
@@ -213,7 +215,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "instrucoes_retirada": "Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.",
       "prazo_manuseio_dias": 1,
       "regras_frete_gratis": {
-        "ativo": true,
+        "ativo": false,
         "regras_regionais": [
           {
             "uf": "PR",
@@ -233,7 +235,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "aplicar_apenas_economico": true
       },
       "desconto_progressivo": {
-        "ativo": true,
+        "ativo": false,
         "faixas": [
           {
             "a_partir_de": 500,
@@ -302,11 +304,18 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     },
     "entrega_local_ativa": false,
     "instrucoes_retirada": "Retirada disponível em até 2 horas úteis após a confirmação do pagamento. Apresentar documento de identificação com foto e número do pedido.",
+    "pedido_minimo_valor": 0,
     "prazo_manuseio_dias": 1,
     "_teste_e2e_timestamp": 1792612811741,
     "entrega_local_bairros": "Curitiba e Região Metropolitana (São José dos Pinhais, Colombo, Pinhais)",
+    "reserva_estoque_ativa": true,
+    "tempo_reserva_minutos": 20,
     "retirada_boutique_ativa": true,
-    "exibir_quantidade_estoque_consumidor": true
+    "destino_inativos_whatsapp": "coluna_inativos",
+    "permitir_mensagem_presente": true,
+    "prazo_inatividade_whatsapp_dias": 7,
+    "auto_descartar_inativos_whatsapp": true,
+    "exibir_quantidade_estoque_consumidor": false
   },
   "modulos_ativos": {
     "frete_automatico": true,
@@ -316,7 +325,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-05T23:55:03.03+00:00",
+  "updated_at": "2026-11-06T17:58:35.71+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
@@ -327,6 +336,34 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "custo_embalagem_padrao": 8
   }
 };
+
+// Banners oficiais da vitrine da Leidy Boutique (sincronizados com o banco)
+export const DEFAULT_LEIDY_BANNERS: AdminHeroBanner[] = [
+  {
+    "id": "fec989f1-d03f-4a0d-a104-1363a651e76f",
+    "titulo": "Lançamentos Biamar & Tricots Nobres",
+    "subtitulo": "Tricots de luxo, fios nobres e caimento sofisticado para todas as estações",
+    "cta_texto": "Ver Tricots",
+    "cta_link": "/catalogo?categoria=tricots",
+    "tipo_midia": "image",
+    "desktop_media_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1920&auto=format&fit=crop",
+    "mobile_media_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1080&auto=format&fit=crop",
+    "display_order": 0,
+    "ativo": true
+  },
+  {
+    "id": "02eb6787-9c04-41b4-b0d1-ca4a41b51774",
+    "titulo": "Coleção Elegance & Alfaiataria",
+    "subtitulo": "Curadoria Exclusiva em Moda Feminina",
+    "cta_texto": "Conhecer Coleção",
+    "cta_link": "#lancamentos",
+    "tipo_midia": "video",
+    "desktop_media_url": "/video/header_video.mp4",
+    "mobile_media_url": "/video/header_video.mp4",
+    "display_order": 0,
+    "ativo": false
+  }
+];
 
 // Configuração padrão da Aura Privée (Tenant #2 Modelo / Prospecção)
 export const DEFAULT_AURA_PRIVEE_TENANT: Loja = {

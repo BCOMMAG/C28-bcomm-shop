@@ -20,32 +20,20 @@ interface HeroBannerProps {
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
   const router = useRouter();
-  const { heroBanner, heroBanners } = useStore();
+  const { heroBanner, heroBanners, isLoadingProducts } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
 
-  // Resolução da lista de banners (múltiplos ou unitário)
+  // Resolução da lista de banners ativos cadastrados pelo lojista
   const bannersList: AdminHeroBanner[] = React.useMemo(() => {
     if (heroBanners && heroBanners.length > 0) {
-      return heroBanners;
+      return heroBanners.filter((b) => b.ativo);
     }
-    if (heroBanner) {
+    if (heroBanner && heroBanner.ativo) {
       return [heroBanner];
     }
-    return [
-      {
-        id: 'default-banner',
-        titulo: 'Coleção Elegance & Alfaiataria',
-        subtitulo: 'Curadoria Exclusiva em Moda Feminina',
-        cta_texto: 'Conhecer Coleção',
-        cta_link: '#lancamentos',
-        tipo_midia: 'video',
-        desktop_media_url: '/video/header_video.mp4',
-        mobile_media_url: '/video/header_video.mp4',
-        ativo: true
-      }
-    ];
+    return [];
   }, [heroBanners, heroBanner]);
 
   // Garante que o índice atual seja válido se a lista mudar
@@ -57,7 +45,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
 
   const currentBanner = bannersList[currentIndex] || bannersList[0];
   const isVideo = (currentBanner?.tipo_midia || 'video') === 'video';
-  const desktopUrl = currentBanner?.desktop_media_url || '/video/header_video.mp4';
+  const desktopUrl = currentBanner?.desktop_media_url || '';
   const mobileUrl = currentBanner?.mobile_media_url || desktopUrl;
   const titulo = currentBanner?.titulo;
   const subtitulo = currentBanner?.subtitulo;
@@ -206,6 +194,18 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
     touchStartXRef.current = null;
   };
 
+  // Se o lojista pausou todos os banners ou não há nenhum ativo
+  if (bannersList.length === 0) {
+    if (isLoadingProducts) {
+      return (
+        <section className="relative w-full overflow-hidden bg-[#1A1918] h-screen h-[100dvh] min-h-[100dvh] md:h-auto md:min-h-0 md:aspect-[16/9] md:max-h-[calc(100vh)] flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80" />
+        </section>
+      );
+    }
+    return null;
+  }
+
   return (
     <section className="relative w-full overflow-hidden bg-[#1A1918] select-none">
       {/* Container Principal do Carrossel */}
@@ -221,7 +221,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
         {bannersList.map((banner, index) => {
           const isCurrent = index === currentIndex;
           const isBannerVideo = (banner.tipo_midia || 'video') === 'video';
-          const deskMedia = banner.desktop_media_url || '/video/header_video.mp4';
+          const deskMedia = banner.desktop_media_url || '';
           const mobMedia = banner.mobile_media_url || deskMedia;
 
           return (

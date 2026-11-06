@@ -1,7 +1,7 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo, ProgramaVIPConfig } from '@/types/database';
+import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner } from '@/types/database';
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -228,18 +228,7 @@ export interface AdminClientItem {
   }>;
 }
 
-export interface AdminHeroBanner {
-  id: string;
-  titulo?: string | null;
-  subtitulo?: string | null;
-  cta_texto?: string | null;
-  cta_link?: string | null;
-  tipo_midia: 'video' | 'image';
-  desktop_media_url: string;
-  mobile_media_url: string;
-  display_order?: number;
-  ativo: boolean;
-}
+export type { AdminHeroBanner };
 
 /**
  * Coleta métricas consolidadas em tempo real da loja no Supabase.
