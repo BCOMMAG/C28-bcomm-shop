@@ -545,7 +545,7 @@ export default function ShippingSettingsPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl">
+    <form onSubmit={handleSubmit} className="space-y-6 w-full">
       {/* Toast flutuante */}
       {toast && (
         <div
@@ -876,51 +876,52 @@ export default function ShippingSettingsPage() {
           </div>
         </div>
 
-        {/* Tabela de Serviços com Switches */}
-        <div className="space-y-3">
+        {/* Grade de Serviços em 2 Colunas Equilibradas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {config.servicos_habilitados.map((servico) => (
             <div
               key={servico.codigo}
-              className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs ${
+              className={`p-4 rounded-xl border transition-all flex flex-col justify-between gap-3 text-xs ${
                 servico.ativo
                   ? 'bg-white border-slate-200 shadow-2xs'
                   : 'bg-slate-50/70 border-slate-200 opacity-60'
               }`}
             >
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id={`servico_${servico.codigo}`}
-                  checked={servico.ativo}
-                  onChange={() => toggleServico(servico.codigo)}
-                  className="mt-1 w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id={`servico_${servico.codigo}`}
+                    checked={servico.ativo}
+                    onChange={() => toggleServico(servico.codigo)}
+                    className="mt-1 w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer"
+                  />
+                  <div>
                     <label
                       htmlFor={`servico_${servico.codigo}`}
-                      className="font-bold text-slate-900 cursor-pointer text-sm"
+                      className="font-bold text-slate-900 cursor-pointer text-sm block"
                     >
                       {servico.transportadora} {servico.nome}
                     </label>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        servico.ativo
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {servico.ativo ? 'Visível na Loja' : 'Oculto para Clientes'}
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      Código: <code className="font-mono text-slate-600">{servico.codigo}</code>
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">
-                    Código interno: <code className="font-mono text-slate-600">{servico.codigo}</code>
-                  </span>
                 </div>
+
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                    servico.ativo
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {servico.ativo ? 'Visível na Loja' : 'Oculto'}
+                </span>
               </div>
 
               {servico.ativo && (
-                <div className="flex-1 max-w-sm">
+                <div className="pt-2 border-t border-slate-100">
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                     Nome Exibido na Vitrine / Checkout:
                   </label>

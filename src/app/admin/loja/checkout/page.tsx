@@ -148,435 +148,468 @@ export default function CheckoutSettingsPage() {
         </div>
       )}
 
-      {/* BLOCO 1: EMBALAGEM PARA PRESENTE & DEDICATÓRIA */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-pink-50 text-pink-700 border border-pink-200 flex items-center justify-center font-bold">
-              <Gift className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                  1. Embalagem Especial para Presente
-                </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">
-                  Encantamento
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Ofereça caixas com laço de cetim e cartão personalizado com dedicatória durante o checkout.
-              </p>
-            </div>
+      {/* CABEÇALHO */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-serif-luxury">
+              Checkout, Sacola & Regras de Pedido
+            </h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-pink-100 text-pink-800 border border-pink-200 flex items-center gap-1">
+              <ShoppingBag className="w-3 h-3 text-pink-600" /> Operação & Conversão
+            </span>
           </div>
-
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={presenteAtivo}
-              onChange={(e) => setPresenteAtivo(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600" />
-          </label>
+          <p className="text-xs text-slate-500 mt-1">
+            Personalize a experiência do consumidor final na sacola, taxas de presente, valor mínimo e proteção de estoque contra venda dupla no WhatsApp.
+          </p>
         </div>
 
-        {presenteAtivo ? (
-          <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button
+          type="submit"
+          disabled={isSaving}
+          className="admin-btn-primary px-4 py-2.5 text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+        >
+          {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{isSaving ? 'Salvando...' : 'Salvar Regras'}</span>
+        </button>
+      </div>
+
+      {/* DASHBOARD PANORÂMICO DE 2 COLUNAS TEMÁTICAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* =========================================================================
+            COLUNA 1: EXPERIÊNCIA DA SACOLA & CONSUMIDOR FINAL
+            ========================================================================= */}
+        <div className="space-y-6">
+          {/* CARD 1: EMBALAGEM PARA PRESENTE & DEDICATÓRIA */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-pink-50 text-pink-700 border border-pink-200 flex items-center justify-center font-bold">
+                  <Gift className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">
+                      1. Embalagem Especial para Presente
+                    </h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">
+                      Encantamento
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Ofereça caixas com laço de cetim e dedicatória no checkout.
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={presenteAtivo}
+                  onChange={(e) => setPresenteAtivo(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600" />
+              </label>
+            </div>
+
+            {presenteAtivo ? (
+              <div className="space-y-3.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold text-[11px]">Taxa da Embalagem (R$)</label>
+                    <div className="relative">
+                      <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={taxaPresente}
+                        onChange={(e) => setTaxaPresente(Number(e.target.value))}
+                        placeholder="12.00"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-pink-500 focus:bg-white text-xs"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      R$ 0 para cortesia da boutique.
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col justify-center">
+                    <label className="flex items-center gap-2 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={permitirMensagemPresente}
+                        onChange={(e) => setPermitirMensagemPresente(e.target.checked)}
+                        className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-slate-300"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xs">Permitir Dedicatória</span>
+                        <span className="text-[10px] text-slate-500">
+                          Campo de texto na sacola para recado especial
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Simulação Visual da Sacola */}
+                <div className="bg-pink-50/50 border border-pink-200 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0">
+                      <Heart className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-pink-950 block text-xs">
+                        Prévia na Sacola da Cliente:
+                      </span>
+                      <span className="text-[10px] text-pink-800">
+                        &quot;É presente? Adicione caixa com laço por R$ {Number(taxaPresente).toFixed(2).replace('.', ',')}&quot;
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-pink-700 bg-white px-2 py-0.5 rounded-md border border-pink-300 shrink-0">
+                    Ativo
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                Embalagem especial desativada. As compras serão enviadas na embalagem padrão da loja.
+              </div>
+            )}
+          </div>
+
+          {/* CARD 2: PEDIDO MÍNIMO & VALIDAÇÃO DE CARRINHO */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2.5 pb-3.5 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 flex items-center justify-center font-bold">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Taxa da Embalagem de Presente (R$)</label>
+                <h2 className="text-sm font-bold text-slate-900">
+                  2. Pedido Mínimo & Validação de Carrinho
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Estabeleça um valor mínimo de compras para liberar o checkout.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <label className="block text-slate-700 mb-1 font-bold text-[11px]">Valor Mínimo (R$)</label>
                 <div className="relative">
                   <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
                   <input
                     type="number"
                     min="0"
-                    step="0.5"
-                    value={taxaPresente}
-                    onChange={(e) => setTaxaPresente(Number(e.target.value))}
-                    placeholder="12.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-pink-500 focus:bg-white"
+                    step="5"
+                    value={pedidoMinimoValor}
+                    onChange={(e) => setPedidoMinimoValor(Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white text-xs"
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Cobre o custo de caixa rígida, fita de cetim e papel perfumado (ou R$ 0 para cortesia).
+                  Deixe 0 para permitir compras sem valor mínimo.
                 </span>
               </div>
 
-              <div className="flex flex-col justify-center">
-                <label className="flex items-center gap-2 cursor-pointer pt-2">
-                  <input
-                    type="checkbox"
-                    checked={permitirMensagemPresente}
-                    onChange={(e) => setPermitirMensagemPresente(e.target.checked)}
-                    className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-slate-300"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 block">Permitir Mensagem no Cartão</span>
-                    <span className="text-[11px] text-slate-500">
-                      Abre um campo de texto no checkout para o cliente escrever uma dedicatória
-                    </span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Simulação Visual da Sacola */}
-            <div className="bg-pink-50/50 border border-pink-200 rounded-xl p-4 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0">
-                  <Heart className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-bold text-pink-950 block">
-                    Prévia na Sacola: &quot;É um presente para alguém especial?&quot;
-                  </span>
-                  <span className="text-[11px] text-pink-800">
-                    Acrescente embalagem de luxo e cartão por apenas R$ {Number(taxaPresente).toFixed(2).replace('.', ',')}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-pink-700 bg-white px-2.5 py-1 rounded-lg border border-pink-300">
-                Ativo na Loja
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-            A opção de embalagem especial para presente está atualmente desativada. As compras serão enviadas na embalagem padrão da loja.
-          </div>
-        )}
-      </div>
-
-      {/* BLOCO 2: PEDIDO MÍNIMO & REGRAS COMERCIAIS */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 flex items-center justify-center font-bold">
-            <ShoppingBag className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              2. Pedido Mínimo & Validação de Carrinho
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Estabeleça um valor mínimo para finalização de compras (útil para atacado ou campanhas especiais).
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
-          <div>
-            <label className="block text-slate-700 mb-1 font-bold">Valor Mínimo do Pedido (R$)</label>
-            <div className="relative">
-              <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
-              <input
-                type="number"
-                min="0"
-                step="5"
-                value={pedidoMinimoValor}
-                onChange={(e) => setPedidoMinimoValor(Number(e.target.value))}
-                placeholder="0"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white"
-              />
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Deixe 0 (zero) para permitir qualquer valor sem restrição mínima.
-            </span>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-center text-[11px] text-slate-600">
-            <span>
-              {pedidoMinimoValor > 0 ? (
-                <>
-                  Pedidos com valor inferior a <strong>R$ {Number(pedidoMinimoValor).toFixed(2).replace('.', ',')}</strong> não poderão avançar para a tela de pagamento.
-                </>
-              ) : (
-                'Sem restrição de valor mínimo. A cliente pode comprar qualquer peça individualmente.'
-              )}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* BLOCO 3: RESERVA TEMPORÁRIA DE ESTOQUE (WHATSAPP & ANTI-VENDA DUPLA) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                3. Reserva Temporária de Estoque & Proteção Anti-Venda Dupla
-              </h2>
-              <p className="text-[11px] text-slate-500">
-                Retém a peça no banco de dados enquanto o cliente finaliza o pedido via WhatsApp, evitando que outro comprador leve a mesma peça.
-              </p>
-            </div>
-          </div>
-
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              checked={reservaEstoqueAtiva}
-              onChange={(e) => setReservaEstoqueAtiva(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
-          </label>
-        </div>
-
-        {reservaEstoqueAtiva ? (
-          <div className="space-y-4 text-xs">
-            <div>
-              <label className="block text-slate-700 mb-1.5 font-bold">
-                Tempo de Retenção da Peça na Reserva (Minutos)
-              </label>
-
-              {/* Botões Rápidos de Minutos */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {[10, 15, 20, 30, 45, 60].map((mins) => (
-                  <button
-                    key={mins}
-                    type="button"
-                    onClick={() => setTempoReservaMinutos(mins)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      tempoReservaMinutos === mins
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {mins} min
-                  </button>
-                ))}
-              </div>
-
-              <div className="max-w-xs relative">
-                <input
-                  type="number"
-                  min="5"
-                  max="1440"
-                  value={tempoReservaMinutos}
-                  onChange={(e) => setTempoReservaMinutos(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-xs">
-                  minutos
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-center text-[11px] text-slate-600">
+                <span>
+                  {pedidoMinimoValor > 0 ? (
+                    <>
+                      Pedidos com subtotal inferior a <strong>R$ {Number(pedidoMinimoValor).toFixed(2).replace('.', ',')}</strong> serão bloqueados até atingir a meta.
+                    </>
+                  ) : (
+                    'Sem restrição de valor mínimo. A cliente pode comprar qualquer peça individualmente.'
+                  )}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Recomendado: 15 a 30 minutos. Se o cliente não efetuar o pagamento dentro desse prazo, a reserva expira automaticamente e a peça volta à vitrine.
-              </span>
             </div>
+          </div>
 
-            {/* Banner de Prévia da Mensagem do WhatsApp */}
-            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-2">
-              <div className="flex items-center gap-2 text-amber-900 font-bold">
-                <Timer className="w-4 h-4 text-amber-600" />
-                <span>Gatilho de Urgência Real no WhatsApp do Cliente</span>
-              </div>
-              <p className="text-[11px] text-amber-800 leading-relaxed font-mono bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
-                &quot;⏱️ *Reserva Provisória:* Suas peças estão reservadas por <strong>{tempoReservaMinutos} minutos</strong> para a conclusão do seu atendimento!&quot;
-              </p>
-              <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Enquanto a reserva estiver ativa, o sistema bloqueia tentativas de outros compradores na vitrine.</span>
-              </div>
-            </div>
-
-            {/* Configuração de Exibição de Quantidade de Estoque ao Consumidor */}
-            <div className="pt-4 border-t border-slate-200/80">
-              <div className="flex items-center justify-between gap-4">
+          {/* CARD 3: VISIBILIDADE DE QUANTIDADE DE ESTOQUE */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span>Exibir Quantidade de Estoque para o Consumidor</span>
-                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-sm">
-                      Vitrine &amp; Modal
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Define se os clientes verão o número exato de peças restantes (ex: &quot;Restam 2 peças&quot;) ou se os números permanecerão ocultos.
+                  <h2 className="text-sm font-bold text-slate-900">
+                    3. Exibição de Estoque para o Consumidor
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Controle de sigilo comercial na vitrine e modal de peças.
                   </p>
                 </div>
-
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={exibirQuantidadeEstoqueConsumidor}
-                    onChange={(e) => setExibirQuantidadeEstoqueConsumidor(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
-                </label>
               </div>
 
-              <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                {exibirQuantidadeEstoqueConsumidor ? (
-                  <span className="text-emerald-700 font-medium">
-                    ✓ Transparente: Exibe o número real de unidades quando o estoque for &le; 5 peças. Peças com mais de 5 unidades exibem apenas &quot;Disponível em estoque&quot;.
-                  </span>
-                ) : (
-                  <span className="text-slate-600 font-medium">
-                    🔒 Sigilo comercial: Oculta a quantidade exata. Quando o estoque for baixo, informa apenas &quot;Últimas unidades&quot; sem expor números.
-                  </span>
-                )}
-              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={exibirQuantidadeEstoqueConsumidor}
+                  onChange={(e) => setExibirQuantidadeEstoqueConsumidor(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+              </label>
             </div>
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-            A reserva temporária está desativada. As peças não serão retidas provisoriamente ao direcionar clientes para o WhatsApp.
-          </div>
-        )}
-      </div>
 
-      {/* BLOCO 4: LIMPEZA DE PEDIDOS INATIVOS NO WHATSAPP */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
-              <Archive className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                Limpeza de Pedidos Inativos no WhatsApp
-              </h2>
-              <p className="text-xs text-slate-500">
-                Retira sacolas não pagas e abandonadas da coluna operacional ativa para manter a página rápida e sem poluição visual.
-              </p>
+            <div className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              {exibirQuantidadeEstoqueConsumidor ? (
+                <span className="text-emerald-700 font-medium">
+                  ✓ <strong>Modo Transparente:</strong> Exibe o número real de unidades quando o estoque for &le; 5 peças (ex: &quot;Restam 2 peças&quot;). Acima de 5 unidades, exibe apenas &quot;Disponível em estoque&quot;.
+                </span>
+              ) : (
+                <span className="text-slate-600 font-medium">
+                  🔒 <strong>Sigilo Comercial:</strong> Oculta a contagem numérica exata. Peças com poucas unidades exibem apenas &quot;Últimas unidades&quot; sem expor a contagem do estoque físico.
+                </span>
+              )}
             </div>
           </div>
-
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              checked={autoDescartarInativosWhatsapp}
-              onChange={(e) => setAutoDescartarInativosWhatsapp(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
-          </label>
         </div>
 
-        {autoDescartarInativosWhatsapp ? (
-          <div className="space-y-4 text-xs">
-            <div>
-              <label className="block text-slate-700 mb-1.5 font-bold">
-                Prazo de Inatividade (Dias sem Pagamento)
-              </label>
-
-              {/* Botões Rápidos de Dias */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {[
-                  { dias: 1, label: '24 horas (1 dia)' },
-                  { dias: 2, label: '48 horas (2 dias)' },
-                  { dias: 3, label: '3 dias' },
-                  { dias: 7, label: '7 dias (Padrão)' },
-                  { dias: 15, label: '15 dias' },
-                  { dias: 30, label: '30 dias' }
-                ].map((item) => (
-                  <button
-                    key={item.dias}
-                    type="button"
-                    onClick={() => setPrazoInatividadeWhatsappDias(item.dias)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      prazoInatividadeWhatsappDias === item.dias
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+        {/* =========================================================================
+            COLUNA 2: OPERAÇÃO, WHATSAPP & PROTEÇÃO DE VENDAS
+            ========================================================================= */}
+        <div className="space-y-6">
+          {/* CARD 4: RESERVA TEMPORÁRIA ANTI-VENDA DUPLA */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    4. Reserva Temporária Anti-Venda Dupla
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Bloqueia a peça na vitrine enquanto o lead finaliza no WhatsApp.
+                  </p>
+                </div>
               </div>
 
-              <div className="max-w-xs relative">
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
                 <input
-                  type="number"
-                  min="1"
-                  max="180"
-                  value={prazoInatividadeWhatsappDias}
-                  onChange={(e) => setPrazoInatividadeWhatsappDias(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                  type="checkbox"
+                  checked={reservaEstoqueAtiva}
+                  onChange={(e) => setReservaEstoqueAtiva(e.target.checked)}
+                  className="sr-only peer"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-xs">
-                  dias corridos
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Pedidos com mais de {prazoInatividadeWhatsappDias} {prazoInatividadeWhatsappDias === 1 ? 'dia' : 'dias'} no status &quot;Aguardando WhatsApp&quot; sem confirmação de pagamento serão tratados como inativos.
-              </span>
-            </div>
-
-            {/* Destino do Pedido Inativo */}
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <label className="block text-slate-700 font-bold">
-                Destino dos Pedidos Inativos
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
               </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
-                  destinoInativosWhatsapp === 'cancelado'
-                    ? 'border-amber-500 bg-amber-50/50 text-amber-950'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                }`}>
-                  <input
-                    type="radio"
-                    name="destinoInativos"
-                    value="cancelado"
-                    checked={destinoInativosWhatsapp === 'cancelado'}
-                    onChange={() => setDestinoInativosWhatsapp('cancelado')}
-                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                  />
-                  <div>
-                    <span className="font-bold text-xs block">Mover para Coluna Cancelados (Recomendado)</span>
-                    <span className="text-[11px] text-slate-500 leading-relaxed block mt-0.5">
-                      Ganha a etiqueta &quot;⏱️ Inativo&quot; e vai para a coluna de Cancelados, mantendo o Kanban perfeito com 5 colunas por tela.
-                    </span>
-                  </div>
-                </label>
-
-                <label className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
-                  destinoInativosWhatsapp === 'coluna_inativos'
-                    ? 'border-amber-500 bg-amber-50/50 text-amber-950'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                }`}>
-                  <input
-                    type="radio"
-                    name="destinoInativos"
-                    value="coluna_inativos"
-                    checked={destinoInativosWhatsapp === 'coluna_inativos'}
-                    onChange={() => setDestinoInativosWhatsapp('coluna_inativos')}
-                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                  />
-                  <div>
-                    <span className="font-bold text-xs block">Coluna Separada &quot;Não Finalizados&quot;</span>
-                    <span className="text-[11px] text-slate-500 leading-relaxed block mt-0.5">
-                      Cria uma coluna exclusiva no Kanban para pedidos abandonados, que pode ser ocultada ou exibida a qualquer momento.
-                    </span>
-                  </div>
-                </label>
-              </div>
             </div>
 
-            {/* Blindagem de Reservas Congeladas */}
-            <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-3.5 flex items-start gap-2.5 text-sky-900">
-              <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-              <div className="text-[11px] leading-relaxed">
-                <strong className="block font-bold">Blindagem Inteligente de Clientes VIP:</strong>
-                <span>Pedidos que possuem reserva pausada ou congelada pela atendente ficam <strong>100% protegidos</strong> e nunca são descartados automaticamente por inatividade.</span>
+            {reservaEstoqueAtiva ? (
+              <div className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[11px]">
+                    Tempo de Retenção na Reserva (Minutos)
+                  </label>
+
+                  {/* Botões Rápidos de Minutos */}
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {[10, 15, 20, 30, 45, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setTempoReservaMinutos(mins)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          tempoReservaMinutos === mins
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {mins}m
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="max-w-xs relative">
+                    <input
+                      type="number"
+                      min="5"
+                      max="1440"
+                      value={tempoReservaMinutos}
+                      onChange={(e) => setTempoReservaMinutos(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white text-xs"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-[11px]">
+                      minutos
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Se o pagamento não for registrado no prazo, a peça volta à vitrine.
+                  </span>
+                </div>
+
+                {/* Banner de Prévia no WhatsApp */}
+                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                    <Timer className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Gatilho de Urgência no WhatsApp do Cliente:</span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 font-mono bg-white/70 p-2 rounded-lg border border-amber-200/60">
+                    &quot;⏱️ *Reserva Provisória:* Peças retidas por <strong>{tempoReservaMinutos} minutos</strong> para seu atendimento!&quot;
+                  </p>
+                </div>
               </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                Reserva temporária desativada. As peças não serão retidas provisoriamente durante o atendimento.
+              </div>
+            )}
+          </div>
+
+          {/* CARD 5: LIMPEZA DE PEDIDOS INATIVOS NO WHATSAPP */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+                  <Archive className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    5. Limpeza de Pedidos Inativos no WhatsApp
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Organização automática de sacolas não pagas no Kanban.
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={autoDescartarInativosWhatsapp}
+                  onChange={(e) => setAutoDescartarInativosWhatsapp(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600" />
+              </label>
             </div>
+
+            {autoDescartarInativosWhatsapp ? (
+              <div className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[11px]">
+                    Prazo de Inatividade (Dias sem Pagamento)
+                  </label>
+
+                  {/* Botões Rápidos de Dias */}
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {[
+                      { dias: 1, label: '24h (1d)' },
+                      { dias: 2, label: '48h (2d)' },
+                      { dias: 3, label: '3 dias' },
+                      { dias: 7, label: '7 dias' },
+                      { dias: 15, label: '15 dias' },
+                      { dias: 30, label: '30 dias' }
+                    ].map((item) => (
+                      <button
+                        key={item.dias}
+                        type="button"
+                        onClick={() => setPrazoInatividadeWhatsappDias(item.dias)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          prazoInatividadeWhatsappDias === item.dias
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="max-w-xs relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="180"
+                      value={prazoInatividadeWhatsappDias}
+                      onChange={(e) => setPrazoInatividadeWhatsappDias(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white text-xs"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-[11px]">
+                      dias corridos
+                    </span>
+                  </div>
+                </div>
+
+                {/* Destino do Pedido Inativo */}
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <label className="block text-slate-700 font-bold text-[11px]">
+                    Destino no Funil de Pedidos
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <label className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                      destinoInativosWhatsapp === 'cancelado'
+                        ? 'border-amber-500 bg-amber-50/50 text-amber-950'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="destinoInativos"
+                        value="cancelado"
+                        checked={destinoInativosWhatsapp === 'cancelado'}
+                        onChange={() => setDestinoInativosWhatsapp('cancelado')}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div>
+                        <span className="font-bold text-xs block">Coluna Cancelados</span>
+                        <span className="text-[10px] text-slate-500 leading-snug block mt-0.5">
+                          Etiqueta &quot;⏱️ Inativo&quot; e vai para Cancelados
+                        </span>
+                      </div>
+                    </label>
+
+                    <label className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                      destinoInativosWhatsapp === 'coluna_inativos'
+                        ? 'border-amber-500 bg-amber-50/50 text-amber-950'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="destinoInativos"
+                        value="coluna_inativos"
+                        checked={destinoInativosWhatsapp === 'coluna_inativos'}
+                        onChange={() => setDestinoInativosWhatsapp('coluna_inativos')}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div>
+                        <span className="font-bold text-xs block">Coluna Não Finalizados</span>
+                        <span className="text-[10px] text-slate-500 leading-snug block mt-0.5">
+                          Coluna exclusiva para leads abandonados
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Blindagem VIP */}
+                <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-2.5 flex items-start gap-2 text-sky-900">
+                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
+                  <div className="text-[10px] leading-relaxed">
+                    <strong>Blindagem VIP:</strong> Reservas pausadas/congeladas pela atendente ficam 100% protegidas contra descarte automático.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                Limpeza de inativos desativada. Todos os pedidos permanecerão na coluna pendente indefinidamente.
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-            A limpeza automática de pedidos inativos está desativada. Todos os pedidos do WhatsApp permanecerão na coluna pendente indefinidamente.
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* BOTÃO SALVAR */}
-      <div className="flex justify-end pt-2">
+      {/* BOTÃO SALVAR NO RODAPÉ */}
+      <div className="flex justify-end pt-4 border-t border-slate-200">
         <button
           type="submit"
           disabled={isSaving}

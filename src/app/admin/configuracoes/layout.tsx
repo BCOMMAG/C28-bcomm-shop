@@ -53,14 +53,6 @@ const SETTINGS_SECTIONS: NavSection[] = [
         badgeColor: 'bg-slate-100 text-slate-700'
       },
       {
-        label: 'Usuários & Níveis de Acesso',
-        href: '/admin/equipe',
-        icon: Users,
-        description: 'Vendedoras, cargos e permissões finas',
-        badge: 'Equipe',
-        badgeColor: 'bg-purple-100 text-purple-800'
-      },
-      {
         label: 'Plano & Assinatura SaaS',
         href: '/admin/configuracoes/assinatura',
         icon: Sparkles,
@@ -137,7 +129,7 @@ export default function SettingsLayout({
               <span>Painel</span>
             </Link>
             <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="font-semibold text-slate-700">Configurações</span>
+            <span className="font-semibold text-slate-700">Configurações Gerais</span>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -146,10 +138,10 @@ export default function SettingsLayout({
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-                Configurações da Loja
+                Configurações Gerais
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Central de governança, operação, segurança e parametrização de {lojaNome}.
+                Central de governança, conta SaaS, segurança e parâmetros do sistema de {lojaNome}.
               </p>
             </div>
           </div>
