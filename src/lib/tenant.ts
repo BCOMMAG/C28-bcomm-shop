@@ -39,6 +39,19 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "tagline": "Curadoria Exclusiva em Moda Feminina",
     "logo_url": "/images/Logo sem fundo.png",
     "cor_fundo": "#FAF8F5",
+    "preloader": {
+      "ativo": true,
+      "fundo": "#FAF8F5",
+      "modelo": "haute_couture",
+      "cor_texto": "#1A1918",
+      "frequencia": "todas_as_paginas",
+      "exibir_logo": true,
+      "cor_primaria": "#DFBE76",
+      "exibir_slogan": true,
+      "tempo_minimo_ms": 650,
+      "exibir_porcentagem": true,
+      "timeout_seguranca_ms": 2500
+    },
     "barra_aviso": "Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp",
     "favicon_url": "",
     "admin_custom": {
@@ -325,7 +338,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-06T17:58:35.71+00:00",
+  "updated_at": "2026-11-06T20:08:28.53+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
