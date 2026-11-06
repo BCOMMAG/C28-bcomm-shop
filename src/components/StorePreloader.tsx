@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
@@ -10,6 +10,20 @@ import { Sparkles, X } from 'lucide-react';
 export const StorePreloader: React.FC = () => {
   const pathname = usePathname();
   const { currentTenant, isLoadingProducts } = useStore();
+
+  const [hasMounted, setHasMounted] = useState<boolean>(false);
+  const [testConfig, setTestConfig] = useState<StorePreloaderConfig | null>(null);
+  const [isTestMode, setIsTestMode] = useState<boolean>(false);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [isRevealing, setIsRevealing] = useState<boolean>(false);
+
+  // Referências diretas ao DOM (Zero Re-renders do React durante o trajeto 0% a 100%)
+  const digitsRef = useRef<HTMLSpanElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
+  const prevPathnameRef = useRef<string>(pathname);
+  const hasLoadedInitialRouteRef = useRef<boolean>(false);
+  const isTransitioningRouteRef = useRef<boolean>(false);
 
   const isExcludedRoute = useMemo(() => {
     if (!pathname) return false;
@@ -30,93 +44,9 @@ export const StorePreloader: React.FC = () => {
       exibir_slogan: p?.exibir_slogan !== undefined ? Boolean(p.exibir_slogan) : true,
       frequencia: p?.frequencia || 'todas_as_paginas',
       tempo_minimo_ms: Number(p?.tempo_minimo_ms || 650),
-      timeout_seguranca_ms: Number(p?.timeout_seguranca_ms || 2500)
+      timeout_seguranca_ms: Number(p?.timeout_seguranca_ms || 2200)
     };
   }, [currentTenant]);
-
-  const [testConfig, setTestConfig] = useState<StorePreloaderConfig | null>(null);
-  const [isTestMode, setIsTestMode] = useState<boolean>(false);
-
-  // Hidratação instantânea em 0ms no carregamento inicial da vitrine pública
-  const [isVisible, setIsVisible] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const path = window.location.pathname;
-        if (path.startsWith('/admin') || path.startsWith('/super-admin')) {
-          return false;
-        }
-        const last = localStorage.getItem('bcomm_tenant_last');
-        if (last) {
-          const parsed = JSON.parse(last);
-          if (parsed?.configuracoes_visuais?.preloader?.ativo) {
-            return true;
-          }
-        }
-      } catch {}
-    }
-    return Boolean(currentTenant?.configuracoes_visuais?.preloader?.ativo);
-  });
-
-  const [isRevealing, setIsRevealing] = useState<boolean>(false);
-  const [progress, setProgress] = useState<number>(0);
-
-  const prevPathnameRef = useRef<string>(pathname);
-  const hasMountedInitialRef = useRef<boolean>(false);
-  const startTimeRef = useRef<number>(Date.now());
-  const animationFrameRef = useRef<number | null>(null);
-
-  // Escuta evento de teste ao vivo disparado pelo painel administrativo
-  useEffect(() => {
-    const handleTestEvent = (e: any) => {
-      const customConfig = e?.detail;
-      if (customConfig) {
-        setTestConfig(customConfig);
-      }
-      setIsTestMode(true);
-      setIsRevealing(false);
-      setProgress(0);
-      setIsVisible(true);
-      startTimeRef.current = Date.now();
-    };
-
-    window.addEventListener('bcomm:test_preloader', handleTestEvent);
-    return () => {
-      window.removeEventListener('bcomm:test_preloader', handleTestEvent);
-    };
-  }, []);
-
-  // Inicialização e sincronização da visibilidade
-  useEffect(() => {
-    if (isExcludedRoute && !isTestMode) {
-      setIsVisible(false);
-      return;
-    }
-
-    if (!hasMountedInitialRef.current) {
-      hasMountedInitialRef.current = true;
-      if (config.ativo) {
-        setIsVisible(true);
-        setIsRevealing(false);
-        setProgress(0);
-        startTimeRef.current = Date.now();
-      }
-    }
-  }, [config.ativo, isExcludedRoute, isTestMode]);
-
-  // Transição de rotas públicas
-  useEffect(() => {
-    if (isExcludedRoute) return;
-
-    if (prevPathnameRef.current !== pathname) {
-      prevPathnameRef.current = pathname;
-      if (config.ativo && config.frequencia === 'todas_as_paginas') {
-        setIsRevealing(false);
-        setProgress(0);
-        setIsVisible(true);
-        startTimeRef.current = Date.now();
-      }
-    }
-  }, [pathname, config.ativo, config.frequencia, isExcludedRoute]);
 
   const effectiveConfig: StorePreloaderConfig = useMemo(() => {
     if (isTestMode && testConfig) {
@@ -125,77 +55,206 @@ export const StorePreloader: React.FC = () => {
     return config;
   }, [isTestMode, testConfig, config]);
 
-  // Motor de animação e progresso (0% a 100%)
+  // Função utilitária para atualizar os dígitos e a barra de carregamento diretamente no DOM
+  const updateProgressDOM = useCallback((percent: number, modelo: string) => {
+    const clamped = Math.max(0, Math.min(100, Math.floor(percent)));
+    if (digitsRef.current) {
+      digitsRef.current.textContent = modelo === 'monograma' ? `${clamped}%` : String(clamped).padStart(2, '0');
+    }
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${clamped}%`;
+    }
+  }, []);
+
+  // 1. Montagem inicial no cliente (Proteção absoluta contra Hydration Mismatch)
   useEffect(() => {
-    if (!isVisible) {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    setHasMounted(true);
+  }, []);
+
+  // 2. Ouvinte de evento para simulação ao vivo do lojista no painel de aparência
+  useEffect(() => {
+    const handleTestEvent = (e: any) => {
+      const customConfig = e?.detail;
+      if (customConfig) {
+        setTestConfig(customConfig);
+      }
+      setIsTestMode(true);
+      setIsRevealing(false);
+      setIsVisible(true);
+    };
+
+    window.addEventListener('bcomm:test_preloader', handleTestEvent);
+    return () => {
+      window.removeEventListener('bcomm:test_preloader', handleTestEvent);
+    };
+  }, []);
+
+  // 3. Inicialização na vitrine ao vivo
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    // Se estiver em rota administrativa e não for teste, desativa
+    if (isExcludedRoute && !isTestMode) {
+      setIsVisible(false);
       return;
     }
 
-    const minDuration = isTestMode ? 1400 : (effectiveConfig.tempo_minimo_ms || 650);
-    const maxTimeout = isTestMode ? 1800 : (effectiveConfig.timeout_seguranca_ms || 2500);
-    let hideTimeout: NodeJS.Timeout | null = null;
-    let localProgress = 0;
+    // No primeiro carregamento da vitrine pública
+    if (!hasLoadedInitialRouteRef.current) {
+      hasLoadedInitialRouteRef.current = true;
+      if (effectiveConfig.ativo) {
+        // Verifica se a frequência é 'apenas_entrada' e se já foi visualizada na sessão
+        if (effectiveConfig.frequencia === 'apenas_entrada') {
+          try {
+            const hasSeen = sessionStorage.getItem('bcomm_preloader_seen');
+            if (hasSeen === 'true') {
+              return;
+            }
+            sessionStorage.setItem('bcomm_preloader_seen', 'true');
+          } catch {}
+        }
+        setIsRevealing(false);
+        setIsVisible(true);
+      }
+    }
+  }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-    const updateLoop = () => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const isContentReady = isTestMode ? true : !isLoadingProducts;
-      const hasTimedOut = elapsed >= maxTimeout;
+  // 4. Transições de rotas internas (Catálogo, Favoritos, etc.)
+  useEffect(() => {
+    if (!hasMounted || isExcludedRoute || isTestMode) return;
+
+    if (prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      if (effectiveConfig.ativo && effectiveConfig.frequencia === 'todas_as_paginas') {
+        isTransitioningRouteRef.current = true;
+        setIsRevealing(false);
+        setIsVisible(true);
+      }
+    }
+  }, [pathname, hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
+
+  // 5. MOTOR DE ANIMAÇÃO DIRETO NO DOM + WATCHDOG AUTÔNOMO
+  useEffect(() => {
+    if (!isVisible) {
+      document.body.style.overflow = '';
+      return;
+    }
+
+    // Trava de rolagem da vitrine enquanto a cortina está ativa
+    document.body.style.overflow = 'hidden';
+
+    // Reseta visual no DOM imediatamente
+    updateProgressDOM(0, effectiveConfig.modelo);
+
+    const isInternalTransition = isTransitioningRouteRef.current;
+    const targetDuration = isTestMode
+      ? 1400
+      : isInternalTransition
+      ? 450
+      : Math.max(650, effectiveConfig.tempo_minimo_ms || 650);
+
+    const maxTimeout = isTestMode
+      ? 1800
+      : isInternalTransition
+      ? 900
+      : Math.max(1800, effectiveConfig.timeout_seguranca_ms || 2200);
+
+    const startTime = Date.now();
+    let currentVal = 0;
+    let isFinished = false;
+    let rafId: number | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
+    let closeTimer: NodeJS.Timeout | null = null;
+
+    const finish = () => {
+      if (isFinished) return;
+      isFinished = true;
+
+      if (rafId) cancelAnimationFrame(rafId);
+      if (intervalId) clearInterval(intervalId);
+
+      updateProgressDOM(100, effectiveConfig.modelo);
+      setIsRevealing(true);
+
+      closeTimer = setTimeout(() => {
+        setIsVisible(false);
+        setIsRevealing(false);
+        setIsTestMode(false);
+        isTransitioningRouteRef.current = false;
+        document.body.style.overflow = '';
+      }, 550);
+    };
+
+    // Watchdog Timer de Segurança: Garante saída mesmo com falha externa ou aba em segundo plano
+    const watchdogTimer = setTimeout(() => {
+      finish();
+    }, maxTimeout);
+
+    const step = () => {
+      if (isFinished) return;
+
+      const elapsed = Date.now() - startTime;
+      const contentReady = isTestMode || isInternalTransition ? true : !isLoadingProducts;
+
+      if (elapsed >= maxTimeout || (contentReady && elapsed >= targetDuration)) {
+        clearTimeout(watchdogTimer);
+        finish();
+        return;
+      }
 
       let targetProgress = 0;
-
-      if (hasTimedOut || (isContentReady && elapsed >= minDuration)) {
-        targetProgress = 100;
-      } else if (isContentReady) {
-        const ratio = Math.min(1, elapsed / minDuration);
-        targetProgress = 30 + ratio * 70;
+      if (contentReady) {
+        const ratio = Math.min(1, elapsed / targetDuration);
+        targetProgress = 20 + ratio * 80;
       } else {
         const ratio = Math.min(1, elapsed / maxTimeout);
         targetProgress = Math.min(88, ratio * 90);
       }
 
-      localProgress = Math.min(100, localProgress + Math.max(1, (targetProgress - localProgress) * 0.25));
+      currentVal = Math.min(100, currentVal + Math.max(1, (targetProgress - currentVal) * 0.25));
 
-      if (localProgress >= 99.2 && (hasTimedOut || (isContentReady && elapsed >= minDuration))) {
-        localProgress = 100;
+      if (currentVal >= 99.2 && (contentReady && elapsed >= targetDuration)) {
+        clearTimeout(watchdogTimer);
+        finish();
+        return;
       }
 
-      const floored = Math.floor(localProgress);
-      setProgress(floored);
-
-      if (floored < 100) {
-        animationFrameRef.current = requestAnimationFrame(updateLoop);
-      } else {
-        setIsRevealing(true);
-        hideTimeout = setTimeout(() => {
-          setIsVisible(false);
-          setIsRevealing(false);
-          setIsTestMode(false);
-        }, 550);
-      }
+      updateProgressDOM(currentVal, effectiveConfig.modelo);
+      rafId = requestAnimationFrame(step);
     };
 
-    animationFrameRef.current = requestAnimationFrame(updateLoop);
+    // Inicia loop via RAF
+    rafId = requestAnimationFrame(step);
+
+    // Fallback de segurança a cada 45ms para garantir avanço contínuo se a aba perder foco
+    intervalId = setInterval(() => {
+      if (!isFinished) {
+        step();
+      }
+    }, 45);
 
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      if (hideTimeout) clearTimeout(hideTimeout);
+      clearTimeout(watchdogTimer);
+      if (closeTimer) clearTimeout(closeTimer);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (intervalId) clearInterval(intervalId);
+      document.body.style.overflow = '';
     };
-  }, [isVisible, isTestMode, isLoadingProducts, effectiveConfig.tempo_minimo_ms, effectiveConfig.timeout_seguranca_ms]);
+  }, [
+    isVisible,
+    isTestMode,
+    isLoadingProducts,
+    effectiveConfig.modelo,
+    effectiveConfig.tempo_minimo_ms,
+    effectiveConfig.timeout_seguranca_ms,
+    updateProgressDOM
+  ]);
 
-  // Se rota administrativa e não for modo teste: não renderiza
-  if (isExcludedRoute && !isTestMode) {
-    return null;
-  }
-
-  // Se não for teste e não estiver ativo: não renderiza
-  if (!effectiveConfig.ativo && !isTestMode) {
-    return null;
-  }
-
-  if (!isVisible) {
-    return null;
-  }
+  // Se não foi montado no cliente, se estiver excluído, se inativo (e não for teste) ou se invisível
+  if (!hasMounted) return null;
+  if (isExcludedRoute && !isTestMode) return null;
+  if (!effectiveConfig.ativo && !isTestMode) return null;
+  if (!isVisible) return null;
 
   const logoUrl = currentTenant?.configuracoes_visuais?.logo_url || '/images/Logo sem fundo.png';
   const slogan = currentTenant?.configuracoes_visuais?.slogan || 'Moda Feminina Autêntica & Elegância Diária';
@@ -203,9 +262,11 @@ export const StorePreloader: React.FC = () => {
 
   return (
     <aside
+      id="bcomm-store-preloader"
       aria-label="Carregando loja"
       role="status"
       aria-live="polite"
+      suppressHydrationWarning
       className={`fixed inset-0 z-[999999] flex flex-col items-center justify-center select-none overflow-hidden ${
         effectiveConfig.modelo === 'editorial_dark'
           ? `transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)] ${
@@ -217,15 +278,17 @@ export const StorePreloader: React.FC = () => {
       }`}
       style={{ backgroundColor: effectiveConfig.fundo || '#FAF8F5' }}
     >
-      {/* Botão de Fechar Teste (Apenas no Modo de Simulação) */}
+      {/* Botão de Fechar Teste (Apenas no Modo de Simulação do Admin) */}
       {isTestMode && (
         <button
           type="button"
           onClick={() => {
             setIsVisible(false);
+            setIsRevealing(false);
             setIsTestMode(false);
+            document.body.style.overflow = '';
           }}
-          className="absolute top-5 right-5 z-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/70 hover:bg-black text-white text-xs font-bold border border-white/20 backdrop-blur-md cursor-pointer transition-all shadow-xl"
+          className="absolute top-5 right-5 z-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-bold border border-white/20 backdrop-blur-md cursor-pointer transition-all shadow-2xl active:scale-95"
         >
           <X className="w-3.5 h-3.5 text-amber-400" />
           <span>Fechar Teste</span>
@@ -264,10 +327,11 @@ export const StorePreloader: React.FC = () => {
           {effectiveConfig.exibir_porcentagem && (
             <div className="flex items-baseline gap-1 mb-4 font-serif-luxury font-light">
               <span
+                ref={digitsRef}
                 className="text-5xl sm:text-6xl font-extralight tracking-tight"
                 style={{ color: '#FAF8F5' }}
               >
-                {String(progress).padStart(2, '0')}
+                00
               </span>
               <span
                 className="text-xs sm:text-sm font-semibold tracking-widest"
@@ -280,9 +344,10 @@ export const StorePreloader: React.FC = () => {
 
           <div className="w-48 sm:w-64 h-[2px] bg-white/10 rounded-full overflow-hidden relative">
             <div
+              ref={progressBarRef}
               className="h-full transition-all duration-150 ease-out rounded-full shadow-sm"
               style={{
-                width: `${progress}%`,
+                width: '0%',
                 backgroundColor: effectiveConfig.cor_primaria || '#DFBE76'
               }}
             />
@@ -319,18 +384,20 @@ export const StorePreloader: React.FC = () => {
 
           {effectiveConfig.exibir_porcentagem && (
             <span
+              ref={digitsRef}
               className="text-sm font-mono font-bold tracking-widest mb-3"
               style={{ color: effectiveConfig.cor_texto || '#1A1918' }}
             >
-              {progress}%
+              0%
             </span>
           )}
 
           <div className="w-36 h-[2px] bg-slate-200 rounded-full overflow-hidden">
             <div
+              ref={progressBarRef}
               className="h-full transition-all duration-150 ease-out"
               style={{
-                width: `${progress}%`,
+                width: '0%',
                 backgroundColor: effectiveConfig.cor_primaria || '#DFBE76'
               }}
             />
@@ -371,10 +438,11 @@ export const StorePreloader: React.FC = () => {
           {effectiveConfig.exibir_porcentagem && (
             <div className="flex items-baseline gap-1.5 mb-5 select-none font-serif-luxury">
               <span
+                ref={digitsRef}
                 className="text-5xl sm:text-6xl font-light tracking-tight transition-all"
                 style={{ color: effectiveConfig.cor_texto || '#1A1918' }}
               >
-                {String(progress).padStart(2, '0')}
+                00
               </span>
               <span
                 className="text-sm font-semibold tracking-widest"
@@ -387,9 +455,10 @@ export const StorePreloader: React.FC = () => {
 
           <div className="w-48 sm:w-64 h-[2px] bg-black/5 rounded-full overflow-hidden relative shadow-2xs">
             <div
+              ref={progressBarRef}
               className="h-full transition-all duration-150 ease-out rounded-full"
               style={{
-                width: `${progress}%`,
+                width: '0%',
                 backgroundColor: effectiveConfig.cor_primaria || '#DFBE76',
                 boxShadow: `0 0 10px ${effectiveConfig.cor_primaria || '#DFBE76'}70`
               }}

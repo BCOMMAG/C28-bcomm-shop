@@ -50,7 +50,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "exibir_slogan": true,
       "tempo_minimo_ms": 650,
       "exibir_porcentagem": true,
-      "timeout_seguranca_ms": 2500
+      "timeout_seguranca_ms": 2200
     },
     "barra_aviso": "Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp",
     "favicon_url": "",
@@ -81,6 +81,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       },
       "outlet": {
         "ativo": true,
+        "titulo": "Bazar & Oportunidades",
+        "subtitulo": "Peças selecionadas com condições especiais por tempo limitado.",
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -89,14 +91,85 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       },
       "lancamentos": {
         "ativo": true,
+        "titulo": "Lançamentos Exclusivos",
+        "subtitulo": "As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.",
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
         "subtituloCorDark": "#FAF8F5",
         "subtituloCorLight": "#FAF8F5"
       },
+      "secoesLista": [
+        {
+          "id": "lancamentos",
+          "tipo": "nativa_lancamentos",
+          "ativo": true,
+          "ordem": 0,
+          "titulo": "Lançamentos Exclusivos",
+          "subtitulo": "As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.",
+          "tituloFont": "Playfair Display",
+          "tituloCorDark": "#FFFFFF",
+          "tituloCorLight": "#FFFFFF",
+          "subtituloCorDark": "#FAF8F5",
+          "subtituloCorLight": "#FAF8F5"
+        },
+        {
+          "id": "mais-vendidos",
+          "tipo": "nativa_mais_vendidos",
+          "ativo": true,
+          "ordem": 1,
+          "titulo": "Mais Vendidos & Queridinhos",
+          "subtitulo": "As criações favoritas e mais desejadas pelas nossas clientes.",
+          "tituloFont": "Playfair Display",
+          "tituloCorDark": "#FFFFFF",
+          "tituloCorLight": "#FFFFFF",
+          "subtituloCorDark": "#FAF8F5",
+          "subtituloCorLight": "#FAF8F5"
+        },
+        {
+          "id": "outlet",
+          "tipo": "nativa_outlet",
+          "ativo": true,
+          "ordem": 2,
+          "titulo": "Bazar & Oportunidades",
+          "subtitulo": "Peças selecionadas com condições especiais por tempo limitado.",
+          "tituloFont": "Playfair Display",
+          "tituloCorDark": "#FFFFFF",
+          "tituloCorLight": "#FFFFFF",
+          "subtituloCorDark": "#FAF8F5",
+          "subtituloCorLight": "#FAF8F5"
+        },
+        {
+          "id": "ultimas-pecas",
+          "tipo": "nativa_ultimas_pecas",
+          "ativo": true,
+          "ordem": 3,
+          "titulo": "Últimas Peças",
+          "subtitulo": "Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.",
+          "tituloFont": "Playfair Display",
+          "tituloCorDark": "#FFFFFF",
+          "tituloCorLight": "#FFFFFF",
+          "subtituloCorDark": "#FAF8F5",
+          "subtituloCorLight": "#FAF8F5"
+        },
+        {
+          "id": "todas-as-pecas",
+          "tipo": "nativa_todas_pecas",
+          "ativo": true,
+          "ordem": 4,
+          "titulo": "Todas as Peças",
+          "subtitulo": "Conheça todas as criações e modelos exclusivos disponíveis na boutique.",
+          "tituloFont": "Playfair Display",
+          "tituloCorDark": "#FFFFFF",
+          "tituloCorLight": "#FFFFFF",
+          "subtituloCorDark": "#FAF8F5",
+          "subtituloCorLight": "#FAF8F5"
+        }
+      ],
       "maisVendidos": {
         "ativo": true,
+        "titulo": "Mais Vendidos & Queridinhos",
+        "subtitulo": "As criações favoritas e mais desejadas pelas nossas clientes.",
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -115,6 +188,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       },
       "ultimasPecas": {
         "ativo": true,
+        "titulo": "Últimas Peças",
+        "subtitulo": "Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.",
         "tituloFont": "Playfair Display",
         "tituloCorDark": "#FFFFFF",
         "tituloCorLight": "#FFFFFF",
@@ -324,7 +399,9 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "reserva_estoque_ativa": true,
     "tempo_reserva_minutos": 20,
     "retirada_boutique_ativa": true,
+    "exibir_badges_na_vitrine": false,
     "destino_inativos_whatsapp": "coluna_inativos",
+    "exibir_selo_escassez_foto": false,
     "permitir_mensagem_presente": true,
     "prazo_inatividade_whatsapp_dias": 7,
     "auto_descartar_inativos_whatsapp": true,
@@ -338,7 +415,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-06T20:08:28.53+00:00",
+  "updated_at": "2026-11-06T21:32:52.949+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
