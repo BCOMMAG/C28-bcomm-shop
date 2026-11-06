@@ -310,10 +310,15 @@ export default function CheckoutPage() {
   // Cálculos de Valores com distinção clara entre Cortesia da Loja e Privilégio VIP
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalPecas = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  const freeShippingThreshold = Number(currentTenant?.configuracoes_visuais?.frete_gratis_valor ?? STORE_INFO.freeShippingThreshold);
+  const isFreeShippingActive = currentTenant?.configuracoes_visuais?.logistica_avancada?.regras_frete_gratis?.ativo ?? true;
+  const freeShippingThreshold = Number(
+    currentTenant?.configuracoes_visuais?.logistica_avancada?.regras_frete_gratis?.valor_minimo ??
+    currentTenant?.configuracoes_visuais?.frete_gratis_valor ??
+    STORE_INFO.freeShippingThreshold
+  );
 
   // Qualificação do Frete Grátis da Loja (Meta Pública de Compras da Loja, ex: R$ 350)
-  const isStorePromoFreeShipping = isFreeShippingFromEngine || rawSubtotal >= freeShippingThreshold;
+  const isStorePromoFreeShipping = isFreeShippingActive && (isFreeShippingFromEngine || rawSubtotal >= freeShippingThreshold);
 
   // Qualificação do Frete Privilégio VIP (Apenas para clientes autenticados/qualificados pelo Lojista)
   const isVipFreeShipping =
@@ -1319,34 +1324,36 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Barra de Progresso de Frete Cortesia */}
-                    <div className="p-2.5 sm:p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 sm:space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        {isCustomerVip ? (
-                          <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
-                            <Crown className="w-3.5 h-3.5 text-[#DFBE76] fill-[#DFBE76]" />
-                            Cliente VIP: Você possui Frete Cortesia Garantido pela loja!
+                    {(isFreeShippingActive || isCustomerVip) && (
+                      <div className="p-2.5 sm:p-3.5 bg-[#FAF8F5] dark:bg-[#201D1B] border border-[#C5A059]/30 space-y-1.5 sm:space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          {isCustomerVip ? (
+                            <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
+                              <Crown className="w-3.5 h-3.5 text-[#DFBE76] fill-[#DFBE76]" />
+                              Cliente VIP: Você possui Frete Cortesia Garantido pela loja!
+                            </span>
+                          ) : remainingForFreeShipping > 0 ? (
+                            <span className="text-[11px] text-[#57534E] dark:text-[#D6D3D1]">
+                              Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Grátis da Loja</strong>!
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-[#DFBE76]" />
+                              Parabéns! Sacola com Frete Grátis (Cortesia da Loja)!
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
+                            {isCustomerVip ? '100%' : `${Math.round(progressToFreeShipping)}%`}
                           </span>
-                        ) : remainingForFreeShipping > 0 ? (
-                          <span className="text-[11px] text-[#57534E] dark:text-[#D6D3D1]">
-                            Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Grátis da Loja</strong>!
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-[#DFBE76]" />
-                            Parabéns! Sacola com Frete Grátis (Cortesia da Loja)!
-                          </span>
-                        )}
-                        <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                          {isCustomerVip ? '100%' : `${Math.round(progressToFreeShipping)}%`}
-                        </span>
+                        </div>
+                        <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 sm:h-2 rounded-none overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059] transition-all duration-500"
+                            style={{ width: `${isCustomerVip ? 100 : progressToFreeShipping}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 sm:h-2 rounded-none overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#C5A059] via-[#DFBE76] to-[#C5A059] transition-all duration-500"
-                          style={{ width: `${isCustomerVip ? 100 : progressToFreeShipping}%` }}
-                        />
-                      </div>
-                    </div>
+                    )}
 
                     {/* Lista das Peças da Sacola */}
                     <div className="space-y-2.5 sm:space-y-4">

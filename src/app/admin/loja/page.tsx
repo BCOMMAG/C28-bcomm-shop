@@ -7,7 +7,7 @@ export default function LojaVirtualRootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/admin/loja/cupons');
+    router.replace('/admin/loja/dados');
   }, [router]);
 
   return (
@@ -17,4 +17,3 @@ export default function LojaVirtualRootPage() {
     </div>
   );
 }
-

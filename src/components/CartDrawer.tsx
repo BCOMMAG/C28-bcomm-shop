@@ -57,7 +57,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   // Estados e cálculo de frete dinâmico da loja
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalPecas = items.reduce((acc, item) => acc + item.quantity, 0);
-  const freeShippingGoal = Number(currentTenant?.configuracoes_visuais?.frete_gratis_valor || STORE_INFO.freeShippingThreshold);
+  const isFreeShippingActive = currentTenant?.configuracoes_visuais?.logistica_avancada?.regras_frete_gratis?.ativo ?? true;
+  const freeShippingGoal = Number(
+    currentTenant?.configuracoes_visuais?.logistica_avancada?.regras_frete_gratis?.valor_minimo ??
+    currentTenant?.configuracoes_visuais?.frete_gratis_valor ??
+    STORE_INFO.freeShippingThreshold
+  );
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingGoal) * 100);
   const remainingForFreeShipping = Math.max(0, freeShippingGoal - subtotal);
 
@@ -180,7 +185,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   const lowestShipping = drawerShippingOptions.length > 0 ? drawerShippingOptions[0] : null;
-  const effectiveFreeShipping = isFreeShippingGranted || subtotal >= freeShippingGoal;
+  const effectiveFreeShipping = isFreeShippingActive && (isFreeShippingGranted || subtotal >= freeShippingGoal);
   const shippingCost = effectiveFreeShipping ? 0 : (lowestShipping ? Math.max(0, lowestShipping.price - shippingDiscount) : 0);
   const currentGiftCost = isGift ? giftFee : 0;
   const finalTotal = subtotal + shippingCost + currentGiftCost;
@@ -306,28 +311,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
 
           {/* Barra de Progresso de Frete Cortesia */}
-          <div className="px-4 sm:px-5 py-3 bg-[#F4EFE6] dark:bg-[#1E1B19] border-b border-[#C5A059]/15 shrink-0">
-            <div className="flex justify-between items-center text-xs mb-1.5 gap-2">
-              {remainingForFreeShipping > 0 ? (
-                <span className="text-[#57534E] dark:text-[#D6D3D1] truncate">
-                  Faltam <strong className="text-[#1A1918] dark:text-[#FAF8F5]">R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para Frete Cortesia!
+          {isFreeShippingActive && (
+            <div className="px-4 sm:px-5 py-3 bg-[#F4EFE6] dark:bg-[#1E1B19] border-b border-[#C5A059]/15 shrink-0">
+              <div className="flex justify-between items-center text-xs mb-1.5 gap-2">
+                {remainingForFreeShipping > 0 ? (
+                  <span className="text-[#57534E] dark:text-[#D6D3D1] truncate">
+                    Faltam <strong className="text-[#1A1918] dark:text-[#FAF8F5]">R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para Frete Cortesia!
+                  </span>
+                ) : (
+                  <span className="text-[#25D366] font-semibold flex items-center gap-1">
+                    Parabéns! Você ganhou Frete Cortesia!
+                  </span>
+                )}
+                <span className="text-[11px] font-bold text-[#C5A059] dark:text-[#DFBE76] shrink-0">
+                  {Math.round(progressToFreeShipping)}%
                 </span>
-              ) : (
-                <span className="text-[#25D366] font-semibold flex items-center gap-1">
-                  Parabéns! Você ganhou Frete Cortesia!
-                </span>
-              )}
-              <span className="text-[11px] font-bold text-[#C5A059] dark:text-[#DFBE76] shrink-0">
-                {Math.round(progressToFreeShipping)}%
-              </span>
+              </div>
+              <div className="w-full bg-white dark:bg-[#2A2624] h-2 rounded-none overflow-hidden border border-[#C5A059]/20">
+                <div
+                  className="h-full bg-gradient-to-r from-[#C5A059] to-[#DFBE76] transition-all duration-500 rounded-none"
+                  style={{ width: `${progressToFreeShipping}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-white dark:bg-[#2A2624] h-2 rounded-none overflow-hidden border border-[#C5A059]/20">
-              <div
-                className="h-full bg-gradient-to-r from-[#C5A059] to-[#DFBE76] transition-all duration-500 rounded-none"
-                style={{ width: `${progressToFreeShipping}%` }}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Lista de Itens do Carrinho */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 sm:space-y-4 min-h-0">

@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Sliders,
   ArrowLeft,
+  ArrowRight,
   Sparkles,
   Globe
 } from 'lucide-react';
@@ -78,55 +79,8 @@ const SETTINGS_SECTIONS: NavSection[] = [
     ]
   },
   {
-    title: 'Operação & Vendas',
+    title: 'Sistema & Painel',
     items: [
-      {
-        label: 'Dados da Loja',
-        href: '/admin/configuracoes/loja',
-        icon: Store,
-        description: 'Razão social, endereço, horários e termos'
-      },
-      {
-        label: 'Domínio Personalizado',
-        href: '/admin/configuracoes/dominio',
-        icon: Globe,
-        description: 'Conecte seu próprio domínio (Registro.br, Hostinger, etc.)',
-        badge: 'White-Label',
-        badgeColor: 'bg-emerald-100 text-emerald-800'
-      },
-      {
-        label: 'Pagamentos & PIX',
-        href: '/admin/configuracoes/pagamentos',
-        icon: CreditCard,
-        description: 'Chave PIX oficial, descontos e gateways',
-        badge: '5% OFF',
-        badgeColor: 'bg-emerald-100 text-emerald-800'
-      },
-      {
-        label: 'Logística & Frete',
-        href: '/admin/configuracoes/logistica',
-        icon: Truck,
-        description: 'Frete grátis, Correios, motoboy e retirada'
-      },
-      {
-        label: 'Checkout & Pedido',
-        href: '/admin/configuracoes/checkout',
-        icon: ShoppingBag,
-        description: 'Embalagem presente, cartão e pedido mínimo'
-      }
-    ]
-  },
-  {
-    title: 'Marca, Canais & Dados',
-    items: [
-      {
-        label: 'Aparência da Loja',
-        href: '/admin/loja/aparencia',
-        icon: Palette,
-        description: 'Cores, logo, banners e seções da vitrine',
-        badge: 'Hub Loja',
-        badgeColor: 'bg-indigo-100 text-indigo-800'
-      },
       {
         label: 'Tema do Painel',
         href: '/admin/configuracoes/tema-admin',
@@ -263,7 +217,7 @@ export default function SettingsLayout({
                 <nav className="space-y-1">
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = cleanPath === item.href || (item.href === '/admin/configuracoes/loja' && cleanPath === '/admin/configuracoes');
+                    const isActive = cleanPath === item.href || (item.href === '/admin/configuracoes/perfil' && cleanPath === '/admin/configuracoes');
 
                     return (
                       <Link
@@ -320,6 +274,24 @@ export default function SettingsLayout({
                 </nav>
               </div>
             ))}
+          </div>
+
+          {/* ATALHO PARA CONFIGURAÇÕES DA LOJA */}
+          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 text-xs text-amber-950 space-y-2">
+            <div className="flex items-center gap-1.5 font-bold text-amber-900">
+              <Store className="w-4 h-4 text-amber-600" />
+              <span>Configurações da Loja</span>
+            </div>
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              Logística, Pagamentos, Checkout, Domínio e Dados da Loja agora ficam unificados no Hub da Loja.
+            </p>
+            <Link
+              href="/admin/loja/dados"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-amber-950 underline pt-1"
+            >
+              <span>Ir para Configurações da Loja</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
           {/* DICA DE ATALHO / GOVERNANÇA */}
