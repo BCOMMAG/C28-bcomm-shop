@@ -59,6 +59,12 @@ html.bcomm-veil-active body {
 html.bcomm-veil-active #bcomm-instant-curtain {
   display: flex !important;
 }
+html.bcomm-veil-active #bcomm-store-root,
+html.bcomm-veil-active [data-bcomm-background] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 
 /* Tipografia de Luxo e Editorial */
 .font-serif-luxury {

@@ -64,11 +64,23 @@ export const StorePreloader: React.FC = () => {
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${clamped}%`;
     }
+    if (typeof document !== 'undefined') {
+      const curtainDigits = document.getElementById('bcomm-curtain-digits');
+      const curtainBar = document.getElementById('bcomm-curtain-progress-bar');
+      if (curtainDigits) curtainDigits.textContent = String(clamped).padStart(2, '0');
+      if (curtainBar) curtainBar.style.width = `${clamped}%`;
+    }
   }, []);
 
   // 1. Montagem inicial no cliente (Proteção absoluta contra Hydration Mismatch)
   useEffect(() => {
     setHasMounted(true);
+    if (typeof window !== 'undefined') {
+      (window as any).__BCOMM_PRELOADER_ACTIVE__ = false;
+      if ((window as any).__BCOMM_PRELOADER_TICKER__) {
+        clearInterval((window as any).__BCOMM_PRELOADER_TICKER__);
+      }
+    }
   }, []);
 
   // 2. Ouvinte de evento para simulação ao vivo do lojista no painel de aparência
@@ -112,6 +124,12 @@ export const StorePreloader: React.FC = () => {
                 document.documentElement.classList.remove('bcomm-veil-active');
                 const instantCurtain = document.getElementById('bcomm-instant-curtain');
                 if (instantCurtain) instantCurtain.style.display = 'none';
+                const storeRoot = document.getElementById('bcomm-store-root');
+                if (storeRoot) {
+                  storeRoot.style.opacity = '1';
+                  storeRoot.style.visibility = 'visible';
+                  storeRoot.style.pointerEvents = 'auto';
+                }
               }
               return;
             }
@@ -121,11 +139,17 @@ export const StorePreloader: React.FC = () => {
         setIsRevealing(false);
         setIsVisible(true);
       } else {
-        // Se inativo, garante liberação imediata de qualquer cortina estática
+        // Se inativo, garante liberação imediata de qualquer cortina estática e exibição da loja
         if (typeof document !== 'undefined') {
           document.documentElement.classList.remove('bcomm-veil-active');
           const instantCurtain = document.getElementById('bcomm-instant-curtain');
           if (instantCurtain) instantCurtain.style.display = 'none';
+          const storeRoot = document.getElementById('bcomm-store-root');
+          if (storeRoot) {
+            storeRoot.style.opacity = '1';
+            storeRoot.style.visibility = 'visible';
+            storeRoot.style.pointerEvents = 'auto';
+          }
         }
       }
     }
@@ -155,10 +179,12 @@ export const StorePreloader: React.FC = () => {
     // Trava de rolagem da vitrine enquanto a cortina está ativa
     document.body.style.overflow = 'hidden';
 
-    // Reseta visual no DOM imediatamente
-    updateProgressDOM(0, effectiveConfig.modelo);
-
     const isInternalTransition = isTransitioningRouteRef.current;
+    const initialProgress = typeof window !== 'undefined' ? Number((window as any).__BCOMM_PRELOADER_PROGRESS__ || 0) : 0;
+    
+    // Atualiza visual no DOM com o valor inicial (sem reiniciar do zero na vitrine ao vivo)
+    updateProgressDOM(initialProgress, effectiveConfig.modelo);
+
     const targetDuration = isTestMode
       ? 1400
       : isInternalTransition
@@ -172,7 +198,7 @@ export const StorePreloader: React.FC = () => {
       : Math.max(1800, effectiveConfig.timeout_seguranca_ms || 2200);
 
     const startTime = Date.now();
-    let currentVal = 0;
+    let currentVal = initialProgress;
     let isFinished = false;
     let rafId: number | null = null;
     let intervalId: NodeJS.Timeout | null = null;
@@ -193,10 +219,16 @@ export const StorePreloader: React.FC = () => {
         const instantCurtain = document.getElementById('bcomm-instant-curtain');
         if (instantCurtain) {
           instantCurtain.style.opacity = '0';
-          instantCurtain.style.transition = 'opacity 500ms ease-out';
+          instantCurtain.style.transition = 'opacity 600ms cubic-bezier(0.16, 1, 0.3, 1)';
           setTimeout(() => {
             instantCurtain.style.display = 'none';
-          }, 500);
+          }, 650);
+        }
+        const storeRoot = document.getElementById('bcomm-store-root');
+        if (storeRoot) {
+          storeRoot.style.opacity = '1';
+          storeRoot.style.visibility = 'visible';
+          storeRoot.style.pointerEvents = 'auto';
         }
       }
 
@@ -206,7 +238,7 @@ export const StorePreloader: React.FC = () => {
         setIsTestMode(false);
         isTransitioningRouteRef.current = false;
         document.body.style.overflow = '';
-      }, 550);
+      }, 650);
     };
 
     // Watchdog Timer de Segurança: Garante saída mesmo com falha externa ou aba em segundo plano
@@ -315,6 +347,12 @@ export const StorePreloader: React.FC = () => {
               document.documentElement.classList.remove('bcomm-veil-active');
               const instantCurtain = document.getElementById('bcomm-instant-curtain');
               if (instantCurtain) instantCurtain.style.display = 'none';
+              const storeRoot = document.getElementById('bcomm-store-root');
+              if (storeRoot) {
+                storeRoot.style.opacity = '1';
+                storeRoot.style.visibility = 'visible';
+                storeRoot.style.pointerEvents = 'auto';
+              }
             }
           }}
           className="absolute top-5 right-5 z-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-bold border border-white/20 backdrop-blur-md cursor-pointer transition-all shadow-2xl active:scale-95"

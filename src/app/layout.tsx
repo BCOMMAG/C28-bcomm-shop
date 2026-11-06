@@ -70,6 +70,27 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <style
+          id="bcomm-critical-veil-css"
+          dangerouslySetInnerHTML={{
+            __html: `
+              html.bcomm-veil-active body {
+                overflow: hidden !important;
+              }
+              html.bcomm-veil-active #bcomm-instant-curtain {
+                display: flex !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+              }
+              html.bcomm-veil-active #bcomm-store-root,
+              html.bcomm-veil-active [data-bcomm-background] {
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+              }
+            `
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -90,6 +111,26 @@ export default function RootLayout({
                   if (active) {
                     document.documentElement.classList.add('bcomm-veil-active');
                     document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
+                    window.__BCOMM_PRELOADER_ACTIVE__ = true;
+                    window.__BCOMM_PRELOADER_PROGRESS__ = 0;
+
+                    var cur = 0;
+                    var tickInterval = setInterval(function() {
+                      if (!window.__BCOMM_PRELOADER_ACTIVE__) {
+                        clearInterval(tickInterval);
+                        return;
+                      }
+                      if (cur < 85) {
+                        cur += Math.floor(Math.random() * 8) + 4;
+                        if (cur > 85) cur = 85;
+                        window.__BCOMM_PRELOADER_PROGRESS__ = cur;
+                        var d = document.getElementById('bcomm-curtain-digits');
+                        var b = document.getElementById('bcomm-curtain-progress-bar');
+                        if (d) d.textContent = String(cur).padStart(2, '0');
+                        if (b) b.style.width = cur + '%';
+                      }
+                    }, 60);
+                    window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
                   }
                 } catch(e) {}
               })();
@@ -98,7 +139,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased text-[#1A1918] dark:text-[#FAF8F5] selection:bg-[#C5A059]/20 selection:text-[#1A1918] dark:selection:text-[#FAF8F5] transition-colors duration-300 relative overflow-x-hidden min-h-screen w-full max-w-full">
-        {/* Cortina Instantânea em 0ms (Preloader de Luxo) */}
+        {/* Cortina Instantânea em 0ms (Preloader de Luxo Alta Costura) */}
         <div
           id="bcomm-instant-curtain"
           suppressHydrationWarning
@@ -113,21 +154,61 @@ export default function RootLayout({
             flexDirection: 'column'
           }}
         >
-          <div style={{ position: 'relative', width: '200px', height: '70px', marginBottom: '20px' }}>
-            <img
-              src="/images/Logo sem fundo.png"
-              alt="Leidy Boutique"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              loading="eager"
-              fetchPriority="high"
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', maxWidth: '512px', width: '100%', position: 'relative', zIndex: 10 }}>
+            <div style={{ position: 'relative', width: '200px', height: '70px', marginBottom: '16px' }}>
+              <img
+                src="/images/Logo sem fundo.png"
+                alt="Leidy Boutique"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                loading="eager"
+                fetchPriority="high"
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '28px' }}>
+              <span style={{ width: '24px', height: '1px', backgroundColor: 'rgba(0,0,0,0.15)' }} />
+              <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.3em', fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, color: '#DFBE76' }}>
+                Moda Feminina Autêntica &amp; Elegância Diária
+              </p>
+              <span style={{ width: '24px', height: '1px', backgroundColor: 'rgba(0,0,0,0.15)' }} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px', userSelect: 'none', fontFamily: 'Cormorant Garamond, serif' }}>
+              <span id="bcomm-curtain-digits" style={{ fontSize: '56px', fontWeight: 300, letterSpacing: '-0.02em', color: '#1A1918' }}>
+                00
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.1em', color: '#DFBE76' }}>
+                %
+              </span>
+            </div>
+
+            <div style={{ width: '220px', maxWidth: '100%', height: '2px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: '9999px', overflow: 'hidden', position: 'relative' }}>
+              <div
+                id="bcomm-curtain-progress-bar"
+                style={{
+                  width: '0%',
+                  height: '100%',
+                  backgroundColor: '#DFBE76',
+                  borderRadius: '9999px',
+                  boxShadow: '0 0 10px rgba(223, 190, 118, 0.7)',
+                  transition: 'width 100ms ease-out'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '20px', fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'monospace', color: '#94a3b8' }}>
+              <span>✨ Preparando Vitrine Exclusiva</span>
+            </div>
           </div>
         </div>
+
         <StoreProvider>
           <StorePreloader />
-          <BackgroundVideo />
-          {children}
-          <BottomCartBar />
+          <div id="bcomm-store-root" className="transition-opacity duration-700 ease-out">
+            <BackgroundVideo />
+            {children}
+            <BottomCartBar />
+          </div>
         </StoreProvider>
       </body>
     </html>

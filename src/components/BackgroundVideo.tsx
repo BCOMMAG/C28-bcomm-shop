@@ -28,6 +28,7 @@ export const BackgroundVideo: React.FC = () => {
 
     return (
       <div
+        data-bcomm-background="true"
         aria-hidden="true"
         className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none transition-colors duration-300"
         style={{ backgroundColor: bgColor }}
@@ -39,6 +40,7 @@ export const BackgroundVideo: React.FC = () => {
   if (tipo === 'video' && siteBg?.video_url) {
     return (
       <div
+        data-bcomm-background="true"
         aria-hidden="true"
         className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none bg-[#121110]"
       >
@@ -64,6 +66,7 @@ export const BackgroundVideo: React.FC = () => {
 
   return (
     <div
+      data-bcomm-background="true"
       aria-hidden="true"
       className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none bg-[#121110] transition-opacity duration-700 ease-out"
     >
