@@ -223,7 +223,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       }
     };
     loadTeam();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentTenant?.id]);
 
   // Se for a página de login, renderiza apenas o conteúdo sem shell
   if (isLoginPage) {

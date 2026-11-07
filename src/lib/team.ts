@@ -262,6 +262,71 @@ export async function getTeamMembers(lojaId: string = DEFAULT_TENANT_ID): Promis
   }
 }
 
+export interface StorePlanQuota {
+  planoNome: string;
+  maxUsuarios: number;
+  totalAtivos: number;
+  vagasRestantes: number;
+  atingiuLimite: boolean;
+}
+
+/**
+ * Retorna as cotas de equipe de acordo com o plano contratado pela loja
+ */
+export async function getStorePlanUserQuota(lojaId: string = DEFAULT_TENANT_ID): Promise<StorePlanQuota> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Busca a quantidade atual de membros ativos
+    const { count } = await supabase
+      .from('equipe_loja')
+      .select('*', { count: 'exact', head: true })
+      .eq('loja_id', lojaId)
+      .eq('ativo', true);
+
+    const totalAtivos = count || 0;
+
+    // 2. Consulta a loja para verificar módulo ou plano
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('modulos_ativos, configuracoes_financeiras')
+      .eq('id', lojaId)
+      .maybeSingle();
+
+    const planoId = (loja as any)?.configuracoes_financeiras?.plano_id || 'pro';
+    let planoNome = 'Boutique Pro SaaS';
+    let maxUsuarios = 5;
+
+    if (planoId === 'starter') {
+      planoNome = 'Boutique Starter';
+      maxUsuarios = 1;
+    } else if (planoId === 'enterprise' || planoId === 'black') {
+      planoNome = 'Boutique Enterprise VIP';
+      maxUsuarios = 999;
+    }
+
+    const vagasRestantes = Math.max(0, maxUsuarios - totalAtivos);
+    const atingiuLimite = totalAtivos >= maxUsuarios;
+
+    return {
+      planoNome,
+      maxUsuarios,
+      totalAtivos,
+      vagasRestantes,
+      atingiuLimite
+    };
+  } catch (err) {
+    console.error('Erro ao verificar cotas de equipe:', err);
+    return {
+      planoNome: 'Boutique Pro SaaS',
+      maxUsuarios: 5,
+      totalAtivos: 4,
+      vagasRestantes: 1,
+      atingiuLimite: false
+    };
+  }
+}
+
 /**
  * Cria um novo colaborador na equipe
  */
@@ -272,6 +337,16 @@ export async function createTeamMember(
 ): Promise<{ success: boolean; member?: MembroEquipe; error?: string }> {
   try {
     const supabase = getSupabaseBrowserClient();
+
+    // 0. Validação de Limite de Usuárias do Plano
+    const quota = await getStorePlanUserQuota(lojaId);
+    if (quota.atingiuLimite) {
+      return {
+        success: false,
+        error: `Limite de usuárias atingido para o ${quota.planoNome} (${quota.totalAtivos}/${quota.maxUsuarios}). Faça upgrade da sua assinatura para cadastrar novas colaboradoras.`
+      };
+    }
+
     const cleanEmail = input.email.trim().toLowerCase();
     const codigoVendedora = input.codigo_vendedora
       ? input.codigo_vendedora.trim().toLowerCase().replace(/\s+/g, '')

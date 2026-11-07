@@ -215,15 +215,20 @@ export async function createStoreExpress(
     if (insertErr) throw insertErr;
     const newLojaId = createdStore.id;
 
-    // 2. Registra o Administrador Dono da Loja em membros_equipe
+    // 2. Registra o Administrador Dono da Loja em equipe_loja
     const nomeResp = payload.nomeResponsavel?.trim() || payload.nome.trim();
     try {
-      await supabase.from('membros_equipe').insert({
+      await supabase.from('equipe_loja').insert({
         loja_id: newLojaId,
         nome: nomeResp,
         email: payload.email.trim(),
+        telefone: payload.whatsapp.trim(),
         cargo: 'dono',
-        ativo: true
+        ativo: true,
+        pin_hash: '1234',
+        token_version: 1,
+        horario_restrito: false,
+        modo_plantao_liberado: true
       });
     } catch (membroErr) {
       console.warn('⚠️ [Super Admin] Aviso ao vincular membro dono:', membroErr);

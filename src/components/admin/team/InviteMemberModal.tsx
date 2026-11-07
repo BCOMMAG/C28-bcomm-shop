@@ -1,8 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, UserPlus, Phone, Mail, Shield, Percent, DollarSign, MessageSquare, Check, Sparkles, Clock } from 'lucide-react';
-import { CargoColaborador, CreateTeamMemberInput, createTeamMember, MembroEquipe } from '@/lib/team';
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  UserPlus,
+  Phone,
+  Mail,
+  Shield,
+  Percent,
+  DollarSign,
+  MessageSquare,
+  Check,
+  Sparkles,
+  Clock,
+  Crown,
+  AlertTriangle
+} from 'lucide-react';
+import {
+  CargoColaborador,
+  CreateTeamMemberInput,
+  createTeamMember,
+  MembroEquipe,
+  getStorePlanUserQuota,
+  StorePlanQuota
+} from '@/lib/team';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -26,6 +47,14 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [createdSuccess, setCreatedSuccess] = useState<MembroEquipe | null>(null);
+  const [quota, setQuota] = useState<StorePlanQuota | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    getStorePlanUserQuota(lojaId)
+      .then((q) => setQuota(q))
+      .catch((e) => console.error(e));
+  }, [isOpen, lojaId]);
 
   if (!isOpen) return null;
 
@@ -174,6 +203,52 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
             {errorMsg && (
               <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
                 {errorMsg}
+              </div>
+            )}
+
+            {/* Medidor de Cota do Plano SaaS */}
+            {quota && (
+              <div
+                className={`p-3.5 rounded-xl border flex flex-col gap-2 ${
+                  quota.atingiuLimite
+                    ? 'bg-rose-50 border-rose-200 text-rose-800'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Crown className="w-4 h-4 text-amber-600" />
+                    <span>Cota de Equipe ({quota.planoNome})</span>
+                  </div>
+                  <span className="font-semibold text-[11px]">
+                    {quota.totalAtivos} de {quota.maxUsuarios >= 999 ? 'Ilimitado' : quota.maxUsuarios} usuárias ativas
+                  </span>
+                </div>
+
+                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      quota.atingiuLimite ? 'bg-rose-500' : 'bg-amber-600'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, Math.round((quota.totalAtivos / Math.min(quota.maxUsuarios, 100)) * 100))}%`
+                    }}
+                  />
+                </div>
+
+                {quota.atingiuLimite && (
+                  <div className="pt-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-rose-700">
+                      Você atingiu a cota máxima do seu plano atual.
+                    </span>
+                    <a
+                      href="/admin/configuracoes/assinatura"
+                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                    >
+                      Fazer Upgrade
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 
@@ -393,10 +468,11 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="py-2.5 px-5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
+                disabled={loading || Boolean(quota?.atingiuLimite)}
+                title={quota?.atingiuLimite ? 'Limite de usuárias atingido para este plano' : undefined}
+                className="py-2.5 px-5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               >
-                {loading ? 'Salvando...' : 'Criar Colaborador'}
+                {loading ? 'Salvando...' : quota?.atingiuLimite ? 'Limite do Plano Atingido' : 'Criar Colaborador'}
               </button>
             </div>
           </form>

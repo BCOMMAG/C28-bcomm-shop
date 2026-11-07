@@ -26,6 +26,7 @@ import {
   getStoreSettings,
   saveStoreGeneralSettings
 } from '@/lib/admin';
+import { logStoreAuditAction } from '@/lib/team';
 import { cn } from '@/lib/chart-utils';
 
 export default function SecuritySettingsPage() {
@@ -105,6 +106,13 @@ export default function SecuritySettingsPage() {
       });
 
       if (res.success) {
+        await logStoreAuditAction(tenantId, {
+          colaborador_nome: 'Proprietária',
+          cargo: 'dono',
+          acao: 'alterou_senha_mestra',
+          entidade: 'seguranca',
+          motivo: 'Senha Mestra de emergência do balcão atualizada'
+        });
         showToast('Senha Mestra de Destrave Balcão atualizada com sucesso!');
       } else {
         showToast(res.error || 'Erro ao salvar Senha Mestra.', 'error');
@@ -140,6 +148,14 @@ export default function SecuritySettingsPage() {
       if (error) {
         throw error;
       }
+
+      await logStoreAuditAction(tenantId, {
+        colaborador_nome: 'Proprietária',
+        cargo: 'dono',
+        acao: 'alterou_senha_conta',
+        entidade: 'seguranca',
+        motivo: 'Senha da conta de login alterada com sucesso'
+      });
 
       showToast('Senha da sua conta de login atualizada com sucesso!');
       setNovaSenha('');
