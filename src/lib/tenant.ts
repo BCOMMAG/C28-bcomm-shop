@@ -40,7 +40,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "logo_url": "/images/Logo sem fundo.png",
     "cor_fundo": "#FAF8F5",
     "preloader": {
-      "ativo": true,
+      "ativo": false,
       "fundo": "#FAF8F5",
       "modelo": "haute_couture",
       "cor_texto": "#1A1918",
@@ -50,7 +50,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "exibir_slogan": true,
       "tempo_minimo_ms": 650,
       "exibir_porcentagem": true,
-      "timeout_seguranca_ms": 2200
+      "timeout_seguranca_ms": 2500
     },
     "barra_aviso": "Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp",
     "favicon_url": "",
@@ -415,7 +415,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-06T21:32:52.949+00:00",
+  "updated_at": "2026-11-07T18:43:08.129+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
