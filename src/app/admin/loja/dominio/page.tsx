@@ -341,7 +341,7 @@ export default function CustomDomainSettingsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900">
-                  Domínio Próprio Personalizado (White-Label)
+                  Domínio Próprio Personalizado
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wide">
                   Multi-Tenant

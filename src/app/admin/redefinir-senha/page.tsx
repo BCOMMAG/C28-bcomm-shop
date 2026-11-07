@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -86,22 +85,12 @@ function RedefinirSenhaContent() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
-          {/* Topo / Logo Oficial BCOMM */}
+          {/* Topo do Card */}
           <div className="text-center mb-8">
-            <div className="relative h-12 w-48 mx-auto mb-3 flex items-center justify-center">
-              <Image
-                src="/images/bcomm-logo.jpeg"
-                alt="BCOMM Logo"
-                width={800}
-                height={260}
-                style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
-                priority
-              />
-            </div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-wide">
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
               Redefinição de Senha
             </h1>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-400 mt-1.5">
               Crie uma nova credencial segura para acessar o Painel da Loja
             </p>
           </div>

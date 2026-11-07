@@ -724,13 +724,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const slogan = vis.slogan || vis.tagline || 'Moda Feminina Autêntica & Elegância Diária';
     const pageTitle = `${storeName} | ${slogan}`;
 
-    // 1. Atualizar Título da Aba do Navegador (exceto quando estiver navegando no painel Admin)
+    // 1. Verificar se está navegando na área administrativa da plataforma
     const isInsideAdmin =
       window.location.pathname.startsWith('/admin') ||
       window.location.pathname.startsWith('/super-admin');
-    if (!isInsideAdmin) {
-      document.title = pageTitle;
+
+    // Blindagem BCOMM: No painel administrativo e super-admin, o favicon, título e OG são 100% fixos da BCOMM!
+    if (isInsideAdmin) {
+      return;
     }
+
+    document.title = pageTitle;
 
     // 2. Atualizar Favicon com fallback inteligente para logo_url se não houver favicon_url específico
     const effectiveFavicon = vis.favicon_url || vis.logo_url;

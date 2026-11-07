@@ -29,13 +29,17 @@ export default function IntegrationsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const isLeidy = currentTenant?.slug === 'leidy-boutique' || currentTenant?.slug === 'leidyboutique';
+  const defaultTitle = isLeidy ? 'Leidy Boutique | Moda Feminina Exclusiva' : (currentTenant?.nome ? `${currentTenant.nome} | Loja Oficial` : 'Minha Loja Virtual');
+  const defaultDesc = isLeidy
+    ? 'Encontre vestidos, conjuntos, alfaiataria e moda feminina contemporânea com entrega rápida para todo o Brasil.'
+    : 'Encontre produtos exclusivos com entrega rápida e atendimento personalizado.';
+
   // Marketing & SEO
   const [metaPixelId, setMetaPixelId] = useState('');
   const [googleAnalyticsId, setGoogleAnalyticsId] = useState('');
-  const [metaTitlePadrao, setMetaTitlePadrao] = useState('Leidy Boutique | Moda Feminina Exclusiva');
-  const [metaDescriptionPadrao, setMetaDescriptionPadrao] = useState(
-    'Encontre vestidos, conjuntos, alfaiataria e moda feminina contemporânea com entrega rápida para todo o Brasil.'
-  );
+  const [metaTitlePadrao, setMetaTitlePadrao] = useState(defaultTitle);
+  const [metaDescriptionPadrao, setMetaDescriptionPadrao] = useState(defaultDesc);
   const [ogImageUrl, setOgImageUrl] = useState('');
 
   // Toast
@@ -222,7 +226,7 @@ export default function IntegrationsSettingsPage() {
               type="text"
               value={metaTitlePadrao}
               onChange={(e) => setMetaTitlePadrao(e.target.value)}
-              placeholder="Ex: Leidy Boutique | Moda Feminina Exclusiva"
+              placeholder="Ex: Minha Boutique | Moda & Estilo"
               maxLength={70}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
@@ -267,14 +271,14 @@ export default function IntegrationsSettingsPage() {
             <span className="block text-slate-700 mb-2 font-bold text-[11px]">Prévia nos Resultados de Busca (Google)</span>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1 max-w-xl">
               <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono">
-                <span>{currentTenant?.dominio_proprio ? `https://${currentTenant.dominio_proprio}` : `https://bcomm-shop.pages.dev/${currentTenant?.slug || 'leidy-boutique'}`}</span>
+                <span>{currentTenant?.dominio_proprio ? `https://${currentTenant.dominio_proprio}` : `https://bcomm-shop.pages.dev/${currentTenant?.slug || 'sua-loja'}`}</span>
                 <span>› vitrine</span>
               </div>
               <h4 className="text-sm font-bold text-blue-700 hover:underline cursor-pointer truncate">
-                {metaTitlePadrao || 'Leidy Boutique | Moda Feminina'}
+                {metaTitlePadrao || 'Minha Loja Virtual'}
               </h4>
               <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                {metaDescriptionPadrao || 'Encontre vestidos, conjuntos e alfaiataria premium...'}
+                {metaDescriptionPadrao || 'Encontre produtos exclusivos e coleções selecionadas...'}
               </p>
             </div>
           </div>

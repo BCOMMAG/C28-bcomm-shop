@@ -40,7 +40,7 @@ export function PlatformPortal() {
                   BCOMM PLATFORM
                 </span>
                 <span className="px-2 py-0.5 text-[9px] uppercase tracking-widest font-bold bg-[#C5A059]/20 text-[#DFBE76] border border-[#C5A059]/40 rounded-full">
-                  SaaS White-Label
+                  E-commerce Engine
                 </span>
               </div>
               <p className="text-[10px] text-zinc-400">Motor de E-commerce Multi-Tenant de Alta Performance</p>

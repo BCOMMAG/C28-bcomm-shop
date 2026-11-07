@@ -96,7 +96,7 @@ const STORE_TABS: StoreTabItem[] = [
     label: 'Domínio Próprio',
     href: '/admin/loja/dominio',
     icon: Globe,
-    badge: 'White-Label'
+    badge: 'DNS'
   }
 ];
 

@@ -167,10 +167,10 @@ export default function SuperAdminDominiosPage() {
           <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-lg text-xs space-y-1 flex items-center justify-between">
             <div>
               <span className="text-slate-500 block text-[10px] uppercase font-bold">Destino / Valor</span>
-              <span className="font-mono text-[#38BDF8] font-bold">c28-leidyboutique.pages.dev</span>
+              <span className="font-mono text-[#38BDF8] font-bold">bcomm-shop.pages.dev</span>
             </div>
             <button
-              onClick={() => copyToClipboard('c28-leidyboutique.pages.dev')}
+              onClick={() => copyToClipboard('bcomm-shop.pages.dev')}
               className="p-1.5 text-slate-400 hover:text-white"
               title="Copiar valor"
             >

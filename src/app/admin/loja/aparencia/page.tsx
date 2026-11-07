@@ -75,8 +75,9 @@ import { cn } from '@/lib/chart-utils';
 
 export default function AppearanceSettingsPage() {
   const { currentTenant, refreshProducts, refreshTenant } = useStore();
-  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
+  const tenantSlug = currentTenant?.slug || '';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const storeName = currentTenant?.nome || 'Minha Boutique';
   const { setIsDirty, registerSaveHandler, setFormName } = useAdminUnsavedChanges();
   const initialSnapshotRef = React.useRef<string>('');
 
@@ -1214,13 +1215,13 @@ export default function AppearanceSettingsPage() {
             <div className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-900 border border-slate-200/80 mb-3 group">
               <Image
                 src="/images/plano-de-fundo.webp"
-                alt="Plano de Fundo Oficial Leidy Boutique"
+                alt="Plano de Fundo Oficial da Boutique"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
               <div className="absolute inset-0 bg-black/25" />
               <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" /> Oficial Leidy
+                <Sparkles className="w-2.5 h-2.5" /> Oficial Boutique
               </span>
               {siteBgTipo === 'imagem' && (siteBgImageUrl === '/images/plano-de-fundo.webp' || siteBgImageUrl === '/images/plano-de-fundo.jpg' || !siteBgImageUrl) && (
                 <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
@@ -1253,7 +1254,7 @@ export default function AppearanceSettingsPage() {
                     onClick={() => {
                       setSiteBgTipo('imagem');
                       setSiteBgImageUrl('/images/plano-de-fundo.webp');
-                      showToast('Plano de fundo oficial da Leidy Boutique ativado!');
+                      showToast('Plano de fundo oficial ativado!');
                     }}
                     className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
                   >
@@ -1547,7 +1548,7 @@ export default function AppearanceSettingsPage() {
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
               <span className="text-white text-xs font-serif font-bold drop-shadow">
-                LEIDY BOUTIQUE
+                {storeName.toUpperCase()}
               </span>
               <span className="text-amber-300 text-[10px] font-sans drop-shadow">
                 Prévia de Legibilidade com {siteBgTipo === 'solido' ? '0' : siteBgOverlay}% de Overlay
@@ -1724,7 +1725,7 @@ export default function AppearanceSettingsPage() {
             </div>
             {/* Miniatura Ilustrativa */}
             <div className="h-20 rounded-lg bg-[#FAF8F5] border border-slate-200 flex flex-col items-center justify-center p-2 text-center">
-              <span className="text-[10px] font-serif-luxury font-bold text-slate-800 tracking-wider">LEIDY BOUTIQUE</span>
+              <span className="text-[10px] font-serif-luxury font-bold text-slate-800 tracking-wider">{storeName.toUpperCase()}</span>
               <span className="text-sm font-serif-luxury font-light text-slate-900 mt-1">78%</span>
               <div className="w-20 h-[2px] bg-amber-500 rounded-full mt-1" />
             </div>

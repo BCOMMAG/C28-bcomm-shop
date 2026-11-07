@@ -46,6 +46,7 @@ import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 export default function AdminEquipePage() {
   const { currentTenant } = useStore();
   const lojaId = currentTenant?.id || DEFAULT_TENANT_ID;
+  const lojaNome = currentTenant?.nome || 'sua loja';
 
   const [members, setMembers] = useState<MembroEquipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export default function AdminEquipePage() {
     const primeiroNome = member.nome.split(' ')[0];
     const panelUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : 'https://bcomm-shop.pages.dev/admin/login';
     const msg = encodeURIComponent(
-      `Olá ${primeiroNome}! Seu acesso ao Painel da Leidy Boutique está configurado como ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nLink do painel: ${panelUrl}`
+      `Olá ${primeiroNome}! Seu acesso ao Painel da ${lojaNome} está configurado como ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nLink do painel: ${panelUrl}`
     );
     return `https://wa.me/${phoneWithDDI}?text=${msg}`;
   };

@@ -87,15 +87,27 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // Blindagem definitiva: Garante que qualquer resquício de preloader da vitrine seja 100% eliminado no admin
+  // Blindagem definitiva: Garante que os favicons do admin sejam sempre os oficiais da BCOMM e preloader inativo
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.remove('bcomm-preloader-running', 'bcomm-veil-active');
       document.documentElement.classList.add('bcomm-no-preloader');
       const c = document.getElementById('bcomm-instant-curtain');
       if (c) c.style.display = 'none';
+
+      // Fixação do Favicon Oficial BCOMM no Painel Administrativo
+      const icons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon'], link[rel='apple-touch-icon']");
+      if (icons.length > 0) {
+        icons.forEach((el) => {
+          if (el.rel.includes('apple-touch-icon')) {
+            el.href = '/admin-favicon/apple-touch-icon.png';
+          } else {
+            el.href = '/admin-favicon/favicon-32x32.png';
+          }
+        });
+      }
     }
-  }, []);
+  }, [pathname]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
@@ -708,7 +720,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
               <span className="text-amber-500/40 hidden sm:inline">|</span>
               <span className="text-slate-300 text-[11px] hidden sm:inline">
-                Loja Ativa: <strong className="text-white">{lojaNome}</strong> ({lojaSlug || 'leidy-boutique'})
+                Loja Ativa: <strong className="text-white">{lojaNome}</strong>{lojaSlug ? ` (${lojaSlug})` : ''}
               </span>
             </div>
             <div className="flex items-center gap-2">

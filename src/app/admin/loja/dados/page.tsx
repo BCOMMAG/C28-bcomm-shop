@@ -266,7 +266,7 @@ export default function StoreSettingsPage() {
               required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Leidy Boutique"
+              placeholder="Ex: Minha Boutique"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
@@ -277,7 +277,7 @@ export default function StoreSettingsPage() {
               type="text"
               value={razaoSocial}
               onChange={(e) => setRazaoSocial(e.target.value)}
-              placeholder="Ex: Leidyane Cristina da Silva ME"
+              placeholder="Ex: Minha Empresa LTDA"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
@@ -388,7 +388,7 @@ export default function StoreSettingsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const url = `https://bcomm-ag.space/${slug || 'leidy-boutique'}`;
+                  const url = slug ? `https://bcomm-ag.space/${slug}` : 'https://bcomm-ag.space';
                   navigator.clipboard.writeText(url);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2500);
@@ -402,7 +402,7 @@ export default function StoreSettingsPage() {
               </button>
 
               <a
-                href={`https://bcomm-ag.space/${slug || 'leidy-boutique'}`}
+                href={slug ? `https://bcomm-ag.space/${slug}` : 'https://bcomm-ag.space'}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
@@ -415,7 +415,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-lg p-2.5 font-mono text-xs text-amber-900 font-semibold break-all select-all flex items-center justify-between">
-            <span>https://bcomm-ag.space/{slug || 'leidy-boutique'}</span>
+            <span>https://bcomm-ag.space/{slug || 'sua-loja'}</span>
           </div>
         </div>
 
@@ -656,7 +656,7 @@ export default function StoreSettingsPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="contato@leidyboutique.com.br"
+                placeholder="contato@sualoja.com.br"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white"
               />
             </div>
@@ -670,7 +670,7 @@ export default function StoreSettingsPage() {
                 type="text"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
-                placeholder="@leidyboutique_oficial"
+                placeholder="@sualoja_oficial"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white"
               />
             </div>
@@ -684,7 +684,7 @@ export default function StoreSettingsPage() {
                 type="text"
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value)}
-                placeholder="@leidyboutique"
+                placeholder="@sualoja"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white"
               />
             </div>

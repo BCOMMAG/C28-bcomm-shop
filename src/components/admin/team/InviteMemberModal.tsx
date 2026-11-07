@@ -24,6 +24,7 @@ import {
   getStorePlanUserQuota,
   StorePlanQuota
 } from '@/lib/team';
+import { useStore } from '@/context/StoreContext';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ interface InviteMemberModalProps {
 }
 
 export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: InviteMemberModalProps) {
+  const { currentTenant } = useStore();
+  const lojaNome = currentTenant?.nome || 'sua loja';
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -103,7 +106,8 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
         pin: pin.trim() || undefined
       };
 
-      const res = await createTeamMember(lojaId, input, 'Leidyane Cristina');
+      const operadorAtual = (typeof window !== 'undefined' ? localStorage.getItem('bcomm_auth_user') : null) || lojaNome;
+      const res = await createTeamMember(lojaId, input, operadorAtual);
       if (res.success && res.member) {
         setCreatedSuccess(res.member);
         onMemberCreated(res.member);
@@ -123,7 +127,7 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
     const primeiroNome = member.nome.split(' ')[0];
     const panelUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : 'https://bcomm-shop.pages.dev/admin/login';
     const msg = encodeURIComponent(
-      `Olá ${primeiroNome}! Seu acesso ao Painel da Leidy Boutique foi criado com sucesso com perfil de ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nPara acessar a qualquer momento, utilize o link: ${panelUrl}`
+      `Olá ${primeiroNome}! Seu acesso ao Painel da ${lojaNome} foi criado com sucesso com perfil de ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nPara acessar a qualquer momento, utilize o link: ${panelUrl}`
     );
     return `https://wa.me/${phoneWithDDI}?text=${msg}`;
   };
@@ -310,7 +314,7 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="carla@leidyboutique.com.br"
+                      placeholder="colaborador@loja.com.br"
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-amber-600 transition-colors"
                     />
                   </div>

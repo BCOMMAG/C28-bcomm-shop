@@ -27,7 +27,7 @@ import { useStore } from '@/context/StoreContext';
 export default function AdminModulosPage() {
   const { currentTenant, refreshProducts } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
 
   const [modules, setModules] = useState<StoreModuleConfig[]>([]);
   const [loading, setLoading] = useState(true);

@@ -3532,26 +3532,28 @@ export async function getStoreSettings(
     const vis = (loja as any)?.configuracoes_visuais || {};
     const fin = (loja as any)?.configuracoes_financeiras || {};
 
+    const isLeidyTenant = loja.slug === 'leidy-boutique' || loja.slug === 'leidyboutique';
+
     return {
-      nome: loja.nome || 'Leidy Boutique',
-      slug: loja.slug || 'leidy-boutique',
+      nome: loja.nome || (isLeidyTenant ? 'Leidy Boutique' : 'Minha Loja'),
+      slug: loja.slug || (isLeidyTenant ? 'leidy-boutique' : 'minha-loja'),
       dominioProprio: (loja as any)?.dominio_proprio || null,
-      whatsapp: loja.whatsapp || '554197347601',
-      email: loja.email || 'contato@leidyboutique.com.br',
+      whatsapp: loja.whatsapp || (isLeidyTenant ? '554197347601' : ''),
+      email: loja.email || (isLeidyTenant ? 'contato@leidyboutique.com.br' : ''),
 
       // Fiscal & Identificação
-      razaoSocial: vis.razao_social || 'Leidyane Cristina da Silva ME',
-      cnpj: vis.cnpj || '48.912.345/0001-67',
+      razaoSocial: vis.razao_social || (isLeidyTenant ? 'Leidyane Cristina da Silva ME' : ''),
+      cnpj: vis.cnpj || (isLeidyTenant ? '48.912.345/0001-67' : ''),
       inscricaoEstadual: vis.inscricao_estadual || 'ISENTO',
 
       // Endereço Físico
-      cep: vis.cep || '80010-000',
-      logradouro: vis.logradouro || 'Rua XV de Novembro',
-      numero: vis.numero || '1234',
-      complemento: vis.complemento || 'Loja 02 - Térreo',
-      bairro: vis.bairro || 'Centro',
-      cidade: vis.cidade || 'Curitiba',
-      estado: vis.estado || 'PR',
+      cep: vis.cep || (isLeidyTenant ? '80010-000' : ''),
+      logradouro: vis.logradouro || (isLeidyTenant ? 'Rua XV de Novembro' : ''),
+      numero: vis.numero || (isLeidyTenant ? '1234' : ''),
+      complemento: vis.complemento || (isLeidyTenant ? 'Loja 02 - Térreo' : ''),
+      bairro: vis.bairro || (isLeidyTenant ? 'Centro' : ''),
+      cidade: vis.cidade || (isLeidyTenant ? 'Curitiba' : ''),
+      estado: vis.estado || (isLeidyTenant ? 'PR' : 'SP'),
 
       // Horários de Atendimento Boutique
       horarioSemana: vis.horario_semana || '09:00 às 19:00',
@@ -3559,25 +3561,25 @@ export async function getStoreSettings(
       horarioDomingo: vis.horario_domingo || 'Fechado',
 
       // Canais Sociais & Comunicação
-      instagram: vis.instagram || '@leidyboutique_oficial',
-      facebook: vis.facebook || 'facebook.com/leidyboutique',
-      tiktok: vis.tiktok || '@leidyboutique',
+      instagram: vis.instagram || (isLeidyTenant ? '@leidyboutique_oficial' : ''),
+      facebook: vis.facebook || (isLeidyTenant ? 'facebook.com/leidyboutique' : ''),
+      tiktok: vis.tiktok || (isLeidyTenant ? '@leidyboutique' : ''),
 
       // Políticas e Termos Legais
       politicaTrocas: vis.politica_trocas || 'Você tem até 7 (sete) dias corridos a partir da data de entrega para solicitar a troca ou devolução do seu pedido, conforme o Código de Defesa do Consumidor (CDC art. 49). As peças devem estar em perfeito estado, sem indícios de uso e com a etiqueta afixada.',
       politicaPrivacidade: vis.politica_privacidade || 'Respeitamos sua privacidade e protegemos seus dados pessoais de acordo com a LGPD (Lei Geral de Proteção de Dados - Lei 13.709/2018). Seus dados cadastrais e de pagamento são utilizados exclusivamente para o processamento de compras e emissão de notas.',
-      termosUso: vis.termos_uso || 'Ao navegar e efetuar compras em nossa vitrine virtual, o cliente concorda com as condições de pagamento, prazos de envio e políticas de trocas da Leidy Boutique.',
+      termosUso: vis.termos_uso || `Ao navegar e efetuar compras em nossa vitrine virtual, o cliente concorda com as condições de pagamento, prazos de envio e políticas de trocas da ${loja.nome || 'loja'}.`,
 
       // Pagamentos & PIX
       freteGratisValor: Number(vis.frete_gratis_valor || 350),
-      chavePix: fin.chave_pix || '554197347601',
+      chavePix: fin.chave_pix || (isLeidyTenant ? '554197347601' : ''),
       tipoChavePix: fin.tipo_chave_pix || 'telefone',
-      pixTitular: fin.pix_titular || 'Leidyane Cristina da Silva',
-      pixBanco: fin.pix_banco || 'Nu Pagamentos S.A. (Nubank)',
+      pixTitular: fin.pix_titular || (isLeidyTenant ? 'Leidyane Cristina da Silva' : ''),
+      pixBanco: fin.pix_banco || (isLeidyTenant ? 'Nu Pagamentos S.A. (Nubank)' : ''),
       pixDescontoPercent: Number(fin.pix_desconto_percent ?? 5),
       pixExpiracaoMinutos: Number(fin.pix_expiracao_minutos ?? 30),
-      pixWhatsappComprovante: fin.pix_whatsapp_comprovante || '554197347601',
-      senhaMestraBalcao: fin.senha_mestra_balcao || 'Leidy@2026!',
+      pixWhatsappComprovante: fin.pix_whatsapp_comprovante || (isLeidyTenant ? '554197347601' : ''),
+      senhaMestraBalcao: fin.senha_mestra_balcao || '123456',
 
       // Logística & Envios
       prazoManuseioDias: Number(vis.prazo_manuseio_dias ?? 1),
@@ -3683,8 +3685,8 @@ export async function getStoreSettings(
       // Marketing & SEO
       metaPixelId: vis.meta_pixel_id || '',
       googleAnalyticsId: vis.google_analytics_id || '',
-      metaTitlePadrao: vis.meta_title_padrao || 'Leidy Boutique | Moda Feminina Exclusiva',
-      metaDescriptionPadrao: vis.meta_description_padrao || 'Encontre vestidos, conjuntos, alfaiataria e moda feminina contemporânea com entrega rápida para todo o Brasil.',
+      metaTitlePadrao: vis.meta_title_padrao || (loja.nome ? `${loja.nome} | Loja Oficial` : (isLeidyTenant ? 'Leidy Boutique | Moda Feminina Exclusiva' : 'Boutique Online')),
+      metaDescriptionPadrao: vis.meta_description_padrao || (isLeidyTenant ? 'Encontre vestidos, conjuntos, alfaiataria e moda feminina contemporânea com entrega rápida para todo o Brasil.' : 'Encontre produtos exclusivos com entrega rápida e atendimento personalizado.'),
       ogImageUrl: vis.og_image_url || '',
 
       // Alertas & Notificações

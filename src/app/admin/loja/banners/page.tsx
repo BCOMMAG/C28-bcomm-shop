@@ -59,8 +59,8 @@ import { BarraAvisoEstilo } from '@/types/database';
 export default function AdminBannersPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+  const tenantSlug = currentTenant?.slug || '';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
 
   const [banners, setBanners] = useState<AdminHeroBanner[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; nome: string; slug: string }>>([]);

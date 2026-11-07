@@ -105,7 +105,7 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Heart className="w-3.5 h-3.5 text-[#DFBE76]" />
-                <span>Atendimento humanizado pela Leidy</span>
+                <span>{currentTenant?.slug === 'leidy-boutique' ? 'Atendimento humanizado pela Leidy' : `Atendimento humanizado por nossa equipe`}</span>
               </li>
               <li className="text-[11px] text-[#A8A29E] pt-2">
                 Horário de Atendimento VIP: <br />
@@ -120,7 +120,7 @@ export const Footer: React.FC = () => {
               Transparência na Compra
             </h4>
             <p className="text-xs text-[#A8A29E] leading-relaxed">
-              Você escolhe suas peças aqui no catálogo, clica em finalizar e a lista detalhada é enviada diretamente para a Leidy no WhatsApp.
+              Você escolhe suas peças aqui no catálogo, clica em finalizar e a lista detalhada é enviada diretamente para a {currentTenant?.slug === 'leidy-boutique' ? 'Leidy' : storeName} no WhatsApp.
             </p>
             <div className="p-3 rounded-none bg-white/5 border border-white/10 text-[11px] text-[#DFBE76]">
               ✓ Estoque conferido na hora <br />

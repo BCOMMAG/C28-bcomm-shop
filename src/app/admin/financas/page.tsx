@@ -31,7 +31,7 @@ import { useStore } from '@/context/StoreContext';
 export default function AdminFinancasPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+  const lojaNome = currentTenant?.nome || 'sua loja';
 
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -277,7 +277,7 @@ export default function AdminFinancasPage() {
               Demonstrativo de Resultado do Exercício (DRE)
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Entenda exatamente a composição de cada real recebido nas vendas da Leidy Boutique.
+              Entenda exatamente a composição de cada real recebido nas vendas da {lojaNome}.
             </p>
           </div>
           <span className="text-xs text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-mono font-bold">

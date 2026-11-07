@@ -24,7 +24,8 @@ import { isMasterUser } from '@/lib/team';
 
 export default function UserProfileSettingsPage() {
   const { currentTenant } = useStore();
-  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
+  const isLeidy = currentTenant?.slug === 'leidy-boutique' || currentTenant?.slug === 'leidyboutique';
+  const tenantSlug = currentTenant?.slug || '';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);
@@ -32,13 +33,13 @@ export default function UserProfileSettingsPage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Estados do Perfil
-  const [nome, setNome] = useState('Leidyane Cristina');
-  const [apelido, setApelido] = useState('Leidy');
-  const [email, setEmail] = useState('contato@leidyboutique.com.br');
-  const [telefone, setTelefone] = useState('554197347601');
+  const [nome, setNome] = useState(isLeidy ? 'Leidyane Cristina' : '');
+  const [apelido, setApelido] = useState(isLeidy ? 'Leidy' : '');
+  const [email, setEmail] = useState(isLeidy ? 'contato@leidyboutique.com.br' : '');
+  const [telefone, setTelefone] = useState(isLeidy ? '554197347601' : '');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [assinaturaWhatsapp, setAssinaturaWhatsapp] = useState(
-    'Com carinho,\nLeidy | Leidy Boutique ✨'
+    isLeidy ? 'Com carinho,\nLeidy | Leidy Boutique ✨' : ''
   );
 
   // Toast
@@ -63,9 +64,9 @@ export default function UserProfileSettingsPage() {
           .maybeSingle();
 
         if (member) {
-          setNome(member.nome || 'Leidyane Cristina');
-          setEmail(member.email || 'contato@leidyboutique.com.br');
-          setTelefone(member.telefone || '554197347601');
+          setNome(member.nome || (isLeidy ? 'Leidyane Cristina' : ''));
+          setEmail(member.email || (isLeidy ? 'contato@leidyboutique.com.br' : ''));
+          setTelefone(member.telefone || (isLeidy ? '554197347601' : ''));
           if ((member as any).avatar_url) setAvatarUrl((member as any).avatar_url);
           if ((member as any).apelido) setApelido((member as any).apelido);
           if ((member as any).assinatura_whatsapp) setAssinaturaWhatsapp((member as any).assinatura_whatsapp);
@@ -256,7 +257,7 @@ export default function UserProfileSettingsPage() {
                 required
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Leidyane Cristina da Silva"
+                placeholder="Ex: Seu Nome Completo"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
@@ -268,7 +269,7 @@ export default function UserProfileSettingsPage() {
                 required
                 value={apelido}
                 onChange={(e) => setApelido(e.target.value)}
-                placeholder="Ex: Leidy"
+                placeholder="Ex: Como prefere ser chamado"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
@@ -282,7 +283,7 @@ export default function UserProfileSettingsPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contato@leidyboutique.com.br"
+                  placeholder="seu.email@loja.com.br"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
                 />
               </div>
@@ -365,7 +366,7 @@ export default function UserProfileSettingsPage() {
               rows={4}
               value={assinaturaWhatsapp}
               onChange={(e) => setAssinaturaWhatsapp(e.target.value)}
-              placeholder="Ex: Com carinho, Leidy | Leidy Boutique ✨"
+              placeholder="Ex: Atenciosamente,\nEquipe de Atendimento ✨"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-xs font-medium"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">

@@ -23,8 +23,8 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 
 export default function SubscriptionSettingsPage() {
   const { currentTenant, products } = useStore();
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
-  const tenantSlug = currentTenant?.slug || 'leidy-boutique';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
+  const tenantSlug = currentTenant?.slug || '';
 
   // Métricas do Plano
   const totalProdutos = products.length;

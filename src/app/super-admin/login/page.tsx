@@ -8,8 +8,8 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('superadmin@bcomm.com.br');
-  const [password, setPassword] = useState('SuperAdmin@2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -124,18 +124,7 @@ export default function SuperAdminLoginPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg text-[11px] text-slate-400 space-y-1">
-              <div className="flex items-center gap-1.5 text-[#38BDF8] font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Credenciais do Administrador BCOMM</span>
-              </div>
-              <p className="text-[10px]">
-                <strong className="text-white">Operador:</strong> superadmin@bcomm.com.br
-              </p>
-              <p className="text-[10px]">
-                <strong className="text-white">Chave:</strong> SuperAdmin@2026!
-              </p>
-            </div>
+
 
             <button
               type="submit"

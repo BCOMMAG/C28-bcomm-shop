@@ -51,13 +51,13 @@ type SortOption = 'ltv' | 'pedidos' | 'recente' | 'nome';
 export default function AdminClientesPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
 
   const [activeColab, setActiveColab] = useState<{ nome: string; codigo?: string } | null>(null);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('leidy_admin_colaborador');
+      const saved = localStorage.getItem('bcomm_admin_colaborador') || localStorage.getItem('leidy_admin_colaborador');
       if (saved) {
         const parsed = JSON.parse(saved);
         setActiveColab({

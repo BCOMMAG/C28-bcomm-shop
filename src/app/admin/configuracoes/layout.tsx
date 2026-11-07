@@ -110,8 +110,8 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { currentTenant } = useStore();
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
-  const lojaSlug = currentTenant?.slug || 'leidy-boutique';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
+  const lojaSlug = currentTenant?.slug || '';
 
   const cleanPath = (pathname || '').replace(/\/$/, '');
 

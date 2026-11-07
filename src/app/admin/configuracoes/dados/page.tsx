@@ -353,7 +353,7 @@ export default function DataExportSettingsPage() {
         <div className="space-y-0.5">
           <span className="font-bold text-slate-800">Conformidade e Sigilo com a LGPD:</span>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            As planilhas exportadas contêm dados pessoais de clientes da Leidy Boutique. Certifique-se de armazená-las com segurança e utilizá-las exclusivamente para fins fiscais e de atendimento consentido.
+            As planilhas exportadas contêm dados pessoais de clientes da loja. Certifique-se de armazená-las com segurança e utilizá-las exclusivamente para fins fiscais e de atendimento consentido.
           </p>
         </div>
       </div>

@@ -106,9 +106,9 @@ const ALL_KANBAN_COLUMNS: KanbanColumnDef[] = [
 export default function AdminPedidosPage() {
   const { currentTenant } = useStore();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
-  const lojaNome = currentTenant?.nome || 'Leidy Boutique';
-  const chavePix = currentTenant?.configuracoes_financeiras?.chave_pix || currentTenant?.whatsapp || '554197347601';
-  const bancoPix = currentTenant?.configuracoes_financeiras?.pix_banco || 'Nu Pagamentos S.A. (Nubank)';
+  const lojaNome = currentTenant?.nome || 'Minha Loja';
+  const chavePix = currentTenant?.configuracoes_financeiras?.chave_pix || currentTenant?.whatsapp || '';
+  const bancoPix = currentTenant?.configuracoes_financeiras?.pix_banco || '';
   const titularPix = currentTenant?.configuracoes_financeiras?.pix_titular || lojaNome;
   const tipoChavePix = currentTenant?.configuracoes_financeiras?.tipo_chave_pix || 'telefone';
 
