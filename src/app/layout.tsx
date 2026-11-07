@@ -121,139 +121,252 @@ export default function RootLayout({
                   var raw = localStorage.getItem('bcomm_tenant_last');
                   var active = true;
                   var bg = '#FAF8F5';
+                  var freq = 'todas_as_paginas';
                   if (raw) {
                     var parsed = JSON.parse(raw);
                     if (parsed && parsed.configuracoes_visuais && parsed.configuracoes_visuais.preloader) {
                       active = parsed.configuracoes_visuais.preloader.ativo !== false;
                       if (parsed.configuracoes_visuais.preloader.fundo) bg = parsed.configuracoes_visuais.preloader.fundo;
+                      if (parsed.configuracoes_visuais.preloader.frequencia) freq = parsed.configuracoes_visuais.preloader.frequencia;
                     }
                   }
-                  if (!active) {
+
+                  // Se o preloader estiver desativado ou configurado para apenas_entrada e já visto nesta sessão
+                  if (!active || (freq === 'apenas_entrada' && sessionStorage.getItem('bcomm_preloader_seen') === 'true')) {
                     document.documentElement.classList.remove('bcomm-veil-active');
                     var c = document.getElementById('bcomm-instant-curtain');
                     if (c) c.style.display = 'none';
+                    var s = document.getElementById('bcomm-store-root');
+                    if (s) {
+                      s.style.opacity = '1';
+                      s.style.visibility = 'visible';
+                      s.style.pointerEvents = 'auto';
+                    }
                     return;
                   }
                   document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
 
-                  // 1. REGISTRADOR MONOTÔNICO DE PROGRESSO (O NÚMERO SÓ ANDA PARA A FRENTE!)
-                  window.__BCOMM_CURRENT_PROGRESS__ = 0;
-                  window.__BCOMM_SET_PROGRESS__ = function(val) {
-                    var prev = window.__BCOMM_CURRENT_PROGRESS__ || 0;
-                    var next = Math.max(prev, Math.min(100, Math.floor(val)));
-                    window.__BCOMM_CURRENT_PROGRESS__ = next;
-                    var d = document.getElementById('bcomm-curtain-digits');
-                    var b = document.getElementById('bcomm-curtain-progress-bar');
-                    if (d) d.textContent = String(next).padStart(2, '0');
-                    if (b) b.style.width = next + '%';
-                  };
+                  // =========================================================================
+                  // CONTROLADOR UNIFICADO SOBERANO DE PRELOADER (API GLOBAL NO WINDOW)
+                  // =========================================================================
+                  window.__BCOMM_PRELOADER__ = {
+                    current: 0,
+                    isFinished: false,
+                    isRouteTransition: false,
 
-                  // 2. MOTOR ÚNICO SOBERANO (requestAnimationFrame CONTÍNUO E ININTERRUPTO)
-                  var startTime = performance.now();
-                  var isReady = false;
-                  var sprintStartTime = null;
-                  var sprintStartVal = 0;
-                  var isConcluding = false;
-                  var dwellStartTime = null;
-                  var isFinished = false;
+                    setProgress: function(val, allowReset) {
+                      var prev = this.current || 0;
+                      var next;
+                      if (allowReset) {
+                        next = Math.max(0, Math.min(100, Math.floor(val)));
+                      } else {
+                        next = Math.max(prev, Math.min(100, Math.floor(val)));
+                      }
+                      this.current = next;
+                      window.__BCOMM_CURRENT_PROGRESS__ = next;
+                      var d = document.getElementById('bcomm-curtain-digits');
+                      var b = document.getElementById('bcomm-curtain-progress-bar');
+                      if (d) d.textContent = String(next).padStart(2, '0');
+                      if (b) b.style.width = next + '%';
+                    },
 
-                  var targetDuration = 1200; // Tempo de elegância
-                  var sprintDuration = 500;  // Sprint visível até 100%
-                  var dwellDuration = 300;   // Dwell perceptual em 100%
+                    reset: function() {
+                      this.current = 0;
+                      this.isFinished = false;
+                      this.setProgress(0, true);
+                    },
 
-                  window.__BCOMM_HERO_BANNER_READY__ = false;
-                  window.addEventListener('bcomm:hero_banner_ready', function() {
-                    window.__BCOMM_HERO_BANNER_READY__ = true;
-                  });
+                    finish: function(callback) {
+                      if (this.isFinished) return;
+                      this.isFinished = true;
+                      this.setProgress(100);
 
-                  function finish() {
-                    if (isFinished) return;
-                    isFinished = true;
+                      // 1. Revela a vitrine antes de desvanecer a cortina (zero flash)
+                      var storeRoot = document.getElementById('bcomm-store-root');
+                      if (storeRoot) {
+                        storeRoot.style.opacity = '1';
+                        storeRoot.style.visibility = 'visible';
+                        storeRoot.style.pointerEvents = 'auto';
+                      }
 
-                    window.__BCOMM_SET_PROGRESS__(100);
-
-                    // 1. Revela a vitrine por baixo da cortina (zero flash, zero tela preta)
-                    var storeRoot = document.getElementById('bcomm-store-root');
-                    if (storeRoot) {
-                      storeRoot.style.opacity = '1';
-                      storeRoot.style.visibility = 'visible';
-                      storeRoot.style.pointerEvents = 'auto';
-                    }
-
-                    // 2. Desvanecimento suave da cortina por 500ms
-                    var instantCurtain = document.getElementById('bcomm-instant-curtain');
-                    if (instantCurtain) {
-                      instantCurtain.style.opacity = '0';
-                      instantCurtain.style.transition = 'opacity 500ms cubic-bezier(0.16, 1, 0.3, 1)';
-                      setTimeout(function() {
-                        instantCurtain.style.display = 'none';
+                      // 2. Desvanecimento suave da cortina por 450ms
+                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
+                      if (instantCurtain) {
+                        instantCurtain.style.opacity = '0';
+                        instantCurtain.style.transition = 'opacity 450ms cubic-bezier(0.16, 1, 0.3, 1)';
+                        setTimeout(function() {
+                          instantCurtain.style.display = 'none';
+                          document.documentElement.classList.remove('bcomm-veil-active');
+                          document.body.style.overflow = '';
+                          try {
+                            sessionStorage.setItem('bcomm_preloader_seen', 'true');
+                          } catch(e) {}
+                          if (typeof callback === 'function') callback();
+                        }, 470);
+                      } else {
                         document.documentElement.classList.remove('bcomm-veil-active');
                         document.body.style.overflow = '';
-                      }, 520);
+                        if (typeof callback === 'function') callback();
+                      }
+                    },
+
+                    forceHide: function() {
+                      this.isFinished = true;
+                      document.documentElement.classList.remove('bcomm-veil-active');
+                      document.body.style.overflow = '';
+                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
+                      if (instantCurtain) {
+                        instantCurtain.style.display = 'none';
+                        instantCurtain.style.opacity = '0';
+                      }
+                      var storeRoot = document.getElementById('bcomm-store-root');
+                      if (storeRoot) {
+                        storeRoot.style.opacity = '1';
+                        storeRoot.style.visibility = 'visible';
+                        storeRoot.style.pointerEvents = 'auto';
+                      }
+                    },
+
+                    startRouteTransition: function(opts) {
+                      opts = opts || {};
+                      var duration = opts.duration || 380;
+                      var dwell = opts.dwell || 120;
+                      var self = this;
+
+                      self.reset();
+                      self.isRouteTransition = true;
+
+                      document.documentElement.classList.add('bcomm-veil-active');
+                      document.body.style.overflow = 'hidden';
+                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
+                      if (instantCurtain) {
+                        instantCurtain.style.display = 'flex';
+                        instantCurtain.style.opacity = '1';
+                        instantCurtain.style.transition = '';
+                      }
+
+                      // Watchdog absoluto de 750ms para transições de rota
+                      var watchdog = setTimeout(function() {
+                        self.forceHide();
+                      }, 750);
+
+                      var start = performance.now();
+                      var isRouteDwell = false;
+                      var routeDwellStart = null;
+
+                      function routeStep(now) {
+                        if (self.isFinished) return;
+
+                        if (!isRouteDwell) {
+                          var elapsed = now - start;
+                          var ratio = Math.min(1, elapsed / duration);
+                          var target = Math.min(100, Math.floor(ratio * 100));
+
+                          while (self.current < target) {
+                            self.setProgress(self.current + 1);
+                          }
+
+                          if (self.current >= 100 || elapsed >= duration) {
+                            self.setProgress(100);
+                            isRouteDwell = true;
+                            routeDwellStart = now;
+                          }
+                          requestAnimationFrame(routeStep);
+                        } else {
+                          var dwellElapsed = now - (routeDwellStart || now);
+                          if (dwellElapsed >= dwell) {
+                            clearTimeout(watchdog);
+                            self.finish(function() {
+                              self.isRouteTransition = false;
+                            });
+                            return;
+                          }
+                          requestAnimationFrame(routeStep);
+                        }
+                      }
+
+                      requestAnimationFrame(routeStep);
                     }
-                  }
+                  };
 
-                  // Watchdog de segurança máxima: garante abertura mesmo com falha extrema de rede após 3800ms
-                  setTimeout(function() {
-                    if (!isFinished) {
-                      finish();
+                  window.__BCOMM_CURRENT_PROGRESS__ = 0;
+                  window.__BCOMM_SET_PROGRESS__ = function(val) {
+                    if (window.__BCOMM_PRELOADER__) {
+                      window.__BCOMM_PRELOADER__.setProgress(val);
                     }
-                  }, 3800);
+                  };
 
-                  function step(now) {
-                    if (isFinished) return;
+                  // =========================================================================
+                  // MOTOR DE ODÔMETRO CADENCIADO PARA O PRIMEIRO CARREGAMENTO (00 A 100%)
+                  // =========================================================================
+                  var isSubpage = p !== '/' && !p.match(/^\\/[^/]+\\/?$/);
+                  var isReady = isSubpage; // Subpáginas (/cliente, /catalogo) não dependem de HeroBanner!
+                  window.__BCOMM_HERO_BANNER_READY__ = false;
 
-                    var elapsed = now - startTime;
+                  window.addEventListener('bcomm:hero_banner_ready', function() {
+                    window.__BCOMM_HERO_BANNER_READY__ = true;
+                    isReady = true;
+                  });
+
+                  // Watchdog de segurança máxima do primeiro acesso (3500ms)
+                  var initialWatchdog = setTimeout(function() {
+                    if (window.__BCOMM_PRELOADER__ && !window.__BCOMM_PRELOADER__.isFinished) {
+                      window.__BCOMM_PRELOADER__.finish();
+                    }
+                  }, 3500);
+
+                  var lastTickTime = performance.now();
+                  var stepCadenceMs = 13; // ~13ms por número -> 100 números = ~1300ms
+                  var dwellStartTime = null;
+                  var isDwellPhase = false;
+
+                  function initialStep(now) {
+                    if (window.__BCOMM_PRELOADER__.isFinished) return;
+
                     if (!isReady && window.__BCOMM_HERO_BANNER_READY__) {
                       isReady = true;
                     }
 
-                    if (!isConcluding) {
-                      if (isReady && elapsed >= targetDuration) {
-                        // FASE 2: SPRINT VISÍVEL ATÉ 100% (450ms a 550ms)
-                        if (sprintStartTime === null) {
-                          sprintStartTime = now;
-                          sprintStartVal = window.__BCOMM_CURRENT_PROGRESS__ || 0;
-                        }
-                        var sprintElapsed = now - sprintStartTime;
-                        var sprintRatio = Math.min(1, sprintElapsed / sprintDuration);
-                        var eased = 1 - Math.pow(1 - sprintRatio, 2);
-                        var progress = sprintStartVal + (100 - sprintStartVal) * eased;
+                    var targetCap = isReady ? 100 : 75;
 
-                        window.__BCOMM_SET_PROGRESS__(progress);
+                    if (!isDwellPhase) {
+                      var elapsedSinceTick = now - lastTickTime;
+                      var current = window.__BCOMM_PRELOADER__.current;
 
-                        if (progress >= 99.8 || sprintElapsed >= sprintDuration) {
-                          window.__BCOMM_SET_PROGRESS__(100);
-                          isConcluding = true;
-                          dwellStartTime = now;
-                        }
-                      } else if (isReady) {
-                        // Loja decodificada, cumprindo tempo mínimo (sobe suavemente até 75%)
-                        var ratio = Math.min(1, elapsed / targetDuration);
-                        var targetProgress = 75 * ratio;
-                        window.__BCOMM_SET_PROGRESS__(targetProgress);
-                      } else {
-                        // Loja ainda carregando no fundo (teto rígido em 75%)
-                        var ratio = Math.min(1, elapsed / 2800);
-                        var targetProgress = 75 * (1 - Math.pow(1 - ratio, 2));
-                        window.__BCOMM_SET_PROGRESS__(targetProgress);
+                      var effectiveInterval = stepCadenceMs;
+                      if (!isReady && current >= 55) {
+                        effectiveInterval = 28; // Desacelera suavemente esperando vitrine
+                      } else if (isReady && current >= 75) {
+                        effectiveInterval = 7; // Sprint rápido e fluido até 100%
                       }
 
-                      requestAnimationFrame(step);
-                    } else {
-                      // FASE 3: DWELL PERCEPTUAL EM 100% (300ms de confirmação estável)
-                      var dwellElapsed = now - (dwellStartTime || now);
-                      window.__BCOMM_SET_PROGRESS__(100);
+                      if (elapsedSinceTick >= effectiveInterval) {
+                        if (current < targetCap) {
+                          window.__BCOMM_PRELOADER__.setProgress(current + 1);
+                          lastTickTime = now;
+                        }
+                      }
 
-                      if (dwellElapsed >= dwellDuration) {
-                        finish();
+                      if (window.__BCOMM_PRELOADER__.current >= 100) {
+                        isDwellPhase = true;
+                        dwellStartTime = now;
+                      }
+
+                      requestAnimationFrame(initialStep);
+                    } else {
+                      var dwellElapsed = now - (dwellStartTime || now);
+                      window.__BCOMM_PRELOADER__.setProgress(100);
+
+                      if (dwellElapsed >= 250) {
+                        clearTimeout(initialWatchdog);
+                        window.__BCOMM_PRELOADER__.finish();
                         return;
                       }
-                      requestAnimationFrame(step);
+                      requestAnimationFrame(initialStep);
                     }
                   }
 
-                  requestAnimationFrame(step);
+                  requestAnimationFrame(initialStep);
                 } catch(e) {}
               })();
             `

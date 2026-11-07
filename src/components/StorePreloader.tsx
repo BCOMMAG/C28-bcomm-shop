@@ -144,6 +144,20 @@ export const StorePreloader: React.FC = () => {
         return;
       }
 
+      // Se for subpágina (ex: /cliente, /catalogo, /checkout), não trava esperando HeroBanner!
+      const isSubpage = typeof window !== 'undefined' &&
+        window.location.pathname !== '/' &&
+        !window.location.pathname.match(/^\/[^/]+\/?$/);
+
+      if (isSubpage) {
+        isAssetsReadyRef.current = true;
+        if (typeof window !== 'undefined') {
+          (window as any).__BCOMM_HERO_BANNER_READY__ = true;
+          window.dispatchEvent(new CustomEvent('bcomm:hero_banner_ready'));
+        }
+        return;
+      }
+
       const promises: Promise<any>[] = [];
 
       // 1. Imagem do Banner Hero em alta definição ou Pôster de Vídeo
@@ -238,7 +252,9 @@ export const StorePreloader: React.FC = () => {
           try {
             const hasSeen = sessionStorage.getItem('bcomm_preloader_seen');
             if (hasSeen === 'true') {
-              if (typeof document !== 'undefined') {
+              if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
+                (window as any).__BCOMM_PRELOADER__.forceHide();
+              } else if (typeof document !== 'undefined') {
                 document.documentElement.classList.remove('bcomm-veil-active');
                 const instantCurtain = document.getElementById('bcomm-instant-curtain');
                 if (instantCurtain) instantCurtain.style.display = 'none';
@@ -258,7 +274,9 @@ export const StorePreloader: React.FC = () => {
         setIsVisible(true);
       } else {
         // Se inativo, garante liberação imediata de qualquer cortina estática e exibição da loja
-        if (typeof document !== 'undefined') {
+        if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
+          (window as any).__BCOMM_PRELOADER__.forceHide();
+        } else if (typeof document !== 'undefined') {
           document.documentElement.classList.remove('bcomm-veil-active');
           const instantCurtain = document.getElementById('bcomm-instant-curtain');
           if (instantCurtain) instantCurtain.style.display = 'none';
@@ -273,33 +291,24 @@ export const StorePreloader: React.FC = () => {
     }
   }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 5. Transições de rotas internas (Catálogo, Favoritos, etc.)
+  // 5. Transições de rotas internas (Perfil, Catálogo, Favoritos, etc.)
   useEffect(() => {
     if (!hasMounted || isExcludedRoute || isTestMode) return;
 
     if (prevPathnameRef.current !== pathname) {
       prevPathnameRef.current = pathname;
       if (effectiveConfig.ativo && effectiveConfig.frequencia === 'todas_as_paginas') {
-        if (typeof document !== 'undefined') {
-          document.documentElement.classList.add('bcomm-veil-active');
-          const instantCurtain = document.getElementById('bcomm-instant-curtain');
-          if (instantCurtain) {
-            instantCurtain.style.display = 'flex';
-            instantCurtain.style.opacity = '1';
-            instantCurtain.style.transition = '';
-          }
+        if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
+          (window as any).__BCOMM_PRELOADER__.startRouteTransition({ duration: 380, dwell: 120 });
         }
-        isTransitioningRouteRef.current = true;
-        setIsRevealing(false);
-        setIsVisible(true);
       }
     }
   }, [pathname, hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 6. MOTOR DE ANIMAÇÃO PARA TESTES DO ADMIN E TRANSIÇÕES DE ROTA
+  // 6. MOTOR DE ANIMAÇÃO PARA TESTES DO ADMIN
   useEffect(() => {
-    // Na entrada pública inicial, o Motor Único Soberano de layout.tsx é o comandante exclusivo (zero conflito)
-    if (!isTestMode && !isTransitioningRouteRef.current) {
+    // Apenas para simulação ao vivo no painel de administração da boutique
+    if (!isTestMode) {
       return;
     }
 
@@ -311,10 +320,10 @@ export const StorePreloader: React.FC = () => {
     // Trava de rolagem da vitrine enquanto a cortina está ativa
     document.body.style.overflow = 'hidden';
 
-    const isInternalTransition = isTransitioningRouteRef.current;
-    const initialProgress = typeof window !== 'undefined' ? Number((window as any).__BCOMM_CURRENT_PROGRESS__ || (window as any).__BCOMM_PRELOADER_PROGRESS__ || 0) : 0;
+    const isInternalTransition = false;
+    const initialProgress = 0;
     
-    // Atualiza visual no DOM com o valor inicial contínuo (sem saltos para trás)
+    // Atualiza visual no DOM com o valor inicial contínuo
     updateProgressDOM(initialProgress, effectiveConfig.modelo);
 
     const targetDuration = isTestMode
