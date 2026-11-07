@@ -365,7 +365,7 @@ export default function CheckoutSettingsPage() {
                 </span>
               ) : (
                 <span className="text-slate-600 font-medium">
-                  🔒 <strong>Sigilo Comercial:</strong> Oculta a contagem numérica exata. Peças com poucas unidades exibem apenas &quot;Últimas unidades&quot; sem expor a contagem do estoque físico.
+                  🔒 <strong>Sigilo Comercial:</strong> Oculta contagens e avisos de escassez. Informa com total elegância apenas &quot;Disponível em estoque para envio imediato!&quot; sem expor os níveis do estoque físico.
                 </span>
               )}
             </div>

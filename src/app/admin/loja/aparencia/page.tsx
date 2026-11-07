@@ -3225,9 +3225,9 @@ export default function AppearanceSettingsPage() {
             </>
           ) : (
             <>
-              <li>O sistema <strong className="text-slate-700">nunca expõe números exatos</strong> aos visitantes. Não haverá selos de &quot;Restam 2 peças&quot;.</li>
-              <li>Quando a peça estiver com estoque baixo (&le; 5), o selo será apenas <strong className="text-slate-700">&quot;Últimas peças&quot;</strong> sem revelar quantidade.</li>
-              <li>No modal, informa com elegância apenas <strong className="text-slate-700">&quot;Disponível em estoque para envio imediato&quot;</strong> ou <strong className="text-slate-700">&quot;Últimas unidades em estoque&quot;</strong>.</li>
+              <li>O sistema <strong className="text-slate-700">nunca expõe contagens nem frases de escassez</strong> aos clientes. Não haverá selos nem avisos de &quot;Últimas unidades&quot;.</li>
+              <li>No modal, informa com total discrição e elegância apenas <strong className="text-slate-700">&quot;Disponível em estoque para envio imediato!&quot;</strong> enquanto houver peças disponíveis.</li>
+              <li>Se uma variação ou tamanho estiver esgotado no estoque real, o sistema informará com clareza <strong className="text-slate-700">&quot;Tamanho esgotado no momento nesta cor&quot;</strong> e habilitará o botão de aviso.</li>
             </>
           )}
         </ul>

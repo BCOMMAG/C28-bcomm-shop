@@ -489,7 +489,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const generateWhatsAppReservationLink = () => {
     const storeWhatsapp = currentTenant?.whatsapp?.replace(/\D/g, '') || STORE_INFO.whatsapp;
-    let text = `Olá Leidy! Vi na loja o look *${product.name}* (Cor: *${selectedColor}*, Tamanho: *${selectedSize}*).\n\nNotei que a última peça está em reserva temporária no provador de outra cliente. Gostaria de entrar na lista de espera VIP com prioridade caso a peça seja liberada! ✨`;
+    const pecaTexto = showStockQty ? 'a última peça está em reserva temporária' : 'esta peça está em reserva temporária';
+    let text = `Olá Leidy! Vi na loja o look *${product.name}* (Cor: *${selectedColor}*, Tamanho: *${selectedSize}*).\n\nNotei que ${pecaTexto} no provador de outra cliente. Gostaria de entrar na lista de espera VIP com prioridade caso a peça seja liberada! ✨`;
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
   };
 
@@ -974,7 +975,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   {isCombinationInReservation ? (
                     <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-bold">
                       <Clock className="w-3.5 h-3.5 animate-pulse" />
-                      Última unidade desta combinação em reserva temporária no provador!
+                      {showStockQty
+                        ? 'Última unidade desta combinação em reserva temporária no provador!'
+                        : 'Combinação em reserva temporária no provador!'}
                     </span>
                   ) : currentVariationStock > 0 && currentVariationStock <= 5 ? (
                     showStockQty ? (
@@ -982,7 +985,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         ? 'Última unidade deste tamanho em estoque!'
                         : `Últimas ${currentVariationStock} unidades deste tamanho em estoque!`
                     ) : (
-                      'Últimas unidades deste tamanho em estoque!'
+                      'Disponível em estoque para envio imediato!'
                     )
                   ) : currentVariationStock > 5 ? (
                     showStockQty ? (
@@ -1133,7 +1136,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         <span>Quantidade máxima já adicionada à sua sacola</span>
                       </div>
                       <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
-                        Você já adicionou {quantityInCart} {quantityInCart === 1 ? 'unidade' : 'unidades'} desta peça ({selectedColor} / {selectedSize}), que corresponde ao estoque total disponível no momento.
+                        {showStockQty ? (
+                          `Você já adicionou ${quantityInCart} ${quantityInCart === 1 ? 'unidade' : 'unidades'} desta peça (${selectedColor} / ${selectedSize}), que corresponde ao estoque total disponível no momento.`
+                        ) : (
+                          `Você já adicionou a quantidade máxima disponível desta combinação (${selectedColor} / ${selectedSize}) à sua sacola.`
+                        )}
                       </p>
                     </div>
 
@@ -1204,10 +1211,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       </button>
                     </div>
 
-                    {/* Aviso de estoque baixo ou última unidade */}
-                    {effectiveAvailableStock === 1 && (
+                    {/* Aviso de estoque baixo ou última unidade (somente no Modo Transparente) */}
+                    {showStockQty && effectiveAvailableStock === 1 && (
                       <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                        ⚡ {showStockQty ? 'Atenção: Resta apenas 1 unidade disponível desta combinação!' : 'Atenção: Última unidade disponível desta combinação!'}
+                        ⚡ Resta apenas 1 unidade disponível desta combinação!
                       </p>
                     )}
 
