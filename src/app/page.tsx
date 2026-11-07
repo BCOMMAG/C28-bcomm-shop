@@ -6,7 +6,14 @@ import { PlatformPortal } from '@/components/PlatformPortal';
 import { isPlatformHostname } from '@/lib/routes';
 
 export default function RootHomePage() {
-  const [isStoreMode, setIsStoreMode] = useState<boolean | null>(null);
+  const [isStoreMode, setIsStoreMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const hostname = window.location.hostname.toLowerCase();
+    const searchParams = new URLSearchParams(window.location.search);
+    const lojaParam = searchParams.get('loja');
+    if (lojaParam && lojaParam.trim() !== '') return true;
+    return !isPlatformHostname(hostname);
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -33,17 +40,6 @@ export default function RootHomePage() {
     // 3. Caso contrário, na raiz bcomm-ag.space/ ou bcomm-shop.pages.dev/ sem parâmetros, exibe o Portal BCOMM SaaS
     setIsStoreMode(false);
   }, []);
-
-  // Enquanto determina o modo (evita flash visual durante o carregamento)
-  if (isStoreMode === null) {
-    return (
-      <div className="min-h-screen bg-[#0C0E14] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
-        </div>
-      </div>
-    );
-  }
 
   if (isStoreMode) {
     return <BoutiqueStorefront />;

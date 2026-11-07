@@ -7,9 +7,33 @@ import { useStore } from '@/context/StoreContext';
 import { StorePreloaderConfig } from '@/types/database';
 import { Sparkles, X } from 'lucide-react';
 
+function preloadAndDecodeImage(src: string): Promise<void> {
+  if (typeof window === 'undefined' || !src) return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.src = src;
+    if (img.complete) {
+      if ('decode' in img && typeof img.decode === 'function') {
+        img.decode().then(() => resolve()).catch(() => resolve());
+      } else {
+        resolve();
+      }
+      return;
+    }
+    img.onload = () => {
+      if ('decode' in img && typeof img.decode === 'function') {
+        img.decode().then(() => resolve()).catch(() => resolve());
+      } else {
+        resolve();
+      }
+    };
+    img.onerror = () => resolve(); // Falha graciosa em caso de 404/bloqueio de rede
+  });
+}
+
 export const StorePreloader: React.FC = () => {
   const pathname = usePathname();
-  const { currentTenant, isLoadingProducts } = useStore();
+  const { currentTenant, heroBanner, heroBanners, isLoadingProducts } = useStore();
 
   const [hasMounted, setHasMounted] = useState<boolean>(false);
   const [testConfig, setTestConfig] = useState<StorePreloaderConfig | null>(null);
@@ -26,14 +50,33 @@ export const StorePreloader: React.FC = () => {
   const prevPathnameRef = useRef<string>(pathname);
   const hasLoadedInitialRouteRef = useRef<boolean>(false);
   const isTransitioningRouteRef = useRef<boolean>(false);
+  const isAssetsReadyRef = useRef<boolean>(false);
 
   const isExcludedRoute = useMemo(() => {
     if (!pathname) return false;
     return pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
   }, [pathname]);
 
+  // Resolução da mídia do Banner Hero ativo para o Gatekeeper de Imagem
+  const activeBanner = useMemo(() => {
+    if (heroBanners && heroBanners.length > 0) {
+      return heroBanners.find((b) => b.ativo) || heroBanners[0];
+    }
+    if (heroBanner && heroBanner.ativo) {
+      return heroBanner;
+    }
+    return null;
+  }, [heroBanners, heroBanner]);
+
+  const bannerDeskUrl = activeBanner?.desktop_media_url || '';
+  const bannerMobUrl = activeBanner?.mobile_media_url || bannerDeskUrl;
+  const isBannerVideo = activeBanner?.tipo_midia === 'video';
+
+  const vis = currentTenant?.configuracoes_visuais as any;
+  const siteBg = vis?.plano_fundo_site;
+  const bgImageSrc = siteBg?.imagem_url || '/images/plano-de-fundo.webp';
+
   const config: StorePreloaderConfig = useMemo(() => {
-    const vis = currentTenant?.configuracoes_visuais as any;
     const p = vis?.preloader;
     return {
       ativo: Boolean(p?.ativo),
@@ -45,10 +88,10 @@ export const StorePreloader: React.FC = () => {
       exibir_logo: p?.exibir_logo !== undefined ? Boolean(p.exibir_logo) : true,
       exibir_slogan: p?.exibir_slogan !== undefined ? Boolean(p.exibir_slogan) : true,
       frequencia: p?.frequencia || 'todas_as_paginas',
-      tempo_minimo_ms: Number(p?.tempo_minimo_ms || 650),
-      timeout_seguranca_ms: Number(p?.timeout_seguranca_ms || 2200)
+      tempo_minimo_ms: Number(p?.tempo_minimo_ms || 1350),
+      timeout_seguranca_ms: Number(p?.timeout_seguranca_ms || 3000)
     };
-  }, [currentTenant]);
+  }, [vis]);
 
   const effectiveConfig: StorePreloaderConfig = useMemo(() => {
     if (isTestMode && testConfig) {
@@ -77,15 +120,65 @@ export const StorePreloader: React.FC = () => {
   // 1. Montagem inicial no cliente (Proteção absoluta contra Hydration Mismatch)
   useEffect(() => {
     setHasMounted(true);
-    if (typeof window !== 'undefined') {
-      (window as any).__BCOMM_PRELOADER_ACTIVE__ = false;
-      if ((window as any).__BCOMM_PRELOADER_TICKER__) {
-        clearInterval((window as any).__BCOMM_PRELOADER_TICKER__);
-      }
-    }
   }, []);
 
-  // 2. Ouvinte de evento para simulação ao vivo do lojista no painel de aparência
+  // 2. Gatekeeper de Prontidão Visual Real:
+  // Só autoriza a saída quando o banner da vitrine e o plano de fundo estiverem decodificados na GPU
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checkReadiness = async () => {
+      if (isTestMode) {
+        isAssetsReadyRef.current = true;
+        return;
+      }
+
+      const promises: Promise<any>[] = [];
+
+      // 1. Imagem do Banner Hero em alta definição
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetBannerUrl = isMobile ? bannerMobUrl : bannerDeskUrl;
+      if (targetBannerUrl && !isBannerVideo) {
+        promises.push(preloadAndDecodeImage(targetBannerUrl));
+      }
+
+      // 2. Imagem de Plano de Fundo da Loja
+      if (bgImageSrc) {
+        promises.push(preloadAndDecodeImage(bgImageSrc));
+      }
+
+      // 3. Montagem inicial do catálogo de produtos
+      if (isLoadingProductsRef.current) {
+        promises.push(
+          new Promise<void>((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (!isLoadingProductsRef.current || isCancelled) {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 30);
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              resolve();
+            }, 1800);
+          })
+        );
+      }
+
+      await Promise.all(promises);
+      if (!isCancelled) {
+        isAssetsReadyRef.current = true;
+      }
+    };
+
+    checkReadiness();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [bannerDeskUrl, bannerMobUrl, isBannerVideo, bgImageSrc, isTestMode]);
+
+  // 3. Ouvinte de evento para simulação ao vivo do lojista no painel de aparência
   useEffect(() => {
     const handleTestEvent = (e: any) => {
       const customConfig = e?.detail;
@@ -103,7 +196,7 @@ export const StorePreloader: React.FC = () => {
     };
   }, []);
 
-  // 3. Inicialização na vitrine ao vivo
+  // 4. Inicialização na vitrine ao vivo
   useEffect(() => {
     if (!hasMounted) return;
 
@@ -160,7 +253,7 @@ export const StorePreloader: React.FC = () => {
     }
   }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 4. Transições de rotas internas (Catálogo, Favoritos, etc.)
+  // 5. Transições de rotas internas (Catálogo, Favoritos, etc.)
   useEffect(() => {
     if (!hasMounted || isExcludedRoute || isTestMode) return;
 
@@ -183,7 +276,7 @@ export const StorePreloader: React.FC = () => {
     }
   }, [pathname, hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 5. MOTOR DE ANIMAÇÃO DIRETO NO DOM + WATCHDOG AUTÔNOMO
+  // 6. MOTOR DE ANIMAÇÃO DIRETO NO DOM + WATCHDOG AUTÔNOMO
   useEffect(() => {
     if (!isVisible) {
       document.body.style.overflow = '';
@@ -193,23 +286,31 @@ export const StorePreloader: React.FC = () => {
     // Trava de rolagem da vitrine enquanto a cortina está ativa
     document.body.style.overflow = 'hidden';
 
+    // Passagem de bastão suave: encerra o ticker preliminar do <head> exatamente ao assumir o loop RAF
+    if (typeof window !== 'undefined') {
+      (window as any).__BCOMM_PRELOADER_ACTIVE__ = false;
+      if ((window as any).__BCOMM_PRELOADER_TICKER__) {
+        clearInterval((window as any).__BCOMM_PRELOADER_TICKER__);
+      }
+    }
+
     const isInternalTransition = isTransitioningRouteRef.current;
     const initialProgress = typeof window !== 'undefined' ? Number((window as any).__BCOMM_PRELOADER_PROGRESS__ || 0) : 0;
     
-    // Atualiza visual no DOM com o valor inicial (sem reiniciar do zero na vitrine ao vivo)
+    // Atualiza visual no DOM com o valor inicial contínuo (sem saltos para trás)
     updateProgressDOM(initialProgress, effectiveConfig.modelo);
 
     const targetDuration = isTestMode
       ? 1400
       : isInternalTransition
       ? 450
-      : Math.max(650, effectiveConfig.tempo_minimo_ms || 650);
+      : Math.max(1350, Number(effectiveConfig.tempo_minimo_ms || 1350));
 
     const maxTimeout = isTestMode
-      ? 1800
+      ? 2000
       : isInternalTransition
       ? 900
-      : Math.max(1800, effectiveConfig.timeout_seguranca_ms || 2200);
+      : Math.max(3000, Number(effectiveConfig.timeout_seguranca_ms || 3000));
 
     const startTime = Date.now();
     let currentVal = initialProgress;
@@ -229,20 +330,25 @@ export const StorePreloader: React.FC = () => {
       setIsRevealing(true);
 
       if (typeof document !== 'undefined') {
-        document.documentElement.classList.remove('bcomm-veil-active');
-        const instantCurtain = document.getElementById('bcomm-instant-curtain');
-        if (instantCurtain) {
-          instantCurtain.style.opacity = '0';
-          instantCurtain.style.transition = 'opacity 600ms cubic-bezier(0.16, 1, 0.3, 1)';
-          setTimeout(() => {
-            instantCurtain.style.display = 'none';
-          }, 650);
-        }
+        // 1. Revela a vitrine antes de desvanecer a cortina (zero flash, zero tela preta)
         const storeRoot = document.getElementById('bcomm-store-root');
         if (storeRoot) {
           storeRoot.style.opacity = '1';
           storeRoot.style.visibility = 'visible';
           storeRoot.style.pointerEvents = 'auto';
+        }
+
+        // 2. Remove o bloqueio do véu crítico
+        document.documentElement.classList.remove('bcomm-veil-active');
+
+        // 3. Desvanecimento suave da cortina
+        const instantCurtain = document.getElementById('bcomm-instant-curtain');
+        if (instantCurtain) {
+          instantCurtain.style.opacity = '0';
+          instantCurtain.style.transition = 'opacity 500ms cubic-bezier(0.16, 1, 0.3, 1)';
+          setTimeout(() => {
+            instantCurtain.style.display = 'none';
+          }, 550);
         }
       }
 
@@ -252,7 +358,7 @@ export const StorePreloader: React.FC = () => {
         setIsTestMode(false);
         isTransitioningRouteRef.current = false;
         document.body.style.overflow = '';
-      }, 650);
+      }, 550);
     };
 
     // Watchdog Timer de Segurança: Garante saída mesmo com falha externa ou aba em segundo plano
@@ -264,26 +370,28 @@ export const StorePreloader: React.FC = () => {
       if (isFinished) return;
 
       const elapsed = Date.now() - startTime;
-      const contentReady = isTestMode || isInternalTransition ? true : !isLoadingProductsRef.current;
+      const isReady = isTestMode || isInternalTransition ? true : isAssetsReadyRef.current;
 
-      if (elapsed >= maxTimeout || (contentReady && elapsed >= targetDuration)) {
+      // Só conclui se os recursos visuais estiverem decodificados e tiver cumprido o tempo mínimo
+      if (elapsed >= maxTimeout || (isReady && elapsed >= targetDuration)) {
         clearTimeout(watchdogTimer);
         finish();
         return;
       }
 
       let targetProgress = 0;
-      if (contentReady) {
+      if (isReady) {
         const ratio = Math.min(1, elapsed / targetDuration);
         targetProgress = 20 + ratio * 80;
       } else {
+        // Se ainda está baixando a foto do banner hero, progride suavemente até 90% e aguarda
         const ratio = Math.min(1, elapsed / maxTimeout);
-        targetProgress = Math.min(88, ratio * 90);
+        targetProgress = Math.min(90, 15 + ratio * 80);
       }
 
-      currentVal = Math.min(100, currentVal + Math.max(1, (targetProgress - currentVal) * 0.25));
+      currentVal = Math.min(100, currentVal + Math.max(0.8, (targetProgress - currentVal) * 0.22));
 
-      if (currentVal >= 99.2 && (contentReady && elapsed >= targetDuration)) {
+      if (currentVal >= 99.2 && (isReady && elapsed >= targetDuration)) {
         clearTimeout(watchdogTimer);
         finish();
         return;

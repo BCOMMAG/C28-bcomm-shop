@@ -57,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -87,6 +87,9 @@ export default function RootLayout({
                 opacity: 0 !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
+              }
+              #bcomm-instant-curtain {
+                transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
               }
             `
           }}
@@ -121,7 +124,7 @@ export default function RootLayout({
                         return;
                       }
                       if (cur < 85) {
-                        cur += Math.floor(Math.random() * 8) + 4;
+                        cur += Math.floor(Math.random() * 5) + 3;
                         if (cur > 85) cur = 85;
                         window.__BCOMM_PRELOADER_PROGRESS__ = cur;
                         var d = document.getElementById('bcomm-curtain-digits');
@@ -129,7 +132,7 @@ export default function RootLayout({
                         if (d) d.textContent = String(cur).padStart(2, '0');
                         if (b) b.style.width = cur + '%';
                       }
-                    }, 60);
+                    }, 50);
                     window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
                   }
                 } catch(e) {}
