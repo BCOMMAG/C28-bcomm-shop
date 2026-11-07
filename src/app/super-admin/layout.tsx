@@ -33,6 +33,16 @@ export default function SuperAdminLayout({
   const cleanPath = (pathname || '').replace(/\/$/, '');
   const isLoginPage = cleanPath === '/super-admin/login' || cleanPath.startsWith('/super-admin/login');
 
+  // Blindagem definitiva: Garante que qualquer resquício de preloader da vitrine seja 100% eliminado no super-admin
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('bcomm-veil-active');
+      document.documentElement.classList.add('bcomm-no-preloader');
+      const c = document.getElementById('bcomm-instant-curtain');
+      if (c) c.style.display = 'none';
+    }
+  }, []);
+
   useEffect(() => {
     if (isLoginPage) {
       setIsAuthenticated(true);

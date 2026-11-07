@@ -291,19 +291,13 @@ export const StorePreloader: React.FC = () => {
     }
   }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 5. Transições de rotas internas (Perfil, Catálogo, Favoritos, etc.)
+  // 5. Atualização de rota interna (Navegação SPA pura e instantânea de 0ms)
   useEffect(() => {
     if (!hasMounted || isExcludedRoute || isTestMode) return;
-
     if (prevPathnameRef.current !== pathname) {
       prevPathnameRef.current = pathname;
-      if (effectiveConfig.ativo && effectiveConfig.frequencia === 'todas_as_paginas') {
-        if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
-          (window as any).__BCOMM_PRELOADER__.startRouteTransition({ duration: 380, dwell: 120 });
-        }
-      }
     }
-  }, [pathname, hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
+  }, [pathname, hasMounted, isExcludedRoute, isTestMode]);
 
   // 6. MOTOR DE ANIMAÇÃO PARA TESTES DO ADMIN
   useEffect(() => {

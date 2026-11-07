@@ -44,7 +44,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "fundo": "#FAF8F5",
       "modelo": "haute_couture",
       "cor_texto": "#1A1918",
-      "frequencia": "todas_as_paginas",
+      "frequencia": "apenas_entrada",
       "exibir_logo": true,
       "cor_primaria": "#DFBE76",
       "exibir_slogan": true,

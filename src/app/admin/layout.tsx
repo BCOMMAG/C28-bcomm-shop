@@ -87,6 +87,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  // Blindagem definitiva: Garante que qualquer resquício de preloader da vitrine seja 100% eliminado no admin
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('bcomm-veil-active');
+      document.documentElement.classList.add('bcomm-no-preloader');
+      const c = document.getElementById('bcomm-instant-curtain');
+      if (c) c.style.display = 'none';
+    }
+  }, []);
+
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;

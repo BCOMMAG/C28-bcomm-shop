@@ -82,23 +82,37 @@ export default function RootLayout({
                 position: fixed;
                 inset: 0;
                 z-index: 999999;
-                display: flex;
-                opacity: 1;
-                visibility: visible;
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
                 background-color: var(--bcomm-preloader-bg, #FAF8F5);
                 align-items: center;
                 justify-content: center;
                 flex-direction: column;
-                transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
-                pointer-events: auto;
+                transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1);
               }
-              html.bcomm-veil-active #bcomm-store-root,
-              html.bcomm-veil-active [data-bcomm-background] {
+              html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-instant-curtain {
+                display: flex !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+              }
+              html.bcomm-no-preloader #bcomm-instant-curtain,
+              html:not(.bcomm-veil-active) #bcomm-instant-curtain {
+                display: none !important;
                 opacity: 0 !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
               }
-              html:not(.bcomm-veil-active) #bcomm-store-root {
+              html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-store-root,
+              html.bcomm-veil-active:not(.bcomm-no-preloader) [data-bcomm-background] {
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+              }
+              html:not(.bcomm-veil-active) #bcomm-store-root,
+              html.bcomm-no-preloader #bcomm-store-root {
                 opacity: 1 !important;
                 visibility: visible !important;
                 pointer-events: auto !important;
@@ -112,16 +126,16 @@ export default function RootLayout({
               (function() {
                 try {
                   var p = window.location.pathname || '';
-                  if (p.startsWith('/admin') || p.startsWith('/super-admin')) {
+                  var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
+                  if (isAdmin) {
                     document.documentElement.classList.remove('bcomm-veil-active');
-                    var c = document.getElementById('bcomm-instant-curtain');
-                    if (c) c.style.display = 'none';
+                    document.documentElement.classList.add('bcomm-no-preloader');
                     return;
                   }
                   var raw = localStorage.getItem('bcomm_tenant_last');
                   var active = true;
                   var bg = '#FAF8F5';
-                  var freq = 'todas_as_paginas';
+                  var freq = 'apenas_entrada';
                   if (raw) {
                     var parsed = JSON.parse(raw);
                     if (parsed && parsed.configuracoes_visuais && parsed.configuracoes_visuais.preloader) {
@@ -131,11 +145,10 @@ export default function RootLayout({
                     }
                   }
 
-                  // Se o preloader estiver desativado ou configurado para apenas_entrada e já visto nesta sessão
+                  // Se o preloader estiver desativado pelo lojista ou configurado para apenas_entrada e já visto nesta sessão
                   if (!active || (freq === 'apenas_entrada' && sessionStorage.getItem('bcomm_preloader_seen') === 'true')) {
                     document.documentElement.classList.remove('bcomm-veil-active');
-                    var c = document.getElementById('bcomm-instant-curtain');
-                    if (c) c.style.display = 'none';
+                    document.documentElement.classList.add('bcomm-no-preloader');
                     var s = document.getElementById('bcomm-store-root');
                     if (s) {
                       s.style.opacity = '1';
@@ -382,8 +395,6 @@ export default function RootLayout({
             position: 'fixed',
             inset: 0,
             zIndex: 999999,
-            display: 'flex',
-            opacity: 1,
             backgroundColor: 'var(--bcomm-preloader-bg, #FAF8F5)',
             alignItems: 'center',
             justifyContent: 'center',

@@ -53,17 +53,44 @@ body {
 }
 
 /* Cortina de Abertura Imediata em 0ms (Preloader de Luxo) */
-html.bcomm-veil-active body {
-  overflow: hidden !important;
-}
-html.bcomm-veil-active #bcomm-instant-curtain {
-  display: flex !important;
-}
-html.bcomm-veil-active #bcomm-store-root,
-html.bcomm-veil-active [data-bcomm-background] {
+#bcomm-instant-curtain {
+  display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+html.bcomm-veil-active:not(.bcomm-no-preloader) body {
+  overflow: hidden !important;
+}
+
+html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-instant-curtain {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+html.bcomm-no-preloader #bcomm-instant-curtain,
+html:not(.bcomm-veil-active) #bcomm-instant-curtain {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-store-root,
+html.bcomm-veil-active:not(.bcomm-no-preloader) [data-bcomm-background] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html:not(.bcomm-veil-active) #bcomm-store-root,
+html.bcomm-no-preloader #bcomm-store-root {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 /* Tipografia de Luxo e Editorial */
