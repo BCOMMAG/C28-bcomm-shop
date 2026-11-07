@@ -147,7 +147,7 @@ export default function RootLayout({
             display: 'none',
             position: 'fixed',
             inset: 0,
-            zIndex: 999998,
+            zIndex: 999999,
             backgroundColor: 'var(--bcomm-preloader-bg, #FAF8F5)',
             alignItems: 'center',
             justifyContent: 'center',

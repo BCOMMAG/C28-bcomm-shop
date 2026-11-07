@@ -20,6 +20,8 @@ export const StorePreloader: React.FC = () => {
   // Referências diretas ao DOM (Zero Re-renders do React durante o trajeto 0% a 100%)
   const digitsRef = useRef<HTMLSpanElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const isLoadingProductsRef = useRef<boolean>(isLoadingProducts);
+  isLoadingProductsRef.current = isLoadingProducts;
 
   const prevPathnameRef = useRef<string>(pathname);
   const hasLoadedInitialRouteRef = useRef<boolean>(false);
@@ -114,7 +116,10 @@ export const StorePreloader: React.FC = () => {
     // No primeiro carregamento da vitrine pública
     if (!hasLoadedInitialRouteRef.current) {
       hasLoadedInitialRouteRef.current = true;
-      if (effectiveConfig.ativo) {
+      const isVeilActive = typeof document !== 'undefined' && document.documentElement.classList.contains('bcomm-veil-active');
+      const shouldRunPreloader = effectiveConfig.ativo || isVeilActive;
+
+      if (shouldRunPreloader) {
         // Verifica se a frequência é 'apenas_entrada' e se já foi visualizada na sessão
         if (effectiveConfig.frequencia === 'apenas_entrada') {
           try {
@@ -162,6 +167,15 @@ export const StorePreloader: React.FC = () => {
     if (prevPathnameRef.current !== pathname) {
       prevPathnameRef.current = pathname;
       if (effectiveConfig.ativo && effectiveConfig.frequencia === 'todas_as_paginas') {
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.add('bcomm-veil-active');
+          const instantCurtain = document.getElementById('bcomm-instant-curtain');
+          if (instantCurtain) {
+            instantCurtain.style.display = 'flex';
+            instantCurtain.style.opacity = '1';
+            instantCurtain.style.transition = '';
+          }
+        }
         isTransitioningRouteRef.current = true;
         setIsRevealing(false);
         setIsVisible(true);
@@ -250,7 +264,7 @@ export const StorePreloader: React.FC = () => {
       if (isFinished) return;
 
       const elapsed = Date.now() - startTime;
-      const contentReady = isTestMode || isInternalTransition ? true : !isLoadingProducts;
+      const contentReady = isTestMode || isInternalTransition ? true : !isLoadingProductsRef.current;
 
       if (elapsed >= maxTimeout || (contentReady && elapsed >= targetDuration)) {
         clearTimeout(watchdogTimer);
@@ -299,29 +313,25 @@ export const StorePreloader: React.FC = () => {
   }, [
     isVisible,
     isTestMode,
-    isLoadingProducts,
     effectiveConfig.modelo,
     effectiveConfig.tempo_minimo_ms,
     effectiveConfig.timeout_seguranca_ms,
     updateProgressDOM
   ]);
 
-  // Se não foi montado no cliente, se estiver excluído, se inativo (e não for teste) ou se invisível
-  if (!hasMounted) return null;
-  if (isExcludedRoute && !isTestMode) return null;
-  if (!effectiveConfig.ativo && !isTestMode) return null;
-  if (!isVisible) return null;
+  // Se não estiver em modo de teste, a cortina da vitrine pública é o elemento único #bcomm-instant-curtain gerenciado acima
+  if (!isTestMode) return null;
 
-  const logoUrl = currentTenant?.configuracoes_visuais?.logo_url || '/images/Logo sem fundo.png';
+  const logoUrl = testConfig?.modelo ? '/images/Logo sem fundo.png' : (currentTenant?.configuracoes_visuais?.logo_url || '/images/Logo sem fundo.png');
   const slogan = currentTenant?.configuracoes_visuais?.slogan || 'Moda Feminina Autêntica & Elegância Diária';
   const lojaNome = currentTenant?.nome || 'Leidy Boutique';
 
   return (
     <aside
-      id="bcomm-store-preloader"
-      aria-label="Carregando loja"
-      role="status"
-      aria-live="polite"
+      id="bcomm-store-preloader-test"
+      aria-label="Simulação de Tela de Abertura"
+      role="dialog"
+      aria-modal="true"
       suppressHydrationWarning
       className={`fixed inset-0 z-[999999] flex flex-col items-center justify-center select-none overflow-hidden ${
         effectiveConfig.modelo === 'editorial_dark'
