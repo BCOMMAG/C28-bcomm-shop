@@ -21,7 +21,8 @@ import {
   RefreshCw,
   FolderTree,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -656,9 +657,18 @@ export default function AdminCategoriasPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Slug (URL amigável) *
-                </label>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Endereço Web da Categoria *
+                  </label>
+                  <div className="relative inline-flex items-center group cursor-help">
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                    <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none lowercase">
+                      <span className="normal-case">É o código do link que os clientes acessam para filtrar todas as peças desta categoria no catálogo (ex: <strong>/catalogo?categoria={formSlug || 'alfaiataria'}</strong>).</span>
+                      <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                    </div>
+                  </div>
+                </div>
                 <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20">
                   <span className="px-3 text-xs text-slate-400 font-mono select-none">
                     /catalogo?categoria=

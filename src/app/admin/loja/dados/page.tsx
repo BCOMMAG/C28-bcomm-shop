@@ -22,7 +22,8 @@ import {
   Copy,
   Check,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  HelpCircle
 } from 'lucide-react';
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -304,13 +305,25 @@ export default function StoreSettingsPage() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-slate-700 mb-1 font-bold">Identificador Único da Loja (Slug)</label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="text-slate-700 font-bold">Endereço da Loja na Web (Link do Sistema)</label>
+              <div className="relative inline-flex items-center group cursor-help">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none">
+                  <span>É o identificador exclusivo da sua loja na internet (ex: <strong>bcomm-shop.pages.dev/{slug}</strong>). Ele é gerado na criação da loja e fica protegido contra alterações para garantir que seus clientes nunca percam o acesso à sua vitrine.</span>
+                  <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </div>
             <input
               type="text"
               disabled
               value={slug}
               className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-slate-600 font-mono text-xs cursor-not-allowed"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              🔒 Protegido contra alterações para evitar quebra de links já divulgados para clientes.
+            </p>
           </div>
         </div>
       </div>
