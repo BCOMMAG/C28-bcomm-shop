@@ -52,6 +52,19 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
   const ctaTexto = currentBanner?.cta_texto || 'Conhecer Coleção';
   const ctaLink = currentBanner?.cta_link || '#lancamentos';
 
+  const notifyBannerReady = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__BCOMM_HERO_BANNER_READY__ = true;
+      window.dispatchEvent(new CustomEvent('bcomm:hero_banner_ready'));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (bannersList.length === 0) {
+      notifyBannerReady();
+    }
+  }, [bannersList.length, notifyBannerReady]);
+
   // Controle de Pausa na Interação do Usuário (Retomada automática após 5s)
   const isUserInteractingRef = useRef(false);
   const userResumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -207,7 +220,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
   }
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#1A1918] select-none">
+    <section className="relative w-full overflow-hidden bg-[#FAF8F5] dark:bg-[#121110] select-none">
       {/* Container Principal do Carrossel */}
       <div
         onClick={handleNavigateToLink}
@@ -234,7 +247,13 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
               {isBannerVideo ? (
                 <video
                   ref={(el) => {
-                    if (el) videoRefs.current.set(index, el);
+                    if (el) {
+                      videoRefs.current.set(index, el);
+                      if (index === 0) {
+                        if (el.readyState >= 1) notifyBannerReady();
+                        else el.onloadedmetadata = notifyBannerReady;
+                      }
+                    }
                   }}
                   poster="/video/header_poster.jpg"
                   autoPlay
@@ -256,6 +275,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
                       alt={banner.titulo || 'Banner da Vitrine'}
                       fill
                       priority={index === 0}
+                      onLoad={index === 0 ? notifyBannerReady : undefined}
                       className="object-cover object-center"
                     />
                   </div>
@@ -266,6 +286,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExploreClick }) => {
                       alt={banner.titulo || 'Banner da Vitrine Mobile'}
                       fill
                       priority={index === 0}
+                      onLoad={index === 0 ? notifyBannerReady : undefined}
                       className="object-cover object-center"
                     />
                   </div>

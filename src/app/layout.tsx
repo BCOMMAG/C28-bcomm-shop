@@ -57,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" className="bcomm-veil-active" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -76,11 +76,21 @@ export default function RootLayout({
             __html: `
               html.bcomm-veil-active body {
                 overflow: hidden !important;
+                touch-action: none !important;
               }
-              html.bcomm-veil-active #bcomm-instant-curtain {
-                display: flex !important;
-                opacity: 1 !important;
-                visibility: visible !important;
+              #bcomm-instant-curtain {
+                position: fixed;
+                inset: 0;
+                z-index: 999999;
+                display: flex;
+                opacity: 1;
+                visibility: visible;
+                background-color: var(--bcomm-preloader-bg, #FAF8F5);
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
+                pointer-events: auto;
               }
               html.bcomm-veil-active #bcomm-store-root,
               html.bcomm-veil-active [data-bcomm-background] {
@@ -88,8 +98,10 @@ export default function RootLayout({
                 visibility: hidden !important;
                 pointer-events: none !important;
               }
-              #bcomm-instant-curtain {
-                transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
+              html:not(.bcomm-veil-active) #bcomm-store-root {
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
               }
             `
           }}
@@ -99,42 +111,49 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var p = window.location.pathname;
-                  if (p.startsWith('/admin') || p.startsWith('/super-admin')) return;
+                  var p = window.location.pathname || '';
+                  if (p.startsWith('/admin') || p.startsWith('/super-admin')) {
+                    document.documentElement.classList.remove('bcomm-veil-active');
+                    var c = document.getElementById('bcomm-instant-curtain');
+                    if (c) c.style.display = 'none';
+                    return;
+                  }
                   var raw = localStorage.getItem('bcomm_tenant_last');
                   var active = true;
                   var bg = '#FAF8F5';
                   if (raw) {
                     var parsed = JSON.parse(raw);
                     if (parsed && parsed.configuracoes_visuais && parsed.configuracoes_visuais.preloader) {
-                      active = Boolean(parsed.configuracoes_visuais.preloader.ativo);
+                      active = parsed.configuracoes_visuais.preloader.ativo !== false;
                       if (parsed.configuracoes_visuais.preloader.fundo) bg = parsed.configuracoes_visuais.preloader.fundo;
                     }
                   }
-                  if (active) {
-                    document.documentElement.classList.add('bcomm-veil-active');
-                    document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
-                    window.__BCOMM_PRELOADER_ACTIVE__ = true;
-                    window.__BCOMM_PRELOADER_PROGRESS__ = 0;
-
-                    var cur = 0;
-                    var tickInterval = setInterval(function() {
-                      if (!window.__BCOMM_PRELOADER_ACTIVE__) {
-                        clearInterval(tickInterval);
-                        return;
-                      }
-                      if (cur < 70) {
-                        cur += Math.floor(Math.random() * 3) + 2;
-                        if (cur > 70) cur = 70;
-                        window.__BCOMM_PRELOADER_PROGRESS__ = cur;
-                        var d = document.getElementById('bcomm-curtain-digits');
-                        var b = document.getElementById('bcomm-curtain-progress-bar');
-                        if (d) d.textContent = String(cur).padStart(2, '0');
-                        if (b) b.style.width = cur + '%';
-                      }
-                    }, 60);
-                    window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
+                  if (!active) {
+                    document.documentElement.classList.remove('bcomm-veil-active');
+                    var c = document.getElementById('bcomm-instant-curtain');
+                    if (c) c.style.display = 'none';
+                    return;
                   }
+                  document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
+                  window.__BCOMM_PRELOADER_ACTIVE__ = true;
+                  window.__BCOMM_PRELOADER_PROGRESS__ = 0;
+
+                  var cur = 0;
+                  var tickInterval = setInterval(function() {
+                    if (!window.__BCOMM_PRELOADER_ACTIVE__) {
+                      clearInterval(tickInterval);
+                      return;
+                    }
+                    if (cur < 25) {
+                      cur += 1;
+                      window.__BCOMM_PRELOADER_PROGRESS__ = cur;
+                      var d = document.getElementById('bcomm-curtain-digits');
+                      var b = document.getElementById('bcomm-curtain-progress-bar');
+                      if (d) d.textContent = String(cur).padStart(2, '0');
+                      if (b) b.style.width = cur + '%';
+                    }
+                  }, 40);
+                  window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
                 } catch(e) {}
               })();
             `
@@ -147,10 +166,11 @@ export default function RootLayout({
           id="bcomm-instant-curtain"
           suppressHydrationWarning
           style={{
-            display: 'none',
             position: 'fixed',
             inset: 0,
             zIndex: 999999,
+            display: 'flex',
+            opacity: 1,
             backgroundColor: 'var(--bcomm-preloader-bg, #FAF8F5)',
             alignItems: 'center',
             justifyContent: 'center',

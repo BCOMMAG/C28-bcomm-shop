@@ -127,6 +127,17 @@ export const StorePreloader: React.FC = () => {
   useEffect(() => {
     let isCancelled = false;
 
+    const onHeroBannerReady = () => {
+      isAssetsReadyRef.current = true;
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('bcomm:hero_banner_ready', onHeroBannerReady);
+      if ((window as any).__BCOMM_HERO_BANNER_READY__) {
+        isAssetsReadyRef.current = true;
+      }
+    }
+
     const checkReadiness = async () => {
       if (isTestMode) {
         isAssetsReadyRef.current = true;
@@ -135,10 +146,12 @@ export const StorePreloader: React.FC = () => {
 
       const promises: Promise<any>[] = [];
 
-      // 1. Imagem do Banner Hero em alta definição
+      // 1. Imagem do Banner Hero em alta definição ou Pôster de Vídeo
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const targetBannerUrl = isMobile ? bannerMobUrl : bannerDeskUrl;
-      if (targetBannerUrl && !isBannerVideo) {
+      if (isBannerVideo) {
+        promises.push(preloadAndDecodeImage('/video/header_poster.jpg'));
+      } else if (targetBannerUrl) {
         promises.push(preloadAndDecodeImage(targetBannerUrl));
       }
 
@@ -175,6 +188,9 @@ export const StorePreloader: React.FC = () => {
 
     return () => {
       isCancelled = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('bcomm:hero_banner_ready', onHeroBannerReady);
+      }
     };
   }, [bannerDeskUrl, bannerMobUrl, isBannerVideo, bgImageSrc, isTestMode]);
 
@@ -303,7 +319,7 @@ export const StorePreloader: React.FC = () => {
     const targetDuration = isTestMode
       ? 1400
       : isInternalTransition
-      ? 450
+      ? 400
       : Math.max(1200, Number(effectiveConfig.tempo_minimo_ms || 1200));
 
     const maxTimeout = isTestMode
@@ -314,20 +330,22 @@ export const StorePreloader: React.FC = () => {
 
     const startTime = Date.now();
     let currentVal = initialProgress;
+    let sprintStartTime: number | null = null;
+    let sprintStartVal: number = 0;
+    let dwellStartTime: number | null = null;
     let isFinished = false;
     let isConcluding = false;
     let rafId: number | null = null;
-    let intervalId: NodeJS.Timeout | null = null;
     let closeTimer: NodeJS.Timeout | null = null;
-    let dwellTimer: NodeJS.Timeout | null = null;
+
+    const sprintDuration = isInternalTransition ? 250 : 500;
+    const dwellDuration = isInternalTransition ? 150 : 300;
 
     const finish = () => {
       if (isFinished) return;
       isFinished = true;
 
       if (rafId) cancelAnimationFrame(rafId);
-      if (intervalId) clearInterval(intervalId);
-      if (dwellTimer) clearTimeout(dwellTimer);
 
       updateProgressDOM(100, effectiveConfig.modelo);
       setIsRevealing(true);
@@ -341,17 +359,17 @@ export const StorePreloader: React.FC = () => {
           storeRoot.style.pointerEvents = 'auto';
         }
 
-        // 2. Remove o bloqueio do véu crítico
-        document.documentElement.classList.remove('bcomm-veil-active');
-
-        // 3. Desvanecimento suave da cortina
+        // 2. Desvanecimento suave da cortina por 500ms
         const instantCurtain = document.getElementById('bcomm-instant-curtain');
         if (instantCurtain) {
           instantCurtain.style.opacity = '0';
           instantCurtain.style.transition = 'opacity 500ms cubic-bezier(0.16, 1, 0.3, 1)';
           setTimeout(() => {
             instantCurtain.style.display = 'none';
-          }, 550);
+            // 3. Remove o bloqueio do véu crítico SOMENTE após a cortina ter completado o fade-out
+            document.documentElement.classList.remove('bcomm-veil-active');
+            document.body.style.overflow = '';
+          }, 520);
         }
       }
 
@@ -361,75 +379,81 @@ export const StorePreloader: React.FC = () => {
         setIsTestMode(false);
         isTransitioningRouteRef.current = false;
         document.body.style.overflow = '';
-      }, 550);
+      }, 520);
     };
 
-    // Watchdog Timer de Segurança: Garante saída mesmo com falha externa ou aba em segundo plano
+    // Watchdog Timer de Segurança: Garante saída mesmo com falha extrema de rede
     const watchdogTimer = setTimeout(() => {
-      if (isFinished || isConcluding) return;
+      if (isFinished) return;
       isConcluding = true;
       updateProgressDOM(100, effectiveConfig.modelo);
-      dwellTimer = setTimeout(finish, 180);
+      setTimeout(finish, dwellDuration);
     }, maxTimeout);
 
     const step = () => {
-      if (isFinished || isConcluding) return;
+      if (isFinished) return;
 
-      const elapsed = Date.now() - startTime;
-      const isReady = isTestMode || isInternalTransition ? true : isAssetsReadyRef.current;
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const isReady = isTestMode || isInternalTransition
+        ? true
+        : (isAssetsReadyRef.current || (typeof window !== 'undefined' && Boolean((window as any).__BCOMM_HERO_BANNER_READY__)));
 
-      // 1. CÁLCULO PROPORCIONAL DO PROGRESSO
-      if (isReady && elapsed >= targetDuration) {
-        // Loja 100% pronta e tempo mínimo cumprido: sprint contínuo e acelerado até 100%
-        const distance = 100 - currentVal;
-        const stepIncrement = Math.max(1.8, distance * 0.22);
-        currentVal = Math.min(100, currentVal + stepIncrement);
-      } else if (isReady) {
-        // Loja já decodificou, mas ainda está cumprindo o tempo mínimo de sofisticação
-        const ratio = Math.min(1, elapsed / targetDuration);
-        const targetProgress = 25 + ratio * 75;
-        currentVal = Math.min(95, currentVal + Math.max(0.9, (targetProgress - currentVal) * 0.18));
+      if (!isConcluding) {
+        if (isReady && elapsed >= targetDuration) {
+          // FASE 2: SPRINT VISÍVEL E FLUIDO ATÉ 100% (450ms a 550ms legíveis)
+          if (sprintStartTime === null) {
+            sprintStartTime = now;
+            sprintStartVal = currentVal;
+          }
+          const sprintElapsed = now - sprintStartTime;
+          const sprintRatio = Math.min(1, sprintElapsed / sprintDuration);
+          // Easing suave (easeOutQuad) para avanço legível de todos os números
+          const eased = 1 - Math.pow(1 - sprintRatio, 2);
+          currentVal = sprintStartVal + (100 - sprintStartVal) * eased;
+
+          if (currentVal >= 99.8 || sprintElapsed >= sprintDuration) {
+            currentVal = 100;
+            isConcluding = true;
+            dwellStartTime = now;
+            clearTimeout(watchdogTimer);
+            updateProgressDOM(100, effectiveConfig.modelo);
+          }
+        } else if (isReady) {
+          // Loja decodificada, cumprindo o tempo mínimo de sofisticação (sobe até 75%)
+          const ratio = Math.min(1, elapsed / targetDuration);
+          const targetProgress = initialProgress + (75 - initialProgress) * ratio;
+          currentVal = Math.min(75, Math.max(currentVal, targetProgress));
+        } else {
+          // Loja ainda carregando no fundo (download de banner, produtos, etc.):
+          // Progride suavemente com teto estrito em 75% (NUNCA atinge 100% enquanto a loja não estiver pronta)
+          const ratio = Math.min(1, elapsed / maxTimeout);
+          const targetProgress = initialProgress + (75 - initialProgress) * (1 - Math.pow(1 - ratio, 2));
+          currentVal = Math.min(75, Math.max(currentVal, targetProgress));
+        }
+
+        updateProgressDOM(currentVal, effectiveConfig.modelo);
+        rafId = requestAnimationFrame(step);
       } else {
-        // Loja ainda carregando no fundo (download de banner, produtos, etc.):
-        // Progride proporcionalmente com teto estrito em 85% (NUNCA chega em 100% enquanto a loja não estiver pronta)
-        const ratio = Math.min(1, elapsed / maxTimeout);
-        const targetProgress = Math.min(85, 12 + ratio * 73);
-        currentVal = Math.min(85, currentVal + Math.max(0.6, (targetProgress - currentVal) * 0.15));
-      }
-
-      // 2. VERIFICAÇÃO DE CONCLUSÃO EXCLUSIVA EM 100%
-      if (currentVal >= 99.4 && isReady && elapsed >= targetDuration) {
-        isConcluding = true;
-        clearTimeout(watchdogTimer);
+        // FASE 3: DWELL PERCEPTUAL EM 100% (300ms de Confirmação Visual Estática)
+        const dwellElapsed = now - (dwellStartTime || now);
         updateProgressDOM(100, effectiveConfig.modelo);
 
-        // Pausa de Satisfação Visual (Micro-Dwell de 180ms com 100% visível na tela)
-        dwellTimer = setTimeout(() => {
+        if (dwellElapsed >= dwellDuration) {
           finish();
-        }, 180);
-        return;
+          return;
+        }
+        rafId = requestAnimationFrame(step);
       }
-
-      updateProgressDOM(currentVal, effectiveConfig.modelo);
-      rafId = requestAnimationFrame(step);
     };
 
-    // Inicia loop via RAF
+    // Inicia loop via RAF único (zero concorrência de timers)
     rafId = requestAnimationFrame(step);
-
-    // Fallback de segurança a cada 40ms para garantir avanço contínuo mesmo com aba em segundo plano
-    intervalId = setInterval(() => {
-      if (!isFinished && !isConcluding) {
-        step();
-      }
-    }, 40);
 
     return () => {
       clearTimeout(watchdogTimer);
       if (closeTimer) clearTimeout(closeTimer);
-      if (dwellTimer) clearTimeout(dwellTimer);
       if (rafId) cancelAnimationFrame(rafId);
-      if (intervalId) clearInterval(intervalId);
       document.body.style.overflow = '';
     };
   }, [
