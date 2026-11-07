@@ -181,6 +181,10 @@ export const StorePreloader: React.FC = () => {
       await Promise.all(promises);
       if (!isCancelled) {
         isAssetsReadyRef.current = true;
+        if (typeof window !== 'undefined') {
+          (window as any).__BCOMM_HERO_BANNER_READY__ = true;
+          window.dispatchEvent(new CustomEvent('bcomm:hero_banner_ready'));
+        }
       }
     };
 
@@ -292,8 +296,13 @@ export const StorePreloader: React.FC = () => {
     }
   }, [pathname, hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
 
-  // 6. MOTOR DE ANIMAÇÃO DIRETO NO DOM + WATCHDOG AUTÔNOMO
+  // 6. MOTOR DE ANIMAÇÃO PARA TESTES DO ADMIN E TRANSIÇÕES DE ROTA
   useEffect(() => {
+    // Na entrada pública inicial, o Motor Único Soberano de layout.tsx é o comandante exclusivo (zero conflito)
+    if (!isTestMode && !isTransitioningRouteRef.current) {
+      return;
+    }
+
     if (!isVisible) {
       document.body.style.overflow = '';
       return;
@@ -302,16 +311,8 @@ export const StorePreloader: React.FC = () => {
     // Trava de rolagem da vitrine enquanto a cortina está ativa
     document.body.style.overflow = 'hidden';
 
-    // Passagem de bastão suave: encerra o ticker preliminar do <head> exatamente ao assumir o loop RAF
-    if (typeof window !== 'undefined') {
-      (window as any).__BCOMM_PRELOADER_ACTIVE__ = false;
-      if ((window as any).__BCOMM_PRELOADER_TICKER__) {
-        clearInterval((window as any).__BCOMM_PRELOADER_TICKER__);
-      }
-    }
-
     const isInternalTransition = isTransitioningRouteRef.current;
-    const initialProgress = typeof window !== 'undefined' ? Number((window as any).__BCOMM_PRELOADER_PROGRESS__ || 0) : 0;
+    const initialProgress = typeof window !== 'undefined' ? Number((window as any).__BCOMM_CURRENT_PROGRESS__ || (window as any).__BCOMM_PRELOADER_PROGRESS__ || 0) : 0;
     
     // Atualiza visual no DOM com o valor inicial contínuo (sem saltos para trás)
     updateProgressDOM(initialProgress, effectiveConfig.modelo);

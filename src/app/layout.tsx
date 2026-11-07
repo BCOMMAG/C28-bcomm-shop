@@ -135,25 +135,125 @@ export default function RootLayout({
                     return;
                   }
                   document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
-                  window.__BCOMM_PRELOADER_ACTIVE__ = true;
-                  window.__BCOMM_PRELOADER_PROGRESS__ = 0;
 
-                  var cur = 0;
-                  var tickInterval = setInterval(function() {
-                    if (!window.__BCOMM_PRELOADER_ACTIVE__) {
-                      clearInterval(tickInterval);
-                      return;
+                  // 1. REGISTRADOR MONOTÔNICO DE PROGRESSO (O NÚMERO SÓ ANDA PARA A FRENTE!)
+                  window.__BCOMM_CURRENT_PROGRESS__ = 0;
+                  window.__BCOMM_SET_PROGRESS__ = function(val) {
+                    var prev = window.__BCOMM_CURRENT_PROGRESS__ || 0;
+                    var next = Math.max(prev, Math.min(100, Math.floor(val)));
+                    window.__BCOMM_CURRENT_PROGRESS__ = next;
+                    var d = document.getElementById('bcomm-curtain-digits');
+                    var b = document.getElementById('bcomm-curtain-progress-bar');
+                    if (d) d.textContent = String(next).padStart(2, '0');
+                    if (b) b.style.width = next + '%';
+                  };
+
+                  // 2. MOTOR ÚNICO SOBERANO (requestAnimationFrame CONTÍNUO E ININTERRUPTO)
+                  var startTime = performance.now();
+                  var isReady = false;
+                  var sprintStartTime = null;
+                  var sprintStartVal = 0;
+                  var isConcluding = false;
+                  var dwellStartTime = null;
+                  var isFinished = false;
+
+                  var targetDuration = 1200; // Tempo de elegância
+                  var sprintDuration = 500;  // Sprint visível até 100%
+                  var dwellDuration = 300;   // Dwell perceptual em 100%
+
+                  window.__BCOMM_HERO_BANNER_READY__ = false;
+                  window.addEventListener('bcomm:hero_banner_ready', function() {
+                    window.__BCOMM_HERO_BANNER_READY__ = true;
+                  });
+
+                  function finish() {
+                    if (isFinished) return;
+                    isFinished = true;
+
+                    window.__BCOMM_SET_PROGRESS__(100);
+
+                    // 1. Revela a vitrine por baixo da cortina (zero flash, zero tela preta)
+                    var storeRoot = document.getElementById('bcomm-store-root');
+                    if (storeRoot) {
+                      storeRoot.style.opacity = '1';
+                      storeRoot.style.visibility = 'visible';
+                      storeRoot.style.pointerEvents = 'auto';
                     }
-                    if (cur < 25) {
-                      cur += 1;
-                      window.__BCOMM_PRELOADER_PROGRESS__ = cur;
-                      var d = document.getElementById('bcomm-curtain-digits');
-                      var b = document.getElementById('bcomm-curtain-progress-bar');
-                      if (d) d.textContent = String(cur).padStart(2, '0');
-                      if (b) b.style.width = cur + '%';
+
+                    // 2. Desvanecimento suave da cortina por 500ms
+                    var instantCurtain = document.getElementById('bcomm-instant-curtain');
+                    if (instantCurtain) {
+                      instantCurtain.style.opacity = '0';
+                      instantCurtain.style.transition = 'opacity 500ms cubic-bezier(0.16, 1, 0.3, 1)';
+                      setTimeout(function() {
+                        instantCurtain.style.display = 'none';
+                        document.documentElement.classList.remove('bcomm-veil-active');
+                        document.body.style.overflow = '';
+                      }, 520);
                     }
-                  }, 40);
-                  window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
+                  }
+
+                  // Watchdog de segurança máxima: garante abertura mesmo com falha extrema de rede após 3800ms
+                  setTimeout(function() {
+                    if (!isFinished) {
+                      finish();
+                    }
+                  }, 3800);
+
+                  function step(now) {
+                    if (isFinished) return;
+
+                    var elapsed = now - startTime;
+                    if (!isReady && window.__BCOMM_HERO_BANNER_READY__) {
+                      isReady = true;
+                    }
+
+                    if (!isConcluding) {
+                      if (isReady && elapsed >= targetDuration) {
+                        // FASE 2: SPRINT VISÍVEL ATÉ 100% (450ms a 550ms)
+                        if (sprintStartTime === null) {
+                          sprintStartTime = now;
+                          sprintStartVal = window.__BCOMM_CURRENT_PROGRESS__ || 0;
+                        }
+                        var sprintElapsed = now - sprintStartTime;
+                        var sprintRatio = Math.min(1, sprintElapsed / sprintDuration);
+                        var eased = 1 - Math.pow(1 - sprintRatio, 2);
+                        var progress = sprintStartVal + (100 - sprintStartVal) * eased;
+
+                        window.__BCOMM_SET_PROGRESS__(progress);
+
+                        if (progress >= 99.8 || sprintElapsed >= sprintDuration) {
+                          window.__BCOMM_SET_PROGRESS__(100);
+                          isConcluding = true;
+                          dwellStartTime = now;
+                        }
+                      } else if (isReady) {
+                        // Loja decodificada, cumprindo tempo mínimo (sobe suavemente até 75%)
+                        var ratio = Math.min(1, elapsed / targetDuration);
+                        var targetProgress = 75 * ratio;
+                        window.__BCOMM_SET_PROGRESS__(targetProgress);
+                      } else {
+                        // Loja ainda carregando no fundo (teto rígido em 75%)
+                        var ratio = Math.min(1, elapsed / 2800);
+                        var targetProgress = 75 * (1 - Math.pow(1 - ratio, 2));
+                        window.__BCOMM_SET_PROGRESS__(targetProgress);
+                      }
+
+                      requestAnimationFrame(step);
+                    } else {
+                      // FASE 3: DWELL PERCEPTUAL EM 100% (300ms de confirmação estável)
+                      var dwellElapsed = now - (dwellStartTime || now);
+                      window.__BCOMM_SET_PROGRESS__(100);
+
+                      if (dwellElapsed >= dwellDuration) {
+                        finish();
+                        return;
+                      }
+                      requestAnimationFrame(step);
+                    }
+                  }
+
+                  requestAnimationFrame(step);
                 } catch(e) {}
               })();
             `
@@ -197,9 +297,12 @@ export default function RootLayout({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px', userSelect: 'none', fontFamily: 'Cormorant Garamond, serif' }}>
-              <span id="bcomm-curtain-digits" style={{ fontSize: '56px', fontWeight: 300, letterSpacing: '-0.02em', color: '#1A1918' }}>
-                00
-              </span>
+              <span
+                id="bcomm-curtain-digits"
+                suppressHydrationWarning
+                dangerouslySetInnerHTML={{ __html: '00' }}
+                style={{ fontSize: '56px', fontWeight: 300, letterSpacing: '-0.02em', color: '#1A1918' }}
+              />
               <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.1em', color: '#DFBE76' }}>
                 %
               </span>
@@ -208,13 +311,13 @@ export default function RootLayout({
             <div style={{ width: '220px', maxWidth: '100%', height: '2px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: '9999px', overflow: 'hidden', position: 'relative' }}>
               <div
                 id="bcomm-curtain-progress-bar"
+                suppressHydrationWarning
                 style={{
                   width: '0%',
                   height: '100%',
                   backgroundColor: '#DFBE76',
                   borderRadius: '9999px',
-                  boxShadow: '0 0 10px rgba(223, 190, 118, 0.7)',
-                  transition: 'width 100ms ease-out'
+                  boxShadow: '0 0 10px rgba(223, 190, 118, 0.7)'
                 }}
               />
             </div>
