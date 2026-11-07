@@ -236,60 +236,21 @@ export const StorePreloader: React.FC = () => {
 
     // Se estiver em rota administrativa e não for teste, desativa
     if (isExcludedRoute && !isTestMode) {
+      if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
+        (window as any).__BCOMM_PRELOADER__.forceHide();
+      }
       setIsVisible(false);
       return;
     }
 
-    // No primeiro carregamento da vitrine pública
-    if (!hasLoadedInitialRouteRef.current) {
-      hasLoadedInitialRouteRef.current = true;
-      const isVeilActive = typeof document !== 'undefined' && document.documentElement.classList.contains('bcomm-veil-active');
-      const shouldRunPreloader = effectiveConfig.ativo || isVeilActive;
-
-      if (shouldRunPreloader) {
-        // Verifica se a frequência é 'apenas_entrada' e se já foi visualizada na sessão
-        if (effectiveConfig.frequencia === 'apenas_entrada') {
-          try {
-            const hasSeen = sessionStorage.getItem('bcomm_preloader_seen');
-            if (hasSeen === 'true') {
-              if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
-                (window as any).__BCOMM_PRELOADER__.forceHide();
-              } else if (typeof document !== 'undefined') {
-                document.documentElement.classList.remove('bcomm-veil-active');
-                const instantCurtain = document.getElementById('bcomm-instant-curtain');
-                if (instantCurtain) instantCurtain.style.display = 'none';
-                const storeRoot = document.getElementById('bcomm-store-root');
-                if (storeRoot) {
-                  storeRoot.style.opacity = '1';
-                  storeRoot.style.visibility = 'visible';
-                  storeRoot.style.pointerEvents = 'auto';
-                }
-              }
-              return;
-            }
-            sessionStorage.setItem('bcomm_preloader_seen', 'true');
-          } catch {}
-        }
-        setIsRevealing(false);
-        setIsVisible(true);
-      } else {
-        // Se inativo, garante liberação imediata de qualquer cortina estática e exibição da loja
-        if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
-          (window as any).__BCOMM_PRELOADER__.forceHide();
-        } else if (typeof document !== 'undefined') {
-          document.documentElement.classList.remove('bcomm-veil-active');
-          const instantCurtain = document.getElementById('bcomm-instant-curtain');
-          if (instantCurtain) instantCurtain.style.display = 'none';
-          const storeRoot = document.getElementById('bcomm-store-root');
-          if (storeRoot) {
-            storeRoot.style.opacity = '1';
-            storeRoot.style.visibility = 'visible';
-            storeRoot.style.pointerEvents = 'auto';
-          }
-        }
+    // Se o lojista configurou como inativo na vitrine:
+    if (!effectiveConfig.ativo && !isTestMode) {
+      if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
+        (window as any).__BCOMM_PRELOADER__.forceHide();
       }
+      return;
     }
-  }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo, effectiveConfig.frequencia]);
+  }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo]);
 
   // 5. Atualização de rota interna (Navegação SPA pura e instantânea de 0ms)
   useEffect(() => {
@@ -371,7 +332,7 @@ export const StorePreloader: React.FC = () => {
           setTimeout(() => {
             instantCurtain.style.display = 'none';
             // 3. Remove o bloqueio do véu crítico SOMENTE após a cortina ter completado o fade-out
-            document.documentElement.classList.remove('bcomm-veil-active');
+            document.documentElement.classList.remove('bcomm-preloader-running', 'bcomm-veil-active');
             document.body.style.overflow = '';
           }, 520);
         }
@@ -504,7 +465,7 @@ export const StorePreloader: React.FC = () => {
             setIsTestMode(false);
             document.body.style.overflow = '';
             if (typeof document !== 'undefined') {
-              document.documentElement.classList.remove('bcomm-veil-active');
+              document.documentElement.classList.remove('bcomm-preloader-running', 'bcomm-veil-active');
               const instantCurtain = document.getElementById('bcomm-instant-curtain');
               if (instantCurtain) instantCurtain.style.display = 'none';
               const storeRoot = document.getElementById('bcomm-store-root');

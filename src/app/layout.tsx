@@ -57,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className="bcomm-veil-active" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -74,10 +74,6 @@ export default function RootLayout({
           id="bcomm-critical-veil-css"
           dangerouslySetInnerHTML={{
             __html: `
-              html.bcomm-veil-active body {
-                overflow: hidden !important;
-                touch-action: none !important;
-              }
               #bcomm-instant-curtain {
                 position: fixed;
                 inset: 0;
@@ -92,26 +88,30 @@ export default function RootLayout({
                 flex-direction: column;
                 transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1);
               }
-              html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-instant-curtain {
+              html.bcomm-preloader-running body {
+                overflow: hidden !important;
+                touch-action: none !important;
+              }
+              html.bcomm-preloader-running #bcomm-instant-curtain {
                 display: flex !important;
                 opacity: 1 !important;
                 visibility: visible !important;
                 pointer-events: auto !important;
               }
               html.bcomm-no-preloader #bcomm-instant-curtain,
-              html:not(.bcomm-veil-active) #bcomm-instant-curtain {
+              html:not(.bcomm-preloader-running) #bcomm-instant-curtain {
                 display: none !important;
                 opacity: 0 !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
               }
-              html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-store-root,
-              html.bcomm-veil-active:not(.bcomm-no-preloader) [data-bcomm-background] {
+              html.bcomm-preloader-running #bcomm-store-root,
+              html.bcomm-preloader-running [data-bcomm-background] {
                 opacity: 0 !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
               }
-              html:not(.bcomm-veil-active) #bcomm-store-root,
+              html:not(.bcomm-preloader-running) #bcomm-store-root,
               html.bcomm-no-preloader #bcomm-store-root {
                 opacity: 1 !important;
                 visibility: visible !important;
@@ -128,27 +128,30 @@ export default function RootLayout({
                   var p = window.location.pathname || '';
                   var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
                   if (isAdmin) {
-                    document.documentElement.classList.remove('bcomm-veil-active');
                     document.documentElement.classList.add('bcomm-no-preloader');
+                    document.documentElement.classList.remove('bcomm-preloader-running');
                     return;
                   }
+
                   var raw = localStorage.getItem('bcomm_tenant_last');
                   var active = true;
                   var bg = '#FAF8F5';
-                  var freq = 'apenas_entrada';
                   if (raw) {
-                    var parsed = JSON.parse(raw);
-                    if (parsed && parsed.configuracoes_visuais && parsed.configuracoes_visuais.preloader) {
-                      active = parsed.configuracoes_visuais.preloader.ativo !== false;
-                      if (parsed.configuracoes_visuais.preloader.fundo) bg = parsed.configuracoes_visuais.preloader.fundo;
-                      if (parsed.configuracoes_visuais.preloader.frequencia) freq = parsed.configuracoes_visuais.preloader.frequencia;
-                    }
+                    try {
+                      var parsed = JSON.parse(raw);
+                      if (parsed && parsed.configuracoes_visuais && parsed.configuracoes_visuais.preloader) {
+                        if (parsed.configuracoes_visuais.preloader.ativo === false) {
+                          active = false;
+                        }
+                        if (parsed.configuracoes_visuais.preloader.fundo) bg = parsed.configuracoes_visuais.preloader.fundo;
+                      }
+                    } catch(e) {}
                   }
 
-                  // Se o preloader estiver desativado pelo lojista ou configurado para apenas_entrada e já visto nesta sessão
-                  if (!active || (freq === 'apenas_entrada' && sessionStorage.getItem('bcomm_preloader_seen') === 'true')) {
-                    document.documentElement.classList.remove('bcomm-veil-active');
+                  // Se desativado pelo lojista, libera vitrine em 0ms e encerra
+                  if (!active) {
                     document.documentElement.classList.add('bcomm-no-preloader');
+                    document.documentElement.classList.remove('bcomm-preloader-running');
                     var s = document.getElementById('bcomm-store-root');
                     if (s) {
                       s.style.opacity = '1';
@@ -157,6 +160,10 @@ export default function RootLayout({
                     }
                     return;
                   }
+
+                  // Ativa a cortina imediatamente em 0ms
+                  document.documentElement.classList.add('bcomm-preloader-running');
+                  document.documentElement.classList.remove('bcomm-no-preloader');
                   document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
 
                   // =========================================================================
@@ -165,7 +172,6 @@ export default function RootLayout({
                   window.__BCOMM_PRELOADER__ = {
                     current: 0,
                     isFinished: false,
-                    isRouteTransition: false,
 
                     setProgress: function(val, allowReset) {
                       var prev = this.current || 0;
@@ -209,15 +215,12 @@ export default function RootLayout({
                         instantCurtain.style.transition = 'opacity 450ms cubic-bezier(0.16, 1, 0.3, 1)';
                         setTimeout(function() {
                           instantCurtain.style.display = 'none';
-                          document.documentElement.classList.remove('bcomm-veil-active');
+                          document.documentElement.classList.remove('bcomm-preloader-running');
                           document.body.style.overflow = '';
-                          try {
-                            sessionStorage.setItem('bcomm_preloader_seen', 'true');
-                          } catch(e) {}
                           if (typeof callback === 'function') callback();
                         }, 470);
                       } else {
-                        document.documentElement.classList.remove('bcomm-veil-active');
+                        document.documentElement.classList.remove('bcomm-preloader-running');
                         document.body.style.overflow = '';
                         if (typeof callback === 'function') callback();
                       }
@@ -225,7 +228,8 @@ export default function RootLayout({
 
                     forceHide: function() {
                       this.isFinished = true;
-                      document.documentElement.classList.remove('bcomm-veil-active');
+                      document.documentElement.classList.remove('bcomm-preloader-running');
+                      document.documentElement.classList.add('bcomm-no-preloader');
                       document.body.style.overflow = '';
                       var instantCurtain = document.getElementById('bcomm-instant-curtain');
                       if (instantCurtain) {
@@ -238,67 +242,6 @@ export default function RootLayout({
                         storeRoot.style.visibility = 'visible';
                         storeRoot.style.pointerEvents = 'auto';
                       }
-                    },
-
-                    startRouteTransition: function(opts) {
-                      opts = opts || {};
-                      var duration = opts.duration || 380;
-                      var dwell = opts.dwell || 120;
-                      var self = this;
-
-                      self.reset();
-                      self.isRouteTransition = true;
-
-                      document.documentElement.classList.add('bcomm-veil-active');
-                      document.body.style.overflow = 'hidden';
-                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
-                      if (instantCurtain) {
-                        instantCurtain.style.display = 'flex';
-                        instantCurtain.style.opacity = '1';
-                        instantCurtain.style.transition = '';
-                      }
-
-                      // Watchdog absoluto de 750ms para transições de rota
-                      var watchdog = setTimeout(function() {
-                        self.forceHide();
-                      }, 750);
-
-                      var start = performance.now();
-                      var isRouteDwell = false;
-                      var routeDwellStart = null;
-
-                      function routeStep(now) {
-                        if (self.isFinished) return;
-
-                        if (!isRouteDwell) {
-                          var elapsed = now - start;
-                          var ratio = Math.min(1, elapsed / duration);
-                          var target = Math.min(100, Math.floor(ratio * 100));
-
-                          while (self.current < target) {
-                            self.setProgress(self.current + 1);
-                          }
-
-                          if (self.current >= 100 || elapsed >= duration) {
-                            self.setProgress(100);
-                            isRouteDwell = true;
-                            routeDwellStart = now;
-                          }
-                          requestAnimationFrame(routeStep);
-                        } else {
-                          var dwellElapsed = now - (routeDwellStart || now);
-                          if (dwellElapsed >= dwell) {
-                            clearTimeout(watchdog);
-                            self.finish(function() {
-                              self.isRouteTransition = false;
-                            });
-                            return;
-                          }
-                          requestAnimationFrame(routeStep);
-                        }
-                      }
-
-                      requestAnimationFrame(routeStep);
                     }
                   };
 
@@ -310,10 +253,10 @@ export default function RootLayout({
                   };
 
                   // =========================================================================
-                  // MOTOR DE ODÔMETRO CADENCIADO PARA O PRIMEIRO CARREGAMENTO (00 A 100%)
+                  // MOTOR DE ODÔMETRO CADENCIADO PARA O CARREGAMENTO INICIAL / F5 (00 A 100%)
                   // =========================================================================
-                  var isSubpage = p !== '/' && !p.match(/^\\/[^/]+\\/?$/);
-                  var isReady = isSubpage; // Subpáginas (/cliente, /catalogo) não dependem de HeroBanner!
+                  var isHome = p === '' || p === '/';
+                  var isReady = !isHome; // Subpáginas (/cliente, /catalogo) não dependem de HeroBanner!
                   window.__BCOMM_HERO_BANNER_READY__ = false;
 
                   window.addEventListener('bcomm:hero_banner_ready', function() {
@@ -334,7 +277,7 @@ export default function RootLayout({
                   var isDwellPhase = false;
 
                   function initialStep(now) {
-                    if (window.__BCOMM_PRELOADER__.isFinished) return;
+                    if (!window.__BCOMM_PRELOADER__ || window.__BCOMM_PRELOADER__.isFinished) return;
 
                     if (!isReady && window.__BCOMM_HERO_BANNER_READY__) {
                       isReady = true;
@@ -395,6 +338,7 @@ export default function RootLayout({
             position: 'fixed',
             inset: 0,
             zIndex: 999999,
+            display: 'none',
             backgroundColor: 'var(--bcomm-preloader-bg, #FAF8F5)',
             alignItems: 'center',
             justifyContent: 'center',

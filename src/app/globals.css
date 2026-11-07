@@ -60,11 +60,12 @@ body {
   pointer-events: none !important;
 }
 
-html.bcomm-veil-active:not(.bcomm-no-preloader) body {
+html.bcomm-preloader-running body {
   overflow: hidden !important;
+  touch-action: none !important;
 }
 
-html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-instant-curtain {
+html.bcomm-preloader-running #bcomm-instant-curtain {
   display: flex !important;
   opacity: 1 !important;
   visibility: visible !important;
@@ -72,21 +73,21 @@ html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-instant-curtain {
 }
 
 html.bcomm-no-preloader #bcomm-instant-curtain,
-html:not(.bcomm-veil-active) #bcomm-instant-curtain {
+html:not(.bcomm-preloader-running) #bcomm-instant-curtain {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-html.bcomm-veil-active:not(.bcomm-no-preloader) #bcomm-store-root,
-html.bcomm-veil-active:not(.bcomm-no-preloader) [data-bcomm-background] {
+html.bcomm-preloader-running #bcomm-store-root,
+html.bcomm-preloader-running [data-bcomm-background] {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-html:not(.bcomm-veil-active) #bcomm-store-root,
+html:not(.bcomm-preloader-running) #bcomm-store-root,
 html.bcomm-no-preloader #bcomm-store-root {
   opacity: 1 !important;
   visibility: visible !important;

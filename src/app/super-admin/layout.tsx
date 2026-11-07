@@ -36,7 +36,7 @@ export default function SuperAdminLayout({
   // Blindagem definitiva: Garante que qualquer resquício de preloader da vitrine seja 100% eliminado no super-admin
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.remove('bcomm-veil-active');
+      document.documentElement.classList.remove('bcomm-preloader-running', 'bcomm-veil-active');
       document.documentElement.classList.add('bcomm-no-preloader');
       const c = document.getElementById('bcomm-instant-curtain');
       if (c) c.style.display = 'none';
