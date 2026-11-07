@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,7 +10,6 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertCircle,
-  Sparkles,
   MessageCircle,
   CheckCircle2,
   X,
@@ -21,8 +20,10 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@leidyboutique.com.br');
-  const [password, setPassword] = useState('Leidy@2026!');
+
+  // Campos de login iniciam 100% vazios para segurança
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -38,6 +39,13 @@ export default function AdminLoginPage() {
     maskedPhone?: string;
   } | null>(null);
 
+  // Garante que o título da aba no navegador exiba sempre a identidade oficial BCOMM
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = 'BCOMM • Painel Administrativo';
+    }
+  }, []);
+
   const handlePasswordRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryFeedback(null);
@@ -45,7 +53,7 @@ export default function AdminLoginPage() {
 
     const cleanEmail = recoveryEmail.trim().toLowerCase();
     if (!cleanEmail) {
-      setRecoveryFeedback({ type: 'error', message: 'Por favor, informe seu e-mail cadastrado.' });
+      setRecoveryFeedback({ type: 'error', message: 'Por favor, informe seu e-mail de acesso cadastrado.' });
       setRecoveryLoading(false);
       return;
     }
@@ -54,7 +62,7 @@ export default function AdminLoginPage() {
       const supabase = getSupabaseBrowserClient();
 
       if (recoveryMethod === 'email') {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.boutiqueleidy.com.br';
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-shop.pages.dev';
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: `${origin}/admin/redefinir-senha`
         });
@@ -65,10 +73,10 @@ export default function AdminLoginPage() {
 
         setRecoveryFeedback({
           type: 'success',
-          message: `Enviamos as instruções com link seguro para ${cleanEmail}. Verifique sua caixa de entrada e spam.`
+          message: `Enviamos as instruções com link seguro para ${cleanEmail}. O remetente oficial da mensagem é contato@agent-bcomm.space. Verifique sua caixa de entrada e spam.`
         });
       } else {
-        // Recuperação via WhatsApp oficial do colaborador ou loja
+        // Recuperação via WhatsApp verificado do colaborador ou loja
         const { data: membro } = await supabase
           .from('equipe_loja')
           .select('nome, telefone, loja_id')
@@ -91,12 +99,11 @@ export default function AdminLoginPage() {
         }
 
         if (!phone) {
-          // Fallback para admin Leidy Boutique caso seja o email padrão
           if (cleanEmail === 'admin@leidyboutique.com.br') {
             phone = '554197347601';
             memberName = 'Leidyane Cristina';
           } else {
-            throw new Error('Nenhum WhatsApp verificado foi encontrado para este e-mail. Utilize a opção de recuperação por E-mail.');
+            throw new Error('Nenhum WhatsApp cadastrado foi localizado para este e-mail. Utilize a recuperação por E-mail.');
           }
         }
 
@@ -105,17 +112,17 @@ export default function AdminLoginPage() {
         const masked = phoneWithDDI.slice(-4);
 
         const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.boutiqueleidy.com.br';
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-shop.pages.dev';
         const resetLink = `${origin}/admin/redefinir-senha?token=${token}`;
 
         const msg = encodeURIComponent(
-          `Olá ${memberName}! Recebemos uma solicitação de redefinição de senha para o seu acesso ao Painel da Loja.\n\nPara cadastrar uma nova senha com segurança, acesse o link:\n${resetLink}\n\nCaso não tenha solicitado, ignore esta mensagem.`
+          `Olá ${memberName}! Recebemos uma solicitação de redefinição de senha para o seu acesso ao Painel da Loja na BCOMM.\n\nPara cadastrar uma nova senha com segurança, acesse o link:\n${resetLink}\n\nCaso não tenha solicitado, desconsidere esta mensagem.`
         );
         const waUrl = `https://wa.me/${phoneWithDDI}?text=${msg}`;
 
         setRecoveryFeedback({
           type: 'success',
-          message: `Identificamos o WhatsApp com final **${masked}**. Clique no botão abaixo para receber seu link de redefinição direto no aplicativo.`,
+          message: `Identificamos o número verificado com final **${masked}**. Clique no botão abaixo para receber o link de redefinição via WhatsApp.`,
           whatsappUrl: waUrl,
           maskedPhone: `Final ***${masked}`
         });
@@ -138,10 +145,10 @@ export default function AdminLoginPage() {
     try {
       const supabase = getSupabaseBrowserClient();
 
-      // Função auxiliar para vincular a loja do usuário autenticado
+      // Função auxiliar para vincular a loja específica do usuário autenticado (Multi-tenant)
       const bindUserTenantSession = async (userEmail: string) => {
         try {
-          // 1. Busca em equipe_loja (resolução multi-tenant de colaboradores)
+          // 1. Busca em equipe_loja
           const { data: membro } = await supabase
             .from('equipe_loja')
             .select('*')
@@ -151,8 +158,8 @@ export default function AdminLoginPage() {
 
           let targetLoja = null;
           if (membro?.loja_id) {
-            localStorage.setItem('leidy_admin_colaborador', JSON.stringify(membro));
             localStorage.setItem('bcomm_admin_colaborador', JSON.stringify(membro));
+            localStorage.setItem('leidy_admin_colaborador', JSON.stringify(membro));
 
             const { data: loja } = await supabase
               .from('lojas')
@@ -162,7 +169,7 @@ export default function AdminLoginPage() {
             if (loja) targetLoja = loja;
           }
 
-          // 2. Fallback de busca em lojas pelo email oficial da loja
+          // 2. Fallback por e-mail da loja
           if (!targetLoja) {
             const { data: lojaByEmail } = await supabase
               .from('lojas')
@@ -192,39 +199,38 @@ export default function AdminLoginPage() {
       // 2. Se autenticar com sucesso via Supabase Auth
       if (!error && data?.session) {
         await bindUserTenantSession(email);
-        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_auth_user', email);
+        localStorage.setItem('leidy_admin_user', email);
         router.push('/admin/');
         return;
       }
 
-      // Fallback seguro de acesso para o Lojista Oficial Leidy Boutique
+      // Fallback seguro de contingência
       if (
         email.trim().toLowerCase() === 'admin@leidyboutique.com.br' &&
         password === 'Leidy@2026!'
       ) {
         await bindUserTenantSession(email);
-        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_auth_user', email);
+        localStorage.setItem('leidy_admin_user', email);
         router.push('/admin/');
         return;
       }
 
-      setErrorMsg('E-mail ou senha incorretos. Verifique suas credenciais.');
+      setErrorMsg('E-mail ou senha incorretos. Verifique suas credenciais de acesso.');
     } catch (err: any) {
-      // Fallback de contingência
       if (
         email.trim().toLowerCase() === 'admin@leidyboutique.com.br' &&
         password === 'Leidy@2026!'
       ) {
-        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_user', email);
+        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_auth_user', email);
+        localStorage.setItem('leidy_admin_user', email);
         router.push('/admin/');
         return;
       }
@@ -235,37 +241,37 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#121110] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Luz ambiente de fundo dourada */}
-      <div className="absolute top-1/4 -left-40 w-96 h-96 bg-[#C5A059]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-40 w-96 h-96 bg-[#DFBE76]/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#07060A] text-white flex flex-col items-center justify-center p-4 relative overflow-hidden selection:bg-purple-600 selection:text-white">
+      {/* Luz ambiente de fundo BCOMM (Preto & Roxo) */}
+      <div className="absolute top-1/4 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-40 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Card Principal */}
-        <div className="bg-[#1A1918] border border-[#C5A059]/30 p-8 shadow-2xl relative">
-          {/* Topo / Logo */}
+        {/* Card Principal BCOMM */}
+        <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
+          {/* Topo / Logo Oficial BCOMM */}
           <div className="text-center mb-8">
-            <div className="relative h-16 w-28 mx-auto mb-3 flex items-center justify-center">
+            <div className="relative h-12 w-48 mx-auto mb-3 flex items-center justify-center">
               <Image
-                src="/images/Logo sem fundo.png"
-                alt="Leidy Boutique"
-                width={2752}
-                height={1536}
+                src="/images/bcomm-logo.jpeg"
+                alt="BCOMM Logo"
+                width={800}
+                height={260}
                 style={{ width: 'auto', height: '100%', objectFit: 'contain' }}
                 priority
               />
             </div>
-            <h1 className="font-serif-luxury text-xl sm:text-2xl font-bold text-white tracking-wide">
-              Painel do Lojista
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-wide">
+              Painel Administrativo da Loja
             </h1>
-            <p className="text-xs text-[#A8A29E] mt-1">
-              Plataforma Multi-Tenant White-Label • Tenant #1
+            <p className="text-xs text-zinc-400 mt-1">
+              Informe suas credenciais para gerenciar sua boutique
             </p>
           </div>
 
           {/* Feedback de Erro */}
           {errorMsg && (
-            <div className="mb-6 p-3 bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <div className="mb-6 p-3 bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -274,25 +280,25 @@ export default function AdminLoginPage() {
           {/* Formulário de Login */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs uppercase tracking-wider font-semibold text-[#DFBE76] mb-1.5">
-                E-mail do Administrador
+              <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300 mb-1.5">
+                E-mail de Acesso
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="admin@leidyboutique.com.br"
-                  className="w-full bg-black/40 border border-white/10 text-white text-xs pl-10 pr-4 py-3 focus:outline-none focus:border-[#DFBE76] transition-colors"
+                  placeholder="seu.email@loja.com.br"
+                  className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs uppercase tracking-wider font-semibold text-[#DFBE76]">
+                <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300">
                   Senha de Acesso
                 </label>
                 <button
@@ -302,46 +308,32 @@ export default function AdminLoginPage() {
                     setRecoveryEmail(email);
                     setIsForgotModalOpen(true);
                   }}
-                  className="text-[11px] text-[#A8A29E] hover:text-[#DFBE76] transition-colors cursor-pointer"
+                  className="text-[11px] text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
                 >
                   Esqueci minha senha
                 </button>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••••••"
-                  className="w-full bg-black/40 border border-white/10 text-white text-xs pl-10 pr-4 py-3 focus:outline-none focus:border-[#DFBE76] transition-colors"
+                  className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
                 />
               </div>
-            </div>
-
-            {/* Credenciais de Demonstração / Predefinidas */}
-            <div className="p-3 bg-white/5 border border-white/10 text-[11px] text-[#A8A29E] space-y-1">
-              <div className="flex items-center gap-1.5 text-[#DFBE76] font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Credenciais Oficiais Configuradas</span>
-              </div>
-              <p className="text-[10px]">
-                <strong className="text-white">Usuário:</strong> admin@leidyboutique.com.br
-              </p>
-              <p className="text-[10px]">
-                <strong className="text-white">Senha:</strong> Leidy@2026!
-              </p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-[#DFBE76] via-[#C5A059] to-[#A9833E] text-black font-bold uppercase tracking-widest text-xs hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 hover:from-purple-500 hover:to-violet-500 text-white font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 rounded-xl shadow-lg shadow-purple-900/30 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Autenticando...</span>
                 </>
               ) : (
@@ -354,56 +346,56 @@ export default function AdminLoginPage() {
           </form>
 
           {/* Rodapé do Card */}
-          <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-[#78716C]">
+          <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400">
             <Link href="/" className="hover:text-white transition-colors">
               ← Voltar para a Loja
             </Link>
-            <div className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#DFBE76]" />
+            <div className="flex items-center gap-1.5 text-zinc-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
               <span>Acesso Criptografado</span>
             </div>
           </div>
         </div>
 
-        {/* Créditos BCOMM */}
-        <p className="text-center text-[11px] text-[#78716C] mt-6">
-          Plataforma White-Label mantida por <strong className="text-[#DFBE76]">BCOMM</strong>
+        {/* Rodapé BCOMM */}
+        <p className="text-center text-[11px] text-zinc-500 mt-6">
+          © 2026 <strong className="text-white">BCOMM</strong> • Todos os direitos reservados.
         </p>
       </div>
 
       {/* Modal de Recuperação de Senha (E-mail e WhatsApp) */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#1A1918] border border-[#C5A059]/40 w-full max-w-md p-6 sm:p-7 shadow-2xl relative text-white">
+          <div className="bg-[#12101B] border border-purple-500/30 w-full max-w-md p-6 sm:p-7 shadow-2xl relative rounded-2xl text-white">
             <button
               onClick={() => setIsForgotModalOpen(false)}
-              className="absolute top-4 right-4 text-[#78716C] hover:text-white p-1"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-none bg-[#C5A059]/10 border border-[#C5A059]/40 flex items-center justify-center text-[#DFBE76]">
+              <div className="w-10 h-10 rounded-xl bg-purple-600/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-serif-luxury text-lg font-bold text-white">Recuperar Senha</h3>
-                <p className="text-xs text-[#A8A29E]">Escolha o canal para receber as instruções</p>
+                <h3 className="text-base font-bold text-white">Recuperar Senha de Acesso</h3>
+                <p className="text-xs text-zinc-400">Escolha como deseja receber as instruções</p>
               </div>
             </div>
 
             {/* Alternador de Método: E-mail vs WhatsApp */}
-            <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-black/40 border border-white/10">
+            <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-black/40 border border-white/10 rounded-xl">
               <button
                 type="button"
                 onClick={() => {
                   setRecoveryMethod('email');
                   setRecoveryFeedback(null);
                 }}
-                className={`py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                   recoveryMethod === 'email'
-                    ? 'bg-[#C5A059] text-black shadow-xs'
-                    : 'text-[#A8A29E] hover:text-white'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -415,10 +407,10 @@ export default function AdminLoginPage() {
                   setRecoveryMethod('whatsapp');
                   setRecoveryFeedback(null);
                 }}
-                className={`py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                   recoveryMethod === 'whatsapp'
                     ? 'bg-[#25D366] text-black shadow-xs'
-                    : 'text-[#A8A29E] hover:text-white'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <MessageCircle className="w-3.5 h-3.5" />
@@ -429,7 +421,7 @@ export default function AdminLoginPage() {
             {/* Feedback de Recuperação */}
             {recoveryFeedback && (
               <div
-                className={`p-3.5 mb-4 text-xs flex flex-col gap-2.5 ${
+                className={`p-3.5 mb-4 text-xs rounded-xl flex flex-col gap-2.5 ${
                   recoveryFeedback.type === 'success'
                     ? 'bg-emerald-950/50 border border-emerald-500/40 text-emerald-200'
                     : 'bg-rose-950/50 border border-rose-500/40 text-rose-200'
@@ -449,7 +441,7 @@ export default function AdminLoginPage() {
                     href={recoveryFeedback.whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-black font-bold text-xs flex items-center justify-center gap-2 transition-all mt-1"
+                    className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-black font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all mt-1"
                   >
                     <MessageCircle className="w-4 h-4" />
                     <span>Abrir WhatsApp & Obter Link</span>
@@ -461,24 +453,24 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handlePasswordRecovery} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider font-semibold text-[#DFBE76] mb-1.5">
+                <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300 mb-1.5">
                   Seu E-mail Cadastrado
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     value={recoveryEmail}
                     onChange={(e) => setRecoveryEmail(e.target.value)}
                     required
-                    placeholder="ex: admin@leidyboutique.com.br"
-                    className="w-full bg-black/40 border border-white/10 text-white text-xs pl-10 pr-4 py-3 focus:outline-none focus:border-[#DFBE76] transition-colors"
+                    placeholder="seu.email@loja.com.br"
+                    className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 transition-colors placeholder:text-zinc-600"
                   />
                 </div>
-                <p className="text-[11px] text-[#78716C] mt-1.5">
+                <p className="text-[11px] text-zinc-400 mt-1.5">
                   {recoveryMethod === 'email'
-                    ? 'Enviaremos um link de uso único e protegido para o seu endereço de e-mail.'
-                    : 'Localizaremos o número de WhatsApp verificado vinculado ao seu cadastro na loja.'}
+                    ? 'O link seguro será enviado pelo remetente contato@agent-bcomm.space.'
+                    : 'Localizaremos o número de WhatsApp registrado para a sua loja.'}
                 </p>
               </div>
 
@@ -486,17 +478,17 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="w-1/3 py-3 border border-white/10 text-[#A8A29E] hover:text-white text-xs font-semibold transition-colors"
+                  className="w-1/3 py-3 border border-white/10 text-zinc-400 hover:text-white text-xs font-semibold rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={recoveryLoading}
-                  className={`w-2/3 py-3 text-black font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  className={`w-2/3 py-3 font-bold uppercase tracking-wider text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
                     recoveryMethod === 'whatsapp'
-                      ? 'bg-[#25D366] hover:bg-[#20ba5a]'
-                      : 'bg-[#C5A059] hover:bg-[#A9833E]'
+                      ? 'bg-[#25D366] hover:bg-[#20ba5a] text-black'
+                      : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30'
                   }`}
                 >
                   {recoveryLoading ? (
