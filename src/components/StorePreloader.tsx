@@ -304,20 +304,22 @@ export const StorePreloader: React.FC = () => {
       ? 1400
       : isInternalTransition
       ? 450
-      : Math.max(1350, Number(effectiveConfig.tempo_minimo_ms || 1350));
+      : Math.max(1200, Number(effectiveConfig.tempo_minimo_ms || 1200));
 
     const maxTimeout = isTestMode
       ? 2000
       : isInternalTransition
       ? 900
-      : Math.max(3000, Number(effectiveConfig.timeout_seguranca_ms || 3000));
+      : Math.max(3500, Number(effectiveConfig.timeout_seguranca_ms || 3500));
 
     const startTime = Date.now();
     let currentVal = initialProgress;
     let isFinished = false;
+    let isConcluding = false;
     let rafId: number | null = null;
     let intervalId: NodeJS.Timeout | null = null;
     let closeTimer: NodeJS.Timeout | null = null;
+    let dwellTimer: NodeJS.Timeout | null = null;
 
     const finish = () => {
       if (isFinished) return;
@@ -325,6 +327,7 @@ export const StorePreloader: React.FC = () => {
 
       if (rafId) cancelAnimationFrame(rafId);
       if (intervalId) clearInterval(intervalId);
+      if (dwellTimer) clearTimeout(dwellTimer);
 
       updateProgressDOM(100, effectiveConfig.modelo);
       setIsRevealing(true);
@@ -363,37 +366,47 @@ export const StorePreloader: React.FC = () => {
 
     // Watchdog Timer de Segurança: Garante saída mesmo com falha externa ou aba em segundo plano
     const watchdogTimer = setTimeout(() => {
-      finish();
+      if (isFinished || isConcluding) return;
+      isConcluding = true;
+      updateProgressDOM(100, effectiveConfig.modelo);
+      dwellTimer = setTimeout(finish, 180);
     }, maxTimeout);
 
     const step = () => {
-      if (isFinished) return;
+      if (isFinished || isConcluding) return;
 
       const elapsed = Date.now() - startTime;
       const isReady = isTestMode || isInternalTransition ? true : isAssetsReadyRef.current;
 
-      // Só conclui se os recursos visuais estiverem decodificados e tiver cumprido o tempo mínimo
-      if (elapsed >= maxTimeout || (isReady && elapsed >= targetDuration)) {
-        clearTimeout(watchdogTimer);
-        finish();
-        return;
-      }
-
-      let targetProgress = 0;
-      if (isReady) {
+      // 1. CÁLCULO PROPORCIONAL DO PROGRESSO
+      if (isReady && elapsed >= targetDuration) {
+        // Loja 100% pronta e tempo mínimo cumprido: sprint contínuo e acelerado até 100%
+        const distance = 100 - currentVal;
+        const stepIncrement = Math.max(1.8, distance * 0.22);
+        currentVal = Math.min(100, currentVal + stepIncrement);
+      } else if (isReady) {
+        // Loja já decodificou, mas ainda está cumprindo o tempo mínimo de sofisticação
         const ratio = Math.min(1, elapsed / targetDuration);
-        targetProgress = 20 + ratio * 80;
+        const targetProgress = 25 + ratio * 75;
+        currentVal = Math.min(95, currentVal + Math.max(0.9, (targetProgress - currentVal) * 0.18));
       } else {
-        // Se ainda está baixando a foto do banner hero, progride suavemente até 90% e aguarda
+        // Loja ainda carregando no fundo (download de banner, produtos, etc.):
+        // Progride proporcionalmente com teto estrito em 85% (NUNCA chega em 100% enquanto a loja não estiver pronta)
         const ratio = Math.min(1, elapsed / maxTimeout);
-        targetProgress = Math.min(90, 15 + ratio * 80);
+        const targetProgress = Math.min(85, 12 + ratio * 73);
+        currentVal = Math.min(85, currentVal + Math.max(0.6, (targetProgress - currentVal) * 0.15));
       }
 
-      currentVal = Math.min(100, currentVal + Math.max(0.8, (targetProgress - currentVal) * 0.22));
-
-      if (currentVal >= 99.2 && (isReady && elapsed >= targetDuration)) {
+      // 2. VERIFICAÇÃO DE CONCLUSÃO EXCLUSIVA EM 100%
+      if (currentVal >= 99.4 && isReady && elapsed >= targetDuration) {
+        isConcluding = true;
         clearTimeout(watchdogTimer);
-        finish();
+        updateProgressDOM(100, effectiveConfig.modelo);
+
+        // Pausa de Satisfação Visual (Micro-Dwell de 180ms com 100% visível na tela)
+        dwellTimer = setTimeout(() => {
+          finish();
+        }, 180);
         return;
       }
 
@@ -404,16 +417,17 @@ export const StorePreloader: React.FC = () => {
     // Inicia loop via RAF
     rafId = requestAnimationFrame(step);
 
-    // Fallback de segurança a cada 45ms para garantir avanço contínuo se a aba perder foco
+    // Fallback de segurança a cada 40ms para garantir avanço contínuo mesmo com aba em segundo plano
     intervalId = setInterval(() => {
-      if (!isFinished) {
+      if (!isFinished && !isConcluding) {
         step();
       }
-    }, 45);
+    }, 40);
 
     return () => {
       clearTimeout(watchdogTimer);
       if (closeTimer) clearTimeout(closeTimer);
+      if (dwellTimer) clearTimeout(dwellTimer);
       if (rafId) cancelAnimationFrame(rafId);
       if (intervalId) clearInterval(intervalId);
       document.body.style.overflow = '';

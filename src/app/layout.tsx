@@ -123,16 +123,16 @@ export default function RootLayout({
                         clearInterval(tickInterval);
                         return;
                       }
-                      if (cur < 85) {
-                        cur += Math.floor(Math.random() * 5) + 3;
-                        if (cur > 85) cur = 85;
+                      if (cur < 70) {
+                        cur += Math.floor(Math.random() * 3) + 2;
+                        if (cur > 70) cur = 70;
                         window.__BCOMM_PRELOADER_PROGRESS__ = cur;
                         var d = document.getElementById('bcomm-curtain-digits');
                         var b = document.getElementById('bcomm-curtain-progress-bar');
                         if (d) d.textContent = String(cur).padStart(2, '0');
                         if (b) b.style.width = cur + '%';
                       }
-                    }, 50);
+                    }, 60);
                     window.__BCOMM_PRELOADER_TICKER__ = tickInterval;
                   }
                 } catch(e) {}
