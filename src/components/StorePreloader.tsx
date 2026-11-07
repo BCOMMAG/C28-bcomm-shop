@@ -242,15 +242,7 @@ export const StorePreloader: React.FC = () => {
       setIsVisible(false);
       return;
     }
-
-    // Se o lojista configurou como inativo na vitrine:
-    if (!effectiveConfig.ativo && !isTestMode) {
-      if (typeof window !== 'undefined' && (window as any).__BCOMM_PRELOADER__) {
-        (window as any).__BCOMM_PRELOADER__.forceHide();
-      }
-      return;
-    }
-  }, [hasMounted, isExcludedRoute, isTestMode, effectiveConfig.ativo]);
+  }, [hasMounted, isExcludedRoute, isTestMode]);
 
   // 5. Atualização de rota interna (Navegação SPA pura e instantânea de 0ms)
   useEffect(() => {

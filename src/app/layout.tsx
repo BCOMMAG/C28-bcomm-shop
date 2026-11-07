@@ -197,8 +197,9 @@ export default function RootLayout({
 
                     finish: function(callback) {
                       if (this.isFinished) return;
+                      // TRAVA DE INVIOLABILIDADE: Na vitrine, o preloader NUNCA fecha antes de atingir 100%
+                      if (this.current < 100) return;
                       this.isFinished = true;
-                      this.setProgress(100);
 
                       // 1. Revela a vitrine antes de desvanecer a cortina (zero flash)
                       var storeRoot = document.getElementById('bcomm-store-root');
@@ -227,6 +228,11 @@ export default function RootLayout({
                     },
 
                     forceHide: function() {
+                      // Na vitrine da loja, forceHide é BLOQUEADO para impedir aborto no meio da contagem
+                      var p = window.location.pathname || '';
+                      var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
+                      if (!isAdmin) return;
+
                       this.isFinished = true;
                       document.documentElement.classList.remove('bcomm-preloader-running');
                       document.documentElement.classList.add('bcomm-no-preloader');
@@ -264,15 +270,16 @@ export default function RootLayout({
                     isReady = true;
                   });
 
-                  // Watchdog de segurança máxima do primeiro acesso (3500ms)
+                  // Watchdog de segurança máxima do primeiro acesso (4000ms)
                   var initialWatchdog = setTimeout(function() {
                     if (window.__BCOMM_PRELOADER__ && !window.__BCOMM_PRELOADER__.isFinished) {
+                      window.__BCOMM_PRELOADER__.setProgress(100);
                       window.__BCOMM_PRELOADER__.finish();
                     }
-                  }, 3500);
+                  }, 4000);
 
                   var lastTickTime = performance.now();
-                  var stepCadenceMs = 13; // ~13ms por número -> 100 números = ~1300ms
+                  var stepCadenceMs = 12; // ~12ms por número base
                   var dwellStartTime = null;
                   var isDwellPhase = false;
 
@@ -289,11 +296,14 @@ export default function RootLayout({
                       var elapsedSinceTick = now - lastTickTime;
                       var current = window.__BCOMM_PRELOADER__.current;
 
+                      // Dinâmica da velocidade:
+                      // Se a vitrine ainda não está pronta: avança normalmente a 12ms, e a partir de 55% desacelera para 25ms esperando os assets
+                      // Se a vitrine já está pronta: acelera fluidamente para 6ms por número em direção a 100%
                       var effectiveInterval = stepCadenceMs;
                       if (!isReady && current >= 55) {
-                        effectiveInterval = 28; // Desacelera suavemente esperando vitrine
-                      } else if (isReady && current >= 75) {
-                        effectiveInterval = 7; // Sprint rápido e fluido até 100%
+                        effectiveInterval = 25;
+                      } else if (isReady) {
+                        effectiveInterval = current >= 75 ? 5 : 7; // Sprint fluido e legível até 100%
                       }
 
                       if (elapsedSinceTick >= effectiveInterval) {
