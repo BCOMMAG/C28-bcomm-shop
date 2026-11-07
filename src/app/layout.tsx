@@ -70,56 +70,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <style
-          id="bcomm-critical-veil-css"
-          dangerouslySetInnerHTML={{
-            __html: `
-              #bcomm-instant-curtain {
-                position: fixed;
-                inset: 0;
-                z-index: 999999;
-                display: none !important;
-                opacity: 0 !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-                background-color: var(--bcomm-preloader-bg, #FAF8F5);
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-                transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1);
-              }
-              html.bcomm-preloader-running body {
-                overflow: hidden !important;
-                touch-action: none !important;
-              }
-              html.bcomm-preloader-running #bcomm-instant-curtain {
-                display: flex !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-                pointer-events: auto !important;
-              }
-              html.bcomm-no-preloader #bcomm-instant-curtain,
-              html:not(.bcomm-preloader-running) #bcomm-instant-curtain {
-                display: none !important;
-                opacity: 0 !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-              }
-              html.bcomm-preloader-running #bcomm-store-root,
-              html.bcomm-preloader-running [data-bcomm-background] {
-                opacity: 0 !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-              }
-              html:not(.bcomm-preloader-running) #bcomm-store-root,
-              html.bcomm-no-preloader #bcomm-store-root {
-                opacity: 1 !important;
-                visibility: visible !important;
-                pointer-events: auto !important;
-              }
-            `
-          }}
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -128,8 +78,6 @@ export default function RootLayout({
                   var p = window.location.pathname || '';
                   var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
                   if (isAdmin) {
-                    document.documentElement.classList.add('bcomm-no-preloader');
-                    document.documentElement.classList.remove('bcomm-preloader-running');
                     return;
                   }
 
@@ -148,23 +96,34 @@ export default function RootLayout({
                     } catch(e) {}
                   }
 
-                  // Se desativado pelo lojista, libera vitrine em 0ms e encerra
+                  // Se desativado pelo lojista, sai em 0ms
                   if (!active) {
-                    document.documentElement.classList.add('bcomm-no-preloader');
-                    document.documentElement.classList.remove('bcomm-preloader-running');
-                    var s = document.getElementById('bcomm-store-root');
-                    if (s) {
-                      s.style.opacity = '1';
-                      s.style.visibility = 'visible';
-                      s.style.pointerEvents = 'auto';
-                    }
                     return;
                   }
 
-                  // Ativa a cortina imediatamente em 0ms
-                  document.documentElement.classList.add('bcomm-preloader-running');
-                  document.documentElement.classList.remove('bcomm-no-preloader');
-                  document.documentElement.style.setProperty('--bcomm-preloader-bg', bg);
+                  // Injeção de estilo dinâmico imune à hidratação do React
+                  var dynStyle = document.createElement('style');
+                  dynStyle.id = 'bcomm-active-curtain-style';
+                  dynStyle.textContent = [
+                    'html body #bcomm-instant-curtain {',
+                    '  display: flex !important;',
+                    '  opacity: 1 !important;',
+                    '  visibility: visible !important;',
+                    '  pointer-events: auto !important;',
+                    '  background-color: ' + bg + ' !important;',
+                    '}',
+                    'html body #bcomm-store-root,',
+                    'html body [data-bcomm-background] {',
+                    '  opacity: 0 !important;',
+                    '  visibility: hidden !important;',
+                    '  pointer-events: none !important;',
+                    '}',
+                    'html body {',
+                    '  overflow: hidden !important;',
+                    '  touch-action: none !important;',
+                    '}'
+                  ].join('\\n');
+                  document.head.appendChild(dynStyle);
 
                   // =========================================================================
                   // CONTROLADOR UNIFICADO SOBERANO DE PRELOADER (API GLOBAL NO WINDOW)
@@ -201,52 +160,78 @@ export default function RootLayout({
                       if (this.current < 100) return;
                       this.isFinished = true;
 
-                      // 1. Revela a vitrine antes de desvanecer a cortina (zero flash)
+                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
                       var storeRoot = document.getElementById('bcomm-store-root');
+
+                      // 1. Libera a vitrine e backgrounds para estarem prontos embaixo da cortina
                       if (storeRoot) {
-                        storeRoot.style.opacity = '1';
-                        storeRoot.style.visibility = 'visible';
-                        storeRoot.style.pointerEvents = 'auto';
+                        storeRoot.style.setProperty('opacity', '1', 'important');
+                        storeRoot.style.setProperty('visibility', 'visible', 'important');
+                        storeRoot.style.setProperty('pointer-events', 'auto', 'important');
+                      }
+                      var bgEls = document.querySelectorAll('[data-bcomm-background]');
+                      for (var i = 0; i < bgEls.length; i++) {
+                        bgEls[i].style.setProperty('opacity', '1', 'important');
+                        bgEls[i].style.setProperty('visibility', 'visible', 'important');
+                        bgEls[i].style.setProperty('pointer-events', 'auto', 'important');
                       }
 
-                      // 2. Desvanecimento suave da cortina por 450ms
-                      var instantCurtain = document.getElementById('bcomm-instant-curtain');
+                      // 2. Transição suave de fade-out da cortina (500ms)
                       if (instantCurtain) {
-                        instantCurtain.style.opacity = '0';
-                        instantCurtain.style.transition = 'opacity 450ms cubic-bezier(0.16, 1, 0.3, 1)';
+                        var s = document.getElementById('bcomm-active-curtain-style');
+                        if (s) {
+                          s.textContent = [
+                            'html body #bcomm-instant-curtain {',
+                            '  display: flex !important;',
+                            '  pointer-events: none !important;',
+                            '  background-color: ' + bg + ' !important;',
+                            '}',
+                            'html body #bcomm-store-root,',
+                            'html body [data-bcomm-background] {',
+                            '  opacity: 1 !important;',
+                            '  visibility: visible !important;',
+                            '  pointer-events: auto !important;',
+                            '}'
+                          ].join('\\n');
+                        }
+
+                        instantCurtain.style.setProperty('transition', 'opacity 500ms cubic-bezier(0.16, 1, 0.3, 1)', 'important');
+                        instantCurtain.style.setProperty('opacity', '0', 'important');
+                        instantCurtain.style.setProperty('pointer-events', 'none', 'important');
+
                         setTimeout(function() {
-                          instantCurtain.style.display = 'none';
-                          document.documentElement.classList.remove('bcomm-preloader-running');
+                          instantCurtain.style.setProperty('display', 'none', 'important');
+                          var styleEl = document.getElementById('bcomm-active-curtain-style');
+                          if (styleEl) styleEl.remove();
                           document.body.style.overflow = '';
                           if (typeof callback === 'function') callback();
-                        }, 470);
+                        }, 520);
                       } else {
-                        document.documentElement.classList.remove('bcomm-preloader-running');
+                        var styleEl = document.getElementById('bcomm-active-curtain-style');
+                        if (styleEl) styleEl.remove();
                         document.body.style.overflow = '';
                         if (typeof callback === 'function') callback();
                       }
                     },
 
                     forceHide: function() {
-                      // Na vitrine da loja, forceHide é BLOQUEADO para impedir aborto no meio da contagem
                       var p = window.location.pathname || '';
                       var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
                       if (!isAdmin) return;
 
                       this.isFinished = true;
-                      document.documentElement.classList.remove('bcomm-preloader-running');
-                      document.documentElement.classList.add('bcomm-no-preloader');
+                      var styleEl = document.getElementById('bcomm-active-curtain-style');
+                      if (styleEl) styleEl.remove();
                       document.body.style.overflow = '';
                       var instantCurtain = document.getElementById('bcomm-instant-curtain');
                       if (instantCurtain) {
-                        instantCurtain.style.display = 'none';
-                        instantCurtain.style.opacity = '0';
+                        instantCurtain.style.setProperty('display', 'none', 'important');
                       }
                       var storeRoot = document.getElementById('bcomm-store-root');
                       if (storeRoot) {
-                        storeRoot.style.opacity = '1';
-                        storeRoot.style.visibility = 'visible';
-                        storeRoot.style.pointerEvents = 'auto';
+                        storeRoot.style.setProperty('opacity', '1', 'important');
+                        storeRoot.style.setProperty('visibility', 'visible', 'important');
+                        storeRoot.style.setProperty('pointer-events', 'auto', 'important');
                       }
                     }
                   };
@@ -262,7 +247,7 @@ export default function RootLayout({
                   // MOTOR DE ODÔMETRO CADENCIADO PARA O CARREGAMENTO INICIAL / F5 (00 A 100%)
                   // =========================================================================
                   var isHome = p === '' || p === '/';
-                  var isReady = !isHome; // Subpáginas (/cliente, /catalogo) não dependem de HeroBanner!
+                  var isReady = !isHome;
                   window.__BCOMM_HERO_BANNER_READY__ = false;
 
                   window.addEventListener('bcomm:hero_banner_ready', function() {
@@ -270,7 +255,6 @@ export default function RootLayout({
                     isReady = true;
                   });
 
-                  // Watchdog de segurança máxima do primeiro acesso (4000ms)
                   var initialWatchdog = setTimeout(function() {
                     if (window.__BCOMM_PRELOADER__ && !window.__BCOMM_PRELOADER__.isFinished) {
                       window.__BCOMM_PRELOADER__.setProgress(100);
@@ -279,7 +263,7 @@ export default function RootLayout({
                   }, 4000);
 
                   var lastTickTime = performance.now();
-                  var stepCadenceMs = 12; // ~12ms por número base
+                  var stepCadenceMs = 12;
                   var dwellStartTime = null;
                   var isDwellPhase = false;
 
@@ -296,14 +280,11 @@ export default function RootLayout({
                       var elapsedSinceTick = now - lastTickTime;
                       var current = window.__BCOMM_PRELOADER__.current;
 
-                      // Dinâmica da velocidade:
-                      // Se a vitrine ainda não está pronta: avança normalmente a 12ms, e a partir de 55% desacelera para 25ms esperando os assets
-                      // Se a vitrine já está pronta: acelera fluidamente para 6ms por número em direção a 100%
                       var effectiveInterval = stepCadenceMs;
                       if (!isReady && current >= 55) {
                         effectiveInterval = 25;
                       } else if (isReady) {
-                        effectiveInterval = current >= 75 ? 5 : 7; // Sprint fluido e legível até 100%
+                        effectiveInterval = current >= 75 ? 6 : 9;
                       }
 
                       if (elapsedSinceTick >= effectiveInterval) {
