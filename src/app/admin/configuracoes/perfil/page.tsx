@@ -14,13 +14,15 @@ import {
   AlertCircle,
   RefreshCw,
   Sparkles,
-  Crown
+  Crown,
+  Globe
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { isMasterUser } from '@/lib/team';
+import { getStoredLocale, setStoredLocale, SupportedLocale } from '@/lib/i18n';
 
 export default function UserProfileSettingsPage() {
   const { currentTenant } = useStore();
@@ -41,6 +43,7 @@ export default function UserProfileSettingsPage() {
   const [assinaturaWhatsapp, setAssinaturaWhatsapp] = useState(
     isLeidy ? 'Com carinho,\nLeidy | Leidy Boutique ✨' : ''
   );
+  const [locale, setLocale] = useState<SupportedLocale>('pt');
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -51,6 +54,7 @@ export default function UserProfileSettingsPage() {
   };
 
   useEffect(() => {
+    setLocale(getStoredLocale());
     const fetchProfile = async () => {
       setLoading(true);
       try {
@@ -157,17 +161,18 @@ export default function UserProfileSettingsPage() {
         })
         .eq('id', tenantId);
 
-      // 3. Atualiza usuário ativo no Supabase Auth
+      // 3. Atualiza usuário ativo no Supabase Auth com preferências e idioma
       try {
         await supabase.auth.updateUser({
           email: cleanEmail,
-          data: { nome, apelido }
+          data: { nome, apelido, locale }
         });
       } catch (authErr) {
         console.warn('Aviso ao sincronizar auth.users:', authErr);
       }
 
-      // Salva preferências no localStorage
+      // Salva preferências no localStorage e sincroniza i18n
+      setStoredLocale(locale);
       localStorage.setItem(`profile_avatar_${tenantId}`, avatarUrl);
       localStorage.setItem(`profile_apelido_${tenantId}`, apelido);
       localStorage.setItem(`profile_assinatura_${tenantId}`, assinaturaWhatsapp);
@@ -412,6 +417,61 @@ export default function UserProfileSettingsPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* BLOCO 3: IDIOMA DE PREFERÊNCIA DO PAINEL */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              3. Idioma de Preferência do Painel (i18n)
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Selecione o idioma utilizado na interface do painel administrativo, menus e notificações operacionais.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { id: 'pt' as SupportedLocale, flag: '🇧🇷', name: 'Português', desc: 'Português do Brasil (Padrão)' },
+            { id: 'en' as SupportedLocale, flag: '🇺🇸', name: 'English', desc: 'United States & Global' },
+            { id: 'es' as SupportedLocale, flag: '🇪🇸', name: 'Español', desc: 'América Latina y España' }
+          ].map((item) => {
+            const isSelected = locale === item.id;
+            return (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => {
+                  setLocale(item.id);
+                  setStoredLocale(item.id);
+                }}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  isSelected
+                    ? 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-400/30 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-slate-50/40 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{item.flag}</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">{item.name}</span>
+                    <span className="text-[10px] text-slate-500 block">{item.desc}</span>
+                  </div>
+                </div>
+                {isSelected && (
+                  <div className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    ✓
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

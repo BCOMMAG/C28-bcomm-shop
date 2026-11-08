@@ -48,6 +48,8 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getStorefrontUrl } from '@/lib/routes';
 import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser } from '@/lib/team';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
+import { LanguageSelector } from '@/components/common/LanguageSelector';
+import { getTranslation, getStoredLocale, SupportedLocale } from '@/lib/i18n';
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -77,6 +79,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isMaster, setIsMaster] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [locale, setLocale] = useState<SupportedLocale>('pt');
+
+  useEffect(() => {
+    setLocale(getStoredLocale());
+    const handleLocaleChange = (e: any) => {
+      if (e?.detail) setLocale(e.detail);
+    };
+    window.addEventListener('bcomm_locale_change', handleLocaleChange as EventListener);
+    return () => window.removeEventListener('bcomm_locale_change', handleLocaleChange as EventListener);
+  }, []);
+
+  const t = getTranslation(locale);
 
   useEffect(() => {
     try {
@@ -281,48 +295,48 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     {
-      title: 'Visão Geral',
+      title: t.adminNav.overview,
       href: '/admin/',
       icon: LayoutDashboard,
       exact: true
     },
     {
-      title: 'Pedidos',
+      title: t.adminNav.orders,
       href: '/admin/pedidos/',
       icon: ShoppingBag
     },
     {
-      title: 'Catálogo & Estoque',
+      title: t.adminNav.catalog,
       href: '/admin/produtos/',
       icon: Package
     },
     {
-      title: 'Configurações da Loja',
+      title: t.adminNav.storeSettings,
       href: '/admin/loja/',
       icon: Store
     },
     {
-      title: 'Clientes & CRM',
+      title: t.adminNav.customers,
       href: '/admin/clientes/',
       icon: Users
     },
     {
-      title: 'Finanças',
+      title: t.adminNav.finance,
       href: '/admin/financas/',
       icon: DollarSign
     },
     {
-      title: 'Equipe & Acessos',
+      title: t.adminNav.team,
       href: '/admin/equipe/',
       icon: ShieldCheck
     },
     {
-      title: 'Loja de Módulos',
+      title: t.adminNav.modules,
       href: '/admin/modulos/',
       icon: Layers
     },
     {
-      title: 'Configurações Gerais',
+      title: t.adminNav.settings,
       href: '/admin/configuracoes/',
       icon: Settings
     }
@@ -364,7 +378,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const vis = currentTenant?.configuracoes_visuais as any;
   const adminCustom = customTheme || vis?.admin_custom;
-  const adminLogoSrc = vis?.logo_dark_url || vis?.logo_url || '/images/Logo sem fundo.png';
+  const isLeidyTenant = currentTenant?.slug === 'leidy-boutique' || currentTenant?.slug === 'leidyboutique';
+  const adminLogoSrc = vis?.logo_dark_url || vis?.logo_url || (isLeidyTenant ? '/images/Logo sem fundo.png' : '/images/bcomm-stores.png');
 
   return (
     <div
@@ -630,7 +645,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2.5">
                 <div className="relative h-8 w-9 overflow-hidden flex items-center justify-center bg-white/10 rounded-lg p-1">
                   <Image
-                    src="/images/Logo sem fundo.png"
+                    src={adminLogoSrc}
                     alt={lojaNome}
                     width={2752}
                     height={1536}
@@ -762,7 +777,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             >
               <div className="flex items-center gap-2.5">
                 <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                <span className="text-slate-500 group-hover:text-slate-700">Buscar peças, pedidos ou clientes...</span>
+                <span className="text-slate-500 group-hover:text-slate-700">{t.adminHeader.searchPlaceholder}</span>
               </div>
               <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs">
                 Ctrl K
@@ -790,8 +805,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               title="Abre a vitrine pública da loja em nova aba"
             >
               <Store className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden sm:inline">Abrir Vitrine da Loja</span>
-              <span className="sm:hidden">Vitrine</span>
+              <span className="hidden sm:inline">{t.adminHeader.openStore}</span>
+              <span className="sm:hidden">{t.adminHeader.storefront}</span>
               <ExternalLink className="w-3 h-3 text-amber-700/70" />
             </Link>
 
@@ -815,14 +830,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               {isNotifOpen && (
                 <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 animate-fade-in space-y-2">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <span className="text-xs font-bold text-slate-900">Notificações Operacionais</span>
+                    <span className="text-xs font-bold text-slate-900">{t.adminHeader.notifications}</span>
                     <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-full">
-                      {pendingNotifs.count} pendente(s)
+                      {t.adminHeader.pendingOrders(pendingNotifs.count)}
                     </span>
                   </div>
 
                   {pendingNotifs.pedidos.length === 0 ? (
-                    <p className="text-xs text-slate-500 py-3 text-center">Nenhum pedido aguardando ação no momento.</p>
+                    <p className="text-xs text-slate-500 py-3 text-center">{t.adminHeader.noPendingOrders}</p>
                   ) : (
                     <div className="space-y-1.5 max-h-60 overflow-y-auto">
                       {pendingNotifs.pedidos.map((p) => (
@@ -849,11 +864,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     onClick={() => setIsNotifOpen(false)}
                     className="block text-center py-1.5 text-[11px] font-bold text-amber-800 hover:text-amber-900 bg-amber-50 rounded-lg transition-colors"
                   >
-                    Ver todos os pedidos &rarr;
+                    {t.adminHeader.viewAllOrders}
                   </Link>
                 </div>
               )}
             </div>
+
+            {/* Seletor de Idioma Global */}
+            <div className="shrink-0">
+              <LanguageSelector />
+            </div>
+
+            <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
             {/* Link Rápido de Configurações */}
             <Link
@@ -873,7 +895,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               title="Bloquear painel e alternar colaboradora via PIN"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Balcão (PIN)</span>
+              <span className="hidden sm:inline">{t.adminHeader.posPin}</span>
             </button>
 
             <div className="h-5 w-[1px] bg-slate-200" />
@@ -907,7 +929,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               title="Encerrar sessão no painel"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sair</span>
+              <span className="hidden sm:inline">{t.adminHeader.logout}</span>
             </button>
           </div>
         </header>

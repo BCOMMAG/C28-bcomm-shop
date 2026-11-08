@@ -39,7 +39,7 @@ export default function SecuritySettingsPage() {
   const [isLoggingOutOthers, setIsLoggingOutOthers] = useState(false);
 
   // Senha Mestra do Balcão
-  const [senhaMestraBalcao, setSenhaMestraBalcao] = useState('Leidy@2026!');
+  const [senhaMestraBalcao, setSenhaMestraBalcao] = useState('');
   const [showSenhaMestra, setShowSenhaMestra] = useState(false);
 
   // Alteração de Senha da Conta
@@ -316,7 +316,7 @@ export default function SecuritySettingsPage() {
                   required
                   value={senhaMestraBalcao}
                   onChange={(e) => setSenhaMestraBalcao(e.target.value)}
-                  placeholder="Ex: Leidy@2026!"
+                  placeholder="Ex: SenhaMestra#2026"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
                 />
                 <button

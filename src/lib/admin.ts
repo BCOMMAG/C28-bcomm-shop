@@ -2997,6 +2997,9 @@ export interface StoreSettingsData {
   politicaPrivacidade?: string;
   termosUso?: string;
 
+  // Moeda & Finanças Globais
+  moeda?: 'BRL' | 'USD' | 'EUR' | string;
+
   // Pagamentos & PIX
   freteGratisValor: number;
   chavePix: string;
@@ -3444,6 +3447,9 @@ export interface SaveStoreSettingsInput {
   politicaPrivacidade?: string;
   termosUso?: string;
 
+  // Moeda & Finanças Globais
+  moeda?: 'BRL' | 'USD' | 'EUR' | string;
+
   // Pagamentos & PIX
   freteGratisValor?: number;
   chavePix?: string;
@@ -3569,6 +3575,9 @@ export async function getStoreSettings(
       politicaTrocas: vis.politica_trocas || 'Você tem até 7 (sete) dias corridos a partir da data de entrega para solicitar a troca ou devolução do seu pedido, conforme o Código de Defesa do Consumidor (CDC art. 49). As peças devem estar em perfeito estado, sem indícios de uso e com a etiqueta afixada.',
       politicaPrivacidade: vis.politica_privacidade || 'Respeitamos sua privacidade e protegemos seus dados pessoais de acordo com a LGPD (Lei Geral de Proteção de Dados - Lei 13.709/2018). Seus dados cadastrais e de pagamento são utilizados exclusivamente para o processamento de compras e emissão de notas.',
       termosUso: vis.termos_uso || `Ao navegar e efetuar compras em nossa vitrine virtual, o cliente concorda com as condições de pagamento, prazos de envio e políticas de trocas da ${loja.nome || 'loja'}.`,
+
+      // Moeda & Finanças Globais
+      moeda: fin.moeda || 'BRL',
 
       // Pagamentos & PIX
       freteGratisValor: Number(vis.frete_gratis_valor || 350),
@@ -3810,6 +3819,7 @@ export async function saveStoreGeneralSettings(
     const currentFin = (loja as any)?.configuracoes_financeiras || {};
     const updatedFin = {
       ...currentFin,
+      ...(input.moeda !== undefined ? { moeda: input.moeda.trim().toUpperCase() } : {}),
       ...(input.chavePix !== undefined ? { chave_pix: input.chavePix.trim() } : {}),
       ...(input.tipoChavePix !== undefined ? { tipo_chave_pix: input.tipoChavePix } : {}),
       ...(input.pixTitular !== undefined ? { pix_titular: input.pixTitular.trim() } : {}),

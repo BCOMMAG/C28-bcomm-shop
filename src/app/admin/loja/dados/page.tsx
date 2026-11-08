@@ -23,7 +23,8 @@ import {
   Check,
   Sparkles,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  DollarSign
 } from 'lucide-react';
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -85,6 +86,9 @@ export default function StoreSettingsPage() {
   const [politicaPrivacidade, setPoliticaPrivacidade] = useState('');
   const [termosUso, setTermosUso] = useState('');
 
+  // Moeda Padrão da Loja
+  const [moeda, setMoeda] = useState<string>('BRL');
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -125,6 +129,7 @@ export default function StoreSettingsPage() {
         setPoliticaTrocas(data.politicaTrocas || '');
         setPoliticaPrivacidade(data.politicaPrivacidade || '');
         setTermosUso(data.termosUso || '');
+        setMoeda(data.moeda || 'BRL');
       }
     } catch (err: any) {
       console.error('Erro ao carregar dados da loja:', err);
@@ -173,6 +178,7 @@ export default function StoreSettingsPage() {
       const res = await saveStoreGeneralSettings(tenantId, {
         nome,
         dominioProprio,
+        moeda,
         whatsapp,
         email,
         razaoSocial,
@@ -325,6 +331,63 @@ export default function StoreSettingsPage() {
               🔒 Protegido contra alterações para evitar quebra de links já divulgados para clientes.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* BLOCO: MOEDA & PRECIFICAÇÃO GLOBAL */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+              <DollarSign className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                Moeda Padrão da Loja & Precificação Global
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Defina a moeda oficial de exibição de preços na vitrine, pedidos e relatórios financeiros desta loja.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono">
+            {moeda}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { id: 'BRL', flag: '🇧🇷', symbol: 'R$', name: 'Real Brasileiro (BRL)', desc: 'Formato R$ 0,00 • Padrão Nacional' },
+            { id: 'USD', flag: '🇺🇸', symbol: '$', name: 'US Dollar (USD)', desc: 'Formato $0.00 • Estados Unidos e Global' },
+            { id: 'EUR', flag: '🇪🇺', symbol: '€', name: 'Euro (EUR)', desc: 'Formato 0,00 € • União Europeia' }
+          ].map((item) => {
+            const isSelected = moeda === item.id;
+            return (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => setMoeda(item.id)}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  isSelected
+                    ? 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-400/30 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-slate-50/40 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{item.flag}</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">{item.name}</span>
+                    <span className="text-[10px] text-slate-500 block">{item.desc}</span>
+                  </div>
+                </div>
+                {isSelected && (
+                  <div className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    ✓
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

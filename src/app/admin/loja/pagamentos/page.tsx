@@ -32,12 +32,12 @@ export default function PaymentSettingsPage() {
 
   // PIX e Dados Bancários
   const [tipoChavePix, setTipoChavePix] = useState<'telefone' | 'cnpj' | 'email' | 'aleatoria'>('telefone');
-  const [chavePix, setChavePix] = useState('554197347601');
-  const [pixTitular, setPixTitular] = useState('Leidyane Cristina da Silva');
-  const [pixBanco, setPixBanco] = useState('Nu Pagamentos S.A. (Nubank)');
+  const [chavePix, setChavePix] = useState('');
+  const [pixTitular, setPixTitular] = useState('');
+  const [pixBanco, setPixBanco] = useState('');
   const [pixDescontoPercent, setPixDescontoPercent] = useState(5);
   const [pixExpiracaoMinutos, setPixExpiracaoMinutos] = useState(30);
-  const [pixWhatsappComprovante, setPixWhatsappComprovante] = useState('554197347601');
+  const [pixWhatsappComprovante, setPixWhatsappComprovante] = useState('');
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -183,7 +183,7 @@ export default function PaymentSettingsPage() {
               required
               value={pixTitular}
               onChange={(e) => setPixTitular(e.target.value)}
-              placeholder="Ex: Leidyane Cristina ME"
+              placeholder="Ex: Razão Social ou Nome do Titular"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
           </div>

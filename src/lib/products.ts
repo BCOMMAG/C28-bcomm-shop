@@ -18,11 +18,25 @@ export const BOUTIQUE_OFFICIAL_COLORS = [
   { nome: 'Lavanda Imperial', hex: '#967BB6' }
 ];
 
-export function formatPrice(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
+export function formatCurrency(
+  value: number,
+  currency: 'BRL' | 'USD' | 'EUR' | string = 'BRL',
+  locale?: string
+): string {
+  const normCurrency = (currency || 'BRL').toUpperCase();
+  const defaultLocale = normCurrency === 'BRL' ? 'pt-BR' : normCurrency === 'EUR' ? 'es-ES' : 'en-US';
+  return new Intl.NumberFormat(locale || defaultLocale, {
     style: 'currency',
-    currency: 'BRL'
-  }).format(value);
+    currency: normCurrency
+  }).format(value || 0);
+}
+
+export function formatPrice(
+  value: number,
+  currency: string = 'BRL',
+  locale?: string
+): string {
+  return formatCurrency(value, currency, locale);
 }
 
 /**

@@ -60,5 +60,32 @@ export const en: TranslationDictionary = {
     errorMismatch: 'Passwords do not match.',
     errorExpired: 'Recovery link is invalid or has expired. Please request a new link.',
     requestNewLink: 'Request New Link'
+  },
+  adminNav: {
+    overview: 'Overview',
+    orders: 'Orders',
+    catalog: 'Catalog & Stock',
+    storeSettings: 'Store Settings',
+    customers: 'Customers & CRM',
+    finance: 'Finance',
+    team: 'Team & Access',
+    modules: 'App Store',
+    settings: 'General Settings'
+  },
+  adminHeader: {
+    searchPlaceholder: 'Search items, orders or customers...',
+    openStore: 'Open Storefront',
+    storefront: 'Storefront',
+    posPin: 'POS (PIN)',
+    logout: 'Sign out',
+    notifications: 'Operational Notifications',
+    pendingOrders: (count: number) => `${count} pending`,
+    noPendingOrders: 'No pending orders at the moment.',
+    viewAllOrders: 'View all orders →'
+  },
+  profile: {
+    languageTitle: 'Dashboard Preferred Language',
+    languageSubtitle: 'Select the language used across the dashboard and notifications',
+    languageSaved: 'Dashboard language successfully updated!'
   }
 };

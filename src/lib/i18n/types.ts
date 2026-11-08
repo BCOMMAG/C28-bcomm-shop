@@ -60,4 +60,31 @@ export interface TranslationDictionary {
     errorExpired: string;
     requestNewLink: string;
   };
+  adminNav: {
+    overview: string;
+    orders: string;
+    catalog: string;
+    storeSettings: string;
+    customers: string;
+    finance: string;
+    team: string;
+    modules: string;
+    settings: string;
+  };
+  adminHeader: {
+    searchPlaceholder: string;
+    openStore: string;
+    storefront: string;
+    posPin: string;
+    logout: string;
+    notifications: string;
+    pendingOrders: (count: number) => string;
+    noPendingOrders: string;
+    viewAllOrders: string;
+  };
+  profile: {
+    languageTitle: string;
+    languageSubtitle: string;
+    languageSaved: string;
+  };
 }

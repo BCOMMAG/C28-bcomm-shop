@@ -33,7 +33,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   "slug": "leidy-boutique",
   "dominio_proprio": "www.boutiqueleidy.com.br",
   "whatsapp": "554197347601",
-  "email": "contato@leidyboutique.com.br",
+  "email": "contato@agent-bcomm.space",
   "configuracoes_visuais": {
     "slogan": "Moda Feminina Autêntica & Elegância Diária",
     "tagline": "Curadoria Exclusiva em Moda Feminina",

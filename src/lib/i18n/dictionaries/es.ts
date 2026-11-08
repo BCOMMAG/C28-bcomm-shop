@@ -18,7 +18,7 @@ export const es: TranslationDictionary = {
     submittingButton: 'Autenticando...',
     backToStore: 'Volver a la Tienda',
     secureAccess: 'Acceso Encriptado',
-    copyright: '© 2026 BCOMM • Todos los derechos reservados.',
+    copyright: '© 2026 BCOMM • Todos os direitos reservados.',
     invalidCredentials: 'Correo o contraseña incorrectos. Verifique sus credenciales.',
     emptyFields: 'Por favor, complete el correo y la contraseña.'
   },
@@ -44,7 +44,7 @@ export const es: TranslationDictionary = {
     newPasswordLabel: 'Nueva Contraseña',
     newPasswordPlaceholder: 'Mínimo 8 caracteres',
     confirmPasswordLabel: 'Confirmar Nueva Contraseña',
-    confirmPasswordPlaceholder: 'Repita la nueva contraseña',
+    confirmPasswordPlaceholder: 'Repita a nueva senha',
     strengthLabel: 'Fuerza de la contraseña:',
     strengthWeak: 'Débil',
     strengthMedium: 'Buena',
@@ -60,5 +60,32 @@ export const es: TranslationDictionary = {
     errorMismatch: 'Las contraseñas no coinciden.',
     errorExpired: 'El enlace de recuperación es inválido o ha caducado. Solicite un nuevo enlace.',
     requestNewLink: 'Solicitar Nuevo Enlace'
+  },
+  adminNav: {
+    overview: 'Visión General',
+    orders: 'Pedidos',
+    catalog: 'Catálogo y Stock',
+    storeSettings: 'Configuración de la Tienda',
+    customers: 'Clientes y CRM',
+    finance: 'Finanzas',
+    team: 'Equipo y Accesos',
+    modules: 'Tienda de Módulos',
+    settings: 'Configuraciones Generales'
+  },
+  adminHeader: {
+    searchPlaceholder: 'Buscar artículos, pedidos o clientes...',
+    openStore: 'Abrir Tienda',
+    storefront: 'Tienda',
+    posPin: 'Mostrador (PIN)',
+    logout: 'Salir',
+    notifications: 'Notificaciones Operativas',
+    pendingOrders: (count: number) => `${count} pendiente(s)`,
+    noPendingOrders: 'No hay pedidos pendientes en este momento.',
+    viewAllOrders: 'Ver todos los pedidos →'
+  },
+  profile: {
+    languageTitle: 'Idioma de Preferencia del Panel',
+    languageSubtitle: 'Seleccione el idioma utilizado en el panel administrativo y notificaciones',
+    languageSaved: '¡Idioma del panel actualizado con éxito!'
   }
 };

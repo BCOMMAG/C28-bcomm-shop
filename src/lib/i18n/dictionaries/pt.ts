@@ -60,5 +60,32 @@ export const pt: TranslationDictionary = {
     errorMismatch: 'As senhas digitadas não coincidem.',
     errorExpired: 'Link de recuperação inválido ou expirado. Por favor, solicite um novo link.',
     requestNewLink: 'Solicitar Novo Link'
+  },
+  adminNav: {
+    overview: 'Visão Geral',
+    orders: 'Pedidos',
+    catalog: 'Catálogo & Estoque',
+    storeSettings: 'Configurações da Loja',
+    customers: 'Clientes & CRM',
+    finance: 'Finanças',
+    team: 'Equipe & Acessos',
+    modules: 'Loja de Módulos',
+    settings: 'Configurações Gerais'
+  },
+  adminHeader: {
+    searchPlaceholder: 'Buscar peças, pedidos ou clientes...',
+    openStore: 'Abrir Vitrine da Loja',
+    storefront: 'Vitrine',
+    posPin: 'Balcão (PIN)',
+    logout: 'Sair',
+    notifications: 'Notificações Operacionais',
+    pendingOrders: (count: number) => `${count} pendente(s)`,
+    noPendingOrders: 'Nenhum pedido aguardando ação no momento.',
+    viewAllOrders: 'Ver todos os pedidos →'
+  },
+  profile: {
+    languageTitle: 'Idioma de Preferência do Painel',
+    languageSubtitle: 'Selecione o idioma utilizado no painel administrativo e notificações',
+    languageSaved: 'Idioma do painel atualizado com sucesso!'
   }
 };
