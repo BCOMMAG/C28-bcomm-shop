@@ -114,7 +114,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window !== 'undefined') {
       try {
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
-        const firstSegment = pathSegments[0] || 'leidy-boutique';
+        let targetSegment = pathSegments[0];
+
+        // Se estiver dentro do painel administrativo (/admin), prioriza a loja autenticada do lojista
+        if (targetSegment === 'admin') {
+          const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
+          if (adminLojaSlug) {
+            targetSegment = adminLojaSlug;
+          }
+        }
+
+        const firstSegment = targetSegment || 'leidy-boutique';
         const canonical = getCanonicalDbSlug(firstSegment);
         const unhyphenated = canonical.replace(/-/g, '');
         const cached =
@@ -156,7 +166,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window !== 'undefined') {
       try {
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
-        const firstSegment = pathSegments[0] || 'leidy-boutique';
+        let targetSegment = pathSegments[0];
+
+        // Se estiver dentro do painel administrativo (/admin), prioriza a loja autenticada do lojista
+        if (targetSegment === 'admin') {
+          const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
+          if (adminLojaSlug) {
+            targetSegment = adminLojaSlug;
+          }
+        }
+
+        const firstSegment = targetSegment || 'leidy-boutique';
         const canonical = getCanonicalDbSlug(firstSegment);
         const cached =
           localStorage.getItem(`bcomm_products_${canonical}`) ||
@@ -325,6 +345,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             window.history.replaceState({}, '', cleanPath);
           } catch (e) {
             console.warn('Erro ao atualizar URL limpa:', e);
+          }
+        } else if (firstSegment === 'admin') {
+          // No painel administrativo, prioriza estritamente a loja do lojista autenticado
+          const adminLojaId = localStorage.getItem('bcomm_admin_loja_id');
+          const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
+          let resolvedAdminTenant: Loja | null = null;
+          if (adminLojaId) {
+            resolvedAdminTenant = await getTenantById(adminLojaId);
+          } else if (adminLojaSlug) {
+            resolvedAdminTenant = await getTenantBySlug(adminLojaSlug);
+          }
+          if (resolvedAdminTenant) {
+            tenant = resolvedAdminTenant;
           }
         } else if (firstSegment && !knownRoutes.includes(firstSegment)) {
           tenant = await getTenantBySlug(firstSegment);

@@ -132,7 +132,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
 
     // Checagem de autenticação local + Supabase
-    const localAuth = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_auth') : null;
+    const localAuth = typeof window !== 'undefined'
+      ? (localStorage.getItem('bcomm_admin_auth') || localStorage.getItem('leidy_admin_auth'))
+      : null;
     if (localAuth === 'true') {
       setIsAuthenticated(true);
       if (isMasterUser()) setIsMaster(true);
@@ -266,9 +268,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       const supabase = getSupabaseBrowserClient();
       await supabase.auth.signOut();
     } catch {}
+    localStorage.removeItem('bcomm_admin_auth');
     localStorage.removeItem('leidy_admin_auth');
     localStorage.removeItem('leidy_admin_user');
     localStorage.removeItem('leidy_admin_colaborador');
+    localStorage.removeItem('bcomm_admin_colaborador');
     localStorage.removeItem('bcomm_admin_loja_id');
     localStorage.removeItem('bcomm_admin_loja_slug');
     localStorage.removeItem('bcomm_auth_user');

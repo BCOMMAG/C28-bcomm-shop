@@ -10,16 +10,24 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertCircle,
-  MessageCircle,
   CheckCircle2,
   X,
-  KeyRound,
-  ExternalLink
+  KeyRound
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import {
+  SupportedLocale,
+  getStoredLocale,
+  getTranslation
+} from '@/lib/i18n';
+import { LanguageSelector } from '@/components/common/LanguageSelector';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+
+  // Gerenciamento de Idioma (i18n)
+  const [locale, setLocale] = useState<SupportedLocale>('pt');
+  const t = getTranslation(locale);
 
   // Campos de login iniciam 100% vazios para segurança
   const [email, setEmail] = useState('');
@@ -36,8 +44,10 @@ export default function AdminLoginPage() {
     message: string;
   } | null>(null);
 
-  // Garante que o título da aba e o favicon oficial BCOMM sejam sempre exibidos sem cache antigo
+  // Inicializa o locale e garante o título da aba e o favicon oficial BCOMM sem cache antigo
   useEffect(() => {
+    setLocale(getStoredLocale());
+
     if (typeof document !== 'undefined') {
       document.title = 'BCOMM • Painel Administrativo';
 
@@ -70,7 +80,7 @@ export default function AdminLoginPage() {
 
     const cleanEmail = recoveryEmail.trim().toLowerCase();
     if (!cleanEmail) {
-      setRecoveryFeedback({ type: 'error', message: 'Por favor, informe seu e-mail de acesso cadastrado.' });
+      setRecoveryFeedback({ type: 'error', message: t.forgotModal.invalidEmail });
       setRecoveryLoading(false);
       return;
     }
@@ -88,12 +98,12 @@ export default function AdminLoginPage() {
 
       setRecoveryFeedback({
         type: 'success',
-        message: `Enviamos as instruções com o link de redefinição para ${cleanEmail}. O remetente oficial é contato@agent-bcomm.space. Verifique sua caixa de entrada e pasta de spam.`
+        message: t.forgotModal.successMessage(cleanEmail)
       });
     } catch (err: any) {
       setRecoveryFeedback({
         type: 'error',
-        message: err?.message || 'Falha ao processar solicitação de recuperação. Tente novamente.'
+        message: err?.message || t.forgotModal.genericError
       });
     } finally {
       setRecoveryLoading(false);
@@ -103,6 +113,12 @@ export default function AdminLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!email.trim() || !password) {
+      setErrorMsg(t.login.emptyFields);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -122,7 +138,6 @@ export default function AdminLoginPage() {
           let targetLoja = null;
           if (membro?.loja_id) {
             localStorage.setItem('bcomm_admin_colaborador', JSON.stringify(membro));
-            localStorage.setItem('leidy_admin_colaborador', JSON.stringify(membro));
 
             const { data: loja } = await supabase
               .from('lojas')
@@ -153,51 +168,24 @@ export default function AdminLoginPage() {
         }
       };
 
-      // 1. Tenta autenticação via Supabase Auth
+      // 1. Autenticação estritamente dinâmica via Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password
       });
 
-      // 2. Se autenticar com sucesso via Supabase Auth
+      // 2. Se autenticar com sucesso
       if (!error && data?.session) {
         await bindUserTenantSession(email);
         localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_auth_user', email);
-        localStorage.setItem('leidy_admin_user', email);
         router.push('/admin/');
         return;
       }
 
-      // Fallback seguro de contingência
-      if (
-        email.trim().toLowerCase() === 'admin@leidyboutique.com.br' &&
-        password === 'Leidy@2026!'
-      ) {
-        await bindUserTenantSession(email);
-        localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_auth', 'true');
-        localStorage.setItem('bcomm_auth_user', email);
-        localStorage.setItem('leidy_admin_user', email);
-        router.push('/admin/');
-        return;
-      }
-
-      setErrorMsg('E-mail ou senha incorretos. Verifique suas credenciais de acesso.');
+      setErrorMsg(t.login.invalidCredentials);
     } catch (err: any) {
-      if (
-        email.trim().toLowerCase() === 'admin@leidyboutique.com.br' &&
-        password === 'Leidy@2026!'
-      ) {
-        localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('leidy_admin_auth', 'true');
-        localStorage.setItem('bcomm_auth_user', email);
-        localStorage.setItem('leidy_admin_user', email);
-        router.push('/admin/');
-        return;
-      }
-      setErrorMsg(err?.message || 'Falha ao autenticar. Tente novamente.');
+      setErrorMsg(err?.message || t.login.invalidCredentials);
     } finally {
       setLoading(false);
     }
@@ -228,112 +216,117 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-md">
           {/* Card Principal BCOMM */}
           <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
-          {/* Topo do Card */}
-          <div className="text-center mb-8">
-            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
-              Painel Administrativo da Loja
-            </h1>
-            <p className="text-xs text-zinc-400 mt-1.5">
-              Informe suas credenciais para gerenciar a loja
-            </p>
-          </div>
-
-          {/* Feedback de Erro */}
-          {errorMsg && (
-            <div className="mb-6 p-3 bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+            {/* Seletor de Idioma no Topo do Card */}
+            <div className="flex justify-end mb-4">
+              <LanguageSelector onLocaleChange={setLocale} />
             </div>
-          )}
 
-          {/* Formulário de Login */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300 mb-1.5">
-                E-mail de Acesso
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="seu.email@loja.com.br"
-                  className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
-                />
+            {/* Topo do Card */}
+            <div className="text-center mb-8">
+              <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+                {t.login.panelTitle}
+              </h1>
+              <p className="text-xs text-zinc-400 mt-1.5">
+                {t.login.panelSubtitle}
+              </p>
+            </div>
+
+            {/* Feedback de Erro */}
+            {errorMsg && (
+              <div className="mb-6 p-3 bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
               </div>
-            </div>
+            )}
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300">
-                  Senha de Acesso
+            {/* Formulário de Login */}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300 mb-1.5">
+                  {t.login.emailLabel}
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRecoveryFeedback(null);
-                    setRecoveryEmail(email);
-                    setIsForgotModalOpen(true);
-                  }}
-                  className="text-[11px] text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
-                >
-                  Esqueci minha senha
-                </button>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder={t.login.emailPlaceholder}
+                    className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••••••"
-                  className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
-                />
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300">
+                    {t.login.passwordLabel}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoveryFeedback(null);
+                      setRecoveryEmail(email);
+                      setIsForgotModalOpen(true);
+                    }}
+                    className="text-[11px] text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                  >
+                    {t.login.forgotPassword}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder={t.login.passwordPlaceholder}
+                    className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors placeholder:text-zinc-600"
+                  />
+                </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 hover:from-purple-500 hover:to-violet-500 text-white font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 rounded-xl shadow-lg shadow-purple-900/30 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Autenticando...</span>
-                </>
-              ) : (
-                <>
-                  <span>Entrar no Painel</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 hover:from-purple-500 hover:to-violet-500 text-white font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 rounded-xl shadow-lg shadow-purple-900/30 cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>{t.login.submittingButton}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{t.login.submitButton}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
 
-          {/* Rodapé do Card */}
-          <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400">
-            <Link href="/" className="hover:text-white transition-colors">
-              ← Voltar para a Loja
-            </Link>
-            <div className="flex items-center gap-1.5 text-zinc-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-              <span>Acesso Criptografado</span>
+            {/* Rodapé do Card */}
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400">
+              <Link href="/" className="hover:text-white transition-colors">
+                ← {t.login.backToStore}
+              </Link>
+              <div className="flex items-center gap-1.5 text-zinc-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                <span>{t.login.secureAccess}</span>
+              </div>
             </div>
           </div>
+
+          {/* Rodapé BCOMM */}
+          <p className="text-center text-[11px] text-zinc-500 mt-6">
+            {t.login.copyright}
+          </p>
         </div>
-
-        {/* Rodapé BCOMM */}
-        <p className="text-center text-[11px] text-zinc-500 mt-6">
-          © 2026 <strong className="text-white">BCOMM</strong> • Todos os direitos reservados.
-        </p>
       </div>
-    </div>
 
-      {/* Modal de Recuperação de Senha (E-mail e WhatsApp) */}
+      {/* Modal de Recuperação de Senha */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-[#12101B] border border-purple-500/30 w-full max-w-md p-6 sm:p-7 shadow-2xl relative rounded-2xl text-white">
@@ -349,8 +342,8 @@ export default function AdminLoginPage() {
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Recuperar Senha de Acesso</h3>
-                <p className="text-xs text-zinc-400">Informe seu e-mail cadastrado para redefinir a senha</p>
+                <h3 className="text-base font-bold text-white">{t.forgotModal.title}</h3>
+                <p className="text-xs text-zinc-400">{t.forgotModal.subtitle}</p>
               </div>
             </div>
 
@@ -375,7 +368,7 @@ export default function AdminLoginPage() {
             <form onSubmit={handlePasswordRecovery} className="space-y-4">
               <div>
                 <label className="block text-xs uppercase tracking-wider font-semibold text-zinc-300 mb-1.5">
-                  Seu E-mail Cadastrado
+                  {t.forgotModal.emailLabel}
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -384,12 +377,13 @@ export default function AdminLoginPage() {
                     value={recoveryEmail}
                     onChange={(e) => setRecoveryEmail(e.target.value)}
                     required
-                    placeholder="seu.email@loja.com.br"
+                    placeholder={t.forgotModal.emailPlaceholder}
                     className="w-full bg-black/50 border border-white/10 text-white text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 transition-colors placeholder:text-zinc-600"
                   />
                 </div>
                 <p className="text-[11px] text-zinc-400 mt-1.5">
-                  O link de redefinição será enviado pelo remetente oficial <strong className="text-purple-300">contato@agent-bcomm.space</strong>.
+                  {t.forgotModal.helpTextPrefix}{' '}
+                  <strong className="text-purple-300">{t.forgotModal.helpTextHighlight}</strong>.
                 </p>
               </div>
 
@@ -399,7 +393,7 @@ export default function AdminLoginPage() {
                   onClick={() => setIsForgotModalOpen(false)}
                   className="w-1/3 py-3 border border-white/10 text-zinc-400 hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                 >
-                  Cancelar
+                  {t.forgotModal.cancel}
                 </button>
                 <button
                   type="submit"
@@ -407,10 +401,10 @@ export default function AdminLoginPage() {
                   className="w-2/3 py-3 font-bold uppercase tracking-wider text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30"
                 >
                   {recoveryLoading ? (
-                    <span>Enviando e-mail...</span>
+                    <span>{t.forgotModal.sendingButton}</span>
                   ) : (
                     <>
-                      <span>Enviar E-mail</span>
+                      <span>{t.forgotModal.sendButton}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}
