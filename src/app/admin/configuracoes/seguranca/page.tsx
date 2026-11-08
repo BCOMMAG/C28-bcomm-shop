@@ -28,9 +28,11 @@ import {
 } from '@/lib/admin';
 import { logStoreAuditAction } from '@/lib/team';
 import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function SecuritySettingsPage() {
   const { currentTenant } = useStore();
+  const { t } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);

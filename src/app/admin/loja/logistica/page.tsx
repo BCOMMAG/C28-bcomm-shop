@@ -47,9 +47,12 @@ import {
 } from '@/lib/shipping-engine';
 import { fetchAddressByCep, fetchStoreShippingOptions } from '@/utils/shipping';
 import { LogisticsRadiusMap } from '@/components/admin/LogisticsRadiusMap';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function ShippingSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t, locale, formatCurrency, currency } = useAdminI18n();
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const initialConfigRef = React.useRef<string>('');
@@ -1051,10 +1054,10 @@ export default function ShippingSettingsPage() {
               {/* Meta Padrão de Frete Grátis */}
               <div>
                 <label className="block text-slate-700 mb-1 font-bold">
-                  Valor Mínimo para Frete Grátis (R$)
+                  {locale === 'en' ? `Free Shipping Minimum Order (${currencySymbol})` : locale === 'es' ? `Pedido Mínimo Envío Gratis (${currencySymbol})` : `Valor Mínimo para Frete Grátis (${currencySymbol})`}
                 </label>
                 <div className="relative">
-                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
                   <input
                     type="number"
                     min="0"
@@ -1073,17 +1076,17 @@ export default function ShippingSettingsPage() {
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Refletido na régua de progresso da sacola (&quot;Faltam R$ X para Frete Grátis&quot;).
+                  {locale === 'en' ? `Shown in cart progress bar ("Add ${currencySymbol} X for Free Shipping").` : locale === 'es' ? `Mostrado en barra de carrito ("Faltan ${currencySymbol} X para Envío Gratis").` : `Refletido na régua de progresso da sacola ("Faltam ${currencySymbol} X para Frete Grátis").`}
                 </span>
               </div>
 
               {/* Teto de Isenção (Proteção contra frete muito caro) */}
               <div>
                 <label className="block text-slate-700 mb-1 font-bold">
-                  Teto Máximo de Isenção (R$)
+                  {locale === 'en' ? `Maximum Shipping Subsidy (${currencySymbol})` : locale === 'es' ? `Subsidio Máximo de Envío (${currencySymbol})` : `Teto Máximo de Isenção (${currencySymbol})`}
                 </label>
                 <div className="relative">
-                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
                   <input
                     type="number"
                     min="0"

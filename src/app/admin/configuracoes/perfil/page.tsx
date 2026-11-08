@@ -357,7 +357,7 @@ export default function UserProfileSettingsPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900">{t.generalSettings.roleOwner}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
-                      Acesso Total (Proprietária)
+                      {locale === 'en' ? 'Full Access (Owner)' : locale === 'es' ? 'Acceso Total (Propietaria)' : 'Acesso Total (Proprietária)'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">

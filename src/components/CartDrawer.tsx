@@ -45,7 +45,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     allowGiftMessage,
     currentTenant,
     getItemStock,
-    activeReservations
+    activeReservations,
+    formatStorePrice,
+    st
   } = useStore();
   const [cepInput, setCepInput] = useState(savedCep ? formatCep(savedCep) : '');
   const [isCepOpen, setIsCepOpen] = useState(false);
@@ -298,7 +300,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <div className="flex items-center gap-2.5">
               <ShoppingBag className="w-5 h-5 text-[#C5A059]" />
               <h3 className="font-serif-luxury text-base sm:text-lg font-medium text-[#1A1918] dark:text-[#FAF8F5]">
-                Sua Sacola ({items.reduce((acc, i) => acc + i.quantity, 0)})
+                {st.cart.title} ({items.reduce((acc, i) => acc + i.quantity, 0)})
               </h3>
             </div>
             <button
@@ -316,7 +318,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="flex justify-between items-center text-xs mb-1.5 gap-2">
                 {remainingForFreeShipping > 0 ? (
                   <span className="text-[#57534E] dark:text-[#D6D3D1] truncate">
-                    Faltam <strong className="text-[#1A1918] dark:text-[#FAF8F5]">R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para Frete Cortesia!
+                    Faltam <strong className="text-[#1A1918] dark:text-[#FAF8F5]">{formatStorePrice(remainingForFreeShipping)}</strong> para Frete Cortesia!
                   </span>
                 ) : (
                   <span className="text-[#25D366] font-semibold flex items-center gap-1">
@@ -345,10 +347,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
                 <div>
                   <h4 className="font-serif-luxury text-lg font-medium text-[#1A1918] dark:text-[#FAF8F5]">
-                    Sua sacola está vazia
+                    {st.cart.emptyTitle}
                   </h4>
                   <p className="text-xs text-[#78716C] dark:text-[#A8A29E] mt-1 max-w-xs">
-                    Escolha as suas peças favoritas no catálogo para ver aqui.
+                    {st.cart.emptySubtitle}
                   </p>
                 </div>
                 <button
@@ -444,7 +446,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                         {/* Preço */}
                         <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] whitespace-nowrap">
-                          R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                          {formatStorePrice(item.price * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -679,9 +681,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {/* Resumo do Pedido */}
               <div className="space-y-1.5 text-xs text-[#57534E] dark:text-[#D6D3D1]">
                 <div className="flex justify-between items-center">
-                  <span>Subtotal:</span>
+                  <span>{st.cart.subtotal}:</span>
                   <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                    R$ {subtotal.toFixed(2).replace('.', ',')}
+                    {formatStorePrice(subtotal)}
                   </span>
                 </div>
                 {isGift && (
@@ -691,19 +693,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       Embalagem para Presente:
                     </span>
                     <span className="font-semibold">
-                      + R$ {giftFee.toFixed(2).replace('.', ',')}
+                      + {formatStorePrice(giftFee)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span>Envio / Entrega:</span>
+                  <span>{st.cart.shipping}:</span>
                   <span className="text-[#C5A059] dark:text-[#DFBE76] font-medium">
                     {isShippingLoading ? (
                       <span className="text-stone-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin inline" /> Calculando...</span>
                     ) : effectiveFreeShipping ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Grátis (Cortesia da Loja)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{st.cart.free}</span>
                     ) : lowestShipping ? (
-                      `${lowestShipping.name} (R$ ${shippingCost.toFixed(2).replace('.', ',')})`
+                      `${lowestShipping.name} (${formatStorePrice(shippingCost)})`
                     ) : (
                       'A consultar'
                     )}
@@ -712,13 +714,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 {shippingDiscount > 0 && !effectiveFreeShipping && (
                   <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
                     <span>Desconto no Frete:</span>
-                    <span>- R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                    <span>- {formatStorePrice(shippingDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-sm sm:text-base font-bold text-[#1A1918] dark:text-[#FAF8F5] pt-2 border-t border-dashed border-[#C5A059]/20">
-                  <span>Total Previsto:</span>
+                  <span>{st.cart.total}:</span>
                   <span className="text-[#C5A059] dark:text-[#DFBE76]">
-                    R$ {finalTotal.toFixed(2).replace('.', ',')}
+                    {formatStorePrice(finalTotal)}
                   </span>
                 </div>
               </div>
@@ -776,7 +778,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       title={hasReservedItems ? 'Remova as peças em reserva para continuar' : 'Finalizar compra'}
                     >
                       <Lock className="w-4 h-4" />
-                      <span>{hasReservedItems ? 'PEÇA EM RESERVA NO PROVADOR' : 'FINALIZAR COMPRA'}</span>
+                      <span>{hasReservedItems ? 'PEÇA EM RESERVA NO PROVADOR' : st.cart.checkoutButton.toUpperCase()}</span>
                       {!hasReservedItems && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                     </button>
                   </>

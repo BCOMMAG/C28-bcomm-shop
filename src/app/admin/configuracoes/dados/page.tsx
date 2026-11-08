@@ -17,9 +17,11 @@ import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getAdminClients } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function DataExportSettingsPage() {
   const { currentTenant } = useStore();
+  const { t, formatCurrency, formatDate } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [selectedMonth, setSelectedMonth] = useState('2026-10');

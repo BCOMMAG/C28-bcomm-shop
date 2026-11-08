@@ -2999,6 +2999,7 @@ export interface StoreSettingsData {
 
   // Moeda & Finanças Globais
   moeda?: 'BRL' | 'USD' | 'EUR' | string;
+  idiomaPadrao?: 'pt' | 'en' | 'es' | string;
 
   // Pagamentos & PIX
   freteGratisValor: number;
@@ -3449,6 +3450,7 @@ export interface SaveStoreSettingsInput {
 
   // Moeda & Finanças Globais
   moeda?: 'BRL' | 'USD' | 'EUR' | string;
+  idiomaPadrao?: 'pt' | 'en' | 'es' | string;
 
   // Pagamentos & PIX
   freteGratisValor?: number;
@@ -3578,6 +3580,7 @@ export async function getStoreSettings(
 
       // Moeda & Finanças Globais
       moeda: fin.moeda || 'BRL',
+      idiomaPadrao: vis.idioma_padrao || 'pt',
 
       // Pagamentos & PIX
       freteGratisValor: Number(vis.frete_gratis_valor || 350),
@@ -3730,6 +3733,7 @@ export async function saveStoreGeneralSettings(
     const currentVisuais = (loja as any)?.configuracoes_visuais || {};
     const updatedVisuais = {
       ...currentVisuais,
+      ...(input.idiomaPadrao !== undefined ? { idioma_padrao: input.idiomaPadrao.trim().toLowerCase() } : {}),
       ...(input.freteGratisValor !== undefined ? { frete_gratis_valor: Number(input.freteGratisValor) } : {}),
 
       // Fiscal

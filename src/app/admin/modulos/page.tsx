@@ -23,9 +23,11 @@ import {
 } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AdminModulosPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'Minha Loja';
 
@@ -122,14 +124,18 @@ export default function AdminModulosPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
-              Loja de Módulos & Recursos SaaS
+              {locale === 'en' ? 'App Store & SaaS Feature Modules' : locale === 'es' ? 'Tienda de Módulos y Recursos SaaS' : 'Loja de Módulos & Recursos SaaS'}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
               SaaS White-Label
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Ative recursos sob demanda para a {lojaNome} com ativação instantânea no Supabase.
+            {locale === 'en'
+              ? `Enable on-demand capabilities for ${lojaNome} with instant activation in Supabase.`
+              : locale === 'es'
+              ? `Activa recursos bajo demanda para ${lojaNome} con activación instantánea en Supabase.`
+              : `Ative recursos sob demanda para a ${lojaNome} com ativação instantânea no Supabase.`}
           </p>
         </div>
 
@@ -138,8 +144,8 @@ export default function AdminModulosPage() {
           disabled={loading}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors shadow-2xs cursor-pointer w-fit"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
-          <span>Sincronizar Módulos</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
+          <span>{t.orders.toolbar.refresh}</span>
         </button>
       </div>
 

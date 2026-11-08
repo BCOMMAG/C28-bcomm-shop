@@ -22,9 +22,11 @@ import {
   getStoreSettings,
   saveStoreGeneralSettings
 } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function PaymentSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);
@@ -375,7 +377,7 @@ export default function PaymentSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? 'Salvando...' : 'Salvar Configurações de Pagamento'}</span>
+          <span>{isSaving ? (locale === 'en' ? 'Saving...' : locale === 'es' ? 'Guardando...' : 'Salvando...') : (locale === 'en' ? 'Save Payment Settings' : locale === 'es' ? 'Guardar Configuración de Pagos' : 'Salvar Configurações de Pagamento')}</span>
         </button>
       </div>
     </form>

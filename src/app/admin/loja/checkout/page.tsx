@@ -27,9 +27,12 @@ import {
   getStoreSettings,
   saveStoreGeneralSettings
 } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function CheckoutSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t, locale, formatCurrency, currency } = useAdminI18n();
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);
@@ -217,9 +220,11 @@ export default function CheckoutSettingsPage() {
               <div className="space-y-3.5 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold text-[11px]">Taxa da Embalagem (R$)</label>
+                    <label className="block text-slate-700 mb-1 font-bold text-[11px]">
+                      {locale === 'en' ? `Gift Packaging Fee (${currencySymbol})` : locale === 'es' ? `Tarifa de Embalaje (${currencySymbol})` : `Taxa da Embalagem (${currencySymbol})`}
+                    </label>
                     <div className="relative">
-                      <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                      <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
                       <input
                         type="number"
                         min="0"
@@ -231,7 +236,7 @@ export default function CheckoutSettingsPage() {
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 block">
-                      R$ 0 para cortesia da boutique.
+                      {locale === 'en' ? `0 ${currencySymbol} for complimentary boutique gift.` : locale === 'es' ? `0 ${currencySymbol} como cortesía de la boutique.` : `${currencySymbol} 0 para cortesia da boutique.`}
                     </span>
                   </div>
 
@@ -298,9 +303,11 @@ export default function CheckoutSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 mb-1 font-bold text-[11px]">Valor Mínimo (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold text-[11px]">
+                  {locale === 'en' ? `Minimum Order (${currencySymbol})` : locale === 'es' ? `Pedido Mínimo (${currencySymbol})` : `Valor Mínimo (${currencySymbol})`}
+                </label>
                 <div className="relative">
-                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
                   <input
                     type="number"
                     min="0"
@@ -312,7 +319,7 @@ export default function CheckoutSettingsPage() {
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Deixe 0 para permitir compras sem valor mínimo.
+                  {locale === 'en' ? 'Leave 0 to allow purchases of any amount.' : locale === 'es' ? 'Deje 0 para permitir compras de cualquier monto.' : 'Deixe 0 para permitir compras sem valor mínimo.'}
                 </span>
               </div>
 
@@ -320,10 +327,16 @@ export default function CheckoutSettingsPage() {
                 <span>
                   {pedidoMinimoValor > 0 ? (
                     <>
-                      Pedidos com subtotal inferior a <strong>R$ {Number(pedidoMinimoValor).toFixed(2).replace('.', ',')}</strong> serão bloqueados até atingir a meta.
+                      {locale === 'en' ? 'Orders with subtotal below ' : locale === 'es' ? 'Pedidos con subtotal inferior a ' : 'Pedidos com subtotal inferior a '}
+                      <strong>{formatCurrency(Number(pedidoMinimoValor))}</strong>
+                      {locale === 'en' ? ' will be blocked until the target is met.' : locale === 'es' ? ' serán bloqueados hasta alcanzar la meta.' : ' serão bloqueados até atingir a meta.'}
                     </>
                   ) : (
-                    'Sem restrição de valor mínimo. A cliente pode comprar qualquer peça individualmente.'
+                    locale === 'en'
+                      ? 'No minimum order restriction. Customers can purchase any piece individually.'
+                      : locale === 'es'
+                      ? 'Sin restricción de pedido mínimo. El cliente puede comprar cualquier artículo.'
+                      : 'Sem restrição de valor mínimo. A cliente pode comprar qualquer peça individualmente.'
                   )}
                 </span>
               </div>
@@ -620,7 +633,7 @@ export default function CheckoutSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? 'Salvando...' : 'Salvar Regras de Checkout'}</span>
+          <span>{isSaving ? (locale === 'en' ? 'Saving...' : locale === 'es' ? 'Guardando...' : 'Salvando...') : (locale === 'en' ? 'Save Checkout Rules' : locale === 'es' ? 'Guardar Reglas de Checkout' : 'Salvar Regras de Checkout')}</span>
         </button>
       </div>
     </form>

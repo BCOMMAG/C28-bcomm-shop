@@ -40,9 +40,11 @@ import {
   DEFAULT_ADMIN_CUSTOM_THEME
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AdminThemeSettingsPage() {
   const { currentTenant, refreshTenant } = useStore();
+  const { t } = useAdminI18n();
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const { palette, setPalette, availablePalettes, setCustomTheme } = useAdminTheme();

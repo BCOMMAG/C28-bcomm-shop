@@ -22,9 +22,11 @@ import {
 import { RegistroAuditoria, getStoreAuditLogs } from '@/lib/team';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AdminAuditoriaPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatDate } = useAdminI18n();
   const lojaId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [logs, setLogs] = useState<RegistroAuditoria[]>([]);
@@ -104,23 +106,27 @@ export default function AdminAuditoriaPage() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar para Equipe</span>
+              <span>{locale === 'en' ? 'Back to Team' : locale === 'es' ? 'Volver al Equipo' : 'Voltar para Equipe'}</span>
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-xs text-slate-500 font-semibold">Trilha de Auditoria</span>
+            <span className="text-xs text-slate-500 font-semibold">{t.team.auditLogs}</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-serif-luxury text-slate-900 tracking-tight">
-            Trilha de Auditoria & Governança da Loja
+            {locale === 'en' ? 'Store Audit Trail & Governance' : locale === 'es' ? 'Pista de Auditoría y Gobernanza' : 'Trilha de Auditoria & Governança da Loja'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Registro imutável de todas as ações de colaboradores, aprovações de descontos e ajustes operacionais
+            {locale === 'en'
+              ? 'Immutable log of all team actions, discount approvals and operational events'
+              : locale === 'es'
+              ? 'Registro inmutable de todas las acciones del equipo y aprobaciones de descuentos'
+              : 'Registro imutável de todas as ações de colaboradores, aprovações de descontos e ajustes operacionais'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="p-3 bg-amber-50 border border-amber-200/60 rounded-xl flex items-center gap-2 text-xs font-bold text-amber-900">
             <Shield className="w-4 h-4 text-amber-700" />
-            <span>Auditoria Criptografada Ativa</span>
+            <span>{locale === 'en' ? 'Encrypted Audit Active' : locale === 'es' ? 'Auditoría Cifrada Activa' : 'Auditoria Criptografada Ativa'}</span>
           </div>
         </div>
       </div>
@@ -129,11 +135,11 @@ export default function AdminAuditoriaPage() {
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
           {[
-            { id: 'todos', label: 'Todos os Eventos' },
-            { id: 'produtos', label: 'Catálogo & Estoque' },
-            { id: 'pedidos', label: 'Pedidos & Vendas' },
-            { id: 'equipe', label: 'Equipe & Acessos' },
-            { id: 'cupons', label: 'Cupons' }
+            { id: 'todos', label: locale === 'en' ? 'All Events' : locale === 'es' ? 'Todos los Eventos' : 'Todos os Eventos' },
+            { id: 'produtos', label: t.adminNav.catalog },
+            { id: 'pedidos', label: t.adminNav.orders },
+            { id: 'equipe', label: t.adminNav.team },
+            { id: 'cupons', label: t.storeTabs.cupons }
           ].map((tab) => (
             <button
               key={tab.id}

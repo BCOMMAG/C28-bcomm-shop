@@ -358,9 +358,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     return false;
   })();
 
-  const currentNav = navItems.find((item) =>
-    item.exact ? pathname === item.href : pathname?.startsWith(item.href)
-  );
+  const currentNav = navItems.find((item) => {
+    const itemClean = item.href.replace(/\/+$/, '');
+    const pathClean = (pathname || '').replace(/\/+$/, '');
+    return item.exact ? pathClean === itemClean : pathClean.startsWith(itemClean);
+  });
   const isRootAdmin = pathname === '/admin/' || pathname === '/admin';
 
   const c = paletteConfig.colors;
@@ -902,7 +904,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   {activeMember?.nome || 'Administrador'}
                 </span>
                 <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
-                  {activeMember?.cargo || 'Dono'}
+                  {(() => {
+                    const cargo = (activeMember?.cargo || 'dono').toLowerCase();
+                    if (cargo === 'dono') return t.team.roleOwner;
+                    if (cargo === 'gerente') return t.team.roleManager;
+                    if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
+                    if (cargo === 'estoquista') return t.team.roleStockist;
+                    return activeMember?.cargo || t.team.roleOwner;
+                  })()}
                 </span>
               </div>
             </div>

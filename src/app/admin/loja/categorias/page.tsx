@@ -34,9 +34,11 @@ import {
   reorderAdminCategories
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AdminCategoriasPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
 

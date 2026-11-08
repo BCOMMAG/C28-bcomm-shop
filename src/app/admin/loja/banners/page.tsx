@@ -54,10 +54,12 @@ import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { BarraAvisoEstilo } from '@/types/database';
 
 export default function AdminBannersPage() {
   const { currentTenant } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const tenantSlug = currentTenant?.slug || '';
   const lojaNome = currentTenant?.nome || 'Minha Loja';

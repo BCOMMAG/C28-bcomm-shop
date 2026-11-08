@@ -97,7 +97,10 @@ export default function CheckoutPage() {
     giftFee,
     isGiftServiceActive,
     allowGiftMessage,
-    getProductById
+    getProductById,
+    formatStorePrice,
+    storeCurrency,
+    st
   } = useStore();
 
   // Etapa ativa na trilha de finalização
@@ -535,7 +538,7 @@ export default function CheckoutPage() {
       if (res.valid && res.coupon) {
         if (res.coupon.tipo_desconto === 'fixo') {
           setAppliedCoupon({ code, amount: res.discountAmount });
-          setCouponSuccess(`Cupom ${code} aplicado: R$ ${res.discountAmount.toFixed(2).replace('.', ',')} de desconto!`);
+          setCouponSuccess(`Cupom ${code} aplicado: ${formatStorePrice(res.discountAmount)} de desconto!`);
         } else {
           const pct = res.discountPercentage || res.coupon.valor_desconto;
           setAppliedCoupon({ code, percent: pct });
@@ -762,7 +765,7 @@ export default function CheckoutPage() {
       valorDesconto: couponDiscount + pixDiscount,
       total: totalAmount,
       metodoPagamento: paymentMethod,
-      observacoes: [orderNotes, chosenShippingOption ? `Frete: ${chosenShippingOption.name} (${chosenShippingOption.deliveryDays})${shippingDiscount > 0 ? ` [Desc frete: R$ ${shippingDiscount.toFixed(2)}]` : ''}` : null].filter(Boolean).join(' | ') || undefined,
+      observacoes: [orderNotes, chosenShippingOption ? `Frete: ${chosenShippingOption.name} (${chosenShippingOption.deliveryDays})${shippingDiscount > 0 ? ` [Desc frete: ${formatStorePrice(shippingDiscount)}]` : ''}` : null].filter(Boolean).join(' | ') || undefined,
       status: 'aguardando_whatsapp',
       isGift,
       giftFee: currentGiftCost,
@@ -855,40 +858,40 @@ export default function CheckoutPage() {
     cartItems.forEach((item, idx) => {
       msg += `${idx + 1}. *${item.name}*\n`;
       msg += `   • Cor: ${item.color} | Tam: ${item.size}\n`;
-      msg += `   • Qtd: ${item.quantity}x (R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')})\n`;
+      msg += `   • Qtd: ${item.quantity}x (${formatStorePrice((item.price * item.quantity))})\n`;
     });
 
     msg += `\n💳 *Forma de Pagamento:* ${paymentMethod === 'pix'
       ? 'PIX (com 5% de desconto à vista)'
       : paymentMethod === 'credit_card'
-        ? `Cartão de Crédito (${cardInstallments}x de R$ ${(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros)`
+        ? `Cartão de Crédito (${cardInstallments}x de ${formatStorePrice((totalAmount / cardInstallments))} sem juros)`
         : 'Combinar Pagamento no WhatsApp'
       }\n`;
 
-    const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de R$ ${shippingDiscount.toFixed(2).replace('.', ',')})` : '';
+    const shippingDiscountText = shippingDiscount > 0 ? ` (com desconto de ${formatStorePrice(shippingDiscount)})` : '';
     const shippingLabelText = isCustomerVip
       ? 'Frete Exclusivo VIP (Grátis)'
       : isStorePromoFreeShipping
         ? 'Frete Cortesia da Loja (Grátis)'
-        : `${chosenShippingOption?.name || 'Transportadora'} (R$ ${shippingPrice.toFixed(2).replace('.', ',')}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`;
+        : `${chosenShippingOption?.name || 'Transportadora'} (${formatStorePrice(shippingPrice)}${shippingDiscountText} - ${chosenShippingOption?.deliveryDays || ''})`;
     msg += `🚚 *Envio:* ${shippingLabelText}\n`;
 
     if (appliedCoupon) {
-      msg += `🏷️ *Cupom Aplicado:* ${appliedCoupon.code} (-R$ ${couponDiscount.toFixed(2).replace('.', ',')})\n`;
+      msg += `🏷️ *Cupom Aplicado:* ${appliedCoupon.code} (-${formatStorePrice(couponDiscount)})\n`;
     }
 
     if (pixDiscount > 0) {
-      msg += `🏷️ *Desconto PIX (5%):* -R$ ${pixDiscount.toFixed(2).replace('.', ',')}\n`;
+      msg += `🏷️ *Desconto PIX (5%):* -${formatStorePrice(pixDiscount)}\n`;
     }
 
     if (isGift) {
-      msg += `🎁 *EMBALAGEM PARA PRESENTE:* Sim ${isVipGiftFree ? '(Cortesia VIP)' : `(+R$ ${giftFee.toFixed(2).replace('.', ',')})`}\n`;
+      msg += `🎁 *EMBALAGEM PARA PRESENTE:* Sim ${isVipGiftFree ? '(Cortesia VIP)' : `(+${formatStorePrice(giftFee)})`}\n`;
       if (giftMessage?.trim()) {
         msg += `💌 *Dedicatória no Cartão:* "${giftMessage.trim()}"\n`;
       }
     }
 
-    msg += `💰 *VALOR TOTAL:* R$ ${totalAmount.toFixed(2).replace('.', ',')}\n`;
+    msg += `💰 *VALOR TOTAL:* ${formatStorePrice(totalAmount)}\n`;
 
     const vis = currentTenant?.configuracoes_visuais as any;
     const tempoReservaMinutos = Number(vis?.tempo_reserva_minutos ?? 20);
@@ -1055,7 +1058,7 @@ export default function CheckoutPage() {
                     <QrCode className="w-4 h-4" /> Chave PIX da Boutique (5% OFF Aplicado)
                   </span>
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    R$ {totalAmount.toFixed(2).replace('.', ',')}
+                    {formatStorePrice(totalAmount)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1086,7 +1089,7 @@ export default function CheckoutPage() {
                   <CreditCard className="w-4 h-4" /> Cartão de Crédito em {cardInstallments}x Sem Juros
                 </div>
                 <p className="text-xs text-[#57534E] dark:text-[#D6D3D1] leading-relaxed">
-                  Nossa equipe enviará o link de pagamento 100% seguro diretamente no seu WhatsApp para parcelamento em {cardInstallments}x de R$ {(totalAmount / cardInstallments).toFixed(2).replace('.', ',')} sem juros.
+                  Nossa equipe enviará o link de pagamento 100% seguro diretamente no seu WhatsApp para parcelamento em {cardInstallments}x de {formatStorePrice((totalAmount / cardInstallments))} sem juros.
                 </p>
               </div>
             )}
@@ -1334,7 +1337,7 @@ export default function CheckoutPage() {
                             </span>
                           ) : remainingForFreeShipping > 0 ? (
                             <span className="text-[11px] text-[#57534E] dark:text-[#D6D3D1]">
-                              Faltam <strong>R$ {remainingForFreeShipping.toFixed(2).replace('.', ',')}</strong> para <strong>Frete Grátis da Loja</strong>!
+                              Faltam <strong>{formatStorePrice(remainingForFreeShipping)}</strong> para <strong>Frete Grátis da Loja</strong>!
                             </span>
                           ) : (
                             <span className="text-[11px] text-[#25D366] font-bold flex items-center gap-1">
@@ -1380,7 +1383,7 @@ export default function CheckoutPage() {
                               Cor: <strong>{item.color}</strong> | Tam: <strong>{item.size}</strong>
                             </p>
                             <span className="text-xs sm:text-sm font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                              R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                              {formatStorePrice((item.price * item.quantity))}
                             </span>
                           </div>
 
@@ -1518,7 +1521,7 @@ export default function CheckoutPage() {
                                       </span>
                                     ) : (
                                       <span className="text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5] block">
-                                        R$ {finalPrice.toFixed(2).replace('.', ',')}
+                                        {formatStorePrice(finalPrice)}
                                       </span>
                                     )}
                                   </div>
@@ -1544,7 +1547,7 @@ export default function CheckoutPage() {
                                   É para presente?
                                 </span>
                                 <span className="text-[10px] font-bold text-[#C5A059] bg-[#C5A059]/15 px-1.5 py-0.5 uppercase tracking-wider">
-                                  {giftFee > 0 ? `+ R$ ${giftFee.toFixed(2).replace('.', ',')}` : 'Cortesia'}
+                                  {giftFee > 0 ? `+ ${formatStorePrice(giftFee)}` : 'Cortesia'}
                                 </span>
                               </div>
                               <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] leading-relaxed">
@@ -1616,7 +1619,7 @@ export default function CheckoutPage() {
                     <div className="sm:hidden pt-1 flex items-center justify-between text-xs font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                       <span>Subtotal das Peças:</span>
                       <span className="text-sm font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                        R$ {rawSubtotal.toFixed(2).replace('.', ',')}
+                        {formatStorePrice(rawSubtotal)}
                       </span>
                     </div>
 
@@ -1809,7 +1812,7 @@ export default function CheckoutPage() {
                         {shippingDiscount > 0 && !isFreeShipping && (
                           <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-1.5 font-medium">
                             <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span>Você ganhou <strong>R$ {shippingDiscount.toFixed(2).replace('.', ',')} de desconto</strong> no frete nesta compra!</span>
+                            <span>Você ganhou <strong>{formatStorePrice(shippingDiscount)} de desconto</strong> no frete nesta compra!</span>
                           </div>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1849,11 +1852,11 @@ export default function CheckoutPage() {
                                     <div>
                                       {shippingDiscount > 0 && opt.price > optFinalPrice && (
                                         <span className="text-[10px] text-stone-400 line-through block">
-                                          R$ {opt.price.toFixed(2).replace('.', ',')}
+                                          {formatStorePrice(opt.price)}
                                         </span>
                                       )}
                                       <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                                        R$ {optFinalPrice.toFixed(2).replace('.', ',')}
+                                        {formatStorePrice(optFinalPrice)}
                                       </span>
                                     </div>
                                   )}
@@ -2200,7 +2203,7 @@ export default function CheckoutPage() {
                           >
                             {[1, 2, 3, 4, 5, 6].map((n) => (
                               <option key={n} value={n}>
-                                {n}x de R$ {(totalAmount / n).toFixed(2).replace('.', ',')} sem juros no link blindado
+                                {n}x de {formatStorePrice((totalAmount / n))} sem juros no link blindado
                               </option>
                             ))}
                           </select>
@@ -2221,10 +2224,10 @@ export default function CheckoutPage() {
                               {isGift
                                 ? isVipGiftFree
                                   ? 'Embalagem especial de presente cortesia VIP'
-                                  : `Caixa rígida, papel de seda e laço (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`
+                                  : `Caixa rígida, papel de seda e laço (+ ${formatStorePrice(giftFee)})`
                                 : isVipGiftFree
                                   ? 'Privilégio VIP: Embalagem cortesia inclusa sem custos'
-                                  : `Adicione embalagem de luxo exclusiva (+ R$ ${giftFee.toFixed(2).replace('.', ',')})`}
+                                  : `Adicione embalagem de luxo exclusiva (+ ${formatStorePrice(giftFee)})`}
                             </span>
                           </div>
                         </div>
@@ -2262,7 +2265,7 @@ export default function CheckoutPage() {
                           Resumo da Finalização:
                         </span>
                         <span className="sm:hidden text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                          Total: R$ {totalAmount.toFixed(2).replace('.', ',')}
+                          Total: {formatStorePrice(totalAmount)}
                         </span>
                       </div>
                       <div className="space-y-0.5 text-[#57534E] dark:text-[#D6D3D1] text-[11px]">
@@ -2271,7 +2274,7 @@ export default function CheckoutPage() {
                         <p>💳 <strong>Pagamento:</strong> {paymentMethod === 'pix' ? 'PIX com 5% de desconto' : paymentMethod === 'credit_card' ? `Cartão em ${cardInstallments}x` : 'WhatsApp'}</p>
                         {isGift && (
                           <p className="text-[#C5A059] font-medium">
-                            🎁 <strong>Presente:</strong> Embalagem Especial {isVipGiftFree ? '(Cortesia VIP)' : `(+R$ ${giftFee.toFixed(2).replace('.', ',')})`}
+                            🎁 <strong>Presente:</strong> Embalagem Especial {isVipGiftFree ? '(Cortesia VIP)' : `(+${formatStorePrice(giftFee)})`}
                             {giftMessage?.trim() ? ` com cartão dedicado` : ''}
                           </p>
                         )}
@@ -2311,7 +2314,7 @@ export default function CheckoutPage() {
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                            R$ {totalAmount.toFixed(2).replace('.', ',')}
+                            {formatStorePrice(totalAmount)}
                           </span>
                           <ChevronDown className={`w-4 h-4 text-[#C5A059] transition-transform duration-200 ${mobileSummaryOpen ? 'rotate-180' : ''}`} />
                         </div>
@@ -2341,7 +2344,7 @@ export default function CheckoutPage() {
                                   </p>
                                 </div>
                                 <span className="text-xs font-bold text-[#C5A059] dark:text-[#DFBE76]">
-                                  R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                                  {formatStorePrice((item.price * item.quantity))}
                                 </span>
                               </div>
                             ))}
@@ -2387,7 +2390,7 @@ export default function CheckoutPage() {
                             <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
                               <span>Subtotal:</span>
                               <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                                R$ {rawSubtotal.toFixed(2).replace('.', ',')}
+                                {formatStorePrice(rawSubtotal)}
                               </span>
                             </div>
                             <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
@@ -2400,7 +2403,7 @@ export default function CheckoutPage() {
                                     </span>
                                   ) : (
                                     <span>
-                                      {chosenShippingOption.name}: R$ {shippingPrice.toFixed(2).replace('.', ',')}
+                                      {chosenShippingOption.name}: {formatStorePrice(shippingPrice)}
                                     </span>
                                   )
                                 ) : isFreeShipping ? (
@@ -2415,19 +2418,19 @@ export default function CheckoutPage() {
                             {shippingDiscount > 0 && !isFreeShipping && (
                               <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                                 <span>Desconto Frete:</span>
-                                <span>-R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                                <span>-{formatStorePrice(shippingDiscount)}</span>
                               </div>
                             )}
                             {appliedCoupon && (
                               <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                                 <span>Cupom ({appliedCoupon.code}):</span>
-                                <span>-R$ {couponDiscount.toFixed(2).replace('.', ',')}</span>
+                                <span>-{formatStorePrice(couponDiscount)}</span>
                               </div>
                             )}
                             {pixDiscount > 0 && (
                               <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                                 <span>Desconto PIX (5%):</span>
-                                <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
+                                <span>-{formatStorePrice(pixDiscount)}</span>
                               </div>
                             )}
                             {isGift && (
@@ -2435,13 +2438,13 @@ export default function CheckoutPage() {
                                 <span className="flex items-center gap-1">
                                   <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
                                 </span>
-                                <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+R$ ${giftFee.toFixed(2).replace('.', ',')}`}</span>
+                                <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+${formatStorePrice(giftFee)}`}</span>
                               </div>
                             )}
                             <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-[#C5A059]/30 font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                               <span>Total Previsto:</span>
                               <span className="text-[#C5A059] dark:text-[#DFBE76]">
-                                R$ {totalAmount.toFixed(2).replace('.', ',')}
+                                {formatStorePrice(totalAmount)}
                               </span>
                             </div>
                           </div>
@@ -2493,7 +2496,7 @@ export default function CheckoutPage() {
                             {item.quantity}x • {item.color} • {item.size}
                           </p>
                           <p className="text-xs font-bold text-[#C5A059]">
-                            R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                            {formatStorePrice((item.price * item.quantity))}
                           </p>
                         </div>
                       </div>
@@ -2512,7 +2515,7 @@ export default function CheckoutPage() {
                           ✓ {appliedCoupon.code} (
                           {appliedCoupon.percent !== undefined
                             ? `${appliedCoupon.percent}%`
-                            : `R$ ${appliedCoupon.amount?.toFixed(2).replace('.', ',')}`}{' '}
+                            : `${formatStorePrice(appliedCoupon.amount || 0)}`}{' '}
                           OFF)
                         </span>
                         <button
@@ -2550,7 +2553,7 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-[#78716C] dark:text-[#A8A29E]">
                       <span>Subtotal das peças:</span>
                       <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
-                        R$ {rawSubtotal.toFixed(2).replace('.', ',')}
+                        {formatStorePrice(rawSubtotal)}
                       </span>
                     </div>
 
@@ -2564,7 +2567,7 @@ export default function CheckoutPage() {
                             </span>
                           ) : (
                             <span>
-                              {chosenShippingOption.name}: R$ {shippingPrice.toFixed(2).replace('.', ',')}
+                              {chosenShippingOption.name}: {formatStorePrice(shippingPrice)}
                             </span>
                           )
                         ) : isFreeShipping ? (
@@ -2580,21 +2583,21 @@ export default function CheckoutPage() {
                     {shippingDiscount > 0 && !isFreeShipping && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Desconto no Frete:</span>
-                        <span>-R$ {shippingDiscount.toFixed(2).replace('.', ',')}</span>
+                        <span>-{formatStorePrice(shippingDiscount)}</span>
                       </div>
                     )}
 
                     {appliedCoupon && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Cupom ({appliedCoupon.code}):</span>
-                        <span>-R$ {couponDiscount.toFixed(2).replace('.', ',')}</span>
+                        <span>-{formatStorePrice(couponDiscount)}</span>
                       </div>
                     )}
 
                     {pixDiscount > 0 && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Desconto PIX (5%):</span>
-                        <span>-R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
+                        <span>-{formatStorePrice(pixDiscount)}</span>
                       </div>
                     )}
 
@@ -2603,14 +2606,14 @@ export default function CheckoutPage() {
                         <span className="flex items-center gap-1">
                           <Gift className="w-3.5 h-3.5" /> Embalagem para Presente:
                         </span>
-                        <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+R$ ${giftFee.toFixed(2).replace('.', ',')}`}</span>
+                        <span>{isVipGiftFree ? 'Grátis (Cortesia VIP)' : `+${formatStorePrice(giftFee)}`}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between items-baseline pt-3 border-t border-dashed border-[#C5A059]/30 text-base font-bold text-[#1A1918] dark:text-[#FAF8F5]">
                       <span>Total Previsto:</span>
                       <span className="text-lg text-[#C5A059] dark:text-[#DFBE76]">
-                        R$ {totalAmount.toFixed(2).replace('.', ',')}
+                        {formatStorePrice(totalAmount)}
                       </span>
                     </div>
                   </div>

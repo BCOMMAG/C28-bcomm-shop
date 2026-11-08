@@ -297,10 +297,18 @@ export default function AdminPedidosPage() {
     } catch {}
   };
 
-  // Lista dinâmica de colunas do Kanban
+  // Lista dinâmica de colunas do Kanban com internacionalização reativa
   const allKanbanColumnsList = useMemo<KanbanColumnDef[]>(() => {
-    return ALL_KANBAN_COLUMNS;
-  }, []);
+    return [
+      { id: 'pendente', label: t.orders.statusLabels.awaitingWhatsapp, next: 'pago', color: 'border-amber-400 bg-amber-50/40 text-amber-900', badge: 'bg-amber-100 text-amber-800 border-amber-300' },
+      { id: 'pago', label: t.orders.statusLabels.paid, next: 'em_separacao', color: 'border-emerald-400 bg-emerald-50/40 text-emerald-900', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+      { id: 'em_separacao', label: t.orders.statusLabels.inSeparation, next: 'enviado', color: 'border-sky-400 bg-sky-50/40 text-sky-900', badge: 'bg-sky-100 text-sky-800 border-sky-300' },
+      { id: 'enviado', label: t.orders.statusLabels.shipped, next: 'entregue', color: 'border-indigo-400 bg-indigo-50/40 text-indigo-900', badge: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+      { id: 'entregue', label: t.orders.statusLabels.delivered, next: null, color: 'border-teal-400 bg-teal-50/40 text-teal-900', badge: 'bg-teal-100 text-teal-800 border-teal-300' },
+      { id: 'inativo', label: t.orders.statusLabels.notFinished, next: null, color: 'border-purple-400 bg-purple-50/40 text-purple-950', badge: 'bg-purple-100 text-purple-800 border-purple-300' },
+      { id: 'cancelado', label: t.orders.statusLabels.cancelled, next: null, color: 'border-rose-400 bg-rose-50/40 text-rose-950', badge: 'bg-rose-100 text-rose-800 border-rose-300' }
+    ];
+  }, [t]);
 
   // Controle de Rolagem Horizontal Suave do Kanban
   const updateKanbanScrollBounds = useCallback(() => {
@@ -725,37 +733,37 @@ export default function AdminPedidosPage() {
       case 'entregue':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-200">
-            <CheckCircle2 className="w-3 h-3 text-teal-600" /> Entregue
+            <CheckCircle2 className="w-3 h-3 text-teal-600" /> {t.orders.statusLabels.delivered}
           </span>
         );
       case 'enviado':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-            <Truck className="w-3 h-3 text-indigo-600" /> Enviado
+            <Truck className="w-3 h-3 text-indigo-600" /> {t.orders.statusLabels.shipped}
           </span>
         );
       case 'em_separacao':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
-            <Package className="w-3 h-3 text-sky-600" /> Em Separação
+            <Package className="w-3 h-3 text-sky-600" /> {t.orders.statusLabels.inSeparation}
           </span>
         );
       case 'pago':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Pago
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t.orders.statusLabels.paid}
           </span>
         );
       case 'inativo':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
-            <Clock className="w-3 h-3 text-purple-600" /> Não Finalizado (Follow-up)
+            <Clock className="w-3 h-3 text-purple-600" /> {t.orders.statusLabels.notFinished}
           </span>
         );
       case 'cancelado':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-            <AlertCircle className="w-3 h-3 text-rose-600" /> Cancelado
+            <AlertCircle className="w-3 h-3 text-rose-600" /> {t.orders.statusLabels.cancelled}
           </span>
         );
       case 'pendente':
@@ -763,7 +771,7 @@ export default function AdminPedidosPage() {
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-            <Clock className="w-3 h-3 text-amber-600" /> Aguardando WhatsApp
+            <Clock className="w-3 h-3 text-amber-600" /> {t.orders.statusLabels.awaitingWhatsapp}
           </span>
         );
     }
@@ -1654,7 +1662,7 @@ export default function AdminPedidosPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por pedido (#LB-2026), cliente, telefone, rastreio ou peça... (Tecle /)"
+            placeholder={t.orders.searchPlaceholder}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-8 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all placeholder:text-slate-400"
           />
           {searchTerm && (
@@ -1831,13 +1839,13 @@ export default function AdminPedidosPage() {
           >
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
             <span>
-              {periodFilter === 'todos' && 'Todo Período'}
-              {periodFilter === 'hoje' && 'Hoje'}
-              {periodFilter === 'ontem' && 'Ontem'}
-              {periodFilter === '7d' && 'Últimos 7 dias'}
-              {periodFilter === '30d' && 'Últimos 30 dias'}
-              {periodFilter === 'mes_atual' && 'Este Mês'}
-              {periodFilter === 'custom' && 'Personalizado'}
+              {periodFilter === 'todos' && (locale === 'en' ? 'All Time' : locale === 'es' ? 'Todo el Período' : 'Todo Período')}
+              {periodFilter === 'hoje' && (locale === 'en' ? 'Today' : locale === 'es' ? 'Hoy' : 'Hoje')}
+              {periodFilter === 'ontem' && (locale === 'en' ? 'Yesterday' : locale === 'es' ? 'Ayer' : 'Ontem')}
+              {periodFilter === '7d' && (locale === 'en' ? 'Last 7 days' : locale === 'es' ? 'Últimos 7 días' : 'Últimos 7 dias')}
+              {periodFilter === '30d' && (locale === 'en' ? 'Last 30 days' : locale === 'es' ? 'Últimos 30 días' : 'Últimos 30 dias')}
+              {periodFilter === 'mes_atual' && (locale === 'en' ? 'This Month' : locale === 'es' ? 'Este Mes' : 'Este Mês')}
+              {periodFilter === 'custom' && (locale === 'en' ? 'Custom' : locale === 'es' ? 'Personalizado' : 'Personalizado')}
             </span>
             <ChevronDown className="w-3 h-3 opacity-60" />
           </button>
@@ -1846,13 +1854,13 @@ export default function AdminPedidosPage() {
           {isPeriodDropdownOpen && (
             <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 z-40 space-y-1 animate-in fade-in zoom-in-95 duration-150">
               {[
-                { id: 'todos', label: 'Todo o Histórico' },
-                { id: 'hoje', label: 'Hoje' },
-                { id: 'ontem', label: 'Ontem' },
-                { id: '7d', label: 'Últimos 7 dias' },
-                { id: '30d', label: 'Últimos 30 dias' },
-                { id: 'mes_atual', label: 'Este Mês' },
-                { id: 'custom', label: 'Período Personalizado...' }
+                { id: 'todos', label: locale === 'en' ? 'All Time' : locale === 'es' ? 'Todo el Historial' : 'Todo o Histórico' },
+                { id: 'hoje', label: locale === 'en' ? 'Today' : locale === 'es' ? 'Hoy' : 'Hoje' },
+                { id: 'ontem', label: locale === 'en' ? 'Yesterday' : locale === 'es' ? 'Ayer' : 'Ontem' },
+                { id: '7d', label: locale === 'en' ? 'Last 7 days' : locale === 'es' ? 'Últimos 7 días' : 'Últimos 7 dias' },
+                { id: '30d', label: locale === 'en' ? 'Last 30 days' : locale === 'es' ? 'Últimos 30 días' : 'Últimos 30 dias' },
+                { id: 'mes_atual', label: locale === 'en' ? 'This Month' : locale === 'es' ? 'Este Mes' : 'Este Mês' },
+                { id: 'custom', label: locale === 'en' ? 'Custom Period...' : locale === 'es' ? 'Período Personalizado...' : 'Período Personalizado...' }
               ].map((p) => (
                 <button
                   key={p.id}
@@ -2322,11 +2330,11 @@ export default function AdminPedidosPage() {
                         </span>
                         {isFittingRoomActive ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
-                            👗 Provador Ativo
+                            👗 {t.orders.statusLabels.customerInFittingRoom}
                           </span>
                         ) : isFittingRoom ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                            👗 Provador Devolvido
+                            👗 {t.orders.statusLabels.fittingRoomReturned}
                           </span>
                         ) : null}
                         {giftDetails.isGift && (
@@ -2397,7 +2405,7 @@ export default function AdminPedidosPage() {
                         {formatCurrency(Number(order.total || 0))}
                       </span>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">
-                        {order.metodo_pagamento === 'pix' ? 'PIX Instantâneo' : 'Cartão de Crédito'}
+                        {order.metodo_pagamento === 'pix' ? t.orders.paymentLabels.pix : t.orders.paymentLabels.creditCard}
                       </span>
                     </div>
 
@@ -3062,11 +3070,11 @@ export default function AdminPedidosPage() {
                               </span>
                               {isFittingRoomActive ? (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-black text-purple-900 bg-purple-100 border border-purple-300 px-1.5 py-0.5 rounded-full shadow-2xs">
-                                  👗 Provador Ativo
+                                  👗 {t.orders.statusLabels.customerInFittingRoom}
                                 </span>
                               ) : isFittingRoom ? (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                                  👗 Provador Devolvido
+                                  👗 {t.orders.statusLabels.fittingRoomReturned}
                                 </span>
                               ) : null}
                               {giftDetails.isGift && (
@@ -3789,13 +3797,13 @@ export default function AdminPedidosPage() {
               {/* Total do Pedido */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-slate-500 block">Forma de Pagamento:</span>
+                  <span className="text-slate-500 block">{t.orders.colPayment}:</span>
                   <span className="font-bold text-slate-900 uppercase">
-                    {detailsModalOrder.metodo_pagamento === 'pix' ? 'PIX Instantâneo' : 'Cartão de Crédito'}
+                    {detailsModalOrder.metodo_pagamento === 'pix' ? t.orders.paymentLabels.pix : t.orders.paymentLabels.creditCard}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-500 block">Valor Total:</span>
+                  <span className="text-slate-500 block">{t.orders.colTotal}:</span>
                   <span className="text-lg font-black text-slate-900 font-mono">
                     {formatCurrency(Number(detailsModalOrder.total || 0))}
                   </span>

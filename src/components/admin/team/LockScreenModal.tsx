@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Lock, Unlock, Users, Shield, ArrowLeft, LogOut, Check, AlertCircle } from 'lucide-react';
 import { MembroEquipe, verifyMemberPin } from '@/lib/team';
 import { getStoreSettings } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface LockScreenModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function LockScreenModal({
   onUserSwitched,
   onFullLogout
 }: LockScreenModalProps) {
+  const { t } = useAdminI18n();
   const [selectedMember, setSelectedMember] = useState<MembroEquipe | null>(null);
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);

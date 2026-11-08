@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Sparkles, DollarSign, RotateCcw, Copy, Lock, Unlock, AlertCircle } from 'lucide-react';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface PrecoVariavelItem {
   preco?: number;
@@ -29,6 +30,9 @@ export function ProductVariationPriceMatrix({
   onChange,
   onFeedback
 }: ProductVariationPriceMatrixProps) {
+  const { currency } = useAdminI18n();
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
+
   // Controle de células desbloqueadas manualmente pelo administrador mesmo sem estoque
   const [unlockedCells, setUnlockedCells] = useState<Set<string>>(new Set());
   const [confirmModalData, setConfirmModalData] = useState<{
@@ -136,7 +140,7 @@ export function ProductVariationPriceMatrix({
               <th className="p-2.5 min-w-[140px]">Cor</th>
               {tamanhos.map((tam) => (
                 <th key={tam} className="p-2.5 text-center min-w-[140px]">
-                  Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
+                  Tam. {tam === 'Tamanho Único' ? 'Único' : tam} ({currencySymbol})
                 </th>
               ))}
               <th className="p-2.5 text-center min-w-[140px]">Ações da Cor</th>
@@ -239,7 +243,7 @@ export function ProductVariationPriceMatrix({
 
                           {/* Preço de Venda do Tamanho */}
                           <div className="relative">
-                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currencySymbol}</span>
                             <input
                               type="number"
                               step="0.01"
@@ -278,7 +282,7 @@ export function ProductVariationPriceMatrix({
 
                           {/* Preço Promocional Específico */}
                           <div className="relative">
-                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">R$</span>
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">{currencySymbol}</span>
                             <input
                               type="number"
                               step="0.01"

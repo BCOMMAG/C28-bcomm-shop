@@ -48,7 +48,7 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { currentTenant } = useStore();
-  const { t } = useAdminI18n();
+  const { t, locale } = useAdminI18n();
   const lojaNome = currentTenant?.nome || 'Minha Loja';
   const lojaSlug = currentTenant?.slug || '';
 
@@ -292,10 +292,16 @@ export default function SettingsLayout({
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs text-slate-600 space-y-2">
             <div className="flex items-center gap-1.5 font-bold text-slate-900">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Sincronização em Nuvem</span>
+              <span>
+                {locale === 'en' ? 'Cloud Synchronization' : locale === 'es' ? 'Sincronización en la Nube' : 'Sincronização em Nuvem'}
+              </span>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Todas as alterações salvas são refletidas instantaneamente na vitrine pública e no balcão de vendas PDV.
+              {locale === 'en'
+                ? 'All saved changes are instantly updated across your public storefront and POS counter.'
+                : locale === 'es'
+                ? 'Todos los cambios guardados se reflejan instantáneamente en la tienda pública y en el mostrador POS.'
+                : 'Todas as alterações salvas são refletidas instantaneamente na vitrine pública e no balcão de vendas PDV.'}
             </p>
           </div>
         </aside>

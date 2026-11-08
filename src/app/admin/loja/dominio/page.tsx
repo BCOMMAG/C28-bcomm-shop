@@ -28,11 +28,13 @@ import {
   checkDomainDns
 } from '@/lib/admin';
 import { getStorefrontUrl } from '@/lib/routes';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 type ProviderTab = 'registrobr' | 'hostinger' | 'hostgator' | 'cloudflare';
 
 export default function CustomDomainSettingsPage() {
   const { currentTenant, refreshProducts, refreshTenant } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);

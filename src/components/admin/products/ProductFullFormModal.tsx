@@ -48,6 +48,7 @@ import { ProductCardPreviewDrawer } from '@/components/admin/products/ProductCar
 import { AdminSinalizadoresModal } from '@/components/admin/products/AdminSinalizadoresModal';
 import { BOUTIQUE_OFFICIAL_COLORS } from '@/components/admin/products/ProductBatchImportModal';
 import { parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface ProductFullFormModalProps {
   isOpen: boolean;
@@ -92,6 +93,8 @@ export function ProductFullFormModal({
   onStoreAttributesUpdated
 }: ProductFullFormModalProps) {
   const isEdit = mode === 'edit' && Boolean(product);
+  const { t, currency, formatCurrency } = useAdminI18n();
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
 
   // Controle de Visualização: Abas vs Página Única (Scroll)
   const [viewMode, setViewMode] = useState<'abas' | 'scroll'>('abas');
@@ -1579,7 +1582,7 @@ export function ProductFullFormModal({
                 {/* Linha Única de 4 Colunas: Venda, Promo, Custo CMV (com margem discreta) e Botão Único */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                   <div>
-                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço de Venda (R$) *</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço de Venda ({currencySymbol}) *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1592,7 +1595,7 @@ export function ProductFullFormModal({
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço Promocional (R$)</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço Promocional ({currencySymbol})</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1605,11 +1608,11 @@ export function ProductFullFormModal({
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-slate-700 text-xs font-bold">Custo CMV (R$)</label>
+                      <label className="block text-slate-700 text-xs font-bold">Custo CMV ({currencySymbol})</label>
                       {margemBrutaPct && (
                         <span
                           className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded"
-                          title={`Lucro estimado: R$ ${lucroBrutoReais?.toFixed(2)}/un`}
+                          title={`Lucro estimado: ${currencySymbol} ${lucroBrutoReais?.toFixed(2)}/un`}
                         >
                           ✓ {margemBrutaPct}% margem
                         </span>

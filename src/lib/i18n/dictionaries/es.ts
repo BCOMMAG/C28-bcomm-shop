@@ -207,6 +207,23 @@ export const es: TranslationDictionary = {
       expedition: 'Expedición',
       status: 'Estado',
       chatWhatsapp: 'Chatear por WhatsApp'
+    },
+    statusLabels: {
+      delivered: 'Entregado',
+      shipped: 'Enviado',
+      inSeparation: 'En Separación',
+      paid: 'Pagado',
+      notFinished: 'No Finalizado (Seguimiento)',
+      cancelled: 'Cancelado',
+      awaitingWhatsapp: 'Esperando WhatsApp',
+      fittingRoomReturned: 'Probador Devuelto',
+      customerInFittingRoom: 'Cliente en el Probador'
+    },
+    paymentLabels: {
+      pix: 'PIX Instantáneo',
+      creditCard: 'Tarjeta de Crédito',
+      bankSlip: 'Boleto Bancario',
+      cashCounter: 'Efectivo / Mostrador'
     }
   },
   products: {

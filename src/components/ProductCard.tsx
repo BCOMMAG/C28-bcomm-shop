@@ -168,7 +168,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const [isJustAdded, setIsJustAdded] = useState(false);
   const router = useRouter();
-  const { cartCount, addToCart, getItemStock, activeReservations, currentTenant } = useStore();
+  const { cartCount, addToCart, getItemStock, activeReservations, currentTenant, formatStorePrice, st } = useStore();
   const showStockQty = currentTenant?.configuracoes_visuais?.exibir_quantidade_estoque_consumidor ?? true;
 
   const isOutOfStock = product.totalStock === 0;
@@ -586,7 +586,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {/* Linha 1: Preço Original Riscado + Tag de Promoção/Outlet */}
                   <div className="flex items-center gap-1.5 leading-none mb-1">
                     <span className="text-[10px] sm:text-[11px] text-[#A8A29E] line-through font-normal leading-none">
-                      R$ {priceDisplay.originalPrice?.toFixed(2).replace('.', ',')}
+                      {formatStorePrice(priceDisplay.originalPrice || 0)}
                     </span>
                     <span className="text-[9px] uppercase tracking-wider text-[#C5A059] font-bold leading-none">
                       {product.isOutlet || isOutletSection ? 'OUTLET' : 'PROMOÇÃO'}
@@ -597,12 +597,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
                       isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
                     }`}>
-                      {priceDisplay.label ? `${priceDisplay.label} ` : ''}R$ {priceDisplay.currentPrice.toFixed(2).replace('.', ',')}
+                      {priceDisplay.label ? `${priceDisplay.label} ` : ''}{formatStorePrice(priceDisplay.currentPrice)}
                     </span>
                   </div>
                   {/* Linha 3: Economia em Verde de Alta Conversão */}
                   <div className="text-[#16A34A] dark:text-[#22C55E] text-[10px] sm:text-[11px] font-bold uppercase tracking-tight mt-1 flex items-center gap-1">
-                    <span>Economia de R$ {priceDisplay.savingsAmount.toFixed(2).replace('.', ',')}!</span>
+                    <span>Economia de {formatStorePrice(priceDisplay.savingsAmount)}!</span>
                     {priceDisplay.discountPercent > 0 && (
                       <span className="text-[9px] bg-[#16A34A]/10 text-[#16A34A] dark:text-[#22C55E] px-1 py-0.2 rounded-none font-black">
                         ({priceDisplay.discountPercent}% OFF)
@@ -619,7 +619,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     <span className={`font-bold text-[#1A1918] dark:text-[#FAF8F5] tracking-tight leading-none ${
                       isCompact ? 'text-sm sm:text-base' : isMedium ? 'text-sm sm:text-base lg:text-lg' : 'text-base sm:text-lg lg:text-xl'
                     }`}>
-                      R$ {priceDisplay.currentPrice.toFixed(2).replace('.', ',')}
+                      {formatStorePrice(priceDisplay.currentPrice)}
                     </span>
                   </div>
                 </>
@@ -645,10 +645,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 onOpenDetails(product);
               }}
               className="w-full py-2 px-2.5 rounded-none bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
-              title="Peça esgotada no estoque"
-              aria-label="Esgotado"
+              title={st.product.soldOut}
+              aria-label={st.product.soldOut}
             >
-              <span>Esgotado</span>
+              <span>{st.product.soldOut}</span>
             </button>
           ) : isAllReserved ? (
             <button
@@ -659,11 +659,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 onOpenDetails(product);
               }}
               className="w-full py-2 px-2.5 rounded-none bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
-              title="Peça em reserva temporária no provador de outra cliente - Clique para lista VIP"
-              aria-label="Em Reserva"
+              title={st.product.reserved}
+              aria-label={st.product.reserved}
             >
               <Clock className="w-3.5 h-3.5 animate-pulse shrink-0" />
-              <span className="truncate">Em Reserva (Lista VIP)</span>
+              <span className="truncate">{st.product.reserved}</span>
             </button>
           ) : (
             <button
@@ -674,18 +674,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   ? 'bg-[#25D366] text-white border border-[#25D366]'
                   : 'bg-[#1A1918] dark:bg-[#C5A059] text-white hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918]'
               }`}
-              title="Adicionar à Sacola"
-              aria-label="Adicionar à Sacola"
+              title={st.product.addToCart}
+              aria-label={st.product.addToCart}
             >
               {isJustAdded ? (
                 <>
                   <Check className="w-3.5 h-3.5 shrink-0" />
-                  <span>Adicionado</span>
+                  <span>{st.product.addedToCart}</span>
                 </>
               ) : (
                 <>
                   <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{isCompact ? 'Adicionar' : 'Adicionar à Sacola'}</span>
+                  <span className="truncate">{st.product.addToCart}</span>
                 </>
               )}
             </button>

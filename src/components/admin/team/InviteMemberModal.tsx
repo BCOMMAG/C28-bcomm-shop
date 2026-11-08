@@ -25,6 +25,7 @@ import {
   StorePlanQuota
 } from '@/lib/team';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ interface InviteMemberModalProps {
 
 export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: InviteMemberModalProps) {
   const { currentTenant } = useStore();
+  const { t, formatCurrency } = useAdminI18n();
   const lojaNome = currentTenant?.nome || 'sua loja';
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');

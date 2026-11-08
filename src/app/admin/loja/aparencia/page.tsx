@@ -72,9 +72,11 @@ import {
   normalizarSecoesVitrine
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AppearanceSettingsPage() {
   const { currentTenant, refreshProducts, refreshTenant } = useStore();
+  const { t, locale } = useAdminI18n();
   const tenantSlug = currentTenant?.slug || '';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const storeName = currentTenant?.nome || 'Minha Boutique';

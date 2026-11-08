@@ -21,9 +21,11 @@ import {
   getStoreSettings,
   saveStoreGeneralSettings
 } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function IntegrationsSettingsPage() {
   const { currentTenant, refreshProducts } = useStore();
+  const { t } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
 
   const [loading, setLoading] = useState(true);

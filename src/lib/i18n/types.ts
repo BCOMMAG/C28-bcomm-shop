@@ -115,6 +115,23 @@ export interface OrdersTranslations {
     status: string;
     chatWhatsapp: string;
   };
+  statusLabels: {
+    delivered: string;
+    shipped: string;
+    inSeparation: string;
+    paid: string;
+    notFinished: string;
+    cancelled: string;
+    awaitingWhatsapp: string;
+    fittingRoomReturned: string;
+    customerInFittingRoom: string;
+  };
+  paymentLabels: {
+    pix: string;
+    creditCard: string;
+    bankSlip: string;
+    cashCounter: string;
+  };
 }
 
 export interface ProductsTranslations {

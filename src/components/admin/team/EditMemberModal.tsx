@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Shield, Clock, Key, Check, AlertCircle, Save } from 'lucide-react';
 import { CargoColaborador, MembroEquipe, PermissoesColaborador, updateTeamMember } from '@/lib/team';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface EditMemberModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface EditMemberModalProps {
 }
 
 export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, lojaId }: EditMemberModalProps) {
+  const { t, formatCurrency } = useAdminI18n();
   const [cargo, setCargo] = useState<CargoColaborador>(member.cargo);
   const [alcadaDesconto, setAlcadaDesconto] = useState(member.alcada_desconto_percentual.toString());
   const [comissao, setComissao] = useState(member.comissao_percentual.toString());

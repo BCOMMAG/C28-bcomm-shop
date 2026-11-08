@@ -20,9 +20,11 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function SubscriptionSettingsPage() {
   const { currentTenant, products } = useStore();
+  const { t, formatCurrency } = useAdminI18n();
   const lojaNome = currentTenant?.nome || 'Minha Loja';
   const tenantSlug = currentTenant?.slug || '';
 

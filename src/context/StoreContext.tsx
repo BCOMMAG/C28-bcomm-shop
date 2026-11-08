@@ -10,6 +10,7 @@ import { AdminHeroBanner, getAdminHeroBanners } from '@/lib/admin';
 import { normalizeTenantSlug, isPlatformHostname } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getActiveReservations, ReservaEstoque } from '@/lib/reservas';
+import { getStorefrontTranslation, StorefrontTranslations } from '@/lib/i18n/storefront';
 
 export interface VariationAvailability {
   status: 'disponivel' | 'em_reserva' | 'esgotado';
@@ -89,6 +90,11 @@ interface StoreContextType {
   giftFee: number;
   isGiftServiceActive: boolean;
   allowGiftMessage: boolean;
+  // Moeda e Internacionalização da Loja
+  storeCurrency: string;
+  storeLanguage: string;
+  formatStorePrice: (val: number, overrideCurrency?: string) => string;
+  st: StorefrontTranslations;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -1176,6 +1182,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const wishlistCount = wishlistIds.length;
 
+  const storeCurrency = useMemo(() => {
+    const fin = (currentTenant as any)?.configuracoes_financeiras;
+    return (fin?.moeda || 'BRL').toUpperCase();
+  }, [currentTenant]);
+
+  const storeLanguage = useMemo(() => {
+    const vis = (currentTenant as any)?.configuracoes_visuais;
+    return (vis?.idioma_padrao || 'pt').toLowerCase();
+  }, [currentTenant]);
+
+  const formatStorePrice = useCallback((val: number, overrideCurrency?: string) => {
+    const targetCurrency = (overrideCurrency || storeCurrency || 'BRL').toUpperCase();
+    const targetLocale = storeLanguage === 'en' ? 'en-US' : storeLanguage === 'es' ? 'es-ES' : 'pt-BR';
+    try {
+      return new Intl.NumberFormat(targetLocale, {
+        style: 'currency',
+        currency: targetCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(val || 0);
+    } catch {
+      const symbol = targetCurrency === 'USD' ? '$' : targetCurrency === 'EUR' ? '€' : 'R$';
+      return `${symbol} ${(val || 0).toFixed(2)}`;
+    }
+  }, [storeCurrency, storeLanguage]);
+
+  const st = useMemo(() => {
+    return getStorefrontTranslation(storeLanguage);
+  }, [storeLanguage]);
+
   return (
     <StoreContext.Provider
       value={{
@@ -1237,7 +1273,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setGiftMessage,
         giftFee,
         isGiftServiceActive,
-        allowGiftMessage
+        allowGiftMessage,
+        // Moeda e Internacionalização da Loja
+        storeCurrency,
+        storeLanguage,
+        formatStorePrice,
+        st
       }}
     >
       {children}
