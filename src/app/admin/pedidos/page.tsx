@@ -114,6 +114,23 @@ export default function AdminPedidosPage() {
   const titularPix = currentTenant?.configuracoes_financeiras?.pix_titular || lojaNome;
   const tipoChavePix = currentTenant?.configuracoes_financeiras?.tipo_chave_pix || 'telefone';
 
+  const formatCustomerDisplayName = useCallback((name?: string | null) => {
+    if (!name) return locale === 'en' ? 'Customer' : locale === 'es' ? 'Cliente' : 'Cliente';
+    const clean = name.toLowerCase();
+    if (clean.includes('provador') || clean.includes('fitting') || clean.includes('probador')) {
+      return t.common.customerInFittingRoom;
+    }
+    return name;
+  }, [locale, t]);
+
+  const formatOrderNotes = useCallback((notes?: string | null) => {
+    if (!notes) return '';
+    if (notes.includes('Provador Expirado') || notes.includes('Fitting Room Hold Expired')) {
+      return t.orders.drawer.expiredFittingRoomNote;
+    }
+    return notes;
+  }, [t]);
+
   // Dados dos Pedidos
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [reservations, setReservations] = useState<ReservaEstoque[]>([]);
@@ -1701,13 +1718,13 @@ export default function AdminPedidosPage() {
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-                  Filtrar Pedidos
+                  {t.orders.filtersPopover.title}
                 </span>
                 <button
                   onClick={handleClearAllFilters}
                   className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                 >
-                  Limpar Todos
+                  {t.orders.filtersPopover.clearAll}
                 </button>
               </div>
 
@@ -1715,25 +1732,25 @@ export default function AdminPedidosPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Status do Pedido ({selectedStatuses.length > 0 ? selectedStatuses.length : 'Todos'})
+                    {t.orders.filtersPopover.orderStatusTitle} ({selectedStatuses.length > 0 ? selectedStatuses.length : t.orders.filtersPopover.allStatus})
                   </label>
                   <button
                     onClick={handleSelectOperacionais}
                     className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer"
                   >
-                    Apenas Operacionais
+                    {t.orders.filtersPopover.operationalOnly}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-1.5 text-xs">
                   {[
-                    { id: 'pendente', label: 'Aguardando WhatsApp' },
-                    { id: 'pago', label: 'Pagos' },
-                    { id: 'em_separacao', label: 'Em Separação' },
-                    { id: 'enviado', label: 'Enviados' },
-                    { id: 'entregue', label: 'Entregues' },
-                    { id: 'inativo', label: 'Não Finalizados' },
-                    { id: 'cancelado', label: 'Cancelados' }
+                    { id: 'pendente', label: t.orders.statusLabels.awaitingWhatsapp },
+                    { id: 'pago', label: t.orders.statusLabels.paid },
+                    { id: 'em_separacao', label: t.orders.statusLabels.inSeparation },
+                    { id: 'enviado', label: t.orders.statusLabels.shipped },
+                    { id: 'entregue', label: t.orders.statusLabels.delivered },
+                    { id: 'inativo', label: t.orders.statusLabels.notFinished },
+                    { id: 'cancelado', label: t.orders.statusLabels.cancelled }
                   ].map((st) => {
                     const checked = selectedStatuses.includes(st.id);
                     return (
@@ -1763,13 +1780,13 @@ export default function AdminPedidosPage() {
               {/* Filtro por Método de Pagamento */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                  Forma de Pagamento
+                  {t.orders.filtersPopover.paymentMethodTitle}
                 </label>
                 <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg text-xs">
                   {[
-                    { id: 'todos', label: 'Todas' },
-                    { id: 'pix', label: 'PIX' },
-                    { id: 'cartao', label: 'Cartão' }
+                    { id: 'todos', label: t.orders.filtersPopover.paymentAll },
+                    { id: 'pix', label: t.orders.filtersPopover.paymentPix },
+                    { id: 'cartao', label: t.orders.filtersPopover.paymentCard }
                   ].map((p) => (
                     <button
                       key={p.id}
@@ -1798,9 +1815,9 @@ export default function AdminPedidosPage() {
                 >
                   <Gift className="w-4 h-4 text-amber-600 shrink-0" />
                   <div className="flex-1">
-                    <span className="block font-bold">Apenas Presentes VIP 🎁</span>
+                    <span className="block font-bold">{t.orders.filtersPopover.vipGiftsOnly}</span>
                     <span className="text-[10px] text-slate-500 block">
-                      Pedidos com embalagem nobre e dedicatória
+                      {t.orders.filtersPopover.vipGiftsDesc}
                     </span>
                   </div>
                   <input
@@ -1814,13 +1831,13 @@ export default function AdminPedidosPage() {
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">
-                  {filteredOrders.length} pedido(s) encontrado(s)
+                  {t.orders.filtersPopover.ordersFound(filteredOrders.length)}
                 </span>
                 <button
                   onClick={() => setIsFilterPopoverOpen(false)}
                   className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer"
                 >
-                  Ver Resultados
+                  {t.orders.filtersPopover.showResults}
                 </button>
               </div>
             </div>
@@ -2382,7 +2399,7 @@ export default function AdminPedidosPage() {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-slate-900 block">
-                          {order.cliente_nome || 'Cliente'}
+                          {formatCustomerDisplayName(order.cliente_nome)}
                         </span>
                         {order.cliente_is_vip && (
                           <span
@@ -2524,7 +2541,7 @@ export default function AdminPedidosPage() {
                       {/* Coluna 1: Peças Compradas */}
                       <div className="space-y-3">
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                          Peças no Pedido ({items.length})
+                          {t.orders.drawer.itemsInOrder(items.length)}
                         </span>
                         <div className="space-y-2">
                           {items.map((item, idx) => (
@@ -2552,7 +2569,7 @@ export default function AdminPedidosPage() {
                                   {item.nome_produto}
                                 </span>
                                 <span className="text-[11px] text-slate-500 block">
-                                  Tam: <strong className="text-slate-700">{item.tamanho}</strong> &bull; Cor: <strong className="text-slate-700">{item.cor}</strong> &bull; Qtd: <strong className="text-slate-700">{item.quantidade}x</strong>
+                                  {t.orders.drawer.size}: <strong className="text-slate-700">{item.tamanho}</strong> &bull; {t.orders.drawer.color}: <strong className="text-slate-700">{item.cor}</strong> &bull; {t.orders.drawer.qty}: <strong className="text-slate-700">{item.quantidade}x</strong>
                                 </span>
                               </div>
                               <span className="text-xs font-extrabold text-slate-900">
@@ -2566,7 +2583,7 @@ export default function AdminPedidosPage() {
                       {/* Coluna 2: Dados de Entrega e Rastreio */}
                       <div className="space-y-3">
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                          Endereço de Envio & Logística
+                          {t.orders.drawer.shippingAddressAndLogistics}
                         </span>
 
                         <div className="bg-white p-3.5 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1.5">
@@ -2590,10 +2607,10 @@ export default function AdminPedidosPage() {
                         <div className="bg-white p-3.5 rounded-lg border border-slate-200 flex items-center justify-between gap-3">
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                              Código de Rastreio (Correios / Melhor Envio)
+                              {t.orders.drawer.trackingNumberCarrier}
                             </span>
                             <span className="font-mono text-xs font-bold text-slate-900">
-                              {order.codigo_rastreio || 'Ainda não informado'}
+                              {order.codigo_rastreio || t.orders.drawer.notProvidedYet}
                             </span>
                           </div>
 
@@ -2604,7 +2621,7 @@ export default function AdminPedidosPage() {
                             }}
                             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
                           >
-                            {order.codigo_rastreio ? 'Alterar Código' : '+ Adicionar Rastreio'}
+                            {order.codigo_rastreio ? t.orders.drawer.changeTracking : t.orders.drawer.addTracking}
                           </button>
                         </div>
 
@@ -2615,7 +2632,7 @@ export default function AdminPedidosPage() {
                               <div className="flex items-center gap-1.5">
                                 <Gift className="w-4 h-4 text-amber-700" />
                                 <span className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">
-                                  Embalagem para Presente VIP
+                                  {t.orders.toolbar.vipGifts}
                                 </span>
                                 {giftDetails.fee !== undefined && giftDetails.fee > 0 && (
                                   <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded font-bold">
@@ -2627,12 +2644,12 @@ export default function AdminPedidosPage() {
                               {giftDetails.message && (
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard(giftDetails.message || '', 'Dedicatória copiada!')}
+                                  onClick={() => copyToClipboard(giftDetails.message || '', locale === 'en' ? 'Dedication copied!' : 'Dedicatória copiada!')}
                                   className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-white px-2.5 py-1 bg-amber-200/80 hover:bg-amber-800 rounded transition-colors cursor-pointer"
                                   title="Copiar mensagem para transcrever no cartão"
                                 >
                                   <Copy className="w-3 h-3" />
-                                  <span>Copiar Dedicatória</span>
+                                  <span>{locale === 'en' ? 'Copy Dedication' : 'Copiar Dedicatória'}</span>
                                 </button>
                               )}
                             </div>
@@ -2640,7 +2657,7 @@ export default function AdminPedidosPage() {
                             {giftDetails.message ? (
                               <div className="bg-white/90 p-2.5 rounded border border-amber-200">
                                 <span className="text-[10px] text-amber-800 font-bold uppercase block mb-1">
-                                  Mensagem do Cartão Personalizado:
+                                  {locale === 'en' ? 'Gift Card Message:' : 'Mensagem do Cartão Personalizado:'}
                                 </span>
                                 <p className="text-xs italic text-slate-800 font-serif leading-relaxed">
                                   &ldquo;{giftDetails.message}&rdquo;
@@ -2648,7 +2665,7 @@ export default function AdminPedidosPage() {
                               </div>
                             ) : (
                               <p className="text-[11px] text-amber-800 italic">
-                                A cliente solicitou a embalagem luxuosa de presente sem mensagem de dedicatória escrita.
+                                {t.orders.drawer.vipGiftWrapWithoutMessage}
                               </p>
                             )}
                           </div>
@@ -2658,9 +2675,9 @@ export default function AdminPedidosPage() {
                         {order.observacoes && !order.observacoes.startsWith('🎁') && (
                           <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
                             <strong className="text-slate-900 text-[10px] uppercase font-bold block">
-                              Observações do Pedido:
+                              {t.orders.drawer.orderNotes}
                             </strong>
-                            <p className="whitespace-pre-line text-[11px]">{order.observacoes}</p>
+                            <p className="whitespace-pre-line text-[11px]">{formatOrderNotes(order.observacoes)}</p>
                           </div>
                         )}
                       </div>
@@ -2688,14 +2705,14 @@ export default function AdminPedidosPage() {
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
                   </th>
-                  <th className="p-3">Pedido</th>
-                  <th className="p-3">Data / Hora</th>
-                  <th className="p-3">Cliente</th>
-                  <th className="p-3">Peças</th>
-                  <th className="p-3">Total</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Rastreamento</th>
-                  <th className="p-3 text-right">Ações</th>
+                  <th className="p-3">{t.orders.tableHeaders.order}</th>
+                  <th className="p-3">{t.orders.tableHeaders.dateTime}</th>
+                  <th className="p-3">{t.orders.tableHeaders.customer}</th>
+                  <th className="p-3">{t.orders.tableHeaders.items}</th>
+                  <th className="p-3">{t.orders.tableHeaders.total}</th>
+                  <th className="p-3">{t.orders.tableHeaders.status}</th>
+                  <th className="p-3">{t.orders.tableHeaders.tracking}</th>
+                  <th className="p-3 text-right">{t.orders.tableHeaders.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -2758,7 +2775,7 @@ export default function AdminPedidosPage() {
                       <td className="p-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-900 block truncate max-w-[150px]">
-                            {order.cliente_nome || 'Cliente'}
+                            {formatCustomerDisplayName(order.cliente_nome)}
                           </span>
                           {order.cliente_is_vip && (
                             <span
@@ -2819,7 +2836,7 @@ export default function AdminPedidosPage() {
                           {formatCurrency(Number(order.total || 0))}
                         </span>
                         <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-                          {order.metodo_pagamento === 'pix' ? 'PIX' : 'Cartão'}
+                          {order.metodo_pagamento === 'pix' ? t.orders.paymentLabels.pix : t.orders.paymentLabels.creditCard}
                         </span>
                       </td>
 
@@ -2832,12 +2849,12 @@ export default function AdminPedidosPage() {
                           }
                           className="bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold p-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                         >
-                          <option value="pendente">Aguardando WhatsApp</option>
-                          <option value="pago">Pago</option>
-                          <option value="em_separacao">Em Separação</option>
-                          <option value="enviado">Enviado</option>
-                          <option value="entregue">Entregue</option>
-                          <option value="cancelado">Cancelado</option>
+                          <option value="pendente">{t.orders.statusLabels.awaitingWhatsapp}</option>
+                          <option value="pago">{t.orders.statusLabels.paid}</option>
+                          <option value="em_separacao">{t.orders.statusLabels.inSeparation}</option>
+                          <option value="enviado">{t.orders.statusLabels.shipped}</option>
+                          <option value="entregue">{t.orders.statusLabels.delivered}</option>
+                          <option value="cancelado">{t.orders.statusLabels.cancelled}</option>
                         </select>
                         {(() => {
                           const res = getOrderReservation(order);
@@ -2882,7 +2899,7 @@ export default function AdminPedidosPage() {
                             }}
                             className="text-[10px] font-bold text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer"
                           >
-                            + Rastreio
+                            {t.orders.tableHeaders.addTrackingBtn}
                           </button>
                         )}
                       </td>
@@ -3104,7 +3121,7 @@ export default function AdminPedidosPage() {
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold text-slate-900 block truncate">
-                                {order.cliente_nome || 'Cliente'}
+                                {formatCustomerDisplayName(order.cliente_nome)}
                               </span>
                               {order.cliente_is_vip && (
                                 <span
@@ -3459,14 +3476,14 @@ export default function AdminPedidosPage() {
                     )}
                   </div>
                   <span className="text-xs text-slate-500 mt-1 block">
-                    Data do Pedido: {formatDate(detailsModalOrder.created_at)}
+                    {t.orders.colDate}: {formatDate(detailsModalOrder.created_at)}
                   </span>
                 </div>
 
                 <button
                   onClick={() => setDetailsModalOrder(null)}
                   className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
-                  title="Fechar detalhes"
+                  title={t.common.close}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -3476,9 +3493,9 @@ export default function AdminPedidosPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {/* Cliente */}
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Cliente</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.orders.colCustomer}</span>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-slate-900 text-sm">{detailsModalOrder.cliente_nome || 'Cliente'}</p>
+                    <p className="font-bold text-slate-900 text-sm">{formatCustomerDisplayName(detailsModalOrder.cliente_nome)}</p>
                     {detailsModalOrder.cliente_is_vip && (
                       <span
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-400"
@@ -3497,14 +3514,14 @@ export default function AdminPedidosPage() {
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline pt-1"
                     >
                       <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Conversar no WhatsApp</span>
+                      <span>{t.orders.actions.chatWhatsapp}</span>
                     </a>
                   )}
                 </div>
 
                 {/* Endereço de Entrega */}
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Endereço de Envio</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.orders.shippingAddress}</span>
                   <p className="font-semibold text-slate-800">
                     {detailsModalOrder.endereco_entrega?.logradouro}, {detailsModalOrder.endereco_entrega?.numero}
                     {detailsModalOrder.endereco_entrega?.complemento ? ` (${detailsModalOrder.endereco_entrega.complemento})` : ''}
@@ -3521,9 +3538,9 @@ export default function AdminPedidosPage() {
               {/* Box de Rastreamento */}
               <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Código de Rastreamento Correios</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.orders.drawer.trackingNumberCarrier}</span>
                   <span className="font-mono font-bold text-slate-900 text-sm">
-                    {detailsModalOrder.codigo_rastreio || 'Ainda não informado'}
+                    {detailsModalOrder.codigo_rastreio || t.orders.drawer.notProvidedYet}
                   </span>
                 </div>
                 <button
@@ -3533,7 +3550,7 @@ export default function AdminPedidosPage() {
                   }}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
                 >
-                  {detailsModalOrder.codigo_rastreio ? 'Alterar Rastreio' : '+ Adicionar Rastreio'}
+                  {detailsModalOrder.codigo_rastreio ? t.orders.drawer.changeTracking : t.orders.drawer.addTracking}
                 </button>
               </div>
 
@@ -3768,7 +3785,7 @@ export default function AdminPedidosPage() {
               {/* Lista de Peças Compradas */}
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Peças no Pedido ({dItems.length})
+                  {t.orders.drawer.itemsInOrder(dItems.length)}
                 </span>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {dItems.map((item, idx) => (
@@ -3783,7 +3800,7 @@ export default function AdminPedidosPage() {
                       <div className="flex-1 min-w-0">
                         <span className="font-bold text-slate-900 block truncate">{item.nome_produto}</span>
                         <span className="text-[11px] text-slate-500 block">
-                          Tam: <strong className="text-slate-700">{item.tamanho}</strong> &bull; Cor: <strong className="text-slate-700">{item.cor}</strong> &bull; Qtd: <strong className="text-slate-700">{item.quantidade}x</strong>
+                          {t.orders.drawer.size}: <strong className="text-slate-700">{item.tamanho}</strong> &bull; {t.orders.drawer.color}: <strong className="text-slate-700">{item.cor}</strong> &bull; {t.orders.drawer.qty}: <strong className="text-slate-700">{item.quantidade}x</strong>
                         </span>
                       </div>
                       <span className="font-extrabold text-slate-900 font-mono">
@@ -4082,7 +4099,7 @@ export default function AdminPedidosPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Rastreamento Correios #{trackingModalOrder.numero_pedido}
+                {t.orders.trackingModal.title(trackingModalOrder.numero_pedido)}
               </h3>
               <button
                 onClick={() => setTrackingModalOrder(null)}
@@ -4094,13 +4111,13 @@ export default function AdminPedidosPage() {
 
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Código de Rastreamento (ex: QD123456789BR)
+                {t.orders.trackingModal.inputLabel}
               </label>
               <input
                 type="text"
                 value={trackingInput}
                 onChange={(e) => setTrackingInput(e.target.value)}
-                placeholder="Insira o código dos Correios..."
+                placeholder={t.orders.trackingModal.placeholder}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -4110,14 +4127,14 @@ export default function AdminPedidosPage() {
                 onClick={() => setTrackingModalOrder(null)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.orders.trackingModal.cancel}
               </button>
               <button
                 onClick={handleSaveTracking}
                 disabled={isUpdatingTracking}
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm cursor-pointer"
               >
-                {isUpdatingTracking ? 'Salvando...' : 'Salvar Código & Marcar Enviado'}
+                {isUpdatingTracking ? t.orders.trackingModal.saving : t.orders.trackingModal.saveAndShip}
               </button>
             </div>
           </div>
@@ -4163,10 +4180,10 @@ export default function AdminPedidosPage() {
               <div>
                 <h3 className="text-base font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
                   <Printer className="w-5 h-5 text-amber-600" />
-                  Expedição do Pedido #{printModalOrder.numero_pedido}
+                  {t.orders.expeditionModal.title(printModalOrder.numero_pedido)}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Gere a Declaração de Conteúdo oficial dos Correios ou o Romaneio de Separação para embalagem.
+                  {t.orders.expeditionModal.subtitle}
                 </p>
               </div>
 
@@ -4176,7 +4193,7 @@ export default function AdminPedidosPage() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir Agora (A4)</span>
+                  <span>{t.orders.expeditionModal.printNow} (A4)</span>
                 </button>
 
                 <button
@@ -4198,7 +4215,7 @@ export default function AdminPedidosPage() {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📄 Declaração de Conteúdo Oficial (Correios)
+                📄 {t.orders.expeditionModal.tabDeclaration}
               </button>
               <button
                 onClick={() => setPrintType('romaneio')}
@@ -4208,7 +4225,7 @@ export default function AdminPedidosPage() {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📦 Romaneio de Separação & Embalagem
+                📦 {t.orders.expeditionModal.tabPackingSlip}
               </button>
             </div>
 
@@ -4433,14 +4450,14 @@ export default function AdminPedidosPage() {
                 onClick={() => setPrintModalOrder(null)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Fechar
+                {t.common.close}
               </button>
               <button
                 onClick={() => window.print()}
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Imprimir Documento</span>
+                <span>{t.orders.expeditionModal.printNow}</span>
               </button>
             </div>
           </div>
@@ -4467,7 +4484,7 @@ export default function AdminPedidosPage() {
                     Liberar Peças da Reserva
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {releaseModalOrder.order.cliente_nome || 'Cliente'}
+                    Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {formatCustomerDisplayName(releaseModalOrder.order.cliente_nome)}
                   </p>
                 </div>
               </div>

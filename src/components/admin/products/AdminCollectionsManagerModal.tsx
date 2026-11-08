@@ -27,6 +27,7 @@ import {
   bulkUpdatePromotionalFlags,
   bulkUpdateProductCategory
 } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface AdminCollectionsManagerModalProps {
   isOpen: boolean;
@@ -113,6 +114,7 @@ export function AdminCollectionsManagerModal({
   onUpdated,
   onToast
 }: AdminCollectionsManagerModalProps) {
+  const { formatCurrency } = useAdminI18n();
   const [activeTab, setActiveTab] = useState<CollectionTab>(initialTab || 'destaque');
   // Modo de exibição: 'current' (peças na seção) | 'add_catalog' (navegador de catálogo para adicionar)
   const [viewMode, setViewMode] = useState<'current' | 'add_catalog'>('current');
@@ -756,7 +758,7 @@ export function AdminCollectionsManagerModal({
                           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                             Preço:{' '}
                             <span className="font-bold text-slate-800">
-                              R$ {Number(product.preco || 0).toFixed(2).replace('.', ',')}
+                              {formatCurrency(Number(product.preco || 0))}
                             </span>{' '}
                             • Estoque:{' '}
                             <span
@@ -1007,7 +1009,7 @@ export function AdminCollectionsManagerModal({
                           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                             Preço:{' '}
                             <span className="font-bold text-slate-800">
-                              R$ {Number(p.preco || 0).toFixed(2).replace('.', ',')}
+                              {formatCurrency(Number(p.preco || 0))}
                             </span>{' '}
                             • Estoque:{' '}
                             <span

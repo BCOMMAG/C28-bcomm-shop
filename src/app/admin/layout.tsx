@@ -837,7 +837,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                           <div className="flex items-center justify-between font-bold text-slate-800">
                             <span>#{p.numero_pedido}</span>
                             <span className="text-emerald-700">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.total)}
+                              {formatCurrency(p.total)}
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 truncate">{p.cliente_nome}</p>

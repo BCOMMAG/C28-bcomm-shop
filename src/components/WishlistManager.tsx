@@ -55,7 +55,9 @@ export function WishlistManager() {
     closeSizeGuide,
     isCartOpen,
     products,
-    currentTenant
+    currentTenant,
+    formatStorePrice,
+    storeLanguage
   } = useStore();
 
   const tenantSlug = normalizeTenantSlug(currentTenant?.slug);
@@ -187,7 +189,7 @@ export function WishlistManager() {
       const opt = sel ? ` (Cor: ${sel.color}, Tam: ${sel.size})` : '';
       msg += `❤️ *${idx + 1}. ${p.name}*${opt} - ${p.formattedPrice}\n`;
     });
-    msg += `\n💰 *Total Estimado:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    msg += `\n💰 *Total Estimado:* ${formatStorePrice(subtotal)}\n`;
     msg += `Poderia me confirmar a disponibilidade de pronta entrega?`;
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(msg)}`;
   };
@@ -331,16 +333,24 @@ export function WishlistManager() {
 
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl sm:text-3xl font-bold font-serif-luxury text-[#1A1918] dark:text-white">
-                    R$ {subtotal.toFixed(2).replace('.', ',')}
+                    {formatStorePrice(subtotal)}
                   </span>
                   <span className="text-xs text-[#78716C] dark:text-[#A8A29E]">
-                    em até 6x de R$ {(subtotal / 6).toFixed(2).replace('.', ',')} sem juros
+                    {storeLanguage === 'en'
+                      ? `up to 6x of ${formatStorePrice(subtotal / 6)} interest-free`
+                      : storeLanguage === 'es'
+                      ? `hasta 6 cuotas de ${formatStorePrice(subtotal / 6)} sin interés`
+                      : `em até 6x de ${formatStorePrice(subtotal / 6)} sem juros`}
                   </span>
                 </div>
 
                 {savings > 0 && (
                   <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    🎉 Economia total de R$ {savings.toFixed(2).replace('.', ',')} nesta seleção!
+                    {storeLanguage === 'en'
+                      ? `🎉 Total savings of ${formatStorePrice(savings)} in this selection!`
+                      : storeLanguage === 'es'
+                      ? `🎉 ¡Ahorro total de ${formatStorePrice(savings)} en esta selección!`
+                      : `🎉 Economia total de ${formatStorePrice(savings)} nesta seleção!`}
                   </p>
                 )}
               </div>

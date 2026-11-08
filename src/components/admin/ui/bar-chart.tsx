@@ -56,7 +56,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   embedded = false,
   className
 }) => {
-  const { formatCurrency } = useAdminI18n();
+  const { formatCurrency, currency } = useAdminI18n();
   // Previne mismatch de hidratação no export estático da Cloudflare Pages
   const [isMounted, setIsMounted] = React.useState(false);
   const patternId = React.useId();
@@ -176,7 +176,10 @@ export const BarChart: React.FC<BarChartProps> = ({
                 tickLine={false}
                 axisLine={false}
                 tick={{ fontSize: 10, fill: '#94A3B8' }}
-                tickFormatter={(val) => `R$ ${val}`}
+                tickFormatter={(val) => {
+                  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
+                  return `${symbol} ${val}`;
+                }}
               />
 
               <Tooltip

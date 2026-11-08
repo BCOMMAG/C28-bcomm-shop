@@ -602,12 +602,12 @@ export default function AdminClientesPage() {
                       title="Selecionar todas as clientes da lista"
                     />
                   </th>
-                  <th className="py-3 px-4">Cliente / Contato</th>
-                  <th className="py-3 px-4">Localização</th>
-                  <th className="py-3 px-4 text-center">Compras</th>
-                  <th className="py-3 px-4 text-right">LTV (Total Investido)</th>
-                  <th className="py-3 px-4">Perfil & Selo</th>
-                  <th className="py-3 px-4 text-right">Ação & WhatsApp</th>
+                  <th className="py-3 px-4">{t.customers.colName} / {t.customers.colPhone}</th>
+                  <th className="py-3 px-4">{locale === 'en' ? 'Location' : locale === 'es' ? 'Ubicación' : 'Localização'}</th>
+                  <th className="py-3 px-4 text-center">{t.customers.colOrders}</th>
+                  <th className="py-3 px-4 text-right">LTV ({t.customers.colTotalSpent})</th>
+                  <th className="py-3 px-4">{locale === 'en' ? 'Profile & Badge' : locale === 'es' ? 'Perfil y Sello' : 'Perfil & Selo'}</th>
+                  <th className="py-3 px-4 text-right">{t.common.actions} & WhatsApp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">

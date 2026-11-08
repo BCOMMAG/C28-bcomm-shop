@@ -200,10 +200,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       message += `🛍️ *${index + 1}. ${item.name}*\n`;
       message += `   - Cor: ${item.color}\n`;
       message += `   - Tamanho: ${item.size}\n`;
-      message += `   - Qtd: ${item.quantity}x (R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')})\n\n`;
+      message += `   - Qtd: ${item.quantity}x (${formatStorePrice(item.price * item.quantity)})\n\n`;
     });
     if (isGift) {
-      message += `🎁 *Embalagem para Presente:* Sim (+R$ ${giftFee.toFixed(2).replace('.', ',')})\n`;
+      message += `🎁 *Embalagem para Presente:* Sim (+${formatStorePrice(giftFee)})\n`;
       if (giftMessage && giftMessage.trim()) {
         message += `💌 *Dedicatória do Cartão:* "${giftMessage.trim()}"\n`;
       }
@@ -214,20 +214,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       if (effectiveFreeShipping) {
         message += `🚚 *Frete:* Cortesia VIP (Grátis)\n\n`;
       } else if (lowestShipping) {
-        const discountText = shippingDiscount > 0 ? ` (com R$ ${shippingDiscount.toFixed(2).replace('.', ',')} de desconto progressivo aplicado)` : '';
-        message += `🚚 *Opção de Frete:* ${lowestShipping.name} (R$ ${shippingCost.toFixed(2).replace('.', ',')}${discountText} - ${lowestShipping.deliveryDays})\n\n`;
+        const discountText = shippingDiscount > 0 ? ` (com ${formatStorePrice(shippingDiscount)} de desconto progressivo aplicado)` : '';
+        message += `🚚 *Opção de Frete:* ${lowestShipping.name} (${formatStorePrice(shippingCost)}${discountText} - ${lowestShipping.deliveryDays})\n\n`;
       } else {
         message += `\n`;
       }
     }
-    message += `💰 *Subtotal das Peças:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    message += `💰 *Subtotal das Peças:* ${formatStorePrice(subtotal)}\n`;
     if (isGift) {
-      message += `🎁 *Taxa Embalagem Especial:* R$ ${giftFee.toFixed(2).replace('.', ',')}\n`;
+      message += `🎁 *Taxa Embalagem Especial:* ${formatStorePrice(giftFee)}\n`;
     }
     if (savedAddress && shippingCost > 0) {
-      message += `🚚 *Frete:* R$ ${shippingCost.toFixed(2).replace('.', ',')}\n`;
+      message += `🚚 *Frete:* ${formatStorePrice(shippingCost)}\n`;
     }
-    message += `💰 *Total Previsto:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\n`;
+    message += `💰 *Total Previsto:* ${formatStorePrice(finalTotal)}\n\n`;
     message += `Poderia me confirmar a disponibilidade e passar as opções de pagamento?`;
 
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(message)}`;
@@ -608,7 +608,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             É para presente?
                           </span>
                           <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-none bg-[#C5A059]/15 text-[#C5A059] dark:text-[#DFBE76]">
-                            +R$ {giftFee.toFixed(2).replace('.', ',')}
+                            +{formatStorePrice(giftFee)}
                           </span>
                         </div>
                         <p className="text-[10px] text-[#78716C] dark:text-[#A8A29E] leading-snug mt-0.5">

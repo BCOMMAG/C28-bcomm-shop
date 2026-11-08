@@ -69,7 +69,9 @@ export function CustomerVIPDashboard() {
     openSizeGuide,
     closeSizeGuide,
     currentTenant,
-    products
+    products,
+    formatStorePrice,
+    storeLanguage
   } = useStore();
 
   const tenantSlug = normalizeTenantSlug(currentTenant?.slug);
@@ -603,7 +605,7 @@ export function CustomerVIPDashboard() {
                 <span className="text-[10px] uppercase font-bold tracking-wider">Frete Cortesia</span>
                 <Truck className="w-4 h-4" />
               </div>
-              <p className="text-xl font-bold font-serif-luxury text-[#C5A059]">R$ {freeShippingGoal.toFixed(0)}</p>
+              <p className="text-xl font-bold font-serif-luxury text-[#C5A059]">{formatStorePrice(freeShippingGoal)}</p>
               <span className="text-[11px] text-[#78716C] dark:text-[#A8A29E]">grátis para todo Brasil</span>
             </div>
           </div>
@@ -723,7 +725,7 @@ export function CustomerVIPDashboard() {
                     </span>
                   </div>
                   <div className="text-xs text-[#78716C]">
-                    Total: <strong className="text-[#1A1918] dark:text-white">R$ {searchedSingleOrder.total.toFixed(2).replace('.', ',')}</strong>
+                    Total: <strong className="text-[#1A1918] dark:text-white">{formatStorePrice(searchedSingleOrder.total)}</strong>
                   </div>
                   <button
                     onClick={() => {
@@ -885,7 +887,7 @@ export function CustomerVIPDashboard() {
                                   Valor Total
                                 </span>
                                 <span className="text-base sm:text-lg font-bold text-[#1A1918] dark:text-[#FAF8F5]">
-                                  R$ {Number(pedido.total).toFixed(2).replace('.', ',')}
+                                  {formatStorePrice(Number(pedido.total))}
                                 </span>
                               </div>
 
@@ -1019,7 +1021,7 @@ export function CustomerVIPDashboard() {
 
                                   <div className="text-right">
                                     <span className="text-xs sm:text-sm font-bold text-[#1A1918] dark:text-[#FAF8F5]">
-                                      R$ {(Number(item.preco_unitario) * item.quantidade).toFixed(2).replace('.', ',')}
+                                      {formatStorePrice(Number(item.preco_unitario) * item.quantidade)}
                                     </span>
                                   </div>
                                 </div>
@@ -1419,7 +1421,11 @@ export function CustomerVIPDashboard() {
                         </span>
                       </div>
                       <p className="font-mono text-base font-bold tracking-wider text-[#1A1918] dark:text-white">
-                        ACIMA DE R$ {freeShippingGoal.toFixed(0)}
+                        {storeLanguage === 'en'
+                          ? `ABOVE ${formatStorePrice(freeShippingGoal)}`
+                          : storeLanguage === 'es'
+                          ? `POR COMPRAS SUPERIORES A ${formatStorePrice(freeShippingGoal)}`
+                          : `ACIMA DE ${formatStorePrice(freeShippingGoal)}`}
                       </p>
                       <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E]">
                         Aplicado automaticamente no carrinho para qualquer cidade do Brasil.

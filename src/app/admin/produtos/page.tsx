@@ -3213,13 +3213,13 @@ export default function AdminProdutosPage() {
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
                   </th>
-                  <th className="p-3 w-14">Foto</th>
-                  <th className="p-3">Peça / Coleção</th>
-                  <th className="p-3">Preço Venda</th>
-                  <th className="p-3">Custo / Margem</th>
-                  <th className="p-3">Estoque</th>
-                  <th className="p-3 text-center">Status Vitrine</th>
-                  <th className="p-3 text-right">Ações</th>
+                  <th className="p-3 w-14">{t.products.colPhoto}</th>
+                  <th className="p-3">{t.products.colName}</th>
+                  <th className="p-3">{t.products.colPrice}</th>
+                  <th className="p-3">{locale === 'en' ? 'Cost / Margin' : locale === 'es' ? 'Costo / Margen' : 'Custo / Margem'}</th>
+                  <th className="p-3">{t.products.colStock}</th>
+                  <th className="p-3 text-center">{t.products.colStatus}</th>
+                  <th className="p-3 text-right">{t.products.colActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

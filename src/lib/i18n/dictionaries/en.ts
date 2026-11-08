@@ -35,7 +35,10 @@ export const en: TranslationDictionary = {
     new: 'New',
     selectOption: 'Select an option',
     panel: 'Dashboard',
-    viewPublicStore: 'View Public Storefront'
+    viewPublicStore: 'View Public Storefront',
+    customerInFittingRoom: 'Customer in Fitting Room',
+    fittingRoomExpiredNote: 'Fitting Room Hold Expired (Piece Returned to Storefront)',
+    fittingRoomReturnedBadge: 'Fitting Room Returned'
   },
   login: {
     panelTitle: 'Store Admin Dashboard',
@@ -148,7 +151,37 @@ export const en: TranslationDictionary = {
     filterLast30Days: 'Last 30 days',
     filterMonth: 'This Month',
     filterYear: 'This Year',
-    growthVsPrevious: 'vs previous period'
+    growthVsPrevious: 'vs previous period',
+    salesHistory: 'Sales History',
+    topSellingItems: 'Top Selling Items',
+    topSellingBadge: 'Top Outflow',
+    lowestSellingItems: 'Lowest Selling Items',
+    lowestSellingBadge: 'Lowest Outflow',
+    zeroSalesTitle: (count: number) => `Zero Sales (${count} items unmoved)`,
+    zeroSalesSubtitle: 'Stock pieces with no sales movement during this period',
+    viewAllCount: (count: number) => `View all (${count})`,
+    zeroUnitsSold: '0 units sold',
+    stockUnitCount: (stock: number, value: string) => `Stock: ${stock} units • ${value}`,
+    unmovedStockCount: (count: number) => `${count} unmoved`,
+    sumTotal: 'Sum',
+    daysWithSales: (count: number) => `${count} day${count === 1 ? '' : 's'} with sales`,
+    viewCatalog: 'View Catalog →',
+    productsWithSales: (count: number) => `${count} product${count === 1 ? '' : 's'} with sales`,
+    manageStock: 'Manage Stock →',
+    unmovedItems: 'unmoved',
+    recentOrdersTitle: 'Recent Orders',
+    ordersCentralBtn: 'Orders Hub →',
+    detailsBtn: 'Details',
+    tableHeaders: {
+      order: 'ORDER',
+      product: 'PRODUCT',
+      customer: 'CUSTOMER',
+      total: 'TOTAL',
+      status: 'STATUS',
+      action: 'ACTION'
+    },
+    singleDateNotice: 'Showing revenue for single date',
+    barChartMinDatesNotice: 'The bar chart requires at least 2 dates with sales to be displayed.'
   },
   orders: {
     title: 'Orders Hub',
@@ -184,6 +217,63 @@ export const en: TranslationDictionary = {
     cancelOrder: 'Cancel Order',
     trackingCode: 'Tracking Number',
     addTracking: 'Add Tracking',
+    drawer: {
+      itemsInOrder: (count: number) => `ITEMS IN ORDER (${count})`,
+      shippingAddressAndLogistics: 'SHIPPING ADDRESS & LOGISTICS',
+      trackingNumberCarrier: 'TRACKING CODE (CORREIOS / CARRIER)',
+      notProvidedYet: 'Not provided yet',
+      addTracking: '+ Add Tracking',
+      changeTracking: 'Edit Tracking',
+      orderNotes: 'ORDER NOTES:',
+      expiredFittingRoomNote: 'Fitting Room Hold Expired (Piece Returned to Storefront)',
+      vipGiftWrap: (recipient?: string) => `VIP Gift Wrapping with dedication message for ${recipient || 'recipient'}`,
+      vipGiftWrapWithoutMessage: 'VIP Gift Wrapping selected',
+      size: 'Size',
+      color: 'Color',
+      qty: 'Qty'
+    },
+    filtersPopover: {
+      title: 'Filter Orders',
+      clearAll: 'Clear All',
+      orderStatusTitle: 'ORDER STATUS (ALL)',
+      allStatus: 'All Statuses',
+      operationalOnly: 'Operational Only',
+      paymentMethodTitle: 'PAYMENT METHOD',
+      paymentAll: 'All',
+      paymentPix: 'PIX',
+      paymentCard: 'Card',
+      vipGiftsOnly: 'VIP Gifts Only 🎁',
+      vipGiftsDesc: 'Orders with luxury packaging and personal dedication',
+      ordersFound: (count: number) => `${count} order${count === 1 ? '' : 's'} found`,
+      showResults: 'Show Results'
+    },
+    trackingModal: {
+      title: (orderNumber: string) => `Carrier Tracking #${orderNumber}`,
+      inputLabel: 'Tracking Code (e.g. QD123456789BR)',
+      placeholder: 'Enter carrier tracking number...',
+      cancel: 'Cancel',
+      saveAndShip: 'Save Code & Mark as Shipped',
+      saving: 'Saving...'
+    },
+    tableHeaders: {
+      order: 'ORDER',
+      dateTime: 'DATE / TIME',
+      customer: 'CUSTOMER',
+      items: 'ITEMS',
+      total: 'TOTAL',
+      status: 'STATUS',
+      tracking: 'TRACKING',
+      actions: 'ACTIONS',
+      addTrackingBtn: '+ Tracking'
+    },
+    expeditionModal: {
+      title: (orderNumber: string) => `Order Shipment #${orderNumber}`,
+      subtitle: 'Postal Content Declaration and Internal Warehouse Packing Slip',
+      printNow: 'Print Now',
+      close: 'Close',
+      tabDeclaration: 'Content Declaration',
+      tabPackingSlip: 'Packing Slip'
+    },
     statusCards: {
       awaitingWhatsapp: 'Awaiting WhatsApp',
       paidConfirmed: 'Confirmed Payments',
@@ -309,6 +399,8 @@ export const en: TranslationDictionary = {
     colPhone: 'Phone',
     colStatus: 'Access Status',
     colPosPin: 'POS PIN',
+    colSalesGoals: 'Sales & Goals',
+    colWorkingHours: 'Working Hours',
     auditLogs: 'Audit Logs'
   },
   storeSettings: {

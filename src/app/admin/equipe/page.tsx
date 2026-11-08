@@ -46,7 +46,7 @@ import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 
 export default function AdminEquipePage() {
   const { currentTenant } = useStore();
-  const { t, formatCurrency } = useAdminI18n();
+  const { t, locale, formatCurrency } = useAdminI18n();
   const lojaId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'sua loja';
 
@@ -358,13 +358,13 @@ export default function AdminEquipePage() {
             <table className="w-full text-left text-xs text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4">Colaborador</th>
-                  <th className="py-3.5 px-4">Cargo & Alçada</th>
-                  <th className="py-3.5 px-4">Vendas & Metas</th>
-                  <th className="py-3.5 px-4">Horário / CLT</th>
-                  <th className="py-3.5 px-4">PIN Balcão</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Ações</th>
+                  <th className="py-3.5 px-4">{t.team.colName}</th>
+                  <th className="py-3.5 px-4">{t.team.colRole}</th>
+                  <th className="py-3.5 px-4">{t.team.colSalesGoals}</th>
+                  <th className="py-3.5 px-4">{t.team.colWorkingHours}</th>
+                  <th className="py-3.5 px-4">{t.team.colPosPin}</th>
+                  <th className="py-3.5 px-4">{t.team.colStatus}</th>
+                  <th className="py-3.5 px-4 text-right">{t.common.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">

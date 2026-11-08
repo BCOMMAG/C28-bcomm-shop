@@ -35,7 +35,10 @@ export const pt: TranslationDictionary = {
     new: 'Novo',
     selectOption: 'Selecione uma opção',
     panel: 'Painel',
-    viewPublicStore: 'Ver Vitrine Pública'
+    viewPublicStore: 'Ver Vitrine Pública',
+    customerInFittingRoom: 'Cliente no Provador',
+    fittingRoomExpiredNote: 'Provador Expirado (Peça Devolvida à Vitrine)',
+    fittingRoomReturnedBadge: 'Provador Devolvido'
   },
   login: {
     panelTitle: 'Painel Administrativo da Loja',
@@ -148,7 +151,37 @@ export const pt: TranslationDictionary = {
     filterLast30Days: 'Últimos 30 dias',
     filterMonth: 'Este Mês',
     filterYear: 'Este Ano',
-    growthVsPrevious: 'em relação ao período anterior'
+    growthVsPrevious: 'em relação ao período anterior',
+    salesHistory: 'Histórico de Vendas',
+    topSellingItems: 'Itens Mais Vendidos',
+    topSellingBadge: 'Top Saída',
+    lowestSellingItems: 'Itens Menos Vendidos',
+    lowestSellingBadge: 'Menor Saída',
+    zeroSalesTitle: (count: number) => `Zero Vendas (${count} itens sem saída)`,
+    zeroSalesSubtitle: 'Peças no estoque sem movimentação no período',
+    viewAllCount: (count: number) => `Ver todos (${count})`,
+    zeroUnitsSold: '0 unidades vendidas',
+    stockUnitCount: (stock: number, value: string) => `Estoque: ${stock} un • ${value}`,
+    unmovedStockCount: (count: number) => `${count} sem saída`,
+    sumTotal: 'Soma',
+    daysWithSales: (count: number) => `${count} dia${count === 1 ? '' : 's'} com vendas`,
+    viewCatalog: 'Ver Catálogo →',
+    productsWithSales: (count: number) => `${count} produto${count === 1 ? '' : 's'} com vendas`,
+    manageStock: 'Gerenciar Estoque →',
+    unmovedItems: 'sem saída',
+    recentOrdersTitle: 'Pedidos Recentes',
+    ordersCentralBtn: 'Central de Pedidos →',
+    detailsBtn: 'Detalhes',
+    tableHeaders: {
+      order: 'PEDIDO',
+      product: 'PRODUTO',
+      customer: 'CLIENTE',
+      total: 'TOTAL',
+      status: 'STATUS',
+      action: 'AÇÃO'
+    },
+    singleDateNotice: 'Exibindo faturamento do dia',
+    barChartMinDatesNotice: 'O gráfico de barras requer ao menos 2 datas com vendas para exibição.'
   },
   orders: {
     title: 'Central de Pedidos',
@@ -184,6 +217,63 @@ export const pt: TranslationDictionary = {
     cancelOrder: 'Cancelar Pedido',
     trackingCode: 'Código de Rastreamento',
     addTracking: 'Adicionar Rastreio',
+    drawer: {
+      itemsInOrder: (count: number) => `PEÇAS NO PEDIDO (${count})`,
+      shippingAddressAndLogistics: 'ENDEREÇO DE ENVIO & LOGÍSTICA',
+      trackingNumberCarrier: 'CÓDIGO DE RASTREIO (CORREIOS / MELHOR ENVIO)',
+      notProvidedYet: 'Ainda não informado',
+      addTracking: '+ Adicionar Rastreio',
+      changeTracking: 'Alterar Código',
+      orderNotes: 'OBSERVAÇÕES DO PEDIDO:',
+      expiredFittingRoomNote: 'Provador Expirado (Peça Devolvida à Vitrine)',
+      vipGiftWrap: (recipient?: string) => `Embalagem de Presente VIP com dedicatória para ${recipient || 'destinatário'}`,
+      vipGiftWrapWithoutMessage: 'Embalagem de Presente VIP selecionada',
+      size: 'Tam',
+      color: 'Cor',
+      qty: 'Qtd'
+    },
+    filtersPopover: {
+      title: 'Filtrar Pedidos',
+      clearAll: 'Limpar Todos',
+      orderStatusTitle: 'STATUS DO PEDIDO (TODOS)',
+      allStatus: 'Todos os Status',
+      operationalOnly: 'Apenas Operacionais',
+      paymentMethodTitle: 'FORMA DE PAGAMENTO',
+      paymentAll: 'Todas',
+      paymentPix: 'PIX',
+      paymentCard: 'Cartão',
+      vipGiftsOnly: 'Apenas Presentes VIP 🎁',
+      vipGiftsDesc: 'Pedidos com embalagem nobre e dedicatória',
+      ordersFound: (count: number) => `${count} pedido${count === 1 ? '' : 's'} encontrado${count === 1 ? '' : 's'}`,
+      showResults: 'Ver Resultados'
+    },
+    trackingModal: {
+      title: (orderNumber: string) => `Rastreamento Correios #${orderNumber}`,
+      inputLabel: 'Código de Rastreamento (ex: QD123456789BR)',
+      placeholder: 'Insira o código dos Correios...',
+      cancel: 'Cancelar',
+      saveAndShip: 'Salvar Código & Marcar Enviado',
+      saving: 'Salvando...'
+    },
+    tableHeaders: {
+      order: 'PEDIDO',
+      dateTime: 'DATA / HORA',
+      customer: 'CLIENTE',
+      items: 'PEÇAS',
+      total: 'TOTAL',
+      status: 'STATUS',
+      tracking: 'RASTREAMENTO',
+      actions: 'AÇÕES',
+      addTrackingBtn: '+ Rastreio'
+    },
+    expeditionModal: {
+      title: (orderNumber: string) => `Expedição de Pedido #${orderNumber}`,
+      subtitle: 'Declaração de Conteúdo para Correios e Romaneio de Separação Interno',
+      printNow: 'Imprimir Agora',
+      close: 'Fechar',
+      tabDeclaration: 'Declaração de Conteúdo',
+      tabPackingSlip: 'Romaneio de Separação'
+    },
     statusCards: {
       awaitingWhatsapp: 'Aguardando WhatsApp',
       paidConfirmed: 'Pagos Confirmados',
@@ -309,6 +399,8 @@ export const pt: TranslationDictionary = {
     colPhone: 'Telefone',
     colStatus: 'Status do Acesso',
     colPosPin: 'PIN de Balcão',
+    colSalesGoals: 'Vendas & Metas',
+    colWorkingHours: 'Horário / CLT',
     auditLogs: 'Logs de Auditoria'
   },
   storeSettings: {

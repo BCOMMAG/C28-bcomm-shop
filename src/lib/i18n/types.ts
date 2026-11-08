@@ -30,6 +30,9 @@ export interface CommonTranslations {
   selectOption: string;
   panel: string;
   viewPublicStore: string;
+  customerInFittingRoom: string;
+  fittingRoomExpiredNote: string;
+  fittingRoomReturnedBadge: string;
 }
 
 export interface DashboardTranslations {
@@ -55,6 +58,36 @@ export interface DashboardTranslations {
   filterMonth: string;
   filterYear: string;
   growthVsPrevious: string;
+  salesHistory: string;
+  topSellingItems: string;
+  topSellingBadge: string;
+  lowestSellingItems: string;
+  lowestSellingBadge: string;
+  zeroSalesTitle: (count: number) => string;
+  zeroSalesSubtitle: string;
+  viewAllCount: (count: number) => string;
+  zeroUnitsSold: string;
+  stockUnitCount: (stock: number, value: string) => string;
+  unmovedStockCount: (count: number) => string;
+  sumTotal: string;
+  daysWithSales: (count: number) => string;
+  viewCatalog: string;
+  productsWithSales: (count: number) => string;
+  manageStock: string;
+  unmovedItems: string;
+  recentOrdersTitle: string;
+  ordersCentralBtn: string;
+  detailsBtn: string;
+  tableHeaders: {
+    order: string;
+    product: string;
+    customer: string;
+    total: string;
+    status: string;
+    action: string;
+  };
+  singleDateNotice: string;
+  barChartMinDatesNotice: string;
 }
 
 export interface OrdersTranslations {
@@ -91,6 +124,63 @@ export interface OrdersTranslations {
   cancelOrder: string;
   trackingCode: string;
   addTracking: string;
+  drawer: {
+    itemsInOrder: (count: number) => string;
+    shippingAddressAndLogistics: string;
+    trackingNumberCarrier: string;
+    notProvidedYet: string;
+    addTracking: string;
+    changeTracking: string;
+    orderNotes: string;
+    expiredFittingRoomNote: string;
+    vipGiftWrap: (recipient?: string) => string;
+    vipGiftWrapWithoutMessage: string;
+    size: string;
+    color: string;
+    qty: string;
+  };
+  filtersPopover: {
+    title: string;
+    clearAll: string;
+    orderStatusTitle: string;
+    allStatus: string;
+    operationalOnly: string;
+    paymentMethodTitle: string;
+    paymentAll: string;
+    paymentPix: string;
+    paymentCard: string;
+    vipGiftsOnly: string;
+    vipGiftsDesc: string;
+    ordersFound: (count: number) => string;
+    showResults: string;
+  };
+  trackingModal: {
+    title: (orderNumber: string) => string;
+    inputLabel: string;
+    placeholder: string;
+    cancel: string;
+    saveAndShip: string;
+    saving: string;
+  };
+  tableHeaders: {
+    order: string;
+    dateTime: string;
+    customer: string;
+    items: string;
+    total: string;
+    status: string;
+    tracking: string;
+    actions: string;
+    addTrackingBtn: string;
+  };
+  expeditionModal: {
+    title: (orderNumber: string) => string;
+    subtitle: string;
+    printNow: string;
+    close: string;
+    tabDeclaration: string;
+    tabPackingSlip: string;
+  };
   statusCards: {
     awaitingWhatsapp: string;
     paidConfirmed: string;
@@ -220,6 +310,8 @@ export interface TeamTranslations {
   colPhone: string;
   colStatus: string;
   colPosPin: string;
+  colSalesGoals: string;
+  colWorkingHours: string;
   auditLogs: string;
 }
 

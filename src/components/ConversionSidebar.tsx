@@ -24,7 +24,7 @@ interface ConversionSidebarProps {
 
 export const ConversionSidebar: React.FC<ConversionSidebarProps> = ({ onOpenProduct }) => {
   const [activeSlide, setActiveSlide] = useState(0);
-  const { products } = useStore();
+  const { products, formatStorePrice, storeLanguage } = useStore();
   const sourceProducts = products && products.length > 0 ? products : PRODUCTS;
 
   // Produtos para os slides de alta conversão
@@ -165,7 +165,7 @@ export const ConversionSidebar: React.FC<ConversionSidebarProps> = ({ onOpenProd
         className="w-full py-3 px-4 rounded-none bg-[#25D366] hover:bg-[#20BA5C] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer hover:scale-[1.02] active:scale-95"
       >
         <MessageCircle className="w-4 h-4 fill-white text-[#25D366]" />
-        <span>Falar no WhatsApp</span>
+        <span>{storeLanguage === 'en' ? 'Chat on WhatsApp' : storeLanguage === 'es' ? 'Hablar por WhatsApp' : 'Falar no WhatsApp'}</span>
       </a>
 
       {/* 3. BENEFÍCIOS & GARANTIAS DA BOUTIQUE */}
@@ -173,19 +173,19 @@ export const ConversionSidebar: React.FC<ConversionSidebarProps> = ({ onOpenProd
         <div className="flex items-center gap-2">
           <Truck className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
           <span>
-            <strong>Frete Cortesia</strong> acima de R$ 350
+            <strong>{storeLanguage === 'en' ? 'Free Shipping' : storeLanguage === 'es' ? 'Envío Gratis' : 'Frete Cortesia'}</strong> {storeLanguage === 'en' ? `above ${formatStorePrice(350)}` : storeLanguage === 'es' ? `por compras superiores a ${formatStorePrice(350)}` : `acima de ${formatStorePrice(350)}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <Video className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
           <span>
-            <strong>Provador em Vídeo</strong> em cada peça
+            <strong>{storeLanguage === 'en' ? 'Video Fitting Room' : storeLanguage === 'es' ? 'Probador en Video' : 'Provador em Vídeo'}</strong> {storeLanguage === 'en' ? 'on every piece' : storeLanguage === 'es' ? 'en cada prenda' : 'em cada peça'}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
           <span>
-            <strong>Atendimento VIP</strong> e peças selecionadas
+            <strong>{storeLanguage === 'en' ? 'VIP Service' : storeLanguage === 'es' ? 'Atención VIP' : 'Atendimento VIP'}</strong> {storeLanguage === 'en' ? 'and curated pieces' : storeLanguage === 'es' ? 'y prendas seleccionadas' : 'e peças selecionadas'}
           </span>
         </div>
       </div>

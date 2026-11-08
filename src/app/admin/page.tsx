@@ -83,7 +83,7 @@ const ProductThumbnail: React.FC<{
 
 export default function AdminDashboardPage() {
   const { currentTenant } = useStore();
-  const { t, locale, formatCurrency } = useAdminI18n();
+  const { t, locale, formatCurrency, formatDate } = useAdminI18n();
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,13 +115,22 @@ export default function AdminDashboardPage() {
   }, [lojaId]);
 
   // Rótulo textual oficial do período ativo na tela
-  const periodLabelMap: Record<FilterPeriodKey, string> = {
-    hoje: 'Hoje',
-    ontem: 'Ontem',
-    '7d': 'Últimos 7 dias',
-    '30d': 'Últimos 30 dias',
-    mes_atual: 'Mês atual',
-    '90d': 'Últimos 90 dias'
+  const periodLabelMap: Record<FilterPeriodKey, string> = useMemo(() => ({
+    hoje: locale === 'en' ? 'Today' : locale === 'es' ? 'Hoy' : 'Hoje',
+    ontem: locale === 'en' ? 'Yesterday' : locale === 'es' ? 'Ayer' : 'Ontem',
+    '7d': t.dashboard.filterLast7Days,
+    '30d': t.dashboard.filterLast30Days,
+    mes_atual: t.dashboard.filterMonth,
+    '90d': locale === 'en' ? 'Last 90 days' : locale === 'es' ? 'Últimos 90 días' : 'Últimos 90 dias'
+  }), [locale, t]);
+
+  const formatCustomerName = (name?: string | null) => {
+    if (!name) return locale === 'en' ? 'Customer' : locale === 'es' ? 'Cliente' : 'Cliente';
+    const clean = name.toLowerCase();
+    if (clean.includes('provador') || clean.includes('fitting') || clean.includes('probador')) {
+      return t.common.customerInFittingRoom;
+    }
+    return name;
   };
 
   // Helper do WhatsApp
@@ -135,9 +144,13 @@ export default function AdminDashboardPage() {
         ? cleanPhone
         : `55${cleanPhone}`;
 
-    const clientName = order.cliente_nome || 'Cliente';
-    const storeName = currentTenant?.nome || 'nossa loja';
-    const message = `Olá ${clientName}! Aqui é da ${storeName} referente ao seu pedido ${order.numero_pedido}.`;
+    const clientName = order.cliente_nome || (locale === 'en' ? 'Customer' : 'Cliente');
+    const storeName = currentTenant?.nome || (locale === 'en' ? 'our store' : 'nossa loja');
+    const message = locale === 'en'
+      ? `Hello ${clientName}! This is ${storeName} regarding your order #${order.numero_pedido}.`
+      : locale === 'es'
+      ? `¡Hola ${clientName}! Somos de ${storeName} respecto a su pedido #${order.numero_pedido}.`
+      : `Olá ${clientName}! Aqui é da ${storeName} referente ao seu pedido ${order.numero_pedido}.`;
 
     return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
   };
@@ -148,37 +161,37 @@ export default function AdminDashboardPage() {
       case 'entregue':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Entregue
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t.orders.statusLabels.delivered}
           </span>
         );
       case 'enviado':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80">
-            <Truck className="w-3 h-3 text-sky-600" /> Enviado
+            <Truck className="w-3 h-3 text-sky-600" /> {t.orders.statusLabels.shipped}
           </span>
         );
       case 'em_separacao':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
-            <Package className="w-3 h-3 text-indigo-600" /> Em Separação
+            <Package className="w-3 h-3 text-indigo-600" /> {t.orders.statusLabels.inSeparation}
           </span>
         );
       case 'pago':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Pago
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t.orders.statusLabels.paid}
           </span>
         );
       case 'cancelado':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80">
-            <AlertCircle className="w-3 h-3 text-rose-600" /> Cancelado
+            <AlertCircle className="w-3 h-3 text-rose-600" /> {t.orders.statusLabels.cancelled}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
-            <Clock className="w-3 h-3 text-amber-600" /> Aguardando WhatsApp
+            <Clock className="w-3 h-3 text-amber-600" /> {t.orders.statusLabels.awaitingWhatsapp}
           </span>
         );
     }
@@ -559,7 +572,7 @@ export default function AdminDashboardPage() {
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                Histórico de Vendas
+                {t.dashboard.salesHistory}
               </h3>
               <span className="text-xs font-bold text-slate-700 font-sans">
                 {formatCurrency(faturamentoBruto)}
@@ -570,29 +583,29 @@ export default function AdminDashboardPage() {
               {vendasPorDia.length === 0 ? (
                 /* Estado Vazio */
                 <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhuma venda registrada no período selecionado.
+                  {t.dashboard.noRecentOrders}
                 </div>
               ) : vendasPorDia.length === 1 ? (
                 /* Com um único dia, não desenhe uma série falsa; mostre o valor e a data */
                 <div className="py-6 px-4 bg-slate-50/70 border border-slate-200/80 rounded-xl text-center space-y-2">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                    Data da Venda: {vendasPorDia[0].dateStr}
+                    {locale === 'en' ? 'Sale Date' : locale === 'es' ? 'Fecha de Venta' : 'Data da Venda'}: {vendasPorDia[0].dateStr}
                   </span>
                   <span className="text-3xl font-extrabold text-slate-900 font-sans block">
                     {formatCurrency(vendasPorDia[0].primaryValue)}
                   </span>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                    <span>Receita registrada em 1 única data</span>
+                    <span>{t.dashboard.singleDateNotice}</span>
                   </div>
                   <p className="text-[11px] text-slate-400 max-w-xs mx-auto pt-1">
-                    O gráfico comparativo em barras é exibido automaticamente a partir de 2 datas com vendas.
+                    {t.dashboard.barChartMinDatesNotice}
                   </p>
                 </div>
               ) : (
                 /* Gráfico de barras direto sem bordas internas redundantes */
                 <BarChart
                   data={vendasPorDia}
-                  primaryLabel="Receita Diária"
+                  primaryLabel={t.dashboard.revenueChart}
                   primaryColor="#0F172A"
                   height={220}
                   embedded={true}
@@ -602,8 +615,8 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Soma: {formatCurrency(faturamentoBruto)}</span>
-            <span className="font-semibold">{vendasPorDia.length} {vendasPorDia.length === 1 ? 'dia com vendas' : 'dias com vendas'}</span>
+            <span>{t.dashboard.sumTotal}: {formatCurrency(faturamentoBruto)}</span>
+            <span className="font-semibold">{t.dashboard.daysWithSales(vendasPorDia.length)}</span>
           </div>
         </div>
 
@@ -612,16 +625,16 @@ export default function AdminDashboardPage() {
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                Itens Mais Vendidos
+                {t.dashboard.topSellingItems}
               </h3>
-              <DeltaBadge label="Top Saída" type="neutral" showIcon={false} />
+              <DeltaBadge label={t.dashboard.topSellingBadge} type="neutral" showIcon={false} />
             </div>
 
             <div className="mt-4">
               {itensMaisVendidos.length === 0 ? (
                 /* Sem venda, mostre estado vazio */
                 <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhum item vendido no período selecionado.
+                  {t.dashboard.noRecentOrders}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -637,7 +650,7 @@ export default function AdminDashboardPage() {
                         </span>
                         <div className="flex items-center justify-between mt-0.5 text-[11px] text-slate-500">
                           <span className="font-semibold text-slate-700">
-                            {item.quantidade} {item.quantidade === 1 ? 'unidade vendida' : 'unidades vendidas'}
+                            {item.quantidade} {item.quantidade === 1 ? (locale === 'en' ? 'unit sold' : 'unidade vendida') : (locale === 'en' ? 'units sold' : 'unidades vendidas')}
                           </span>
                           <span className="font-extrabold text-slate-900 font-sans">
                             {formatCurrency(item.valorTotal)}
@@ -656,10 +669,9 @@ export default function AdminDashboardPage() {
               href="/admin/produtos/"
               className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1"
             >
-              <span>Ver Catálogo</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>{t.dashboard.viewCatalog}</span>
             </Link>
-            <span>{itensMaisVendidos.length} {itensMaisVendidos.length === 1 ? 'produto com vendas' : 'produtos com vendas'}</span>
+            <span>{t.dashboard.productsWithSales(itensMaisVendidos.length)}</span>
           </div>
         </div>
 
@@ -668,9 +680,9 @@ export default function AdminDashboardPage() {
           <div>
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                Itens Menos Vendidos
+                {t.dashboard.lowestSellingItems}
               </h3>
-              <DeltaBadge label="Menor Saída" type="neutral" showIcon={false} />
+              <DeltaBadge label={t.dashboard.lowestSellingBadge} type="neutral" showIcon={false} />
             </div>
 
             <div className="mt-4 space-y-3">
@@ -683,10 +695,10 @@ export default function AdminDashboardPage() {
                     </span>
                     <div className="min-w-0">
                       <span className="text-xs font-bold text-amber-950 block truncate">
-                        Zero Vendas ({produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? 'item sem saída' : 'itens sem saída'})
+                        {t.dashboard.zeroSalesTitle(produtosZeroVendas.length)}
                       </span>
                       <span className="text-[10px] text-amber-700 block truncate">
-                        Peças no estoque sem movimentação no período
+                        {t.dashboard.zeroSalesSubtitle}
                       </span>
                     </div>
                   </div>
@@ -694,9 +706,9 @@ export default function AdminDashboardPage() {
                     type="button"
                     onClick={() => setShowZeroVendasModal(true)}
                     className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer"
-                    title="Ver lista completa de produtos sem vendas"
+                    title={t.dashboard.viewAllCount(produtosZeroVendas.length)}
                   >
-                    Ver todos ({produtosZeroVendas.length})
+                    {t.dashboard.viewAllCount(produtosZeroVendas.length)}
                   </button>
                 </div>
               )}
@@ -716,10 +728,10 @@ export default function AdminDashboardPage() {
                         </span>
                         <div className="flex items-center justify-between mt-0.5 text-[11px] text-slate-500">
                           <span className="font-semibold text-rose-600">
-                            0 unidades vendidas
+                            {t.dashboard.zeroUnitsSold}
                           </span>
                           <span className="font-medium text-slate-500 text-[10px]">
-                            Estoque: {prod.estoque_total ?? 0} un &bull; {formatCurrency(prod.preco || 0)}
+                            {t.dashboard.stockUnitCount(prod.estoque_total ?? 0, formatCurrency(prod.preco || 0))}
                           </span>
                         </div>
                       </div>
@@ -728,7 +740,7 @@ export default function AdminDashboardPage() {
                 </div>
               ) : itensMenosVendidos.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">
-                  Nenhum item registrado no período selecionado.
+                  {t.dashboard.noRecentOrders}
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -744,7 +756,7 @@ export default function AdminDashboardPage() {
                         </span>
                         <div className="flex items-center justify-between mt-0.5 text-[11px] text-slate-500">
                           <span className="font-semibold text-slate-700">
-                            {item.quantidade} {item.quantidade === 1 ? 'unidade vendida' : 'unidades vendidas'}
+                            {item.quantidade} {item.quantidade === 1 ? (locale === 'en' ? 'unit sold' : 'unidade vendida') : (locale === 'en' ? 'units sold' : 'unidades vendidas')}
                           </span>
                           <span className="font-extrabold text-slate-900 font-sans">
                             {formatCurrency(item.valorTotal)}
@@ -763,13 +775,12 @@ export default function AdminDashboardPage() {
               href="/admin/produtos/"
               className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1"
             >
-              <span>Gerenciar Estoque</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>{t.dashboard.manageStock}</span>
             </Link>
             <span>
               {produtosZeroVendas.length > 0
-                ? `${produtosZeroVendas.length} sem saída`
-                : `${itensMenosVendidos.length} com vendas`}
+                ? t.dashboard.unmovedStockCount(produtosZeroVendas.length)
+                : `${itensMenosVendidos.length} ${locale === 'en' ? 'with sales' : 'com vendas'}`}
             </span>
           </div>
         </div>
@@ -782,14 +793,14 @@ export default function AdminDashboardPage() {
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-              Pedidos Recentes
+              {t.dashboard.recentOrdersTitle}
             </h3>
           </div>
           <Link
             href="/admin/pedidos/"
             className="text-xs text-slate-700 hover:text-slate-950 font-bold inline-flex items-center gap-1"
           >
-            <span>Central de Pedidos</span>
+            <span>{t.dashboard.ordersCentralBtn}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -799,19 +810,19 @@ export default function AdminDashboardPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
               <tr>
-                <th className="py-3 px-4">Pedido</th>
-                <th className="py-3 px-4">Produto</th>
-                <th className="py-3 px-4">Cliente</th>
-                <th className="py-3 px-4">Total</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Ação</th>
+                <th className="py-3 px-4">{t.dashboard.tableHeaders.order}</th>
+                <th className="py-3 px-4">{t.dashboard.tableHeaders.product}</th>
+                <th className="py-3 px-4">{t.dashboard.tableHeaders.customer}</th>
+                <th className="py-3 px-4">{t.dashboard.tableHeaders.total}</th>
+                <th className="py-3 px-4">{t.dashboard.tableHeaders.status}</th>
+                <th className="py-3 px-4 text-right">{t.dashboard.tableHeaders.action}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pedidosDoPeriodo.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
-                    Nenhum pedido registrado no período ({periodLabelMap[selectedPeriod]}).
+                    {t.dashboard.noRecentOrders}
                   </td>
                 </tr>
               ) : (
@@ -831,7 +842,7 @@ export default function AdminDashboardPage() {
                         </span>
                         <span className="text-[10px] text-slate-400 block font-sans">
                           {order.created_at
-                            ? new Date(order.created_at).toLocaleDateString('pt-BR', {
+                            ? formatDate(order.created_at, {
                                 day: '2-digit',
                                 month: '2-digit',
                                 hour: '2-digit',
@@ -853,11 +864,11 @@ export default function AdminDashboardPage() {
                               className="font-medium text-slate-900 truncate text-xs block"
                               title={firstItem?.nome_produto}
                             >
-                              {firstItem?.nome_produto || 'Produto da Loja'}
+                              {firstItem?.nome_produto || (locale === 'en' ? 'Store Product' : 'Produto da Loja')}
                             </span>
                             {order.itens_pedido && order.itens_pedido.length > 1 && (
                               <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60 inline-block mt-0.5">
-                                +{order.itens_pedido.length - 1} outro(s) item(ns)
+                                +{order.itens_pedido.length - 1} {locale === 'en' ? 'other item(s)' : 'outro(s) item(ns)'}
                               </span>
                             )}
                           </div>
@@ -865,7 +876,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       <td className="py-3 px-4 text-slate-800 font-medium">
-                        {order.cliente_nome || 'Cliente'}
+                        {formatCustomerName(order.cliente_nome)}
                       </td>
 
                       <td className="py-3 px-4 font-bold text-slate-900 font-sans">
@@ -894,7 +905,7 @@ export default function AdminDashboardPage() {
                             onClick={() => setSelectedOrderForDetails(order)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
                           >
-                            <span>Detalhes</span>
+                            <span>{t.dashboard.detailsBtn}</span>
                           </button>
                         </div>
                       </td>
@@ -910,7 +921,7 @@ export default function AdminDashboardPage() {
         <div className="sm:hidden divide-y divide-slate-100">
           {pedidosDoPeriodo.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-xs">
-              Nenhum pedido registrado no período ({periodLabelMap[selectedPeriod]}).
+              {t.dashboard.noRecentOrders}
             </div>
           ) : (
             pedidosDoPeriodo.map((order) => {
@@ -934,15 +945,15 @@ export default function AdminDashboardPage() {
                     />
                     <div className="min-w-0 flex-1">
                       <span className="font-semibold text-slate-900 text-xs block truncate">
-                        {firstItem?.nome_produto || 'Produto da Loja'}
+                        {firstItem?.nome_produto || (locale === 'en' ? 'Store Product' : 'Produto da Loja')}
                       </span>
                       {order.itens_pedido && order.itens_pedido.length > 1 && (
                         <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60 inline-block mt-0.5">
-                          +{order.itens_pedido.length - 1} outro(s) item(ns)
+                          +{order.itens_pedido.length - 1} {locale === 'en' ? 'other item(s)' : 'outro(s) item(ns)'}
                         </span>
                       )}
                       <span className="text-[11px] text-slate-500 block truncate">
-                        Cliente: <strong className="text-slate-800">{order.cliente_nome || 'Cliente'}</strong>
+                        {locale === 'en' ? 'Customer' : 'Cliente'}: <strong className="text-slate-800">{formatCustomerName(order.cliente_nome)}</strong>
                       </span>
                     </div>
                   </div>
@@ -969,7 +980,7 @@ export default function AdminDashboardPage() {
                         onClick={() => setSelectedOrderForDetails(order)}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 cursor-pointer"
                       >
-                        <span>Detalhes</span>
+                        <span>{t.dashboard.detailsBtn}</span>
                       </button>
                     </div>
                   </div>
@@ -989,10 +1000,10 @@ export default function AdminDashboardPage() {
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Produtos com Zero Vendas
+                  {t.dashboard.zeroSalesTitle(produtosZeroVendas.length)}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? 'produto sem nenhuma venda' : 'produtos sem nenhuma venda'} no período ({periodLabelMap[selectedPeriod]})
+                  {produtosZeroVendas.length} {produtosZeroVendas.length === 1 ? (locale === 'en' ? 'item without any sales' : 'produto sem nenhuma venda') : (locale === 'en' ? 'items without any sales' : 'produtos sem nenhuma venda')} ({periodLabelMap[selectedPeriod]})
                 </p>
               </div>
               <button
@@ -1014,12 +1025,12 @@ export default function AdminDashboardPage() {
                         {p.nome}
                       </span>
                       <span className="text-[11px] text-slate-500 block">
-                        Estoque: {p.estoque_total ?? 0} un &bull; Preço: {formatCurrency(p.preco || 0)}
+                        {t.dashboard.stockUnitCount(p.estoque_total ?? 0, formatCurrency(p.preco || 0))}
                       </span>
                     </div>
                   </div>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                    0 vendas
+                    {t.dashboard.zeroUnitsSold}
                   </span>
                 </div>
               ))}
@@ -1031,7 +1042,7 @@ export default function AdminDashboardPage() {
                 className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1.5"
                 onClick={() => setShowZeroVendasModal(false)}
               >
-                <span>Ir para Cadastro de Produtos</span>
+                <span>{t.dashboard.manageStock}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <button
@@ -1039,7 +1050,7 @@ export default function AdminDashboardPage() {
                 onClick={() => setShowZeroVendasModal(false)}
                 className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
-                Fechar
+                {t.common.close}
               </button>
             </div>
           </div>
@@ -1062,7 +1073,10 @@ export default function AdminDashboardPage() {
                   {getStatusBadge(selectedOrderForDetails.status)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Realizado em {selectedOrderForDetails.created_at ? new Date(selectedOrderForDetails.created_at).toLocaleString('pt-BR') : ''}
+                  {locale === 'en' ? 'Placed at' : locale === 'es' ? 'Realizado el' : 'Realizado em'}{' '}
+                  {selectedOrderForDetails.created_at
+                    ? formatDate(selectedOrderForDetails.created_at, 'long')
+                    : ''}
                 </p>
               </div>
               <button
@@ -1079,15 +1093,15 @@ export default function AdminDashboardPage() {
               {/* Cliente & Contato */}
               <div className="space-y-1.5">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Cliente & Contato
+                  {t.orders.customerData}
                 </span>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-slate-900">
-                      {selectedOrderForDetails.cliente_nome || 'Cliente'}
+                      {formatCustomerName(selectedOrderForDetails.cliente_nome)}
                     </p>
                     <p className="text-xs text-slate-600 font-mono">
-                      {selectedOrderForDetails.cliente_telefone || 'Sem telefone'}
+                      {selectedOrderForDetails.cliente_telefone || (locale === 'en' ? 'No phone' : 'Sem telefone')}
                       {selectedOrderForDetails.clientes_loja?.email && ` • ${selectedOrderForDetails.clientes_loja.email}`}
                     </p>
                   </div>
@@ -1108,7 +1122,7 @@ export default function AdminDashboardPage() {
               {/* Endereço de Entrega */}
               <div className="pt-3 space-y-1">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Endereço de Entrega
+                  {t.orders.shippingAddress}
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
                   {selectedOrderForDetails.endereco_entrega ? (
@@ -1121,7 +1135,7 @@ export default function AdminDashboardPage() {
                       CEP: {selectedOrderForDetails.endereco_entrega.cep}
                     </>
                   ) : (
-                    'Endereço não informado'
+                    locale === 'en' ? 'Shipping address not provided' : 'Endereço não informado'
                   )}
                 </p>
               </div>
@@ -1129,7 +1143,7 @@ export default function AdminDashboardPage() {
               {/* Itens do Pedido */}
               <div className="pt-3 space-y-2">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Itens do Pedido ({selectedOrderForDetails.itens_pedido?.length || 0})
+                  {t.orders.drawer.itemsInOrder(selectedOrderForDetails.itens_pedido?.length || 0)}
                 </span>
                 <div className="space-y-2">
                   {(selectedOrderForDetails.itens_pedido || []).map((item: any, idx: number) => (
@@ -1141,7 +1155,7 @@ export default function AdminDashboardPage() {
                             {item.nome_produto}
                           </span>
                           <span className="text-[10px] text-slate-500 block">
-                            Tamanho: {item.tamanho || 'U'} &bull; Cor: {item.cor || 'Padrão'} &bull; Qtd: {item.quantidade || 1}
+                            {t.orders.drawer.size}: {item.tamanho || 'U'} &bull; {t.orders.drawer.color}: {item.cor || 'Padrão'} &bull; {t.orders.drawer.qty}: {item.quantidade || 1}
                           </span>
                         </div>
                       </div>
@@ -1156,15 +1170,15 @@ export default function AdminDashboardPage() {
               {/* Totais */}
               <div className="pt-3 space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                  <span>{t.orders.subtotal}:</span>
                   <span className="font-mono">{formatCurrency(Number(selectedOrderForDetails.subtotal || selectedOrderForDetails.total || 0))}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Frete:</span>
-                  <span className="font-mono">{Number(selectedOrderForDetails.valor_frete || 0) > 0 ? formatCurrency(Number(selectedOrderForDetails.valor_frete)) : 'Grátis'}</span>
+                  <span>{t.orders.shippingCost}:</span>
+                  <span className="font-mono">{Number(selectedOrderForDetails.valor_frete || 0) > 0 ? formatCurrency(Number(selectedOrderForDetails.valor_frete)) : (locale === 'en' ? 'Free' : locale === 'es' ? 'Gratis' : 'Grátis')}</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100 text-sm font-extrabold text-slate-900">
-                  <span>Total do Pedido:</span>
+                  <span>{t.orders.total}:</span>
                   <span className="font-mono text-base">{formatCurrency(Number(selectedOrderForDetails.total || 0))}</span>
                 </div>
               </div>
@@ -1177,7 +1191,7 @@ export default function AdminDashboardPage() {
                 className="text-xs font-bold text-slate-700 hover:text-slate-900 inline-flex items-center gap-1.5"
                 onClick={() => setSelectedOrderForDetails(null)}
               >
-                <span>Central de Pedidos</span>
+                <span>{t.dashboard.ordersCentralBtn}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <button
@@ -1185,7 +1199,7 @@ export default function AdminDashboardPage() {
                 onClick={() => setSelectedOrderForDetails(null)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
-                Fechar
+                {t.common.close}
               </button>
             </div>
           </div>

@@ -276,3 +276,4 @@ export function getStorefrontTranslation(lang: string = 'pt'): StorefrontTransla
   if (clean.startsWith('es')) return storefrontEs;
   return storefrontPt;
 }
+

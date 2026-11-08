@@ -86,7 +86,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     activeReservations,
     getItemStock,
     getVariationAvailability,
-    getColorAvailability
+    getColorAvailability,
+    formatStorePrice,
+    st,
+    storeLanguage
   } = useStore();
 
   const showStockQty = currentTenant?.configuracoes_visuais?.exibir_quantidade_estoque_consumidor ?? true;
@@ -312,8 +315,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const pairedProduct = product.pairedWithId ? sourceProducts.find((p) => p.id === product.pairedWithId) : null;
 
-  const formattedCurrentPrice = `R$ ${rawCurrentPrice.toFixed(2).replace('.', ',')}`;
-  const formattedOriginalPrice = rawOriginalPrice ? `R$ ${rawOriginalPrice.toFixed(2).replace('.', ',')}` : null;
+  const formattedCurrentPrice = formatStorePrice(rawCurrentPrice);
+  const formattedOriginalPrice = rawOriginalPrice ? formatStorePrice(rawOriginalPrice) : null;
 
   const hasDiscount = Boolean(rawOriginalPrice && rawOriginalPrice > rawCurrentPrice);
   const savingsAmount = hasDiscount && rawOriginalPrice ? rawOriginalPrice - rawCurrentPrice : 0;
@@ -866,13 +869,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   {/* Mensagem em Verde de Economia quando houver desconto */}
                   {hasDiscount && (
                     <div className="text-[#16A34A] dark:text-[#22C55E] text-xs font-bold uppercase tracking-wide mt-1">
-                      ECONOMIA DE R$ {savingsAmount.toFixed(2).replace('.', ',')}! ({discountPercent}% OFF)
+                      {storeLanguage === 'en'
+                        ? `SAVE ${formatStorePrice(savingsAmount)}! (${discountPercent}% OFF)`
+                        : storeLanguage === 'es'
+                        ? `¡AHORRO DE ${formatStorePrice(savingsAmount)}! (${discountPercent}% OFF)`
+                        : `ECONOMIA DE ${formatStorePrice(savingsAmount)}! (${discountPercent}% OFF)`}
                     </div>
                   )}
 
                   {!hasDiscount && (
                     <span className="text-[11px] text-[#C5A059] dark:text-[#DFBE76] font-medium block mt-0.5">
-                      Peça Exclusiva &bull; Em até 3x de R$ {(rawCurrentPrice / 3).toFixed(2).replace('.', ',')} sem juros
+                      {storeLanguage === 'en'
+                        ? `Exclusive Piece • Up to 3x of ${formatStorePrice(rawCurrentPrice / 3)} interest-free`
+                        : storeLanguage === 'es'
+                        ? `Prenda Exclusiva • Hasta 3 cuotas de ${formatStorePrice(rawCurrentPrice / 3)} sin interés`
+                        : `Peça Exclusiva • Em até 3x de ${formatStorePrice(rawCurrentPrice / 3)} sem juros`}
                     </span>
                   )}
                 </div>
