@@ -28,12 +28,12 @@ export const en: TranslationDictionary = {
     emailLabel: 'Store Email',
     emailPlaceholder: 'admin@yourstore.com',
     helpTextPrefix: 'The reset link will be sent from our official sender',
-    helpTextHighlight: 'contato@agent-bcomm.space',
+    helpTextHighlight: 'security@agent-bcomm.space',
     cancel: 'Cancel',
     sendButton: 'Send Reset Email',
     sendingButton: 'Sending email...',
     successMessage: (email: string) =>
-      `We sent reset instructions to ${email}. The official sender is contato@agent-bcomm.space. Please check your inbox and spam folder.`,
+      `We sent reset instructions to ${email}. The official sender is security@agent-bcomm.space. Please check your inbox and spam folder.`,
     invalidEmail: 'Please enter a valid email address.',
     genericError: 'Unable to process password reset. Please try again later.'
   },

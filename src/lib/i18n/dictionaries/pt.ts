@@ -28,12 +28,12 @@ export const pt: TranslationDictionary = {
     emailLabel: 'E-mail da Loja',
     emailPlaceholder: 'admin@sualoja.com.br',
     helpTextPrefix: 'O link de redefinição será enviado pelo remetente oficial',
-    helpTextHighlight: 'contato@agent-bcomm.space',
+    helpTextHighlight: 'security@agent-bcomm.space',
     cancel: 'Cancelar',
     sendButton: 'Enviar E-mail',
     sendingButton: 'Enviando e-mail...',
     successMessage: (email: string) =>
-      `Enviamos as instruções com o link de redefinição para ${email}. O remetente oficial é contato@agent-bcomm.space. Verifique sua caixa de entrada e pasta de spam.`,
+      `Enviamos as instruções com o link de redefinição para ${email}. O remetente oficial é security@agent-bcomm.space. Verifique sua caixa de entrada e pasta de spam.`,
     invalidEmail: 'Por favor, informe um endereço de e-mail válido.',
     genericError: 'Não foi possível processar a recuperação. Tente novamente mais tarde.'
   },

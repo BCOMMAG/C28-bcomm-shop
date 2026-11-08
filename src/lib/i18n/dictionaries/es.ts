@@ -28,12 +28,12 @@ export const es: TranslationDictionary = {
     emailLabel: 'Correo de la Tienda',
     emailPlaceholder: 'admin@sutienda.com',
     helpTextPrefix: 'El enlace de restablecimiento será enviado por el remitente oficial',
-    helpTextHighlight: 'contato@agent-bcomm.space',
+    helpTextHighlight: 'security@agent-bcomm.space',
     cancel: 'Cancelar',
     sendButton: 'Enviar Correo',
     sendingButton: 'Enviando correo...',
     successMessage: (email: string) =>
-      `Hemos enviado las instrucciones con el enlace de restablecimiento a ${email}. El remitente oficial es contato@agent-bcomm.space. Revise su bandeja de entrada y correo no deseado.`,
+      `Hemos enviado las instrucciones con el enlace de restablecimiento a ${email}. El remitente oficial es security@agent-bcomm.space. Revise su bandeja de entrada y correo no deseado.`,
     invalidEmail: 'Por favor, ingrese una dirección de correo válida.',
     genericError: 'No fue posible procesar la recuperación. Inténtelo más tarde.'
   },
