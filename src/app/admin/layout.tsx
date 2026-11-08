@@ -100,9 +100,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       if (icons.length > 0) {
         icons.forEach((el) => {
           if (el.rel.includes('apple-touch-icon')) {
-            el.href = '/admin-favicon/apple-touch-icon.png?v=20261107_apolo_stores';
+            el.href = '/admin-favicon/apple-touch-icon.png?v=20261107_bcomm_stores';
           } else {
-            el.href = '/admin-favicon/favicon-32x32.png?v=20261107_apolo_stores';
+            el.href = '/admin-favicon/favicon-32x32.png?v=20261107_bcomm_stores';
           }
         });
       }

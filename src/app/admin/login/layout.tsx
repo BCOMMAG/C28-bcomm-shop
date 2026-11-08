@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import React from 'react';
 
-const v = '20261107_apolo_stores';
+const v = '20261107_bcomm_stores';
 
 export const metadata: Metadata = {
   title: 'BCOMM • Painel Administrativo',

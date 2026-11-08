@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
     if (typeof document !== 'undefined') {
       document.title = 'BCOMM • Painel Administrativo';
 
-      const v = '20261107_apolo_stores';
+      const v = '20261107_bcomm_stores';
       const existingIcons = document.querySelectorAll<HTMLLinkElement>(
         "link[rel*='icon'], link[rel='apple-touch-icon']"
       );
