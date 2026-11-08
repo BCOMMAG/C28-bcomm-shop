@@ -95,14 +95,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       const c = document.getElementById('bcomm-instant-curtain');
       if (c) c.style.display = 'none';
 
-      // Fixação do Favicon Oficial BCOMM no Painel Administrativo
+      // Fixação do Favicon Oficial BCOMM no Painel Administrativo com cache-busting
       const icons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon'], link[rel='apple-touch-icon']");
       if (icons.length > 0) {
         icons.forEach((el) => {
           if (el.rel.includes('apple-touch-icon')) {
-            el.href = '/admin-favicon/apple-touch-icon.png';
+            el.href = '/admin-favicon/apple-touch-icon.png?v=20261107_apolo_stores';
           } else {
-            el.href = '/admin-favicon/favicon-32x32.png';
+            el.href = '/admin-favicon/favicon-32x32.png?v=20261107_apolo_stores';
           }
         });
       }

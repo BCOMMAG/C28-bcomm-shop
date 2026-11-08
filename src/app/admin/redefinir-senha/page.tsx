@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -22,6 +23,20 @@ function RedefinirSenhaContent() {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.title = 'BCOMM • Redefinição de Senha';
+
+      const v = '20261107_apolo_stores';
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+        "link[rel*='icon'], link[rel='apple-touch-icon']"
+      );
+      if (existingIcons.length > 0) {
+        existingIcons.forEach((el) => {
+          if (el.rel.includes('apple-touch-icon')) {
+            el.href = `/admin-favicon/apple-touch-icon.png?v=${v}`;
+          } else {
+            el.href = `/admin-favicon/favicon-32x32.png?v=${v}`;
+          }
+        });
+      }
     }
   }, []);
 
@@ -83,8 +98,24 @@ function RedefinirSenhaContent() {
       <div className="absolute top-1/4 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-40 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
+      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 relative z-10 py-6 sm:py-10 px-4">
+        {/* Lado Esquerdo: Logo BCOMM Stores */}
+        <div className="flex flex-col items-center justify-center text-center max-w-md w-full">
+          <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-[420px] lg:h-[420px] flex items-center justify-center drop-shadow-[0_20px_50px_rgba(139,92,246,0.35)] transition-transform duration-500 hover:scale-105">
+            <Image
+              src="/images/bcomm-stores.png"
+              alt="BCOMM Stores"
+              width={2048}
+              height={2048}
+              priority
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Lado Direito: Card Principal de Redefinição */}
+        <div className="w-full max-w-md">
+          <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
           {/* Topo do Card */}
           <div className="text-center mb-8">
             <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
@@ -230,6 +261,7 @@ function RedefinirSenhaContent() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

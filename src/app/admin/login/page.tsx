@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Lock,
@@ -38,10 +39,30 @@ export default function AdminLoginPage() {
     maskedPhone?: string;
   } | null>(null);
 
-  // Garante que o título da aba no navegador exiba sempre a identidade oficial BCOMM
+  // Garante que o título da aba e o favicon oficial BCOMM sejam sempre exibidos sem cache antigo
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.title = 'BCOMM • Painel Administrativo';
+
+      const v = '20261107_apolo_stores';
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+        "link[rel*='icon'], link[rel='apple-touch-icon']"
+      );
+      if (existingIcons.length > 0) {
+        existingIcons.forEach((el) => {
+          if (el.rel.includes('apple-touch-icon')) {
+            el.href = `/admin-favicon/apple-touch-icon.png?v=${v}`;
+          } else {
+            el.href = `/admin-favicon/favicon-32x32.png?v=${v}`;
+          }
+        });
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/png';
+        link.href = `/admin-favicon/favicon-32x32.png?v=${v}`;
+        document.head.appendChild(link);
+      }
     }
   }, []);
 
@@ -245,9 +266,25 @@ export default function AdminLoginPage() {
       <div className="absolute top-1/4 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-40 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Card Principal BCOMM */}
-        <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
+      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 relative z-10 py-6 sm:py-10 px-4">
+        {/* Lado Esquerdo: Logo BCOMM Stores */}
+        <div className="flex flex-col items-center justify-center text-center max-w-md w-full">
+          <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-[420px] lg:h-[420px] flex items-center justify-center drop-shadow-[0_20px_50px_rgba(139,92,246,0.35)] transition-transform duration-500 hover:scale-105">
+            <Image
+              src="/images/bcomm-stores.png"
+              alt="BCOMM Stores"
+              width={2048}
+              height={2048}
+              priority
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Lado Direito: Card Principal de Login */}
+        <div className="w-full max-w-md">
+          {/* Card Principal BCOMM */}
+          <div className="bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl">
           {/* Topo do Card */}
           <div className="text-center mb-8">
             <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
@@ -351,6 +388,7 @@ export default function AdminLoginPage() {
           © 2026 <strong className="text-white">BCOMM</strong> • Todos os direitos reservados.
         </p>
       </div>
+    </div>
 
       {/* Modal de Recuperação de Senha (E-mail e WhatsApp) */}
       {isForgotModalOpen && (
