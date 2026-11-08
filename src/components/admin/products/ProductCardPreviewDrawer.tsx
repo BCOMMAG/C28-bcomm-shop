@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Eye, Sparkles, Tag, Package, Star } from 'lucide-react';
 import { FormMediaItem } from './ProductMediaGalleryManager';
 import { parseMediaColor } from '@/lib/products';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface ProductCardPreviewProps {
   nome: string;
@@ -38,10 +39,7 @@ export function ProductCardPreviewDrawer({
   precosPorVariacao = {}
 }: ProductCardPreviewProps) {
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
-
-  const formatBRL = (v: number) => {
-    return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
+  const { formatCurrency } = useAdminI18n();
 
   // Determina se há preços divergentes entre variações
   const precosValores = Object.values(precosPorVariacao)
@@ -190,16 +188,16 @@ export function ProductCardPreviewDrawer({
             )}
             <div className="flex items-baseline gap-1.5">
               <span className="font-extrabold text-slate-900 text-sm font-mono">
-                {formatBRL(temPromo ? precoPromocional! : menorPrecoVariacao)}
+                {formatCurrency(temPromo ? precoPromocional! : menorPrecoVariacao)}
               </span>
               {temPromo && (
                 <span className="text-[11px] text-slate-400 line-through font-mono">
-                  {formatBRL(preco)}
+                  {formatCurrency(preco)}
                 </span>
               )}
             </div>
             <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
-              ou até 6x de {formatBRL((temPromo ? precoPromocional! : menorPrecoVariacao) / 6)} sem juros
+              ou até 6x de {formatCurrency((temPromo ? precoPromocional! : menorPrecoVariacao) / 6)} sem juros
             </span>
           </div>
         </div>

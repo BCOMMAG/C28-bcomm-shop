@@ -10,7 +10,8 @@ import {
   CartesianGrid,
   Tooltip
 } from 'recharts';
-import { cn, formatBRL } from '@/lib/chart-utils';
+import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface BarChartDataPoint {
   /** Rótulo no eixo X (ex: "Seg", "Ter", "01/10") */
@@ -55,6 +56,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   embedded = false,
   className
 }) => {
+  const { formatCurrency } = useAdminI18n();
   // Previne mismatch de hidratação no export estático da Cloudflare Pages
   const [isMounted, setIsMounted] = React.useState(false);
   const patternId = React.useId();
@@ -129,7 +131,7 @@ export const BarChart: React.FC<BarChartProps> = ({
               Receita Registrada &bull; {data[0].label}
             </span>
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono mt-1.5">
-              {formatBRL(data[0].primaryValue)}
+              {formatCurrency(data[0].primaryValue)}
             </span>
             <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200/80">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -199,7 +201,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                             {primaryLabel}:
                           </span>
                           <span className="font-mono font-bold text-slate-900">
-                            {formatBRL(item.primaryValue)}
+                            {formatCurrency(item.primaryValue)}
                           </span>
                         </div>
                         {item.secondaryValue !== undefined && (
@@ -209,7 +211,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                               {secondaryLabel}:
                             </span>
                             <span className="font-mono font-semibold text-slate-700">
-                              {formatBRL(item.secondaryValue)}
+                              {formatCurrency(item.secondaryValue)}
                             </span>
                           </div>
                         )}

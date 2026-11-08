@@ -27,7 +27,8 @@ import {
   AdminProductItem
 } from '@/lib/admin';
 import { CustomerOrder } from '@/lib/orders';
-import { cn, formatBRL } from '@/lib/chart-utils';
+import { cn } from '@/lib/chart-utils';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { KpiCard } from '@/components/admin/ui/kpi-card';
 import { DeltaBadge } from '@/components/admin/ui/delta-badge';
 import { BarChart } from '@/components/admin/ui/bar-chart';
@@ -82,6 +83,7 @@ const ProductThumbnail: React.FC<{
 
 export default function AdminDashboardPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatCurrency } = useAdminI18n();
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -410,7 +412,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-            Visão Geral
+            {t.dashboard.title}
           </h1>
         </div>
 
@@ -422,12 +424,12 @@ export default function AdminDashboardPage() {
               onChange={(e) => setSelectedPeriod(e.target.value as FilterPeriodKey)}
               className="appearance-none bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl pl-3 pr-8 py-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs cursor-pointer"
             >
-              <option value="hoje">Hoje</option>
-              <option value="ontem">Ontem</option>
-              <option value="7d">7 dias</option>
-              <option value="30d">30 dias</option>
-              <option value="mes_atual">Mês atual</option>
-              <option value="90d">90 dias</option>
+              <option value="hoje">{locale === 'en' ? 'Today' : locale === 'es' ? 'Hoy' : 'Hoje'}</option>
+              <option value="ontem">{locale === 'en' ? 'Yesterday' : locale === 'es' ? 'Ayer' : 'Ontem'}</option>
+              <option value="7d">{t.dashboard.filterLast7Days}</option>
+              <option value="30d">{t.dashboard.filterLast30Days}</option>
+              <option value="mes_atual">{t.dashboard.filterMonth}</option>
+              <option value="90d">{locale === 'en' ? 'Last 90 days' : locale === 'es' ? 'Últimos 90 días' : 'Últimos 90 dias'}</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
           </div>
@@ -439,7 +441,7 @@ export default function AdminDashboardPage() {
             title="Atualizar dados do Supabase"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin text-slate-900')} />
-            <span className="hidden sm:inline">Atualizar</span>
+            <span className="hidden sm:inline">{locale === 'en' ? 'Refresh' : locale === 'es' ? 'Actualizar' : 'Atualizar'}</span>
           </button>
         </div>
       </div>
@@ -450,30 +452,30 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
         {/* Card 1: Faturamento */}
         <KpiCard
-          title="Faturamento"
-          value={formatBRL(faturamentoBruto)}
+          title={t.dashboard.totalRevenue}
+          value={formatCurrency(faturamentoBruto)}
           icon={<DollarSign className="w-4 h-4 text-slate-700" />}
-          deltaLabel={quantidadePedidosValidos > 0 ? `${quantidadePedidosValidos} pedidos` : undefined}
+          deltaLabel={quantidadePedidosValidos > 0 ? `${quantidadePedidosValidos} ${locale === 'en' ? 'orders' : 'pedidos'}` : undefined}
           deltaType="neutral"
-          footerText="Ver faturamento detalhado"
-          actionText="Ver finanças"
+          footerText={locale === 'en' ? 'View detailed revenue' : locale === 'es' ? 'Ver facturación detallada' : 'Ver faturamento detalhado'}
+          actionText={locale === 'en' ? 'View finance' : locale === 'es' ? 'Ver finanzas' : 'Ver finanças'}
           href="/admin/financas/"
           loading={loading}
         />
 
         {/* Card 2: Custo Total */}
         <KpiCard
-          title="Custo Total"
+          title={t.finance.cmv}
           value={
             !isCustoCompleto
-              ? 'Custo incompleto'
-              : formatBRL(custoTotalCalculado)
+              ? (locale === 'en' ? 'Incomplete cost' : locale === 'es' ? 'Costo incompleto' : 'Custo incompleto')
+              : formatCurrency(custoTotalCalculado)
           }
           icon={<Wallet className="w-4 h-4 text-slate-700" />}
           deltaLabel={
             !isCustoCompleto
-              ? `${itensSemCustoCount} un sem custo`
-              : 'Custo completo'
+              ? `${itensSemCustoCount} ${locale === 'en' ? 'items without cost' : 'un sem custo'}`
+              : (locale === 'en' ? 'Complete cost' : locale === 'es' ? 'Costo completo' : 'Custo completo')
           }
           deltaType={!isCustoCompleto ? 'warning' : 'neutral'}
           footerText={
@@ -481,68 +483,68 @@ export default function AdminDashboardPage() {
               ? `${itensSemCustoCount} ${itensSemCustoCount === 1 ? 'item sem preço de custo' : 'itens sem preço de custo'}`
               : 'Qtd × preço de custo'
           }
-          actionText="Ver catálogo"
+          actionText={locale === 'en' ? 'View catalog' : locale === 'es' ? 'Ver catálogo' : 'Ver catálogo'}
           href="/admin/produtos/"
           loading={loading}
         />
 
         {/* Card 3: Lucro Estimado e Margem */}
         <KpiCard
-          title="Lucro Estimado"
+          title={t.dashboard.netProfit}
           value={
             isCustoCompleto
-              ? formatBRL(lucroEstimado || 0)
+              ? formatCurrency(lucroEstimado || 0)
               : '—'
           }
           icon={<TrendingUp className="w-4 h-4 text-slate-700" />}
           deltaLabel={
             isCustoCompleto
-              ? `${margemPercentual.toFixed(1)}% margem`
-              : 'Aguardando custo'
+              ? `${margemPercentual.toFixed(1)}% ${locale === 'en' ? 'margin' : 'margem'}`
+              : (locale === 'en' ? 'Awaiting cost' : 'Aguardando custo')
           }
           deltaType={
             isCustoCompleto && margemPercentual > 0 ? 'positive' : 'neutral'
           }
           footerText={
             isCustoCompleto
-              ? 'Faturamento menos custos'
-              : 'Aguardando custo dos itens'
+              ? (locale === 'en' ? 'Revenue minus costs' : 'Faturamento menos custos')
+              : (locale === 'en' ? 'Awaiting cost of items' : 'Aguardando custo dos itens')
           }
-          actionText="Ver finanças"
+          actionText={locale === 'en' ? 'View finance' : locale === 'es' ? 'Ver finanzas' : 'Ver finanças'}
           href="/admin/financas/"
           loading={loading}
         />
 
         {/* Card 4: Pedidos */}
         <KpiCard
-          title="Pedidos"
-          value={`${quantidadePedidosValidos} ${quantidadePedidosValidos === 1 ? 'Pedido' : 'Pedidos'}`}
+          title={t.dashboard.totalOrders}
+          value={`${quantidadePedidosValidos} ${quantidadePedidosValidos === 1 ? (locale === 'en' ? 'Order' : 'Pedido') : (locale === 'en' ? 'Orders' : 'Pedidos')}`}
           icon={<ShoppingBag className="w-4 h-4 text-slate-700" />}
           deltaLabel={
             pedidosPendentesPeriodo > 0
-              ? `${pedidosPendentesPeriodo} aguardando`
-              : 'Válidos'
+              ? `${pedidosPendentesPeriodo} ${locale === 'en' ? 'pending' : 'aguardando'}`
+              : (locale === 'en' ? 'Valid' : 'Válidos')
           }
           deltaType={pedidosPendentesPeriodo > 0 ? 'warning' : 'neutral'}
           footerText={
             pedidosPendentesPeriodo > 0
-              ? `${pedidosPendentesPeriodo} aguardando confirmação`
-              : 'Pedidos válidos do período'
+              ? `${pedidosPendentesPeriodo} ${locale === 'en' ? 'awaiting confirmation' : 'aguardando confirmação'}`
+              : (locale === 'en' ? 'Valid orders in period' : 'Pedidos válidos do período')
           }
-          actionText="Ver pedidos"
+          actionText={locale === 'en' ? 'View orders' : locale === 'es' ? 'Ver pedidos' : 'Ver pedidos'}
           href="/admin/pedidos/"
           loading={loading}
         />
 
         {/* Card 5: Ticket Médio */}
         <KpiCard
-          title="Ticket Médio"
-          value={formatBRL(ticketMedio)}
+          title={t.dashboard.averageTicket}
+          value={formatCurrency(ticketMedio)}
           icon={<BarChart3 className="w-4 h-4 text-slate-700" />}
-          deltaLabel="Média Real"
+          deltaLabel={locale === 'en' ? 'Real Average' : 'Média Real'}
           deltaType="neutral"
-          footerText="Média por pedido válido"
-          actionText="Ver finanças"
+          footerText={locale === 'en' ? 'Average per valid order' : 'Média por pedido válido'}
+          actionText={locale === 'en' ? 'View finance' : locale === 'es' ? 'Ver finanzas' : 'Ver finanças'}
           href="/admin/financas/"
           loading={loading}
         />
@@ -560,7 +562,7 @@ export default function AdminDashboardPage() {
                 Histórico de Vendas
               </h3>
               <span className="text-xs font-bold text-slate-700 font-sans">
-                {formatBRL(faturamentoBruto)}
+                {formatCurrency(faturamentoBruto)}
               </span>
             </div>
 
@@ -577,7 +579,7 @@ export default function AdminDashboardPage() {
                     Data da Venda: {vendasPorDia[0].dateStr}
                   </span>
                   <span className="text-3xl font-extrabold text-slate-900 font-sans block">
-                    {formatBRL(vendasPorDia[0].primaryValue)}
+                    {formatCurrency(vendasPorDia[0].primaryValue)}
                   </span>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                     <span>Receita registrada em 1 única data</span>
@@ -600,7 +602,7 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Soma: {formatBRL(faturamentoBruto)}</span>
+            <span>Soma: {formatCurrency(faturamentoBruto)}</span>
             <span className="font-semibold">{vendasPorDia.length} {vendasPorDia.length === 1 ? 'dia com vendas' : 'dias com vendas'}</span>
           </div>
         </div>
@@ -638,7 +640,7 @@ export default function AdminDashboardPage() {
                             {item.quantidade} {item.quantidade === 1 ? 'unidade vendida' : 'unidades vendidas'}
                           </span>
                           <span className="font-extrabold text-slate-900 font-sans">
-                            {formatBRL(item.valorTotal)}
+                            {formatCurrency(item.valorTotal)}
                           </span>
                         </div>
                       </div>
@@ -717,7 +719,7 @@ export default function AdminDashboardPage() {
                             0 unidades vendidas
                           </span>
                           <span className="font-medium text-slate-500 text-[10px]">
-                            Estoque: {prod.estoque_total ?? 0} un &bull; {formatBRL(prod.preco || 0)}
+                            Estoque: {prod.estoque_total ?? 0} un &bull; {formatCurrency(prod.preco || 0)}
                           </span>
                         </div>
                       </div>
@@ -745,7 +747,7 @@ export default function AdminDashboardPage() {
                             {item.quantidade} {item.quantidade === 1 ? 'unidade vendida' : 'unidades vendidas'}
                           </span>
                           <span className="font-extrabold text-slate-900 font-sans">
-                            {formatBRL(item.valorTotal)}
+                            {formatCurrency(item.valorTotal)}
                           </span>
                         </div>
                       </div>
@@ -867,7 +869,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       <td className="py-3 px-4 font-bold text-slate-900 font-sans">
-                        {formatBRL(Number(order.total || 0))}
+                        {formatCurrency(Number(order.total || 0))}
                       </td>
 
                       <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
@@ -947,7 +949,7 @@ export default function AdminDashboardPage() {
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <span className="font-extrabold text-slate-900 font-mono text-sm">
-                      {formatBRL(Number(order.total || 0))}
+                      {formatCurrency(Number(order.total || 0))}
                     </span>
 
                     <div className="flex items-center gap-2">
@@ -1012,7 +1014,7 @@ export default function AdminDashboardPage() {
                         {p.nome}
                       </span>
                       <span className="text-[11px] text-slate-500 block">
-                        Estoque: {p.estoque_total ?? 0} un &bull; Preço: {formatBRL(p.preco || 0)}
+                        Estoque: {p.estoque_total ?? 0} un &bull; Preço: {formatCurrency(p.preco || 0)}
                       </span>
                     </div>
                   </div>
@@ -1144,7 +1146,7 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
                       <span className="font-bold text-xs text-slate-900 font-mono shrink-0">
-                        {formatBRL(Number(item.preco_unitario || 0) * Number(item.quantidade || 1))}
+                        {formatCurrency(Number(item.preco_unitario || 0) * Number(item.quantidade || 1))}
                       </span>
                     </div>
                   ))}
@@ -1155,15 +1157,15 @@ export default function AdminDashboardPage() {
               <div className="pt-3 space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-mono">{formatBRL(Number(selectedOrderForDetails.subtotal || selectedOrderForDetails.total || 0))}</span>
+                  <span className="font-mono">{formatCurrency(Number(selectedOrderForDetails.subtotal || selectedOrderForDetails.total || 0))}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Frete:</span>
-                  <span className="font-mono">{Number(selectedOrderForDetails.valor_frete || 0) > 0 ? formatBRL(Number(selectedOrderForDetails.valor_frete)) : 'Grátis'}</span>
+                  <span className="font-mono">{Number(selectedOrderForDetails.valor_frete || 0) > 0 ? formatCurrency(Number(selectedOrderForDetails.valor_frete)) : 'Grátis'}</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100 text-sm font-extrabold text-slate-900">
                   <span>Total do Pedido:</span>
-                  <span className="font-mono text-base">{formatBRL(Number(selectedOrderForDetails.total || 0))}</span>
+                  <span className="font-mono text-base">{formatCurrency(Number(selectedOrderForDetails.total || 0))}</span>
                 </div>
               </div>
             </div>

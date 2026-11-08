@@ -45,11 +45,13 @@ import {
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
 import { ProgramaVIPConfig } from '@/types/database';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 type SortOption = 'ltv' | 'pedidos' | 'recente' | 'nome';
 
 export default function AdminClientesPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatCurrency, formatDate, formatWhatsAppUrl } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'Minha Loja';
 
@@ -142,22 +144,6 @@ export default function AdminClientesPage() {
   useEffect(() => {
     fetchClients();
   }, [tenantId]);
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(val || 0);
-  };
-
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   // Abrir Dossiê da Cliente
   const handleOpenClientDossier = (client: AdminClientItem) => {
@@ -350,7 +336,7 @@ export default function AdminClientesPage() {
         msg = `${saudacao}\n\nComo posso te ajudar hoje? Posso te apresentar nosso catálogo ou tirar dúvidas sobre qualquer peça: https://bcomm-shop.pages.dev/catalogo${vendedoraCodigo}${assinatura}`;
     }
 
-    return `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    return formatWhatsAppUrl(cleanPhone, msg);
   };
 
   // Filtragem e Ordenação

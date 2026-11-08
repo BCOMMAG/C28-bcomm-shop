@@ -52,6 +52,7 @@ import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
 import { AdminProductItem } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 
@@ -233,6 +234,7 @@ export function ProductBatchImportModal({
   categoriesList,
   existingProducts = []
 }: ProductBatchImportModalProps) {
+  const { formatNumber } = useAdminI18n();
   const [activeTab, setActiveTab] = useState<'grade' | 'excel'>('grade');
   const [file, setFile] = useState<File | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -485,10 +487,10 @@ export function ProductBatchImportModal({
 
   if (!isOpen) return null;
 
-  // Helper de formatação BRL
+  // Helper de formatação de valores numéricos
   const formatBRL = (valor: number): string => {
     if (isNaN(valor) || valor === null || valor === undefined) return '0,00';
-    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return formatNumber(valor, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   // Helper para buscar o estoque atual de uma variação cadastrada no banco

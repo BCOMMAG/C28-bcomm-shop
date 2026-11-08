@@ -39,12 +39,14 @@ import {
 } from '@/lib/team';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { InviteMemberModal } from '@/components/admin/team/InviteMemberModal';
 import { EditMemberModal } from '@/components/admin/team/EditMemberModal';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 
 export default function AdminEquipePage() {
   const { currentTenant } = useStore();
+  const { t, formatCurrency } = useAdminI18n();
   const lojaId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'sua loja';
 
@@ -258,7 +260,7 @@ export default function AdminEquipePage() {
           <div>
             <span className="text-xs text-slate-500 font-medium block">Vendas Atribuídas à Equipe</span>
             <span className="text-2xl font-bold text-slate-900 mt-1 block">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVendasMes)}
+              {formatCurrency(totalVendasMes)}
             </span>
             <span className="text-[11px] text-slate-500 font-medium mt-1 block">
               Em pedidos vinculados a vendedoras
@@ -274,7 +276,7 @@ export default function AdminEquipePage() {
           <div>
             <span className="text-xs text-slate-500 font-medium block">Comissões Acumuladas (Mês)</span>
             <span className="text-2xl font-bold text-slate-900 mt-1 block">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalComissoesMes)}
+              {formatCurrency(totalComissoesMes)}
             </span>
             <span className="text-[11px] text-amber-700 font-semibold mt-1 block">
               Com abatimento de devoluções
@@ -422,9 +424,7 @@ export default function AdminEquipePage() {
                           <div className="space-y-1 min-w-[150px]">
                             <div className="flex justify-between items-center text-[11px]">
                               <span className="font-bold text-slate-900">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                                  member.total_vendas_mes || 0
-                                )}
+                                {formatCurrency(member.total_vendas_mes || 0)}
                               </span>
                               <span className="text-[10px] text-slate-500 font-semibold">{metaAtingida}% da meta</span>
                             </div>
@@ -435,7 +435,7 @@ export default function AdminEquipePage() {
                               />
                             </div>
                             <div className="text-[10px] text-slate-400">
-                              Meta: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(member.meta_vendas_mensal)}
+                              Meta: {formatCurrency(member.meta_vendas_mensal || 0)}
                             </div>
                           </div>
                         ) : (

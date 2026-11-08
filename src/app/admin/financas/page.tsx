@@ -27,9 +27,11 @@ import { getAdminFinanceMetrics, FinanceMetrics } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { exportFinanceDREToCsv } from '@/lib/export';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function AdminFinancasPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatCurrency, formatDate } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'sua loja';
 
@@ -52,13 +54,6 @@ export default function AdminFinancasPage() {
   useEffect(() => {
     fetchFinance();
   }, [tenantId, periodo]);
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(val || 0);
-  };
 
   // Métricas 100% reais do banco de dados (sem suposição ou mock)
   const faturamento = metrics?.faturamentoBruto || 0;
@@ -112,7 +107,7 @@ export default function AdminFinancasPage() {
               DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE GERENCIAL) &bull; {lojaNome.toUpperCase()}
             </h1>
             <p className="text-xs text-slate-600 mt-1">
-              Período de Apuração: <strong>{periodoLabel}</strong> &bull; Emissão: {new Date().toLocaleString('pt-BR')}
+              Período de Apuração: <strong>{periodoLabel}</strong> &bull; Emissão: {formatDate(new Date(), { dateStyle: 'short', timeStyle: 'short' })}
             </p>
           </div>
           <span className="text-xs font-mono font-bold text-slate-500 uppercase">

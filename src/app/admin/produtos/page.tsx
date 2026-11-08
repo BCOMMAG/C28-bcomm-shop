@@ -121,12 +121,14 @@ import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatable
 import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { getReservedStockMap } from '@/lib/reservas';
 import { getAviseMeSummaryMap } from '@/lib/aviseme';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 type ViewMode = 'cards' | 'lista' | 'kanban';
 type SortOrder = 'recentes' | 'menor_estoque' | 'maior_estoque' | 'maior_preco' | 'menor_preco' | 'nome';
 
 export default function AdminProdutosPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatCurrency } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const tenantSlug = currentTenant?.slug || 'leidy-boutique';
 
@@ -472,13 +474,6 @@ export default function AdminProdutosPage() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(val || 0);
-  };
 
   // Alternar ativação na vitrine
   const handleToggleActive = async (product: AdminProductItem) => {

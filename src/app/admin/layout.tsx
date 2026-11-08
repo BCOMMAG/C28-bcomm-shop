@@ -49,7 +49,7 @@ import { getStorefrontUrl } from '@/lib/routes';
 import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser } from '@/lib/team';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
-import { getTranslation, getStoredLocale, SupportedLocale } from '@/lib/i18n';
+import { AdminI18nProvider, useAdminI18n } from '@/context/AdminI18nContext';
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -79,18 +79,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isMaster, setIsMaster] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [locale, setLocale] = useState<SupportedLocale>('pt');
-
-  useEffect(() => {
-    setLocale(getStoredLocale());
-    const handleLocaleChange = (e: any) => {
-      if (e?.detail) setLocale(e.detail);
-    };
-    window.addEventListener('bcomm_locale_change', handleLocaleChange as EventListener);
-    return () => window.removeEventListener('bcomm_locale_change', handleLocaleChange as EventListener);
-  }, []);
-
-  const t = getTranslation(locale);
+  const { locale, setLocale, t, formatCurrency } = useAdminI18n();
 
   useEffect(() => {
     try {
@@ -552,15 +541,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {isSidebarCollapsed ? (
             <div className="flex justify-center group relative">
               <a
-                href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:security@agent-bcomm.space?subject=BCOMM%20Platform%20Support"
                 className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 shadow-2xs"
                 style={{
                   backgroundColor: c.accentSoft,
                   color: c.accent
                 }}
-                title="Suporte VIP via WhatsApp"
+                title="Suporte Oficial BCOMM Security"
               >
                 <MessageSquare className="w-4 h-4" />
               </a>
@@ -572,7 +559,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   borderColor: 'rgba(255, 255, 255, 0.15)'
                 }}
               >
-                Suporte VIP via WhatsApp
+                Suporte Oficial BCOMM
               </div>
             </div>
           ) : (
@@ -598,24 +585,22 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     className="text-xs font-bold block truncate"
                     style={{ color: c.sidebarTextActive }}
                   >
-                    Precisa de Ajuda?
+                    Suporte & Governança
                   </span>
                   <span
                     className="text-[10px] block truncate"
                     style={{ color: c.sidebarMuted }}
                   >
-                    Fale com a nossa equipe
+                    security@agent-bcomm.space
                   </span>
                 </div>
               </div>
               <a
-                href="https://wa.me/5551999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20painel%20BCOMM"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:security@agent-bcomm.space?subject=BCOMM%20Platform%20Support"
                 className="mt-3 block text-center py-1.5 px-3 rounded-lg text-[11px] font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
                 style={{ backgroundColor: c.accent }}
               >
-                Iniciar Chat
+                Enviar Mensagem
               </a>
             </div>
           )}
@@ -1066,8 +1051,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AdminThemeProvider>
       <AdminUnsavedChangesProvider>
-        <AdminShell>{children}</AdminShell>
-        <UnsavedChangesModal />
+        <AdminI18nProvider>
+          <AdminShell>{children}</AdminShell>
+          <UnsavedChangesModal />
+        </AdminI18nProvider>
       </AdminUnsavedChangesProvider>
     </AdminThemeProvider>
   );

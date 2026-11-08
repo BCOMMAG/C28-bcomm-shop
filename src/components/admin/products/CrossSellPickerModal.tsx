@@ -4,10 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Search, X, Check, Plus, Sparkles, ShoppingBag, Layers } from 'lucide-react';
 import { AdminProductItem } from '@/lib/admin';
-
-const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-};
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface CrossSellPickerModalProps {
   isOpen: boolean;
@@ -30,6 +27,7 @@ export const CrossSellPickerModal: React.FC<CrossSellPickerModalProps> = ({
   onSave,
   onConfirm
 }) => {
+  const { formatCurrency } = useAdminI18n();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [tempSelectedSlugs, setTempSelectedSlugs] = useState<string[]>(selectedSlugs);

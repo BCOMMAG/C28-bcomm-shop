@@ -79,6 +79,7 @@ import { exportOrdersToCsv } from '@/lib/export';
 import { useStore, notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { MembroEquipe, logStoreAuditAction } from '@/lib/team';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 type ViewMode = 'cards' | 'lista' | 'kanban';
 type PeriodFilter = 'todos' | 'hoje' | 'ontem' | '7d' | '30d' | 'mes_atual' | 'custom';
@@ -105,6 +106,7 @@ const ALL_KANBAN_COLUMNS: KanbanColumnDef[] = [
 
 export default function AdminPedidosPage() {
   const { currentTenant } = useStore();
+  const { t, locale, formatCurrency: formatCurrencyGlobal, formatDate: formatDateGlobal, formatWhatsAppUrl } = useAdminI18n();
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
   const lojaNome = currentTenant?.nome || 'Minha Loja';
   const chavePix = currentTenant?.configuracoes_financeiras?.chave_pix || currentTenant?.whatsapp || '';
@@ -543,22 +545,13 @@ export default function AdminPedidosPage() {
 
   // Formatadores
   const formatCurrency = (val: number) => {
-    if (!canViewFinanceiro) return 'R$ ••••';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(val || 0);
+    if (!canViewFinanceiro) return '••••';
+    return formatCurrencyGlobal(val);
   };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateGlobal(dateStr, 'long');
   };
 
   // Obter Lista Completa de Variações de Telefones do Pedido
@@ -1128,7 +1121,7 @@ export default function AdminPedidosPage() {
           `Caso precise de mais tempo para concluir, me avise por aqui que posso pausar o tempo para você! 💖`)
     );
 
-    window.open(`https://wa.me/55${cleanPhone}?text=${texto}`, '_blank');
+    window.open(formatWhatsAppUrl(cleanPhone, texto), '_blank');
   };
 
   // Limpar Todos os Filtros
@@ -2435,9 +2428,10 @@ export default function AdminPedidosPage() {
                               Mensagens Rápidas no WhatsApp
                             </span>
                             <a
-                              href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                              href={formatWhatsAppUrl(
+                                cleanPhone,
                                 `Olá ${order.cliente_nome}! Aqui é da ${lojaNome} referente ao seu pedido #${order.numero_pedido}. Como podemos te ajudar?`
-                              )}`}
+                              )}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() => setSnippetMenuOrderId(null)}
@@ -2447,9 +2441,10 @@ export default function AdminPedidosPage() {
                               <span className="text-[11px] text-slate-500">Tirar dúvidas e suporte</span>
                             </a>
                             <a
-                              href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                              href={formatWhatsAppUrl(
+                                cleanPhone,
                                 `Olá ${order.cliente_nome}! Confirmamos o pagamento do seu pedido #${order.numero_pedido} na ${lojaNome}. Suas peças já estão em separação no estoque!`
-                              )}`}
+                              )}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() => setSnippetMenuOrderId(null)}
@@ -2460,9 +2455,10 @@ export default function AdminPedidosPage() {
                             </a>
                             {order.codigo_rastreio && (
                               <a
-                                href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                href={formatWhatsAppUrl(
+                                  cleanPhone,
                                   `Olá ${order.cliente_nome}! Sua encomenda da ${lojaNome} foi postada! Código de rastreamento dos Correios: ${order.codigo_rastreio}. Acompanhe pelo link: https://rastreamento.correios.com.br/app/index.php?codigo=${order.codigo_rastreio}`
-                                )}`}
+                                )}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => setSnippetMenuOrderId(null)}
@@ -2767,7 +2763,7 @@ export default function AdminPedidosPage() {
                         </div>
                         {cleanPhone ? (
                           <a
-                            href={`https://wa.me/55${cleanPhone}`}
+                            href={formatWhatsAppUrl(cleanPhone)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:text-emerald-800 hover:underline"
@@ -3133,9 +3129,10 @@ export default function AdminPedidosPage() {
                               </div>
                               {cleanPhone && (
                                 <a
-                                  href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                                  href={formatWhatsAppUrl(
+                                    cleanPhone,
                                     `Olá ${order.cliente_nome}! Vimos que você estava finalizando o pedido #${order.numero_pedido} na ${lojaNome}. Ficou alguma dúvida sobre as peças? Podemos te enviar um cupom especial ou separar seu pacote agora mesmo!`
-                                  )}`}
+                                  )}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[9px] font-black text-purple-800 hover:text-purple-950 underline cursor-pointer"
@@ -3315,7 +3312,7 @@ export default function AdminPedidosPage() {
                           >
                             {cleanPhone ? (
                               <a
-                                href={`https://wa.me/55${cleanPhone}`}
+                                href={formatWhatsAppUrl(cleanPhone)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1"
@@ -3486,7 +3483,7 @@ export default function AdminPedidosPage() {
                   <p className="text-slate-600 font-mono">{detailsModalOrder.cliente_telefone || '-'}</p>
                   {dPhone && (
                     <a
-                      href={`https://wa.me/55${dPhone}`}
+                      href={formatWhatsAppUrl(dPhone)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline pt-1"

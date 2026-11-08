@@ -38,9 +38,6 @@ export function ProductVariationPriceMatrix({
     existsInGrade: boolean;
   } | null>(null);
 
-  const formatBRL = (val: number) => {
-    return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
 
   const handleUpdateCellPrice = (
     corNome: string,

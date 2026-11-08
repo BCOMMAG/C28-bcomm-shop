@@ -291,9 +291,7 @@ export default function SubscriptionSettingsPage() {
                   </button>
                 ) : (
                   <a
-                    href="https://wa.me/554197347601?text=Ol%C3%A1!%20Gostaria%20de%20conversar%20sobre%20upgrade%20do%20meu%20plano%20na%20BCOMM%20Platform."
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="mailto:security@agent-bcomm.space?subject=Upgrade%20de%20Plano%20BCOMM%20SaaS"
                     className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <span>Falar com Consultor BCOMM</span>
@@ -317,19 +315,17 @@ export default function SubscriptionSettingsPage() {
               Dúvidas sobre faturamento ou customizações exclusivas?
             </h4>
             <p className="text-xs text-amber-800/90 mt-0.5">
-              Nossa equipe de suporte técnico e engenharia BCOMM atende seu time diretamente pelo WhatsApp oficial.
+              Nossa equipe de engenharia e governança BCOMM Security atende seu time diretamente pelo canal oficial.
             </p>
           </div>
         </div>
 
         <a
-          href="https://wa.me/554197347601?text=Ol%C3%A1!%20Preciso%20de%20suporte%20t%C3%A9cnico%20da%20BCOMM%20Platform."
-          target="_blank"
-          rel="noopener noreferrer"
+          href="mailto:security@agent-bcomm.space?subject=Suporte%20BCOMM%20Platform"
           className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center justify-center gap-1.5 shadow-sm"
         >
           <Zap className="w-3.5 h-3.5" />
-          <span>Suporte VIP WhatsApp</span>
+          <span>Suporte BCOMM Security</span>
         </a>
       </div>
     </div>
