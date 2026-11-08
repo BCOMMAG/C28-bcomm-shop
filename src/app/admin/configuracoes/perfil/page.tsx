@@ -126,10 +126,12 @@ export default function UserProfileSettingsPage() {
     try {
       const supabase = getSupabaseBrowserClient();
 
-      // Atualiza na tabela equipe_loja
+      const cleanEmail = email.trim().toLowerCase();
+
+      // 1. Atualiza na tabela equipe_loja (dispara trigger automático para auth.users)
       const { data: member } = await supabase
         .from('equipe_loja')
-        .select('id')
+        .select('id, auth_user_id')
         .eq('loja_id', tenantId)
         .eq('cargo', 'dono')
         .maybeSingle();
@@ -139,11 +141,30 @@ export default function UserProfileSettingsPage() {
           .from('equipe_loja')
           .update({
             nome,
-            email,
+            email: cleanEmail,
             telefone: telefone.replace(/\D/g, ''),
             updated_at: new Date().toISOString()
           })
           .eq('id', member.id);
+      }
+
+      // 2. Atualiza e-mail principal na tabela lojas
+      await supabase
+        .from('lojas')
+        .update({
+          email: cleanEmail,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tenantId);
+
+      // 3. Atualiza usuário ativo no Supabase Auth
+      try {
+        await supabase.auth.updateUser({
+          email: cleanEmail,
+          data: { nome, apelido }
+        });
+      } catch (authErr) {
+        console.warn('Aviso ao sincronizar auth.users:', authErr);
       }
 
       // Salva preferências no localStorage
