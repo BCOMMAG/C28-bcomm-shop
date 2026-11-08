@@ -671,7 +671,7 @@ export function checkWorkingHoursAccess(member: MembroEquipe): { permitido: bool
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
     return {
       permitido: false,
-      motivo: `Acesso indisponível fora do horário de expediente (${member.horario_inicio.substring(0,5)} às ${member.horario_fim.substring(0,5)}). A Leidy Boutique respeita o seu descanso legal CLT.`
+      motivo: `Acesso indisponível fora do horário de expediente (${member.horario_inicio.substring(0,5)} às ${member.horario_fim.substring(0,5)}). O sistema respeita o seu descanso legal CLT.`
     };
   }
 

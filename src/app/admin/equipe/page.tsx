@@ -11,7 +11,7 @@ import {
   Percent,
   DollarSign,
   TrendingUp,
-  MessageSquare,
+  Copy,
   Lock,
   Unlock,
   Key,
@@ -83,9 +83,13 @@ export default function AdminEquipePage() {
     setTimeout(() => setActionFeedback(null), 4000);
   };
 
+  const getAdminOperator = () => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('bcomm_auth_user') : null) || lojaNome || 'Administrador';
+  };
+
   const handleToggleActive = async (member: MembroEquipe) => {
     const newStatus = !member.ativo;
-    const ok = await toggleTeamMemberActive(lojaId, member.id, newStatus, 'Leidyane Cristina');
+    const ok = await toggleTeamMemberActive(lojaId, member.id, newStatus, getAdminOperator());
     if (ok) {
       setMembers((prev) =>
         prev.map((m) => (m.id === member.id ? { ...m, ativo: newStatus } : m))
@@ -100,23 +104,12 @@ export default function AdminEquipePage() {
   };
 
   const handleRevokeSessions = async (member: MembroEquipe) => {
-    const ok = await revokeAllSessions(lojaId, member.id, 'Leidyane Cristina');
+    const ok = await revokeAllSessions(lojaId, member.id, getAdminOperator());
     if (ok) {
       showFeedback('success', `Kill-Switch acionado! Todas as sessões ativas de ${member.nome} foram desconectadas.`);
     } else {
       showFeedback('error', 'Falha ao revogar sessões.');
     }
-  };
-
-  const getWhatsAppInviteUrl = (member: MembroEquipe) => {
-    const cleanPhone = member.telefone.replace(/\D/g, '');
-    const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-    const primeiroNome = member.nome.split(' ')[0];
-    const panelUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : 'https://bcomm-shop.pages.dev/admin/login';
-    const msg = encodeURIComponent(
-      `Olá ${primeiroNome}! Seu acesso ao Painel da ${lojaNome} está configurado como ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nLink do painel: ${panelUrl}`
-    );
-    return `https://wa.me/${phoneWithDDI}?text=${msg}`;
   };
 
   // Filtros
@@ -502,16 +495,20 @@ export default function AdminEquipePage() {
                       {/* 7. Ações */}
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Enviar WhatsApp */}
-                          <a
-                            href={getWhatsAppInviteUrl(member)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Disparar dados de acesso no WhatsApp"
+                          {/* Copiar Credenciais */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
+                              const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
+                              navigator.clipboard.writeText(text);
+                              showFeedback('success', `Credenciais de ${member.nome} copiadas para a área de transferência.`);
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                            title="Copiar credenciais de acesso"
                           >
-                            <MessageSquare className="w-4 h-4" />
-                          </a>
+                            <Copy className="w-4 h-4" />
+                          </button>
 
                           {/* Editar Permissões */}
                           <button

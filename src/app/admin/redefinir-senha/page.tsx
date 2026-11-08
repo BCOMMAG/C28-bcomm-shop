@@ -77,7 +77,7 @@ function RedefinirSenhaContent() {
         console.warn('Aviso ao atualizar senha auth:', error.message);
       }
 
-      // Se havia um token manual de WhatsApp ou Supabase Auth
+      // Se havia um token de redefinição ou Supabase Auth
       if (tokenParam) {
         try {
           localStorage.setItem('bcomm_last_password_reset', new Date().toISOString());

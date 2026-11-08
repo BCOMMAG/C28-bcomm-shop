@@ -27,16 +27,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Estados de Recuperação de Senha
+  // Estados de Recuperação de Senha por E-mail
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [recoveryMethod, setRecoveryMethod] = useState<'email' | 'whatsapp'>('email');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryFeedback, setRecoveryFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
-    whatsappUrl?: string;
-    maskedPhone?: string;
   } | null>(null);
 
   // Garante que o título da aba e o favicon oficial BCOMM sejam sempre exibidos sem cache antigo
@@ -80,73 +77,19 @@ export default function AdminLoginPage() {
 
     try {
       const supabase = getSupabaseBrowserClient();
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${origin}/admin/redefinir-senha`
+      });
 
-      if (recoveryMethod === 'email') {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-shop.pages.dev';
-        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-          redirectTo: `${origin}/admin/redefinir-senha`
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        setRecoveryFeedback({
-          type: 'success',
-          message: `Enviamos as instruções com link seguro para ${cleanEmail}. O remetente oficial da mensagem é contato@agent-bcomm.space. Verifique sua caixa de entrada e spam.`
-        });
-      } else {
-        // Recuperação via WhatsApp verificado do colaborador ou loja
-        const { data: membro } = await supabase
-          .from('equipe_loja')
-          .select('nome, telefone, loja_id')
-          .eq('email', cleanEmail)
-          .maybeSingle();
-
-        let phone = membro?.telefone;
-        let memberName = membro?.nome || 'Lojista';
-
-        if (!phone) {
-          const { data: loja } = await supabase
-            .from('lojas')
-            .select('whatsapp, nome')
-            .eq('email', cleanEmail)
-            .maybeSingle();
-          if (loja?.whatsapp) {
-            phone = loja.whatsapp;
-            memberName = loja.nome;
-          }
-        }
-
-        if (!phone) {
-          if (cleanEmail === 'admin@leidyboutique.com.br') {
-            phone = '554197347601';
-            memberName = 'Leidyane Cristina';
-          } else {
-            throw new Error('Nenhum WhatsApp cadastrado foi localizado para este e-mail. Utilize a recuperação por E-mail.');
-          }
-        }
-
-        const cleanPhone = phone.replace(/\D/g, '');
-        const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-        const masked = phoneWithDDI.slice(-4);
-
-        const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-shop.pages.dev';
-        const resetLink = `${origin}/admin/redefinir-senha?token=${token}`;
-
-        const msg = encodeURIComponent(
-          `Olá ${memberName}! Recebemos uma solicitação de redefinição de senha para o seu acesso ao Painel da Loja na BCOMM.\n\nPara cadastrar uma nova senha com segurança, acesse o link:\n${resetLink}\n\nCaso não tenha solicitado, desconsidere esta mensagem.`
-        );
-        const waUrl = `https://wa.me/${phoneWithDDI}?text=${msg}`;
-
-        setRecoveryFeedback({
-          type: 'success',
-          message: `Identificamos o número verificado com final **${masked}**. Clique no botão abaixo para receber o link de redefinição via WhatsApp.`,
-          whatsappUrl: waUrl,
-          maskedPhone: `Final ***${masked}`
-        });
+      if (error) {
+        throw error;
       }
+
+      setRecoveryFeedback({
+        type: 'success',
+        message: `Enviamos as instruções com o link de redefinição para ${cleanEmail}. O remetente oficial é contato@agent-bcomm.space. Verifique sua caixa de entrada e pasta de spam.`
+      });
     } catch (err: any) {
       setRecoveryFeedback({
         type: 'error',
@@ -407,74 +350,25 @@ export default function AdminLoginPage() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Recuperar Senha de Acesso</h3>
-                <p className="text-xs text-zinc-400">Escolha como deseja receber as instruções</p>
+                <p className="text-xs text-zinc-400">Informe seu e-mail cadastrado para redefinir a senha</p>
               </div>
-            </div>
-
-            {/* Alternador de Método: E-mail vs WhatsApp */}
-            <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-black/40 border border-white/10 rounded-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setRecoveryMethod('email');
-                  setRecoveryFeedback(null);
-                }}
-                className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
-                  recoveryMethod === 'email'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <Mail className="w-3.5 h-3.5" />
-                <span>Por E-mail</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRecoveryMethod('whatsapp');
-                  setRecoveryFeedback(null);
-                }}
-                className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
-                  recoveryMethod === 'whatsapp'
-                    ? 'bg-[#25D366] text-black shadow-xs'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Por WhatsApp</span>
-              </button>
             </div>
 
             {/* Feedback de Recuperação */}
             {recoveryFeedback && (
               <div
-                className={`p-3.5 mb-4 text-xs rounded-xl flex flex-col gap-2.5 ${
+                className={`p-3.5 mb-4 text-xs rounded-xl flex items-start gap-2 ${
                   recoveryFeedback.type === 'success'
                     ? 'bg-emerald-950/50 border border-emerald-500/40 text-emerald-200'
                     : 'bg-rose-950/50 border border-rose-500/40 text-rose-200'
                 }`}
               >
-                <div className="flex items-start gap-2">
-                  {recoveryFeedback.type === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  )}
-                  <span className="leading-relaxed">{recoveryFeedback.message}</span>
-                </div>
-
-                {recoveryFeedback.whatsappUrl && (
-                  <a
-                    href={recoveryFeedback.whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-black font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all mt-1"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Abrir WhatsApp & Obter Link</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                {recoveryFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 )}
+                <span className="leading-relaxed">{recoveryFeedback.message}</span>
               </div>
             )}
 
@@ -495,9 +389,7 @@ export default function AdminLoginPage() {
                   />
                 </div>
                 <p className="text-[11px] text-zinc-400 mt-1.5">
-                  {recoveryMethod === 'email'
-                    ? 'O link seguro será enviado pelo remetente contato@agent-bcomm.space.'
-                    : 'Localizaremos o número de WhatsApp registrado para a sua loja.'}
+                  O link de redefinição será enviado pelo remetente oficial <strong className="text-purple-300">contato@agent-bcomm.space</strong>.
                 </p>
               </div>
 
@@ -505,24 +397,20 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="w-1/3 py-3 border border-white/10 text-zinc-400 hover:text-white text-xs font-semibold rounded-xl transition-colors"
+                  className="w-1/3 py-3 border border-white/10 text-zinc-400 hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={recoveryLoading}
-                  className={`w-2/3 py-3 font-bold uppercase tracking-wider text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
-                    recoveryMethod === 'whatsapp'
-                      ? 'bg-[#25D366] hover:bg-[#20ba5a] text-black'
-                      : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30'
-                  }`}
+                  className="w-2/3 py-3 font-bold uppercase tracking-wider text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30"
                 >
                   {recoveryLoading ? (
-                    <span>Processando...</span>
+                    <span>Enviando e-mail...</span>
                   ) : (
                     <>
-                      <span>{recoveryMethod === 'whatsapp' ? 'Buscar no WhatsApp' : 'Enviar E-mail'}</span>
+                      <span>Enviar E-mail</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}

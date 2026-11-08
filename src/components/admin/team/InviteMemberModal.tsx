@@ -9,7 +9,7 @@ import {
   Shield,
   Percent,
   DollarSign,
-  MessageSquare,
+  Copy,
   Check,
   Sparkles,
   Clock,
@@ -50,6 +50,7 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [createdSuccess, setCreatedSuccess] = useState<MembroEquipe | null>(null);
+  const [copiedCredentials, setCopiedCredentials] = useState(false);
   const [quota, setQuota] = useState<StorePlanQuota | null>(null);
 
   useEffect(() => {
@@ -121,15 +122,12 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
     }
   };
 
-  const getWhatsAppInviteUrl = (member: MembroEquipe) => {
-    const cleanPhone = member.telefone.replace(/\D/g, '');
-    const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-    const primeiroNome = member.nome.split(' ')[0];
-    const panelUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : 'https://bcomm-shop.pages.dev/admin/login';
-    const msg = encodeURIComponent(
-      `Olá ${primeiroNome}! Seu acesso ao Painel da ${lojaNome} foi criado com sucesso com perfil de ${member.cargo.toUpperCase()}.\n\nSeu PIN rápido de balcão é: *${member.pin_hash}*\n\nPara acessar a qualquer momento, utilize o link: ${panelUrl}`
-    );
-    return `https://wa.me/${phoneWithDDI}?text=${msg}`;
+  const handleCopyCredentials = (member: MembroEquipe) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
+    const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
+    navigator.clipboard.writeText(text);
+    setCopiedCredentials(true);
+    setTimeout(() => setCopiedCredentials(false), 3000);
   };
 
   return (
@@ -185,18 +183,26 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <a
-                href={getWhatsAppInviteUrl(createdSuccess)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
+              <button
+                type="button"
+                onClick={() => handleCopyCredentials(createdSuccess)}
+                className="flex-1 py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
               >
-                <MessageSquare className="w-4 h-4" />
-                <span>Enviar Dados no WhatsApp</span>
-              </a>
+                {copiedCredentials ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-300" />
+                    <span>Credenciais Copiadas!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copiar Credenciais de Acesso</span>
+                  </>
+                )}
+              </button>
               <button
                 onClick={onClose}
-                className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Fechar
               </button>
@@ -322,13 +328,12 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    WhatsApp para Acesso
+                    Telefone Celular (Opcional)
                   </label>
                   <div className="relative">
                     <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      required
                       value={telefone}
                       onChange={(e) => setTelefone(e.target.value)}
                       placeholder="(11) 99876-5432"
