@@ -25,6 +25,7 @@ import {
 import { globalAdminSearch, GlobalSearchResult } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getStorefrontUrl } from '@/lib/routes';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ interface GlobalSearchModalProps {
 
 export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchModalProps) {
   const router = useRouter();
+  const { t } = useAdminI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResult>({
@@ -120,7 +122,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Digite para buscar peças, pedidos, clientes ou navegação rápida..."
+            placeholder={t.globalSearch.placeholder}
             className="flex-1 bg-transparent border-none text-slate-900 text-sm font-medium placeholder-slate-400 focus:outline-none"
           />
           {query && (
@@ -149,7 +151,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
             <div className="py-12 text-center text-xs text-slate-500 space-y-2">
               <Package className="w-8 h-8 text-slate-300 mx-auto" />
               <p className="font-bold text-slate-700">Nenhum resultado encontrado para &quot;{query}&quot;</p>
-              <p className="text-[11px]">Tente buscar por nome da peça, código de pedido ou nome da cliente.</p>
+              <p className="text-[11px]">{t.globalSearch.hint}</p>
             </div>
           )}
 
@@ -398,7 +400,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
             </span>
             <span>&bull;</span>
             <span>
-              Atalho rápido: <strong className="font-mono text-slate-700">Ctrl + K</strong>
+              {t.globalSearch.shortcut}
             </span>
           </div>
           <span className="font-semibold text-amber-800">Spotlight BCOMM Admin</span>

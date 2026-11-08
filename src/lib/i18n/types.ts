@@ -28,6 +28,8 @@ export interface CommonTranslations {
   no: string;
   new: string;
   selectOption: string;
+  panel: string;
+  viewPublicStore: string;
 }
 
 export interface DashboardTranslations {
@@ -89,6 +91,30 @@ export interface OrdersTranslations {
   cancelOrder: string;
   trackingCode: string;
   addTracking: string;
+  statusCards: {
+    awaitingWhatsapp: string;
+    paidConfirmed: string;
+    inSeparation: string;
+    shipped: string;
+    delivered: string;
+    abandoned: string;
+    cancelled: string;
+  };
+  toolbar: {
+    filters: string;
+    allPeriod: string;
+    vipGifts: string;
+    frozenHolds: string;
+    fittingRoomCounter: string;
+    exportCsv: string;
+    refresh: string;
+    inactivityRules: string;
+  };
+  actions: {
+    expedition: string;
+    status: string;
+    chatWhatsapp: string;
+  };
 }
 
 export interface ProductsTranslations {
@@ -204,6 +230,70 @@ export interface StoreSettingsTranslations {
   termsOfUse: string;
 }
 
+export interface GeneralSettingsTranslations {
+  accountAccess: string;
+  systemPanel: string;
+  userProfile: string;
+  userProfileDesc: string;
+  saasPlan: string;
+  saasPlanDesc: string;
+  security: string;
+  securityDesc: string;
+  adminTheme: string;
+  adminThemeDesc: string;
+  integrations: string;
+  integrationsDesc: string;
+  notifications: string;
+  notificationsDesc: string;
+  dataExport: string;
+  dataExportDesc: string;
+  badgeYou: string;
+  badgePro: string;
+  badgeCritical: string;
+  badgeTeam: string;
+  storeHubNoticeTitle: string;
+  storeHubNoticeDesc: string;
+  storeHubNoticeLink: string;
+  pageTitle: string;
+  pageSubtitle: string;
+  viewPublicStore: string;
+  sec1Title: string;
+  sec1Desc: string;
+  fullName: string;
+  displayName: string;
+  primaryEmail: string;
+  directPhone: string;
+  roleOwner: string;
+  roleDesc: string;
+  roleMasterDesc: string;
+  sec2Title: string;
+  sec2Desc: string;
+  sigText: string;
+  sigPreview: string;
+  sigTip: string;
+  saveSuccess: string;
+  saveError: string;
+}
+
+export interface StoreTabsTranslations {
+  dados: string;
+  aparencia: string;
+  banners: string;
+  menu: string;
+  categorias: string;
+  cupons: string;
+  logistica: string;
+  checkout: string;
+  pagamentos: string;
+  dominio: string;
+}
+
+export interface GlobalSearchTranslations {
+  placeholder: string;
+  hint: string;
+  shortcut: string;
+}
+
 export interface WhatsAppTemplates {
   orderApproved: (storeName: string, orderNumber: string, customerName: string) => string;
   orderShipped: (storeName: string, orderNumber: string, customerName: string, trackingCode?: string) => string;
@@ -281,6 +371,13 @@ export interface TranslationDictionary {
     team: string;
     modules: string;
     settings: string;
+    panelSubtitle: string;
+    backToOverview: string;
+    supportGovernance: string;
+    sendMessage: string;
+    loadingPanel: string;
+    footerPlatform: string;
+    sessionClosed: string;
   };
   adminHeader: {
     searchPlaceholder: string;
@@ -305,5 +402,8 @@ export interface TranslationDictionary {
   finance: FinanceTranslations;
   team: TeamTranslations;
   storeSettings: StoreSettingsTranslations;
+  generalSettings: GeneralSettingsTranslations;
+  storeTabs: StoreTabsTranslations;
+  globalSearch: GlobalSearchTranslations;
   whatsappTemplates: WhatsAppTemplates;
 }

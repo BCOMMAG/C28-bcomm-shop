@@ -23,9 +23,11 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { isMasterUser } from '@/lib/team';
 import { getStoredLocale, setStoredLocale, SupportedLocale } from '@/lib/i18n';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export default function UserProfileSettingsPage() {
   const { currentTenant } = useStore();
+  const { t, locale, setLocale } = useAdminI18n();
   const isLeidy = currentTenant?.slug === 'leidy-boutique' || currentTenant?.slug === 'leidyboutique';
   const tenantSlug = currentTenant?.slug || '';
   const tenantId = currentTenant?.id || DEFAULT_TENANT_ID;
@@ -43,7 +45,6 @@ export default function UserProfileSettingsPage() {
   const [assinaturaWhatsapp, setAssinaturaWhatsapp] = useState(
     isLeidy ? 'Com carinho,\nLeidy | Leidy Boutique ✨' : ''
   );
-  const [locale, setLocale] = useState<SupportedLocale>('pt');
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -220,10 +221,10 @@ export default function UserProfileSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              1. Identificação Pessoal & Foto de Perfil
+              {t.generalSettings.sec1Title}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Foto e informações exibidas no topo do painel e na assinatura de atendimento.
+              {t.generalSettings.sec1Desc}
             </p>
           </div>
         </div>
@@ -277,7 +278,7 @@ export default function UserProfileSettingsPage() {
           {/* Dados do Usuário */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs w-full">
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">Nome Completo</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.fullName}</label>
               <input
                 type="text"
                 required
@@ -289,7 +290,7 @@ export default function UserProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">Nome de Exibição (Apelido)</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.displayName}</label>
               <input
                 type="text"
                 required
@@ -301,7 +302,7 @@ export default function UserProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">E-mail Principal</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.primaryEmail}</label>
               <div className="relative">
                 <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -316,7 +317,7 @@ export default function UserProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">WhatsApp Pessoal / Direto</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.directPhone}</label>
               <div className="relative">
                 <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -348,19 +349,19 @@ export default function UserProfileSettingsPage() {
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 mt-0.5">
-                    Sua conta possui credencial de Engenharia/Plataforma BCOMM SaaS com privilégios irrestritos sobre todas as lojas.
+                    {t.generalSettings.roleMasterDesc}
                   </p>
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900">Cargo: Proprietária (Dona da Loja)</span>
+                    <span className="font-bold text-slate-900">{t.generalSettings.roleOwner}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
                       Acesso Total (Proprietária)
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Você possui privilégios administrativos completos da boutique, visualização de CMV, aprovação de cupons e governança da equipe.
+                    {t.generalSettings.roleDesc}
                   </p>
                 </>
               )}
@@ -377,17 +378,17 @@ export default function UserProfileSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              2. Assinatura Padrão do WhatsApp
+              {t.generalSettings.sec2Title}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Texto anexado automaticamente às mensagens enviadas para clientes no CRM e confirmações de pedidos.
+              {t.generalSettings.sec2Desc}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-xs">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Texto da Assinatura</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.sigText}</label>
             <textarea
               rows={4}
               value={assinaturaWhatsapp}
@@ -396,13 +397,13 @@ export default function UserProfileSettingsPage() {
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-xs font-medium"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Dica: use emojis para humanizar a comunicação com suas clientes.
+              {t.generalSettings.sigTip}
             </span>
           </div>
 
           {/* Prévia do Balão de WhatsApp */}
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Prévia no WhatsApp da Cliente</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.generalSettings.sigPreview}</label>
             <div className="bg-[#EFEAE2] p-4 rounded-xl border border-slate-200 flex flex-col justify-end min-h-[110px]">
               <div className="bg-white rounded-xl rounded-tr-none p-3 shadow-xs max-w-sm self-end space-y-1.5 text-[11px] text-slate-800">
                 <p>
@@ -487,7 +488,7 @@ export default function UserProfileSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? 'Salvando Perfil...' : 'Salvar Alterações de Perfil'}</span>
+          <span>{isSaving ? t.common.saving : t.common.save}</span>
         </button>
       </div>
     </form>

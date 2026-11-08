@@ -18,6 +18,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { cn } from '@/lib/chart-utils';
 
 interface StoreTabItem {
@@ -28,83 +29,84 @@ interface StoreTabItem {
   badge?: string;
 }
 
-const STORE_TABS: StoreTabItem[] = [
-  {
-    id: 'dados',
-    label: 'Dados da Loja',
-    href: '/admin/loja/dados',
-    icon: Store
-  },
-  {
-    id: 'aparencia',
-    label: 'Aparência da Loja',
-    href: '/admin/loja/aparencia',
-    icon: Palette,
-    badge: 'Visual'
-  },
-  {
-    id: 'banners',
-    label: 'Banners & Vitrines',
-    href: '/admin/loja/banners',
-    icon: Sparkles,
-    badge: 'Mídia'
-  },
-  {
-    id: 'menu',
-    label: 'Menus da Vitrine',
-    href: '/admin/loja/menu',
-    icon: Sliders,
-    badge: 'Links'
-  },
-  {
-    id: 'categorias',
-    label: 'Categorias & Subs',
-    href: '/admin/loja/categorias',
-    icon: FolderTree,
-    badge: 'Estrutura'
-  },
-  {
-    id: 'cupons',
-    label: 'Cupons & Descontos',
-    href: '/admin/loja/cupons',
-    icon: Tag,
-    badge: 'Promo'
-  },
-  {
-    id: 'logistica',
-    label: 'Logística & Frete',
-    href: '/admin/loja/logistica',
-    icon: Truck,
-    badge: 'Envio'
-  },
-  {
-    id: 'checkout',
-    label: 'Checkout & Pedido',
-    href: '/admin/loja/checkout',
-    icon: ShoppingBag,
-    badge: 'Checkout'
-  },
-  {
-    id: 'pagamentos',
-    label: 'Pagamentos & PIX',
-    href: '/admin/loja/pagamentos',
-    icon: CreditCard,
-    badge: 'PIX'
-  },
-  {
-    id: 'dominio',
-    label: 'Domínio Próprio',
-    href: '/admin/loja/dominio',
-    icon: Globe,
-    badge: 'DNS'
-  }
-];
-
 export default function LojaVirtualHubLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { t } = useAdminI18n();
   const { requestNavigation } = useAdminUnsavedChanges();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLAnchorElement>(null);
+
+  const storeTabs: StoreTabItem[] = React.useMemo(() => [
+    {
+      id: 'dados',
+      label: t.storeTabs.dados,
+      href: '/admin/loja/dados',
+      icon: Store
+    },
+    {
+      id: 'aparencia',
+      label: t.storeTabs.aparencia,
+      href: '/admin/loja/aparencia',
+      icon: Palette,
+      badge: 'Visual'
+    },
+    {
+      id: 'banners',
+      label: t.storeTabs.banners,
+      href: '/admin/loja/banners',
+      icon: Sparkles,
+      badge: 'Mídia'
+    },
+    {
+      id: 'menu',
+      label: t.storeTabs.menu,
+      href: '/admin/loja/menu',
+      icon: Sliders,
+      badge: 'Links'
+    },
+    {
+      id: 'categorias',
+      label: t.storeTabs.categorias,
+      href: '/admin/loja/categorias',
+      icon: FolderTree,
+      badge: 'Estrutura'
+    },
+    {
+      id: 'cupons',
+      label: t.storeTabs.cupons,
+      href: '/admin/loja/cupons',
+      icon: Tag,
+      badge: 'Promo'
+    },
+    {
+      id: 'logistica',
+      label: t.storeTabs.logistica,
+      href: '/admin/loja/logistica',
+      icon: Truck,
+      badge: 'Envio'
+    },
+    {
+      id: 'checkout',
+      label: t.storeTabs.checkout,
+      href: '/admin/loja/checkout',
+      icon: ShoppingBag,
+      badge: 'Checkout'
+    },
+    {
+      id: 'pagamentos',
+      label: t.storeTabs.pagamentos,
+      href: '/admin/loja/pagamentos',
+      icon: CreditCard,
+      badge: 'PIX'
+    },
+    {
+      id: 'dominio',
+      label: t.storeTabs.dominio,
+      href: '/admin/loja/dominio',
+      icon: Globe,
+      badge: 'DNS'
+    }
+  ], [t]);
 
   // Centraliza a aba ativa no viewport suavemente
   useEffect(() => {
@@ -159,7 +161,7 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
           ref={scrollContainerRef}
           className="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
         >
-          {STORE_TABS.map((tab) => {
+          {storeTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive =
               pathname === tab.href ||

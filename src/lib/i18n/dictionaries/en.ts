@@ -33,7 +33,9 @@ export const en: TranslationDictionary = {
     yes: 'Yes',
     no: 'No',
     new: 'New',
-    selectOption: 'Select an option'
+    selectOption: 'Select an option',
+    panel: 'Dashboard',
+    viewPublicStore: 'View Public Storefront'
   },
   login: {
     panelTitle: 'Store Admin Dashboard',
@@ -99,7 +101,14 @@ export const en: TranslationDictionary = {
     finance: 'Finance',
     team: 'Team & Access',
     modules: 'App Store',
-    settings: 'General Settings'
+    settings: 'General Settings',
+    panelSubtitle: 'ADMINISTRATIVE PANEL',
+    backToOverview: 'Back to Overview',
+    supportGovernance: 'Support & Governance',
+    sendMessage: 'Send Message',
+    loadingPanel: 'Loading Administrative Panel...',
+    footerPlatform: 'BCOMM Platform • Store Management',
+    sessionClosed: 'Sign out'
   },
   adminHeader: {
     searchPlaceholder: 'Search items, orders or customers...',
@@ -174,7 +183,31 @@ export const en: TranslationDictionary = {
     markAsDelivered: 'Mark as Delivered',
     cancelOrder: 'Cancel Order',
     trackingCode: 'Tracking Number',
-    addTracking: 'Add Tracking'
+    addTracking: 'Add Tracking',
+    statusCards: {
+      awaitingWhatsapp: 'Awaiting WhatsApp',
+      paidConfirmed: 'Confirmed Payments',
+      inSeparation: 'Packing / Prep',
+      shipped: 'Shipped (Courier)',
+      delivered: 'Delivered',
+      abandoned: 'Follow-up Leads',
+      cancelled: 'Cancelled'
+    },
+    toolbar: {
+      filters: 'Filters',
+      allPeriod: 'All Time',
+      vipGifts: 'VIP Gifts',
+      frozenHolds: 'Frozen Holds',
+      fittingRoomCounter: 'Fitting Room / Counter',
+      exportCsv: 'Export CSV',
+      refresh: 'Refresh',
+      inactivityRules: 'Inactivity Rules'
+    },
+    actions: {
+      expedition: 'Dispatch',
+      status: 'Status',
+      chatWhatsapp: 'Chat on WhatsApp'
+    }
   },
   products: {
     title: 'Products & Inventory',
@@ -283,6 +316,67 @@ export const en: TranslationDictionary = {
     returnPolicy: 'Return & Exchange Policy',
     privacyPolicy: 'Privacy Policy & Data Protection',
     termsOfUse: 'Terms of Service'
+  },
+  generalSettings: {
+    accountAccess: 'Account & Access',
+    systemPanel: 'System & Panel',
+    userProfile: 'User Profile',
+    userProfileDesc: 'Personal information, avatar & signature',
+    saasPlan: 'SaaS Plan & Subscription',
+    saasPlanDesc: 'Subscribed tier, boutique limits and invoices',
+    security: 'Security & Access',
+    securityDesc: 'Passwords, counter PIN & active sessions',
+    adminTheme: 'Panel Theme',
+    adminThemeDesc: 'Colors, buttons, cards & system typography',
+    integrations: 'Integrations & SEO',
+    integrationsDesc: 'Meta Pixel, Google Analytics 4 & metatags',
+    notifications: 'Alerts & Sounds',
+    notificationsDesc: 'New sale chimes & low stock alerts',
+    dataExport: 'Data Export',
+    dataExportDesc: 'Accounting CSV reports & backups',
+    badgeYou: 'You',
+    badgePro: 'PRO',
+    badgeCritical: 'Critical',
+    badgeTeam: 'Team',
+    storeHubNoticeTitle: 'Store Settings Hub',
+    storeHubNoticeDesc: 'Logistics, Payments, Checkout, Custom Domain & Store Information are unified in Store Settings.',
+    storeHubNoticeLink: 'Go to Store Settings →',
+    pageTitle: 'General Settings',
+    pageSubtitle: 'Governance hub, SaaS subscription, security & system parameters for',
+    viewPublicStore: 'View Public Storefront',
+    sec1Title: '1. Personal Identification & Profile Picture',
+    sec1Desc: 'Photo and details displayed in the top header and customer service signature.',
+    fullName: 'Full Name',
+    displayName: 'Display Name (Nickname)',
+    primaryEmail: 'Primary Email',
+    directPhone: 'Personal / Direct WhatsApp',
+    roleOwner: 'Role: Owner (Store Proprietor)',
+    roleDesc: 'You have full boutique administrative privileges, CMV metrics, coupon approvals, and team governance.',
+    roleMasterDesc: 'Your account has BCOMM SaaS Engineering/Platform credentials with unrestricted privileges across all stores.',
+    sec2Title: '2. Default WhatsApp Signature',
+    sec2Desc: 'Text automatically appended to messages sent to customers in CRM and order confirmations.',
+    sigText: 'Signature Text',
+    sigPreview: 'Customer WhatsApp Preview',
+    sigTip: 'Tip: use emojis to humanize communication with your customers.',
+    saveSuccess: 'Profile settings saved successfully!',
+    saveError: 'Failed to update profile settings.'
+  },
+  storeTabs: {
+    dados: 'Store Information',
+    aparencia: 'Store Appearance',
+    banners: 'Banners & Showcases',
+    menu: 'Storefront Navigation',
+    categorias: 'Product Categories',
+    cupons: 'Discount Coupons',
+    logistica: 'Logistics & Shipping',
+    checkout: 'Checkout & Orders',
+    pagamentos: 'Payments & Rates',
+    dominio: 'Custom Domain'
+  },
+  globalSearch: {
+    placeholder: 'Type to search items, orders, customers or quick navigation...',
+    hint: 'Try searching by product name, order code or customer name.',
+    shortcut: 'Quick shortcut: Ctrl + K'
   },
   whatsappTemplates: {
     orderApproved: (storeName: string, orderNumber: string, customerName: string) =>

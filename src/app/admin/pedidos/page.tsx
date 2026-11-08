@@ -1526,7 +1526,7 @@ export default function AdminPedidosPage() {
         {[
           {
             id: 'pendente',
-            label: 'Aguardando WhatsApp',
+            label: t.orders.statusCards.awaitingWhatsapp,
             icon: Clock,
             count: kpis.pendente.count,
             total: kpis.pendente.total,
@@ -1538,7 +1538,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'pago',
-            label: 'Pagos Confirmados',
+            label: t.orders.statusCards.paidConfirmed,
             icon: CheckCircle2,
             count: kpis.pago.count,
             total: kpis.pago.total,
@@ -1550,7 +1550,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'em_separacao',
-            label: 'Em Separação',
+            label: t.orders.statusCards.inSeparation,
             icon: Package,
             count: kpis.em_separacao.count,
             total: kpis.em_separacao.total,
@@ -1562,7 +1562,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'enviado',
-            label: 'Enviados (Correios)',
+            label: t.orders.statusCards.shipped,
             icon: Truck,
             count: kpis.enviado.count,
             total: kpis.enviado.total,
@@ -1574,7 +1574,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'entregue',
-            label: 'Entregues',
+            label: t.orders.statusCards.delivered,
             icon: CheckCircle2,
             count: kpis.entregue.count,
             total: kpis.entregue.total,
@@ -1586,7 +1586,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'inativo',
-            label: 'Não Finalizados',
+            label: t.orders.statusCards.abandoned,
             icon: Clock,
             count: kpis.inativo.count,
             total: kpis.inativo.total,
@@ -1598,7 +1598,7 @@ export default function AdminPedidosPage() {
           },
           {
             id: 'cancelado',
-            label: 'Cancelados',
+            label: t.orders.statusCards.cancelled,
             icon: AlertCircle,
             count: kpis.cancelado.count,
             total: kpis.cancelado.total,
@@ -1678,7 +1678,7 @@ export default function AdminPedidosPage() {
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Filtros</span>
+            <span>{t.orders.toolbar.filters}</span>
             {activeFiltersCount > 0 && (
               <span className="w-4 h-4 rounded-full bg-white text-amber-700 text-[10px] font-black flex items-center justify-center">
                 {activeFiltersCount}
@@ -1919,7 +1919,7 @@ export default function AdminPedidosPage() {
           title="Filtrar pedidos com embalagem para presente VIP"
         >
           <Gift className={`w-3.5 h-3.5 ${onlyGifts ? 'text-amber-700' : 'text-slate-400'}`} />
-          <span className="hidden md:inline">Presentes VIP</span>
+          <span className="hidden md:inline">{t.orders.toolbar.vipGifts}</span>
         </button>
 
         {/* Chip Rápido de Reservas Congeladas */}
@@ -1933,7 +1933,7 @@ export default function AdminPedidosPage() {
           title="Filtrar pedidos com tempo de reserva congelado"
         >
           <Snowflake className={`w-3.5 h-3.5 ${onlyPausedReservations ? 'text-sky-700' : 'text-slate-400'}`} />
-          <span className="hidden md:inline">Reservas Congeladas</span>
+          <span className="hidden md:inline">{t.orders.toolbar.frozenHolds}</span>
           {pausedReservationsCount > 0 && (
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
               onlyPausedReservations ? 'bg-sky-700 text-white' : 'bg-sky-100 text-sky-800'
@@ -1954,7 +1954,7 @@ export default function AdminPedidosPage() {
           title="Filtrar pedidos de Provador na Loja Física"
         >
           <Clock className={`w-3.5 h-3.5 ${onlyFittingRoomOrders ? 'text-purple-700' : 'text-slate-400'}`} />
-          <span className="hidden md:inline">Provador / Balcão</span>
+          <span className="hidden md:inline">{t.orders.toolbar.fittingRoomCounter}</span>
           {fittingRoomOrdersCount > 0 && (
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
               onlyFittingRoomOrders ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
@@ -1986,7 +1986,7 @@ export default function AdminPedidosPage() {
           ) : (
             <Lock className="w-3.5 h-3.5 text-slate-400" />
           )}
-          <span className="hidden md:inline">Exportar CSV</span>
+          <span className="hidden md:inline">{t.orders.toolbar.exportCsv}</span>
           <span className="md:hidden">CSV</span>
         </button>
 
@@ -1998,7 +1998,7 @@ export default function AdminPedidosPage() {
           title="Atualizar listagem de pedidos do Supabase"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
-          <span className="hidden md:inline">Atualizar</span>
+          <span className="hidden md:inline">{t.orders.toolbar.refresh}</span>
         </button>
 
         {/* Botão Regras de Inatividade / Funil de WhatsApp */}
@@ -2009,7 +2009,7 @@ export default function AdminPedidosPage() {
           title="Configurar Regras de Inatividade do WhatsApp e Funil de Não Finalizados (Follow-up)"
         >
           <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-          <span className="hidden md:inline">Regras de Inatividade</span>
+          <span className="hidden md:inline">{t.orders.toolbar.inactivityRules}</span>
         </button>
 
         <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
@@ -2483,7 +2483,7 @@ export default function AdminPedidosPage() {
                       title="Imprimir Declaração de Conteúdo ou Romaneio de Separação"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="hidden sm:inline">Expedição</span>
+                      <span className="hidden sm:inline">{t.orders.actions.expedition}</span>
                     </button>
 
                     {/* Botão Alterar Status */}
@@ -2495,7 +2495,7 @@ export default function AdminPedidosPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Status</span>
+                      <span>{t.orders.actions.status}</span>
                     </button>
 
                     {/* Botão Expandir Detalhes */}

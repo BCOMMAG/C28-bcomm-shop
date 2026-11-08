@@ -24,6 +24,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { cn } from '@/lib/chart-utils';
 
 interface NavItem {
@@ -40,69 +41,6 @@ interface NavSection {
   items: NavItem[];
 }
 
-const SETTINGS_SECTIONS: NavSection[] = [
-  {
-    title: 'Conta & Acesso',
-    items: [
-      {
-        label: 'Perfil do Usuário',
-        href: '/admin/configuracoes/perfil',
-        icon: User,
-        description: 'Dados pessoais, avatar e assinatura',
-        badge: 'Você',
-        badgeColor: 'bg-slate-100 text-slate-700'
-      },
-      {
-        label: 'Plano & Assinatura SaaS',
-        href: '/admin/configuracoes/assinatura',
-        icon: Sparkles,
-        description: 'Plano contratado, limites e faturas da boutique',
-        badge: 'PRO',
-        badgeColor: 'bg-sky-100 text-sky-800'
-      },
-      {
-        label: 'Segurança & Acessos',
-        href: '/admin/configuracoes/seguranca',
-        icon: ShieldCheck,
-        description: 'Senhas, PIN balcão e sessões ativas',
-        badge: 'Crítico',
-        badgeColor: 'bg-amber-100 text-amber-800'
-      }
-    ]
-  },
-  {
-    title: 'Sistema & Painel',
-    items: [
-      {
-        label: 'Tema do Painel',
-        href: '/admin/configuracoes/tema-admin',
-        icon: Sliders,
-        description: 'Cores, botões, cards e fontes do sistema',
-        badge: 'Equipe',
-        badgeColor: 'bg-amber-100 text-amber-800'
-      },
-      {
-        label: 'Integrações & SEO',
-        href: '/admin/configuracoes/integracoes',
-        icon: Layers,
-        description: 'Pixel Meta, Google Analytics 4 e metatags'
-      },
-      {
-        label: 'Alertas & Sons',
-        href: '/admin/configuracoes/notificacoes',
-        icon: Bell,
-        description: 'Sons de nova venda e estoque mínimo'
-      },
-      {
-        label: 'Exportação de Dados',
-        href: '/admin/configuracoes/dados',
-        icon: FileSpreadsheet,
-        description: 'Relatórios CSV contábeis e backups'
-      }
-    ]
-  }
-];
-
 export default function SettingsLayout({
   children
 }: {
@@ -110,10 +48,74 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { currentTenant } = useStore();
+  const { t } = useAdminI18n();
   const lojaNome = currentTenant?.nome || 'Minha Loja';
   const lojaSlug = currentTenant?.slug || '';
 
   const cleanPath = (pathname || '').replace(/\/$/, '');
+
+  const settingsSections: NavSection[] = React.useMemo(() => [
+    {
+      title: t.generalSettings.accountAccess,
+      items: [
+        {
+          label: t.generalSettings.userProfile,
+          href: '/admin/configuracoes/perfil',
+          icon: User,
+          description: t.generalSettings.userProfileDesc,
+          badge: t.generalSettings.badgeYou,
+          badgeColor: 'bg-slate-100 text-slate-700'
+        },
+        {
+          label: t.generalSettings.saasPlan,
+          href: '/admin/configuracoes/assinatura',
+          icon: Sparkles,
+          description: t.generalSettings.saasPlanDesc,
+          badge: t.generalSettings.badgePro,
+          badgeColor: 'bg-sky-100 text-sky-800'
+        },
+        {
+          label: t.generalSettings.security,
+          href: '/admin/configuracoes/seguranca',
+          icon: ShieldCheck,
+          description: t.generalSettings.securityDesc,
+          badge: t.generalSettings.badgeCritical,
+          badgeColor: 'bg-amber-100 text-amber-800'
+        }
+      ]
+    },
+    {
+      title: t.generalSettings.systemPanel,
+      items: [
+        {
+          label: t.generalSettings.adminTheme,
+          href: '/admin/configuracoes/tema-admin',
+          icon: Sliders,
+          description: t.generalSettings.adminThemeDesc,
+          badge: t.generalSettings.badgeTeam,
+          badgeColor: 'bg-amber-100 text-amber-800'
+        },
+        {
+          label: t.generalSettings.integrations,
+          href: '/admin/configuracoes/integracoes',
+          icon: Layers,
+          description: t.generalSettings.integrationsDesc
+        },
+        {
+          label: t.generalSettings.notifications,
+          href: '/admin/configuracoes/notificacoes',
+          icon: Bell,
+          description: t.generalSettings.notificationsDesc
+        },
+        {
+          label: t.generalSettings.dataExport,
+          href: '/admin/configuracoes/dados',
+          icon: FileSpreadsheet,
+          description: t.generalSettings.dataExportDesc
+        }
+      ]
+    }
+  ], [t]);
 
   return (
     <div className="space-y-6 pb-16">
@@ -126,10 +128,10 @@ export default function SettingsLayout({
               className="inline-flex items-center gap-1 hover:text-slate-800 transition-colors"
             >
               <ArrowLeft className="w-3 h-3" />
-              <span>Painel</span>
+              <span>{t.common.panel}</span>
             </Link>
             <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="font-semibold text-slate-700">Configurações Gerais</span>
+            <span className="font-semibold text-slate-700">{t.generalSettings.pageTitle}</span>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -138,10 +140,10 @@ export default function SettingsLayout({
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-                Configurações Gerais
+                {t.generalSettings.pageTitle}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Central de governança, conta SaaS, segurança e parâmetros do sistema de {lojaNome}.
+                {t.generalSettings.pageSubtitle} {lojaNome}.
               </p>
             </div>
           </div>
@@ -154,7 +156,7 @@ export default function SettingsLayout({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-semibold transition-all shadow-2xs"
           >
             <Store className="w-3.5 h-3.5 text-slate-500" />
-            <span>Ver Vitrine Pública</span>
+            <span>{t.generalSettings.viewPublicStore}</span>
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </Link>
         </div>
@@ -163,7 +165,7 @@ export default function SettingsLayout({
       {/* NAVEGAÇÃO MOBILE (Scroll Horizontal de Pílulas) */}
       <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-none pb-2">
         <div className="flex items-center gap-2 min-w-max">
-          {SETTINGS_SECTIONS.flatMap((s) => s.items).map((item) => {
+          {settingsSections.flatMap((s) => s.items).map((item) => {
             const Icon = item.icon;
             const isActive = cleanPath === item.href || (item.href === '/admin/configuracoes/loja' && cleanPath === '/admin/configuracoes');
 
@@ -201,7 +203,7 @@ export default function SettingsLayout({
         {/* SIDEBAR DE NAVEGAÇÃO DESKTOP */}
         <aside className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-6 sticky top-20">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-6">
-            {SETTINGS_SECTIONS.map((section, idx) => (
+            {settingsSections.map((section, idx) => (
               <div key={section.title} className={idx > 0 ? 'pt-4 border-t border-slate-100' : ''}>
                 <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-2 font-mono">
                   {section.title}
@@ -272,16 +274,16 @@ export default function SettingsLayout({
           <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 text-xs text-amber-950 space-y-2">
             <div className="flex items-center gap-1.5 font-bold text-amber-900">
               <Store className="w-4 h-4 text-amber-600" />
-              <span>Configurações da Loja</span>
+              <span>{t.generalSettings.storeHubNoticeTitle}</span>
             </div>
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              Logística, Pagamentos, Checkout, Domínio e Dados da Loja agora ficam unificados no Hub da Loja.
+              {t.generalSettings.storeHubNoticeDesc}
             </p>
             <Link
               href="/admin/loja/dados"
               className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-amber-950 underline pt-1"
             >
-              <span>Ir para Configurações da Loja</span>
+              <span>{t.generalSettings.storeHubNoticeLink}</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>

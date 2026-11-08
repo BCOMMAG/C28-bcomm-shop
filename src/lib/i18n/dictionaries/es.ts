@@ -33,7 +33,9 @@ export const es: TranslationDictionary = {
     yes: 'Sí',
     no: 'No',
     new: 'Nuevo',
-    selectOption: 'Seleccione una opción'
+    selectOption: 'Seleccione una opción',
+    panel: 'Panel',
+    viewPublicStore: 'Ver Tienda Pública'
   },
   login: {
     panelTitle: 'Panel Administrativo de la Tienda',
@@ -99,7 +101,14 @@ export const es: TranslationDictionary = {
     finance: 'Finanzas',
     team: 'Equipo y Accesos',
     modules: 'Tienda de Módulos',
-    settings: 'Configuraciones Generales'
+    settings: 'Configuraciones Generales',
+    panelSubtitle: 'PANEL ADMINISTRATIVO',
+    backToOverview: 'Volver a la Visión General',
+    supportGovernance: 'Soporte y Gobernanza',
+    sendMessage: 'Enviar Mensaje',
+    loadingPanel: 'Cargando Panel Administrativo...',
+    footerPlatform: 'Plataforma BCOMM • Gestión de la tienda',
+    sessionClosed: 'Cerrar Sesión'
   },
   adminHeader: {
     searchPlaceholder: 'Buscar artículos, pedidos o clientes...',
@@ -174,7 +183,31 @@ export const es: TranslationDictionary = {
     markAsDelivered: 'Marcar como Entregado',
     cancelOrder: 'Cancelar Pedido',
     trackingCode: 'Código de Rastreo',
-    addTracking: 'Agregar Rastreo'
+    addTracking: 'Agregar Rastreo',
+    statusCards: {
+      awaitingWhatsapp: 'Esperando WhatsApp',
+      paidConfirmed: 'Pagos Confirmados',
+      inSeparation: 'En Preparación',
+      shipped: 'Enviados (Mensajería)',
+      delivered: 'Entregados',
+      abandoned: 'No Finalizados',
+      cancelled: 'Cancelados'
+    },
+    toolbar: {
+      filters: 'Filtros',
+      allPeriod: 'Todo el Período',
+      vipGifts: 'Regalos VIP',
+      frozenHolds: 'Reservas Congeladas',
+      fittingRoomCounter: 'Probador / Mostrador',
+      exportCsv: 'Exportar CSV',
+      refresh: 'Actualizar',
+      inactivityRules: 'Reglas de Inactividad'
+    },
+    actions: {
+      expedition: 'Expedición',
+      status: 'Estado',
+      chatWhatsapp: 'Chatear por WhatsApp'
+    }
   },
   products: {
     title: 'Catálogo de Productos y Stock',
@@ -283,6 +316,67 @@ export const es: TranslationDictionary = {
     returnPolicy: 'Política de Cambios y Devoluciones',
     privacyPolicy: 'Política de Privacidad y Datos',
     termsOfUse: 'Términos de Servicio y Condiciones'
+  },
+  generalSettings: {
+    accountAccess: 'Cuenta y Acceso',
+    systemPanel: 'Sistema y Panel',
+    userProfile: 'Perfil de Usuario',
+    userProfileDesc: 'Datos personales, avatar y firma',
+    saasPlan: 'Plan y Suscripción SaaS',
+    saasPlanDesc: 'Plan contratado, límites y facturas de la tienda',
+    security: 'Seguridad y Accesos',
+    securityDesc: 'Contraseñas, PIN mostrador y sesiones activas',
+    adminTheme: 'Tema del Panel',
+    adminThemeDesc: 'Colores, botones, tarjetas y fuentes del sistema',
+    integrations: 'Integraciones y SEO',
+    integrationsDesc: 'Pixel Meta, Google Analytics 4 y metaetiquetas',
+    notifications: 'Alertas y Sonidos',
+    notificationsDesc: 'Sonidos de nueva venta y alertas de stock bajo',
+    dataExport: 'Exportación de Datos',
+    dataExportDesc: 'Informes CSV contables y copias de seguridad',
+    badgeYou: 'Tú',
+    badgePro: 'PRO',
+    badgeCritical: 'Crítico',
+    badgeTeam: 'Equipo',
+    storeHubNoticeTitle: 'Configuraciones de la Tienda',
+    storeHubNoticeDesc: 'Logística, Pagos, Checkout, Dominio y Datos de Tienda están unificados en el Hub de Tienda.',
+    storeHubNoticeLink: 'Ir a Configuraciones de la Tienda →',
+    pageTitle: 'Configuraciones Generales',
+    pageSubtitle: 'Centro de gobernanza, cuenta SaaS, seguridad y parámetros del sistema de',
+    viewPublicStore: 'Ver Tienda Pública',
+    sec1Title: '1. Identificación Personal y Foto de Perfil',
+    sec1Desc: 'Foto e información mostrada en el encabezado del panel y en la firma de atención.',
+    fullName: 'Nombre Completo',
+    displayName: 'Nombre de Visualización (Apodo)',
+    primaryEmail: 'Correo Electrónico Principal',
+    directPhone: 'WhatsApp Personal / Directo',
+    roleOwner: 'Cargo: Propietaria (Dueña de la Tienda)',
+    roleDesc: 'Posee privilegios administrativos completos de la boutique, visualización de CMV, aprobación de cupones y gobernanza del equipo.',
+    roleMasterDesc: 'Su cuenta posee credencial de Ingeniería/Plataforma BCOMM SaaS con privilegios irrestritos sobre todas las tiendas.',
+    sec2Title: '2. Firma Predeterminada de WhatsApp',
+    sec2Desc: 'Texto adjuntado automáticamente a los mensajes enviados a clientes en CRM y confirmaciones de pedidos.',
+    sigText: 'Texto de la Firma',
+    sigPreview: 'Vista Previa en el WhatsApp del Cliente',
+    sigTip: 'Consejo: use emojis para humanizar la comunicación con sus clientes.',
+    saveSuccess: '¡Configuraciones de perfil actualizadas con éxito!',
+    saveError: 'Fallo al guardar las modificaciones del perfil.'
+  },
+  storeTabs: {
+    dados: 'Datos de la Tienda',
+    aparencia: 'Apariencia de la Tienda',
+    banners: 'Banners y Escaparates',
+    menu: 'Menús del Escaparate',
+    categorias: 'Categorías de Productos',
+    cupons: 'Cupones de Descuento',
+    logistica: 'Logística y Envío',
+    checkout: 'Checkout y Pedidos',
+    pagamentos: 'Pagos y Tarifas',
+    dominio: 'Dominio Propio'
+  },
+  globalSearch: {
+    placeholder: 'Escriba para buscar artículos, pedidos, clientes o navegación rápida...',
+    hint: 'Intente buscar por nombre de producto, código de pedido o nombre de cliente.',
+    shortcut: 'Atajo rápido: Ctrl + K'
   },
   whatsappTemplates: {
     orderApproved: (storeName: string, orderNumber: string, customerName: string) =>
