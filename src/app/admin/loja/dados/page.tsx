@@ -137,7 +137,7 @@ export default function StoreSettingsPage() {
       }
     } catch (err: any) {
       console.error('Erro ao carregar dados da loja:', err);
-      showToast('Falha ao carregar configurações da loja.', 'error');
+      showToast(t.storeInfo.toastLoadError, 'error');
     } finally {
       setLoading(false);
     }
@@ -210,9 +210,9 @@ export default function StoreSettingsPage() {
         try {
           await refreshProducts();
         } catch {}
-        showToast('Dados da loja e políticas salvos com sucesso!');
+        showToast(t.storeInfo.toastSuccess);
       } else {
-        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        showToast(res.error || t.storeInfo.toastError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
@@ -225,7 +225,7 @@ export default function StoreSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando dados cadastrais da loja...</span>
+        <span className="text-xs font-medium">{t.common?.loading || 'Carregando dados da loja...'}</span>
       </div>
     );
   }
@@ -257,10 +257,10 @@ export default function StoreSettingsPage() {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                1. Identificação Cadastral & Fiscal
+                {t.storeInfo.secFiscalTitle}
               </h2>
               <p className="text-[11px] text-slate-500">
-                Informações da empresa utilizadas em notas fiscais, rodapé da loja e canais oficiais.
+                {t.storeInfo.secFiscalDesc}
               </p>
             </div>
           </div>
@@ -271,57 +271,57 @@ export default function StoreSettingsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Nome Fantasia (Boutique)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.storeNameLabel}</label>
             <input
               type="text"
               required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Minha Boutique"
+              placeholder={t.storeInfo.storeNamePlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Razão Social Oficial</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.legalNameLabel}</label>
             <input
               type="text"
               value={razaoSocial}
               onChange={(e) => setRazaoSocial(e.target.value)}
-              placeholder="Ex: Minha Empresa LTDA"
+              placeholder={t.storeInfo.legalNamePlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">CNPJ</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.taxIdLabel}</label>
             <input
               type="text"
               value={cnpj}
               onChange={(e) => setCnpj(e.target.value)}
-              placeholder="00.000.000/0001-00"
+              placeholder={t.storeInfo.taxIdPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Inscrição Estadual (IE)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.stateRegLabel}</label>
             <input
               type="text"
               value={inscricaoEstadual}
               onChange={(e) => setInscricaoEstadual(e.target.value)}
-              placeholder="Ex: ISENTO ou 90812345-67"
+              placeholder={t.storeInfo.stateRegPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
             />
           </div>
 
           <div className="sm:col-span-2">
             <div className="flex items-center gap-1.5 mb-1">
-              <label className="text-slate-700 font-bold">Endereço da Loja na Web (Link do Sistema)</label>
+              <label className="text-slate-700 font-bold">{t.storeInfo.webAddressLabel}</label>
               <div className="relative inline-flex items-center group cursor-help">
                 <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
                 <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none">
-                  <span>É o identificador exclusivo da sua loja na internet (ex: <strong>bcomm-shop.pages.dev/{slug}</strong>). Ele é gerado na criação da loja e fica protegido contra alterações para garantir que seus clientes nunca percam o acesso à sua vitrine.</span>
+                  <span>{t.storeInfo.webAddressTooltip}</span>
                   <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function StoreSettingsPage() {
               className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-slate-600 font-mono text-xs cursor-not-allowed"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              🔒 Protegido contra alterações para evitar quebra de links já divulgados para clientes.
+              {t.storeInfo.webAddressProtected}
             </p>
           </div>
         </div>
@@ -348,10 +348,10 @@ export default function StoreSettingsPage() {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                Internacionalização & Moeda Oficial da Loja
+                {t.storeInfo.secI18nTitle}
               </h2>
               <p className="text-[11px] text-slate-500">
-                Configure a moeda de precificação e o idioma oficial da sua vitrine pública, catálogo, sacola e checkout.
+                {t.storeInfo.secI18nDesc}
               </p>
             </div>
           </div>
@@ -368,13 +368,13 @@ export default function StoreSettingsPage() {
         {/* 1. SELEÇÃO DE MOEDA */}
         <div>
           <label className="block text-xs font-bold text-slate-800 mb-2">
-            1. Moeda Oficial de Cobrança & Exibição de Preços
+            {t.storeInfo.currencySectionTitle}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { id: 'BRL', flag: '🇧🇷', symbol: 'R$', name: 'Real Brasileiro (BRL)', desc: 'Formato R$ 0,00 • Lojas Nacionais' },
-              { id: 'USD', flag: '🇺🇸', symbol: '$', name: 'US Dollar (USD)', desc: 'Formato $0.00 • Estados Unidos e Global' },
-              { id: 'EUR', flag: '🇪🇺', symbol: '€', name: 'Euro (EUR)', desc: 'Formato 0,00 € • União Europeia' }
+              { id: 'BRL', flag: '🇧🇷', symbol: 'R$', name: t.storeInfo.currencyBrlName, desc: t.storeInfo.currencyBrlDesc },
+              { id: 'USD', flag: '🇺🇸', symbol: '$', name: t.storeInfo.currencyUsdName, desc: t.storeInfo.currencyUsdDesc },
+              { id: 'EUR', flag: '🇪🇺', symbol: '€', name: t.storeInfo.currencyEurName, desc: t.storeInfo.currencyEurDesc }
             ].map((item) => {
               const isSelected = moeda === item.id;
               return (
@@ -409,13 +409,13 @@ export default function StoreSettingsPage() {
         {/* 2. SELEÇÃO DE IDIOMA PADRÃO DA VITRINE */}
         <div className="pt-4 border-t border-slate-100">
           <label className="block text-xs font-bold text-slate-800 mb-2">
-            2. Idioma Padrão da Vitrine Pública & Checkout
+            {t.storeInfo.langSectionTitle}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { id: 'pt', flag: '🇧🇷', name: 'Português (Brasil)', desc: 'Catálogo e checkout em Português' },
-              { id: 'en', flag: '🇺🇸', name: 'English (US)', desc: 'Storefront & checkout in English' },
-              { id: 'es', flag: '🇪🇸', name: 'Español', desc: 'Tienda y checkout en Español' }
+              { id: 'pt', flag: '🇧🇷', name: t.storeInfo.langPtName, desc: t.storeInfo.langPtDesc },
+              { id: 'en', flag: '🇺🇸', name: t.storeInfo.langEnName, desc: t.storeInfo.langEnDesc },
+              { id: 'es', flag: '🇪🇸', name: t.storeInfo.langEsName, desc: t.storeInfo.langEsDesc }
             ].map((item) => {
               const isSelected = idiomaPadrao === item.id;
               return (
@@ -446,7 +446,7 @@ export default function StoreSettingsPage() {
             })}
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            💡 Dica: Se a sua boutique opera no exterior ou atende clientes internacionais, selecione o idioma nativo correspondente. O catálogo, avisos e botões de compra serão exibidos no idioma escolhido.
+            {t.storeInfo.i18nTip}
           </p>
         </div>
       </div>
@@ -460,10 +460,10 @@ export default function StoreSettingsPage() {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                Endereço da Vitrine & Domínio Próprio
+                {t.storeInfo.secDomainTitle}
               </h2>
               <p className="text-[11px] text-slate-500">
-                Configure como suas clientes acessam sua loja. Use o subdomínio oficial BCOMM ou conecte seu domínio exclusivo.
+                {t.storeInfo.secDomainDesc}
               </p>
             </div>
           </div>
@@ -491,7 +491,7 @@ export default function StoreSettingsPage() {
             href="/admin/configuracoes/dominio"
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0"
           >
-            <span>Gerenciar Domínio Completo</span>
+            <span>{t.storeInfo.manageDomainBtn}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -501,7 +501,7 @@ export default function StoreSettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-slate-800 block">
-                Subdomínio Oficial Gratuito (Sempre Disponível)
+                {t.storeInfo.systemAddressLabel}
               </span>
               <span className="text-[11px] text-slate-500">
                 Funciona imediatamente para compartilhar catálogos, pedidos no WhatsApp e campanhas.
@@ -521,7 +521,7 @@ export default function StoreSettingsPage() {
                 title="Copiar link da vitrine"
               >
                 {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                <span>{copiedLink ? 'Copiado!' : 'Copiar Link'}</span>
+                <span>{copiedLink ? t.storeInfo.copiedLinkBadge : t.storeInfo.copyLinkBtn}</span>
               </button>
 
               <a
@@ -546,10 +546,10 @@ export default function StoreSettingsPage() {
         <div className="space-y-3 pt-2">
           <div>
             <label className="block text-slate-800 text-xs font-bold mb-1">
-              Conectar Domínio Próprio Personalizado (Opcional)
+              {t.storeInfo.customDomainLabel}
             </label>
             <p className="text-[11px] text-slate-500 mb-2">
-              Se você possui um domínio registrado (ex.: Registro.br, Hostinger, GoDaddy), insira o endereço abaixo.
+              {t.storeInfo.customDomainHint}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-slate-500 font-mono text-xs bg-slate-100 px-3 py-2.5 rounded-lg border border-slate-200 shrink-0 font-semibold">
@@ -559,7 +559,7 @@ export default function StoreSettingsPage() {
                 type="text"
                 value={dominioProprio}
                 onChange={(e) => setDominioProprio(e.target.value)}
-                placeholder="Ex: www.minhaboutique.com.br"
+                placeholder={t.storeInfo.customDomainPlaceholder}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-mono text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
               {dominioProprio.trim() && (
@@ -604,17 +604,17 @@ export default function StoreSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              2. Endereço da Boutique Física & Retiradas
+              {t.storeInfo.secAddressTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Endereço exibido na página de retirada presencial e no rodapé institucional.
+              {t.storeInfo.secAddressDesc}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">CEP (Busca Automática)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.cepLabel}</label>
             <div className="relative">
               <input
                 type="text"
@@ -635,7 +635,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-slate-700 mb-1 font-bold">Logradouro (Rua / Av.)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.streetLabel}</label>
             <input
               type="text"
               value={logradouro}
@@ -646,7 +646,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Número</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.numberLabel}</label>
             <input
               type="text"
               value={numero}
@@ -657,7 +657,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Complemento</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.complementLabel}</label>
             <input
               type="text"
               value={complemento}
@@ -668,7 +668,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Bairro</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.neighborhoodLabel}</label>
             <input
               type="text"
               value={bairro}
@@ -679,7 +679,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Cidade</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.cityLabel}</label>
             <input
               type="text"
               value={cidade}
@@ -690,7 +690,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Estado (UF)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.stateLabel}</label>
             <input
               type="text"
               value={estado}
@@ -711,17 +711,17 @@ export default function StoreSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              3. Horários de Atendimento & Canais Oficiais
+              {t.storeInfo.secHoursTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Canais que recebem os pedidos finalizados no WhatsApp e links sociais.
+              {t.storeInfo.secHoursDesc}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Segunda a Sexta-Feira</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.hoursWeekdayLabel}</label>
             <input
               type="text"
               value={horarioSemana}
@@ -732,7 +732,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Sábados</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.hoursSaturdayLabel}</label>
             <input
               type="text"
               value={horarioSabado}
@@ -743,7 +743,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Domingos e Feriados</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.hoursSundayLabel}</label>
             <input
               type="text"
               value={horarioDomingo}
@@ -756,7 +756,7 @@ export default function StoreSettingsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs pt-2">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">WhatsApp Oficial (com DDD)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.whatsappLabel}</label>
             <div className="relative">
               <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -771,7 +771,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">E-mail de Contato</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.emailLabel}</label>
             <div className="relative">
               <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -786,7 +786,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Instagram Oficial</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.instagramLabel}</label>
             <div className="relative">
               <InstagramIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -800,7 +800,7 @@ export default function StoreSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">TikTok / Vídeos</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storeInfo.tiktokLabel}</label>
             <div className="relative">
               <Video className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -823,10 +823,10 @@ export default function StoreSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              4. Políticas da Loja & Conformidade Jurídica
+              {t.storeInfo.secPoliciesTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Textos exibidos no rodapé da vitrine, modal de políticas e checkout (CDC Art. 49 e LGPD).
+              {t.storeInfo.secPoliciesDesc}
             </p>
           </div>
         </div>
@@ -834,7 +834,7 @@ export default function StoreSettingsPage() {
         <div className="space-y-4 text-xs">
           <div>
             <label className="block text-slate-700 mb-1 font-bold">
-              Política de Trocas e Devoluções (Código de Defesa do Consumidor)
+              {t.storeInfo.returnPolicyLabel}
             </label>
             <textarea
               rows={3}
@@ -846,7 +846,7 @@ export default function StoreSettingsPage() {
 
           <div>
             <label className="block text-slate-700 mb-1 font-bold">
-              Política de Privacidade e Proteção de Dados (LGPD)
+              {t.storeInfo.privacyPolicyLabel}
             </label>
             <textarea
               rows={3}
@@ -858,7 +858,7 @@ export default function StoreSettingsPage() {
 
           <div>
             <label className="block text-slate-700 mb-1 font-bold">
-              Termos de Uso & Condições Gerais de Compra
+              {t.storeInfo.termsOfUseLabel}
             </label>
             <textarea
               rows={3}
@@ -882,7 +882,7 @@ export default function StoreSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? 'Salvando Alterações...' : 'Salvar Dados da Loja'}</span>
+          <span>{isSaving ? t.storeInfo.savingBtn : t.storeInfo.saveBtn}</span>
         </button>
       </div>
     </form>

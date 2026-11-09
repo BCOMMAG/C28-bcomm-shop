@@ -286,7 +286,7 @@ export default function CustomDomainSettingsPage() {
 
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-slate-900">
-                Desconectar Domínio Personalizado?
+                {t.storeDomain.disconnectModalTitle}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 Ao desconectar o domínio <strong className="text-slate-800 font-mono">{dominioSalvo}</strong>, sua vitrine deixará de responder neste endereço.
@@ -308,7 +308,7 @@ export default function CustomDomainSettingsPage() {
                 onClick={() => setIsDisconnectModalOpen(false)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
               >
-                Cancelar
+                {t.storeDomain.cancelBtn}
               </button>
               <button
                 type="button"
@@ -324,7 +324,7 @@ export default function CustomDomainSettingsPage() {
                 ) : (
                   <>
                     <Unlink className="w-3.5 h-3.5" />
-                    <span>Sim, Desconectar</span>
+                    <span>{t.storeDomain.confirmDisconnectBtn}</span>
                   </>
                 )}
               </button>
@@ -343,7 +343,7 @@ export default function CustomDomainSettingsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900">
-                  Domínio Próprio Personalizado
+                  {t.storeDomain.pageTitle}
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wide">
                   Multi-Tenant
@@ -369,7 +369,7 @@ export default function CustomDomainSettingsPage() {
                   dominioSalvo ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
                 }`}
               />
-              {dominioSalvo ? 'Domínio Próprio Ativo' : 'Subdomínio Gratuito BCOMM'}
+              {dominioSalvo ? t.storeDomain.statusConnected : t.storeDomain.statusPending}
             </span>
           </div>
         </div>
@@ -381,7 +381,7 @@ export default function CustomDomainSettingsPage() {
           <div>
             <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
               <Server className="w-4 h-4 text-amber-600" />
-              Endereço Oficial Atual da Vitrine
+              {t.storeDomain.statusTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
               {dominioSalvo
@@ -446,7 +446,7 @@ export default function CustomDomainSettingsPage() {
                 title="Checar propagação DNS agora"
               >
                 <RefreshCw className={`w-3 h-3 ${isCheckingDns ? 'animate-spin text-amber-600' : 'text-slate-400'}`} />
-                <span>Testar DNS</span>
+                <span>{t.storeDomain.dnsDiagnosticBtn}</span>
               </button>
 
               <button
@@ -456,7 +456,7 @@ export default function CustomDomainSettingsPage() {
                 title="Desconectar domínio próprio e voltar ao subdomínio gratuito"
               >
                 <Unlink className="w-3 h-3" />
-                <span>Desconectar</span>
+                <span>{t.storeDomain.disconnectDomainBtn}</span>
               </button>
             </div>
           )}
@@ -506,16 +506,16 @@ export default function CustomDomainSettingsPage() {
         <div className="pb-3 border-b border-slate-100">
           <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-600" />
-            {dominioSalvo ? 'Alterar Domínio Personalizado' : 'Conectar Novo Domínio Próprio'}
+            {t.storeDomain.formConnectTitle}
           </h2>
           <p className="text-[11px] text-slate-500">
-            Insira o endereço adquirido no Registro.br, Hostinger, HostGator, GoDaddy ou em qualquer outro provedor.
+            {t.storeDomain.formConnectDesc}
           </p>
         </div>
 
         <div className="space-y-3">
           <label className="block text-slate-800 text-xs font-bold">
-            Endereço do Domínio:
+            {t.storeDomain.domainInputLabel}
           </label>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -528,7 +528,7 @@ export default function CustomDomainSettingsPage() {
                 required
                 value={dominioInput}
                 onChange={(e) => setDominioInput(e.target.value)}
-                placeholder="Ex: www.sualoja.com.br"
+                placeholder={t.storeDomain.domainInputPlaceholder}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-16 pr-3 py-2.5 text-slate-900 font-mono text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
               />
             </div>
@@ -547,7 +547,7 @@ export default function CustomDomainSettingsPage() {
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{dominioSalvo ? 'Atualizar Domínio' : 'Conectar Domínio'}</span>
+                    <span>{t.storeDomain.connectDomainBtn}</span>
                   </>
                 )}
               </button>
@@ -579,10 +579,10 @@ export default function CustomDomainSettingsPage() {
         <div className="pb-3 border-b border-slate-100">
           <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-amber-600" />
-            Como Configurar o Apontamento DNS no seu Provedor
+            {t.storeDomain.guideTitle}
           </h2>
           <p className="text-[11px] text-slate-500">
-            Siga as instruções abaixo no site onde você comprou seu domínio. É um processo rápido que só precisa ser feito uma única vez.
+            {t.storeDomain.guideSubtitle}
           </p>
         </div>
 
@@ -778,28 +778,28 @@ export default function CustomDomainSettingsPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-3">
         <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
           <HelpCircle className="w-4 h-4 text-amber-600" />
-          Dúvidas Frequentes sobre Domínios na BCOMM
+          {t.storeDomain.faqTitle}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">Quanto tempo demora para funcionar?</span>
+            <span className="font-bold text-slate-900 block">{t.storeDomain.faqQ1}</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              No Registro.br e Hostinger, a propagação DNS geralmente leva de 15 a 45 minutos (em raros casos, até 2 horas).
+              {t.storeDomain.faqA1}
             </p>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">O certificado de segurança SSL (HTTPS) é grátis?</span>
+            <span className="font-bold text-slate-900 block">{t.storeDomain.faqQ2}</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Sim! O cadeado de segurança SSL/TLS é emitido e renovado automaticamente de forma gratuita pela nossa infraestrutura.
+              {t.storeDomain.faqA2}
             </p>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">O que acontece se eu desconectar o domínio?</span>
+            <span className="font-bold text-slate-900 block">{t.storeDomain.faqQ3}</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Sua vitrine volta imediatamente para o link oficial gratuito da BCOMM. Nada é perdido, nem produtos nem histórico de pedidos.
+              {t.storeDomain.faqA3}
             </p>
           </div>
 

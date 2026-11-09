@@ -676,10 +676,10 @@ export default function AppearanceSettingsPage() {
           await refreshProducts();
           await refreshTenant(tenantId);
         } catch { }
-        showToast('Aparência e identidade da vitrine salvas com sucesso!');
+        showToast(t.storeAppearance.toastSuccess);
         return true;
       } else {
-        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        showToast(res.error || t.storeAppearance.toastError, 'error');
         return false;
       }
     } catch (err: any) {
@@ -874,7 +874,7 @@ export default function AppearanceSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando configurações visuais da vitrine...</span>
+        <span className="text-xs font-medium">{t.common?.loading || 'Carregando configurações visuais da vitrine...'}</span>
       </div>
     );
   }
@@ -904,10 +904,10 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              1. Logotipos Oficiais, Favicon & OG Image da Boutique
+              {t.storeAppearance.secLogosTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Gerencie a imagem principal da boutique para modo claro, modo escuro, aba do navegador e compartilhamento social.
+              {t.storeAppearance.secLogosDesc}
             </p>
           </div>
         </div>
@@ -917,11 +917,11 @@ export default function AppearanceSettingsPage() {
         <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 bg-white shadow-2xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-slate-900">Logo Modo Claro</span>
+              <span className="font-bold text-slate-900">{t.storeAppearance.logoLightTitle}</span>
               <Sun className="w-3.5 h-3.5 text-amber-500" />
             </div>
             <span className="text-[10px] text-slate-400 block line-clamp-1">
-              Exibido sobre fundos claros da vitrine
+              {t.storeAppearance.logoLightDesc}
             </span>
           </div>
 
@@ -970,11 +970,11 @@ export default function AppearanceSettingsPage() {
         <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 bg-white shadow-2xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-slate-900">Logo Modo Escuro</span>
+              <span className="font-bold text-slate-900">{t.storeAppearance.logoDarkTitle}</span>
               <Moon className="w-3.5 h-3.5 text-indigo-500" />
             </div>
             <span className="text-[10px] text-slate-400 block line-clamp-1">
-              Exibido sobre o hero escuro e no tema dark
+              {t.storeAppearance.logoDarkDesc}
             </span>
           </div>
 
@@ -1023,11 +1023,11 @@ export default function AppearanceSettingsPage() {
         <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 bg-white shadow-2xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-slate-900">Favicon do Navegador</span>
+              <span className="font-bold text-slate-900">{t.storeAppearance.faviconTitle}</span>
               <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">32x32</span>
             </div>
             <span className="text-[10px] text-slate-400 block line-clamp-1">
-              Ícone dinâmico exibido na aba do navegador
+              {t.storeAppearance.faviconDesc}
             </span>
           </div>
 
@@ -1076,11 +1076,11 @@ export default function AppearanceSettingsPage() {
         <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 bg-white shadow-2xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-slate-900">OG Image Social</span>
+              <span className="font-bold text-slate-900">{t.storeAppearance.ogImageTitle}</span>
               <Share2 className="w-3.5 h-3.5 text-emerald-600" />
             </div>
             <span className="text-[10px] text-slate-400 block line-clamp-1">
-              Card para WhatsApp, Instagram e Facebook
+              {t.storeAppearance.ogImageDesc}
             </span>
           </div>
 
@@ -3383,7 +3383,7 @@ export default function AppearanceSettingsPage() {
         ) : (
           <Save className="w-4 h-4" />
         )}
-        <span>{isSaving ? 'Salvando Vitrine...' : 'Salvar Aparência da Loja Virtual'}</span>
+        <span>{isSaving ? t.storeAppearance.savingBtn : t.storeAppearance.saveBtn}</span>
       </button>
     </div>
 

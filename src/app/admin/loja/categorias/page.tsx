@@ -328,10 +328,10 @@ export default function AdminCategoriasPage() {
             </div>
             <div>
               <h1 className="admin-heading text-xl sm:text-2xl font-bold tracking-tight">
-                Categorias & Subcategorias
+                {t.storeCategories.pageTitle}
               </h1>
               <p className="admin-body text-xs text-slate-500 mt-0.5">
-                Organize a arquitetura de departamentos da boutique, filtros do catálogo e menus de navegação.
+                {t.storeCategories.pageSubtitle}
               </p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function AdminCategoriasPage() {
             className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider"
           >
             <Plus className="w-4 h-4" />
-            <span>Nova Categoria</span>
+            <span>{t.storeCategories.newCategoryBtn}</span>
           </button>
         </div>
       </div>
@@ -365,7 +365,7 @@ export default function AdminCategoriasPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-              Categorias Principais
+              {t.storeCategories.kpiTotalCategories}
             </span>
             <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {loading ? '...' : categories.length}
@@ -379,7 +379,7 @@ export default function AdminCategoriasPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-              Subcategorias Mapeadas
+              {t.storeCategories.kpiActiveSubcategories}
             </span>
             <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {loading ? '...' : totalSubcategorias}
@@ -393,7 +393,7 @@ export default function AdminCategoriasPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-              Produtos Classificados
+              {t.storeCategories.kpiTotalProducts}
             </span>
             <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {loading ? '...' : totalProdutosCategorizados}
@@ -408,7 +408,7 @@ export default function AdminCategoriasPage() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por categoria ou subcategoria..."
+            placeholder={t.storeCategories.filterSearchPlaceholder}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-slate-800"
@@ -468,7 +468,7 @@ export default function AdminCategoriasPage() {
                       disabled={isFirst || Boolean(searchTerm)}
                       onClick={() => handleMoveOrder(index, 'up')}
                       className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer transition-colors"
-                      title="Subir posição na vitrine"
+                      title={t.storeCategories.btnMoveUp}
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
                     </button>
@@ -477,7 +477,7 @@ export default function AdminCategoriasPage() {
                       disabled={isLast || Boolean(searchTerm)}
                       onClick={() => handleMoveOrder(index, 'down')}
                       className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer transition-colors"
-                      title="Descer posição na vitrine"
+                      title={t.storeCategories.btnMoveDown}
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
                     </button>
@@ -540,7 +540,7 @@ export default function AdminCategoriasPage() {
                         <div className="inline-flex items-center gap-1 bg-white border border-amber-400 rounded-lg p-0.5 shadow-xs">
                           <input
                             type="text"
-                            placeholder="Nome da subcategoria..."
+                            placeholder={t.storeCategories.subcategoryPlaceholder}
                             value={inlineSubInput}
                             autoFocus
                             onChange={(e) => setInlineSubInput(e.target.value)}
@@ -583,7 +583,7 @@ export default function AdminCategoriasPage() {
                           className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50/80 hover:bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-200 transition-colors cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
-                          <span>Adicionar</span>
+                          <span>{t.storeCategories.btnAddSubcategoryInline}</span>
                         </button>
                       )}
                     </div>
@@ -599,7 +599,7 @@ export default function AdminCategoriasPage() {
                     title="Editar categoria e subcategorias"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                    <span>Editar</span>
+                    <span>{t.storeCategories.btnEdit}</span>
                   </button>
                   <button
                     type="button"
@@ -627,7 +627,7 @@ export default function AdminCategoriasPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+                    {editingCategory ? t.storeCategories.modalTitleEdit : t.storeCategories.modalTitleCreate}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Configure o nome, link permanente e suas subcategorias
@@ -646,11 +646,11 @@ export default function AdminCategoriasPage() {
             <form onSubmit={handleSaveModal} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Nome da Categoria *
+                  {t.storeCategories.nameLabel}
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Alfaiataria, Tricots Biamar, Vestidos..."
+                  placeholder={t.storeCategories.namePlaceholder}
                   value={formNome}
                   onChange={(e) => handleNomeChange(e.target.value)}
                   required
@@ -661,7 +661,7 @@ export default function AdminCategoriasPage() {
               <div>
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Endereço Web da Categoria *
+                    {t.storeCategories.slugLabel}
                   </label>
                   <div className="relative inline-flex items-center group cursor-help">
                     <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
@@ -677,7 +677,7 @@ export default function AdminCategoriasPage() {
                   </span>
                   <input
                     type="text"
-                    placeholder="alfaiataria"
+                    placeholder={t.storeCategories.slugPlaceholder}
                     value={formSlug}
                     onChange={(e) => setFormSlug(e.target.value)}
                     required
@@ -689,10 +689,10 @@ export default function AdminCategoriasPage() {
               {/* Subcategorias vinculadas */}
               <div className="pt-2 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Subcategorias Vinculadas
+                  {t.storeCategories.subcategoriesLabel}
                 </label>
                 <p className="text-[11px] text-slate-500 mb-2.5">
-                  Subdivisões que aparecerão no filtro lateral e no menu suspenso desta categoria.
+                  {t.storeCategories.subcategoriesHint}
                 </p>
 
                 <div className="flex items-center gap-2 mb-3">
@@ -763,7 +763,7 @@ export default function AdminCategoriasPage() {
                   ) : (
                     <Save className="w-3.5 h-3.5" />
                   )}
-                  <span>{editingCategory ? 'Salvar Alterações' : 'Criar Categoria'}</span>
+                  <span>{isSaving ? t.storeCategories.savingBtn : t.storeCategories.saveBtn}</span>
                 </button>
               </div>
             </form>
@@ -805,7 +805,7 @@ export default function AdminCategoriasPage() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isDeleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
-                <span>Confirmar Exclusão</span>
+                <span>{t.storeCategories.confirmDeleteBtn}</span>
               </button>
             </div>
           </div>

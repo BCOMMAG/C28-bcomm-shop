@@ -382,10 +382,10 @@ export default function AdminBannersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif-luxury">
-            Vitrine & Hero Banners Multi-Rotativos
+            {t.storeBanners.pageTitle}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Gerencie múltiplos banners com rotação automática em looping (6s), pausa inteligente na interação e links inteligentes para coleções, categorias ou peças únicas.
+            {t.storeBanners.pageSubtitle}
           </p>
         </div>
 
@@ -406,7 +406,7 @@ export default function AdminBannersPage() {
             className="admin-btn-secondary px-3.5 py-2 text-xs font-bold"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Novo Banner</span>
+            <span>{t.storeBanners.newBannerBtn}</span>
           </button>
 
           <button
@@ -415,7 +415,7 @@ export default function AdminBannersPage() {
             className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{isSaving ? 'Publicando...' : 'Salvar Alterações'}</span>
+            <span>{isSaving ? t.storeBanners.savingBannerBtn : t.storeBanners.saveBannerBtn}</span>
           </button>
         </div>
       </div>
@@ -426,11 +426,11 @@ export default function AdminBannersPage() {
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-600" />
             <h2 className="font-bold text-slate-900 uppercase tracking-wider text-xs sm:text-sm">
-              1. Banners Cadastrados na Vitrine ({banners.length})
+              {t.storeBanners.bannersListTitle} ({banners.length})
             </h2>
           </div>
           <span className="text-[11px] text-slate-500 font-medium">
-            Looping contínuo a cada 6s • Pausa inteligente de 5s após qualquer clique ou toque
+            {t.storeBanners.bannersListSubtitle}
           </span>
         </div>
 
@@ -635,7 +635,7 @@ export default function AdminBannersPage() {
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800 flex items-center gap-1.5">
                   <Monitor className="w-4 h-4 text-amber-600" />
-                  <span>Mídia Desktop (16:9 Panorâmica)</span>
+                  <span>{t.storeBanners.uploadDesktopTitle}</span>
                 </span>
                 <span className="font-mono text-[10px] text-slate-400">1920x1080</span>
               </div>
@@ -691,7 +691,7 @@ export default function AdminBannersPage() {
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800 flex items-center gap-1.5">
                   <Smartphone className="w-4 h-4 text-amber-600" />
-                  <span>Mídia Celular (9:16 Vertical Tela Cheia)</span>
+                  <span>{t.storeBanners.uploadMobileTitle}</span>
                 </span>
                 <span className="font-mono text-[10px] text-slate-400">1080x1920</span>
               </div>
@@ -746,29 +746,29 @@ export default function AdminBannersPage() {
           {/* TEXTOS DA CHAMADA */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">Título Principal do Banner</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.storeBanners.titleField}</label>
               <input
                 type="text"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Ex: Coleção Elegance & Alfaiataria"
+                placeholder={t.storeBanners.titlePlaceholder}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 mb-1 font-bold">Texto do Botão (CTA)</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.storeBanners.ctaField}</label>
               <input
                 type="text"
                 value={ctaTexto}
                 onChange={(e) => setCtaTexto(e.target.value)}
-                placeholder="Ex: Conhecer Coleção"
+                placeholder={t.storeBanners.ctaPlaceholder}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-slate-700 mb-1 font-bold">Subtítulo / Descrição de Impacto</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.storeBanners.subtitleField}</label>
               <input
                 type="text"
                 value={subtitulo}
@@ -785,7 +785,7 @@ export default function AdminBannersPage() {
               <div>
                 <label className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
                   <Link2 className="w-4 h-4 text-amber-600" />
-                  <span>3. Destino do Clique (Botão CTA e Clique no Banner Inteiro)</span>
+                  <span>{t.storeBanners.linkPickerTitle}</span>
                 </label>
                 <span className="text-[11px] text-slate-500">
                   O cliente será direcionado para este link ao clicar no botão CTA ou diretamente sobre o banner.
@@ -801,10 +801,10 @@ export default function AdminBannersPage() {
             {/* Abas do Link Picker */}
             <div className="flex flex-wrap gap-2 pt-1">
               {[
-                { id: 'colecao', label: 'Coleção / Seção da Home', icon: Layers },
-                { id: 'categoria', label: 'Categoria do Catálogo', icon: Grid },
-                { id: 'produto', label: 'Peça Única (Produto)', icon: PackageCheck },
-                { id: 'custom', label: 'Link Personalizado', icon: ExternalLink },
+                { id: 'colecao', label: t.storeBanners.tabCollection, icon: Layers },
+                { id: 'categoria', label: t.storeBanners.tabCategory, icon: Grid },
+                { id: 'produto', label: t.storeBanners.tabProduct, icon: PackageCheck },
+                { id: 'custom', label: t.storeBanners.tabCustom, icon: ExternalLink },
                 { id: 'none', label: 'Apenas Rolagem Suave', icon: ArrowDown }
               ].map((tab) => {
                 const isCurrentTab = linkPickerType === tab.id;
@@ -1411,7 +1411,7 @@ export default function AdminBannersPage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            <span>{isSaving ? 'Salvando Alterações...' : 'Salvar e Publicar na Vitrine'}</span>
+            <span>{isSaving ? t.storeBanners.savingBannerBtn : t.storeBanners.saveBannerBtn}</span>
           </button>
         </div>
       </form>

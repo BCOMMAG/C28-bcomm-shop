@@ -600,14 +600,14 @@ export default function ShippingSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                1. Integração Automática (Melhor Envio) & CEP de Origem
+                {t.storeLogistics.secProviderTitle}
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">
                 Correios + Jadlog
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Conexão oficial da plataforma para cálculo de frete com tarifas corporativas de desconto em tempo real.
+              {t.storeLogistics.secProviderDesc}
             </p>
           </div>
         </div>
@@ -617,7 +617,7 @@ export default function ShippingSettingsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-slate-700 mb-1 font-bold">
-                Motor de Frete Ativo
+                {t.storeLogistics.engineLabel}
               </label>
               <select
                 value={config.provedor}
@@ -664,7 +664,7 @@ export default function ShippingSettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-bold text-slate-900 text-xs">Conexão Homologada BCOMM</span>
+                  <span className="font-bold text-slate-900 text-xs">{t.storeLogistics.officialStatusTitle}</span>
                 </div>
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                   Pronto para Envio
@@ -685,7 +685,7 @@ export default function ShippingSettingsPage() {
                 ) : (
                   <Zap className="w-4 h-4" />
                 )}
-                <span>{isTestingToken ? 'Testando Cotação ao Vivo...' : 'Testar Conexão em Tempo Real'}</span>
+                <span>{isTestingToken ? t.storeLogistics.testingConn : t.storeLogistics.testConnBtn}</span>
               </button>
 
               {/* Resultado do Teste de Conexão */}
@@ -715,7 +715,7 @@ export default function ShippingSettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
               <label className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-amber-600" />
-                <span>Endereço de Expedição da Loja</span>
+                <span>{t.storeLogistics.originAddressTitle}</span>
               </label>
               <button
                 type="button"
@@ -1007,14 +1007,14 @@ export default function ShippingSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                3. Frete Grátis & Descontos Progressivos (Subsídio de Frete)
+                {t.storeLogistics.secFreeShippingTitle}
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                 Incentivo de Vendas
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Parametrize metas de frete grátis e descontos automáticos proporcionais ao valor da compra da cliente.
+              {t.storeLogistics.secFreeShippingDesc}
             </p>
           </div>
         </div>
@@ -1024,7 +1024,7 @@ export default function ShippingSettingsPage() {
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
             <div>
               <span className="font-bold text-slate-900 block text-xs">
-                Ativar Meta de Frete Grátis da Loja
+                {t.storeLogistics.enableFreeShippingGlobal}
               </span>
               <span className="text-[11px] text-slate-500 block">
                 Concede isenção de frete para compras acima da meta. Quando desativado, a régua de frete grátis na sacola e no checkout é ocultada imediatamente.
@@ -1122,10 +1122,10 @@ export default function ShippingSettingsPage() {
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
             <div>
               <span className="font-bold text-slate-900 block text-xs">
-                Ativar Faixas de Desconto Progressivo no Frete
+                {t.storeLogistics.progressiveDiscountTitle}
               </span>
               <span className="text-[11px] text-slate-500 block">
-                Incentiva pedidos de ticket alto oferecendo abatimentos automáticos na tarifa das transportadoras.
+                {t.storeLogistics.progressiveDiscountDesc}
               </span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1883,7 +1883,7 @@ export default function ShippingSettingsPage() {
                 <Store className="w-4 h-4" />
               </div>
               <div>
-                <span className="font-bold text-slate-900 block">Retirada na Boutique Física</span>
+                <span className="font-bold text-slate-900 block">{t.storeLogistics.secStorePickupTitle}</span>
                 <span className="text-[11px] text-slate-500">A cliente compra online e retira no balcão sem pagar frete</span>
               </div>
             </div>
@@ -1901,7 +1901,7 @@ export default function ShippingSettingsPage() {
 
           {config.retirada_boutique_ativa && (
             <div className="pt-2 border-t border-slate-100">
-              <label className="block text-slate-700 mb-1 font-bold">Instruções para Retirada Presencial</label>
+              <label className="block text-slate-700 mb-1 font-bold">{t.storeLogistics.pickupInstructionsLabel}</label>
               <textarea
                 rows={2}
                 value={config.instrucoes_retirada || ''}
@@ -1990,7 +1990,7 @@ export default function ShippingSettingsPage() {
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50"
         >
           {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          <span>{isSaving ? 'Salvando Configurações...' : 'Salvar Todas as Regras de Frete'}</span>
+          <span>{isSaving ? t.storeLogistics.savingBtn : t.storeLogistics.saveBtn}</span>
         </button>
       </div>
     </form>

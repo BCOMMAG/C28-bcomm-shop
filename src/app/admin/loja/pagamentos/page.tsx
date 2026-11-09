@@ -92,9 +92,9 @@ export default function PaymentSettingsPage() {
         try {
           await refreshProducts();
         } catch {}
-        showToast('Configurações de pagamento e PIX salvas com sucesso!');
+        showToast(t.storePayments.toastSuccess);
       } else {
-        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        showToast(res.error || t.storePayments.toastError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
@@ -107,7 +107,7 @@ export default function PaymentSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando parâmetros de pagamento...</span>
+        <span className="text-xs font-medium">{t.common?.loading || 'Carregando parâmetros de pagamento...'}</span>
       </div>
     );
   }
@@ -139,21 +139,21 @@ export default function PaymentSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                1. Chave PIX Oficial de Recebimento
+                {t.storePayments.pixTitle}
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                 Liquidação Instantânea
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Dados bancários apresentados na finalização de compra para cópia instantânea da chave.
+              {t.storePayments.pixDesc}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Tipo da Chave PIX</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixKeyTypeLabel}</label>
             <select
               value={tipoChavePix}
               onChange={(e) => setTipoChavePix(e.target.value as any)}
@@ -167,31 +167,31 @@ export default function PaymentSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Chave PIX</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixKeyLabel}</label>
             <input
               type="text"
               required
               value={chavePix}
               onChange={(e) => setChavePix(e.target.value)}
-              placeholder="Ex: 554197347601 ou CNPJ"
+              placeholder={t.storePayments.pixKeyPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Titular da Conta</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixBeneficiaryLabel}</label>
             <input
               type="text"
               required
               value={pixTitular}
               onChange={(e) => setPixTitular(e.target.value)}
-              placeholder="Ex: Razão Social ou Nome do Titular"
+              placeholder={t.storePayments.pixBeneficiaryPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Instituição Bancária</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixBankLabel}</label>
             <div className="relative">
               <Building className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -199,7 +199,7 @@ export default function PaymentSettingsPage() {
                 required
                 value={pixBanco}
                 onChange={(e) => setPixBanco(e.target.value)}
-                placeholder="Ex: Nubank, Inter, Itaú"
+                placeholder={t.storePayments.pixBankPlaceholder}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
               />
             </div>
@@ -209,7 +209,7 @@ export default function PaymentSettingsPage() {
         {/* REGRAS COMERCIAIS DO PIX */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-3 border-t border-slate-100">
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Desconto à Vista no PIX (%)</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixDiscountLabel}</label>
             <div className="relative">
               <Percent className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -223,12 +223,12 @@ export default function PaymentSettingsPage() {
               />
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Incentivo imediato para pagamento sem taxa de intermediação de cartão.
+              {t.storePayments.pixDiscountHint}
             </span>
           </div>
 
           <div>
-            <label className="block text-slate-700 mb-1 font-bold">Tempo de Expiração do QR Code</label>
+            <label className="block text-slate-700 mb-1 font-bold">{t.storePayments.pixExpiryLabel}</label>
             <div className="relative">
               <Clock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -242,7 +242,7 @@ export default function PaymentSettingsPage() {
               />
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Minutos até a liberação do estoque caso não haja comprovação.
+              {t.storePayments.pixExpiryHint}
             </span>
           </div>
 
@@ -295,10 +295,10 @@ export default function PaymentSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              2. Gateways de Cartão de Crédito & Intermediação
+              {t.storePayments.gatewaysTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Integração com processadoras para vendas em até 12x no cartão com antifraude ativo.
+              {t.storePayments.gatewaysDesc}
             </p>
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function PaymentSettingsPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Processamento transparente de cartões de crédito e Pix automatizado com webhook.
+                {t.storePayments.mpDesc}
               </p>
             </div>
             <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600 font-medium">
@@ -335,7 +335,7 @@ export default function PaymentSettingsPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Emissão de boletos bancários com código de barras e split de pagamento.
+                {t.storePayments.asaasDesc}
               </p>
             </div>
             <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
@@ -354,7 +354,7 @@ export default function PaymentSettingsPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Multi-adquirente com taxas personalizadas para alto volume de vendas.
+                {t.storePayments.pagarmeDesc}
               </p>
             </div>
             <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
@@ -377,7 +377,7 @@ export default function PaymentSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? (locale === 'en' ? 'Saving...' : locale === 'es' ? 'Guardando...' : 'Salvando...') : (locale === 'en' ? 'Save Payment Settings' : locale === 'es' ? 'Guardar Configuración de Pagos' : 'Salvar Configurações de Pagamento')}</span>
+          <span>{isSaving ? t.storePayments.savingBtn : t.storePayments.saveBtn}</span>
         </button>
       </div>
     </form>

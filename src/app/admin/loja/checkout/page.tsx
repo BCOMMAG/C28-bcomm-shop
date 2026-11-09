@@ -113,9 +113,9 @@ export default function CheckoutSettingsPage() {
         try {
           await refreshProducts();
         } catch {}
-        showToast('Configurações de checkout e presente salvas com sucesso!');
+        showToast(t.storeCheckout.toastSuccess);
       } else {
-        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        showToast(res.error || t.storeCheckout.toastError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado.', 'error');
@@ -128,7 +128,7 @@ export default function CheckoutSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando parâmetros de checkout...</span>
+        <span className="text-xs font-medium">{t.common?.loading || 'Carregando parâmetros de checkout...'}</span>
       </div>
     );
   }
@@ -156,14 +156,14 @@ export default function CheckoutSettingsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-serif-luxury">
-              Checkout, Sacola & Regras de Pedido
+              {t.storeCheckout.pageTitle}
             </h1>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-pink-100 text-pink-800 border border-pink-200 flex items-center gap-1">
               <ShoppingBag className="w-3 h-3 text-pink-600" /> Operação & Conversão
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Personalize a experiência do consumidor final na sacola, taxas de presente, valor mínimo e proteção de estoque contra venda dupla no WhatsApp.
+            {t.storeCheckout.pageSubtitle}
           </p>
         </div>
 
@@ -173,7 +173,7 @@ export default function CheckoutSettingsPage() {
           className="admin-btn-primary px-4 py-2.5 text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center gap-2 self-start sm:self-auto cursor-pointer"
         >
           {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          <span>{isSaving ? 'Salvando...' : 'Salvar Regras'}</span>
+          <span>{isSaving ? t.storeCheckout.savingBtn : t.storeCheckout.saveBtn}</span>
         </button>
       </div>
 
@@ -193,14 +193,14 @@ export default function CheckoutSettingsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-bold text-slate-900">
-                      1. Embalagem Especial para Presente
+                      {t.storeCheckout.giftCardTitle}
                     </h2>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">
                       Encantamento
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Ofereça caixas com laço de cetim e dedicatória no checkout.
+                    {t.storeCheckout.giftCardDesc}
                   </p>
                 </div>
               </div>
@@ -266,7 +266,7 @@ export default function CheckoutSettingsPage() {
                     </div>
                     <div>
                       <span className="font-bold text-pink-950 block text-xs">
-                        Prévia na Sacola da Cliente:
+                        {t.storeCheckout.giftPreviewTitle}
                       </span>
                       <span className="text-[10px] text-pink-800">
                         &quot;É presente? Adicione caixa com laço por R$ {Number(taxaPresente).toFixed(2).replace('.', ',')}&quot;
@@ -293,10 +293,10 @@ export default function CheckoutSettingsPage() {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900">
-                  2. Pedido Mínimo & Validação de Carrinho
+                  {t.storeCheckout.minOrderTitle}
                 </h2>
                 <p className="text-[11px] text-slate-500">
-                  Estabeleça um valor mínimo de compras para liberar o checkout.
+                  {t.storeCheckout.minOrderDesc}
                 </p>
               </div>
             </div>
@@ -352,10 +352,10 @@ export default function CheckoutSettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">
-                    3. Exibição de Estoque para o Consumidor
+                    {t.storeCheckout.stockVisTitle}
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    Controle de sigilo comercial na vitrine e modal de peças.
+                    {t.storeCheckout.stockVisDesc}
                   </p>
                 </div>
               </div>
@@ -398,10 +398,10 @@ export default function CheckoutSettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">
-                    4. Reserva Temporária Anti-Venda Dupla
+                    {t.storeCheckout.holdTitle}
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    Bloqueia a peça na vitrine enquanto o lead finaliza no WhatsApp.
+                    {t.storeCheckout.holdDesc}
                   </p>
                 </div>
               </div>
@@ -421,7 +421,7 @@ export default function CheckoutSettingsPage() {
               <div className="space-y-3.5 text-xs">
                 <div>
                   <label className="block text-slate-700 mb-1 font-bold text-[11px]">
-                    Tempo de Retenção na Reserva (Minutos)
+                    {t.storeCheckout.holdDurationLabel}
                   </label>
 
                   {/* Botões Rápidos de Minutos */}
@@ -456,7 +456,7 @@ export default function CheckoutSettingsPage() {
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1 block">
-                    Se o pagamento não for registrado no prazo, a peça volta à vitrine.
+                    {t.storeCheckout.holdWarning}
                   </span>
                 </div>
 
@@ -487,10 +487,10 @@ export default function CheckoutSettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">
-                    5. Limpeza de Pedidos Inativos no WhatsApp
+                    {t.storeCheckout.inactiveTitle}
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    Organização automática de sacolas não pagas no Kanban.
+                    {t.storeCheckout.inactiveDesc}
                   </p>
                 </div>
               </div>
@@ -510,7 +510,7 @@ export default function CheckoutSettingsPage() {
               <div className="space-y-3.5 text-xs">
                 <div>
                   <label className="block text-slate-700 mb-1 font-bold text-[11px]">
-                    Prazo de Inatividade (Dias sem Pagamento)
+                    {t.storeCheckout.inactiveDaysLabel}
                   </label>
 
                   {/* Botões Rápidos de Dias */}
@@ -556,7 +556,7 @@ export default function CheckoutSettingsPage() {
                 {/* Destino do Pedido Inativo */}
                 <div className="pt-2 border-t border-slate-100 space-y-2">
                   <label className="block text-slate-700 font-bold text-[11px]">
-                    Destino no Funil de Pedidos
+                    {t.storeCheckout.inactiveActionLabel}
                   </label>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -633,7 +633,7 @@ export default function CheckoutSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{isSaving ? (locale === 'en' ? 'Saving...' : locale === 'es' ? 'Guardando...' : 'Salvando...') : (locale === 'en' ? 'Save Checkout Rules' : locale === 'es' ? 'Guardar Reglas de Checkout' : 'Salvar Regras de Checkout')}</span>
+          <span>{isSaving ? t.storeCheckout.savingBtn : t.storeCheckout.saveBtn}</span>
         </button>
       </div>
     </form>

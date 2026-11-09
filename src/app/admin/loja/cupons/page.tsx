@@ -193,18 +193,14 @@ export default function AdminCuponsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="admin-heading text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {locale === 'en' ? 'Coupons & Promotional Discounts' : locale === 'es' ? 'Cupones y Descuentos Promocionales' : 'Cupons & Campanhas Promocionais'}
+              {t.storeCoupons.pageTitle}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
               {locale === 'en' ? 'Real-time Validation' : locale === 'es' ? 'Validación en Tiempo Real' : 'Validação em Tempo Real'}
             </span>
           </div>
           <p className="admin-body text-xs text-slate-500 mt-1">
-            {locale === 'en'
-              ? `Create percentage or fixed discount codes (${currencySymbol}), set minimum order values and usage limits to boost checkout conversions.`
-              : locale === 'es'
-              ? `Crea códigos de descuento porcentuales o de valor fijo (${currencySymbol}), define valor mínimo de pedido y límites de uso.`
-              : `Crie códigos de desconto percentuais ou em valor fixo (${currencySymbol}), defina valor mínimo de pedido e limite de utilização para impulsionar conversões.`}
+            {t.storeCoupons.pageSubtitle}
           </p>
         </div>
 
@@ -223,7 +219,7 @@ export default function AdminCuponsPage() {
             className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider"
           >
             <Plus className="w-4 h-4" />
-            <span>{locale === 'en' ? 'New Coupon' : locale === 'es' ? 'Nuevo Cupón' : 'Novo Cupom'}</span>
+            <span>{t.storeCoupons.newCouponBtn}</span>
           </button>
         </div>
       </div>
@@ -240,7 +236,7 @@ export default function AdminCuponsPage() {
         </div>
         <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-xs">
           <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">
-            {locale === 'en' ? 'Active at Checkout' : locale === 'es' ? 'Activos en Checkout' : 'Cupons Ativos no Checkout'}
+            {t.storeCoupons.kpiActiveCoupons}
           </span>
           <span className="text-2xl font-extrabold text-emerald-900 font-serif-luxury mt-1 block">
             {totalAtivos}
@@ -248,7 +244,7 @@ export default function AdminCuponsPage() {
         </div>
         <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-xs">
           <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider block">
-            {locale === 'en' ? 'Total Redemptions' : locale === 'es' ? 'Total de Usos' : 'Total de Utilizações'}
+            {t.storeCoupons.kpiTotalUses}
           </span>
           <span className="text-2xl font-extrabold text-amber-900 font-serif-luxury mt-1 block">
             {totalUsos} {locale === 'en' ? 'uses' : locale === 'es' ? 'usos' : 'resgates'}
@@ -264,16 +260,16 @@ export default function AdminCuponsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={locale === 'en' ? 'Search by coupon code (e.g. WELCOME10, VIP15)...' : locale === 'es' ? 'Buscar por código de cupón (ej: BIENVENIDO10)...' : 'Buscar por código de cupom (ex: BEMVINDA10, VIP15)...'}
+            placeholder={t.storeCoupons.searchPlaceholder}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all uppercase"
           />
         </div>
 
         <div className="flex items-center gap-1.5">
           {[
-            { id: 'todos', label: locale === 'en' ? 'All Coupons' : locale === 'es' ? 'Todos los Cupones' : 'Todos os Cupons' },
-            { id: 'ativos', label: locale === 'en' ? 'Active Only' : locale === 'es' ? 'Solo Activos' : 'Apenas Ativos' },
-            { id: 'pausados', label: locale === 'en' ? 'Paused' : locale === 'es' ? 'Pausados' : 'Pausados' }
+            { id: 'todos', label: t.storeCoupons.filterStatusAll },
+            { id: 'ativos', label: t.storeCoupons.filterStatusActive },
+            { id: 'pausados', label: t.storeCoupons.filterStatusExpired }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -308,12 +304,12 @@ export default function AdminCuponsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
                 <tr>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Coupon Code' : locale === 'es' ? 'Código de Cupón' : 'Código do Cupom'}</th>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Type & Discount' : locale === 'es' ? 'Tipo y Descuento' : 'Tipo & Desconto'}</th>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Minimum Order' : locale === 'es' ? 'Pedido Mínimo' : 'Pedido Mínimo'}</th>
-                  <th className="py-3 px-4 text-center">{locale === 'en' ? 'Uses / Limit' : locale === 'es' ? 'Usos / Límite' : 'Usos / Limite'}</th>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Status' : locale === 'es' ? 'Estado' : 'Status'}</th>
-                  <th className="py-3 px-4 text-right">{locale === 'en' ? 'Actions' : locale === 'es' ? 'Acciones' : 'Ações'}</th>
+                  <th className="py-3 px-4">{t.storeCoupons.thCode}</th>
+                  <th className="py-3 px-4">{t.storeCoupons.thDiscount}</th>
+                  <th className="py-3 px-4">{t.storeCoupons.thMinOrder}</th>
+                  <th className="py-3 px-4 text-center">{t.storeCoupons.thUses}</th>
+                  <th className="py-3 px-4">{t.storeCoupons.thStatus}</th>
+                  <th className="py-3 px-4 text-right">{t.storeCoupons.thActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -408,7 +404,7 @@ export default function AdminCuponsPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
                 <Tag className="w-4 h-4 text-amber-600" />
-                Criar Novo Cupom de Desconto
+                {t.storeCoupons.modalTitleCreate}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -421,11 +417,11 @@ export default function AdminCuponsPage() {
             <form onSubmit={handleCreateCoupon} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Código Promocional (Sem espaços)
+                  {t.storeCoupons.codeLabel}
                 </label>
                 <input
                   type="text"
-                  placeholder="EX: BEMVINDA15, BLACKFRIDAY"
+                  placeholder={t.storeCoupons.codePlaceholder}
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value.toUpperCase())}
                   required
@@ -436,15 +432,15 @@ export default function AdminCuponsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    {locale === 'en' ? 'Discount Type' : locale === 'es' ? 'Tipo de Descuento' : 'Tipo de Desconto'}
+                    {t.storeCoupons.typeLabel}
                   </label>
                   <select
                     value={newDiscountType}
                     onChange={(e) => setNewDiscountType(e.target.value as any)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold"
                   >
-                    <option value="porcentagem">{locale === 'en' ? 'Percentage (%)' : locale === 'es' ? 'Porcentaje (%)' : 'Porcentagem (%)'}</option>
-                    <option value="fixo">{locale === 'en' ? `Fixed Amount (${currencySymbol})` : locale === 'es' ? `Monto Fijo (${currencySymbol})` : `Valor Fixo (${currencySymbol})`}</option>
+                    <option value="porcentagem">{t.storeCoupons.typePercentage}</option>
+                    <option value="fixo">{t.storeCoupons.typeFixed}</option>
                   </select>
                 </div>
 
@@ -485,7 +481,7 @@ export default function AdminCuponsPage() {
 
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    Limite de Utilizações
+                    {t.storeCoupons.maxUsesLabel}
                   </label>
                   <input
                     type="number"
@@ -504,14 +500,14 @@ export default function AdminCuponsPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
                 >
-                  Cancelar
+                  {t.storeCoupons.cancelBtn}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-amber-400 shadow-sm cursor-pointer"
                 >
-                  {isSubmitting ? 'Salvando no Banco...' : 'Criar Cupom'}
+                  {isSubmitting ? t.storeCoupons.savingBtn : t.storeCoupons.saveBtn}
                 </button>
               </div>
             </form>
