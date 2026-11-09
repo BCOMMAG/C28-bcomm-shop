@@ -181,6 +181,147 @@ export interface OrdersTranslations {
     tabDeclaration: string;
     tabPackingSlip: string;
   };
+  kanban: {
+    ordersCount: (count: number) => string;
+    emptyStage: string;
+    columnsBtn: string;
+    kanbanColumnsTitle: string;
+    activeColumnsCount: (active: number, total: number) => string;
+    showAllColumns: string;
+    showCancelled: string;
+    hideCancelled: string;
+    restoreAllColumns: string;
+    advanceBtn: string;
+    idleLead: string;
+    giftBadge: string;
+    extendFitting: string;
+    fittingKeepsLocked: string;
+    itemsReturnedToStock: string;
+    itemsReleasedStorefront: string;
+    reactivate20m: string;
+    contactWhatsapp: string;
+  };
+  detailsModal: {
+    cancelledBannerTitle: string;
+    cancelledBannerDesc: string;
+    releasedBannerTitle: string;
+    releasedBannerDesc: string;
+    reactivateReservationBtn: string;
+    cancelOrderDefinitiveBtn: string;
+    frozenBannerTitle: string;
+    provisionalBannerTitle: string;
+    frozenBannerDesc: (hours: number) => string;
+    provisionalBannerDesc: string;
+    resumeCountingBtn: string;
+    alertWhatsappBtn: string;
+    releasePiecesBtn: string;
+    vipGiftTitle: string;
+    copyDedicationBtn: string;
+    dedicationCopied: string;
+    dedicationLabel: string;
+    noDedicationText: string;
+    btnExpedition: string;
+    btnChangeStatus: string;
+    btnRemoveQueue: string;
+  };
+  statusModal: {
+    title: (orderNum: string) => string;
+    desc: string;
+    options: {
+      awaitingWhatsapp: string;
+      paid: string;
+      inSeparation: string;
+      shipped: string;
+      delivered: string;
+      cancelled: string;
+    };
+    confirmBtn: string;
+    savingBtn: string;
+  };
+  bulkStatusModal: {
+    title: (count: number) => string;
+    desc: (count: number) => string;
+    options: {
+      markPaid: string;
+      markInSeparation: string;
+      markShipped: string;
+      markDelivered: string;
+      cancelOrders: string;
+    };
+    confirmBtn: (count: number) => string;
+  };
+  packingSlip: {
+    title: string;
+    itemsToPick: string;
+    colorLabel: string;
+    sizeLabel: string;
+    qtyLabel: string;
+    unitLabel: string;
+    packagingChecklistTitle: string;
+    checklistItem1: string;
+    checklistItem2: string;
+    checklistItem3: string;
+    checklistItem4: string;
+    vipGiftAlertTitle: string;
+    vipGiftAlertDesc1: string;
+    vipGiftDedicationLabel: string;
+    vipGiftBlankCardDesc: string;
+    destinationAddress: string;
+  };
+  contentDeclaration: {
+    title: string;
+    subheading: string;
+    sender: string;
+    recipient: string;
+    nameEntity: string;
+    keyId: string;
+    service: string;
+    cityUf: string;
+    name: string;
+    phone: string;
+    address: string;
+    neighborhoodCity: string;
+    cep: string;
+    contentDetails: string;
+    thItem: string;
+    thContent: string;
+    thSizeColor: string;
+    thQty: string;
+    thValue: string;
+    totalMerchandise: string;
+    legalNotice: string;
+    dateLabel: string;
+    signatureLabel: string;
+  };
+  releaseModal: {
+    title: string;
+    question: string;
+    desc: string;
+    opt1Title: string;
+    opt1Desc: string;
+    opt1Badge: string;
+    opt2Title: string;
+    opt2Desc: string;
+    cancelBtn: string;
+  };
+  inactivityRulesModal: {
+    title: string;
+    subtitle: string;
+    badgeAutonomy: string;
+    desc: string;
+    activeDetectionLabel: string;
+    activeBadge: string;
+    disabledBadge: string;
+    moveToFollowUpLabel: string;
+    unitMinutes: string;
+    unitHours: string;
+    unitDays: string;
+    autoCancelLabel: string;
+    autoCancelBadgeManual: string;
+    cancelDefinitiveLabel: string;
+    saveBtn: string;
+    savingBtn: string;
+  };
   statusCards: {
     awaitingWhatsapp: string;
     paidConfirmed: string;
@@ -409,6 +550,52 @@ export interface WhatsAppTemplates {
   orderDelivered: (storeName: string, orderNumber: string, customerName: string) => string;
 }
 
+export interface PosLockScreenTranslations {
+  title: (storeName: string) => string;
+  selectServing: string;
+  enterPinFor: (name: string) => string;
+  roleOwner: string;
+  roleManager: string;
+  roleSeller: string;
+  roleStockist: string;
+  signOut: string;
+  continueSession: string;
+  switchUser: string;
+  terminalLockedTitle: string;
+  terminalLockedDesc: string;
+  unlockMasterBtn: string;
+  masterPasswordLabel: string;
+  unlockBtn: string;
+  clearBtn: string;
+  backToList: string;
+}
+
+export interface AuditTranslations {
+  title: string;
+  subtitle: string;
+  badgeEncrypted: string;
+  backToTeam: string;
+  tabAll: string;
+  searchPlaceholder: string;
+  loadingText: string;
+  emptyText: string;
+  targetLabel: string;
+  viewDiffsBtn: string;
+  diffModalTitle: string;
+  diffModalAction: string;
+  diffModalEntity: string;
+  diffModalReason: string;
+  prevData: string;
+  newData: string;
+  badgeGovActive: string;
+  badgeStockAdj: string;
+  badgeDiscount: string;
+  badgePriceChange: string;
+  badgeNewMember: string;
+  badgePermissionsChange: string;
+  badgeRevokeSessions: string;
+}
+
 export interface TranslationDictionary {
   locale: SupportedLocale;
   brand: {
@@ -515,4 +702,6 @@ export interface TranslationDictionary {
   storeTabs: StoreTabsTranslations;
   globalSearch: GlobalSearchTranslations;
   whatsappTemplates: WhatsAppTemplates;
+  posLockScreen: PosLockScreenTranslations;
+  audit: AuditTranslations;
 }

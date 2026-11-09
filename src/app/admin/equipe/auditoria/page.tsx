@@ -62,19 +62,19 @@ export default function AdminAuditoriaPage() {
   const getAcaoBadge = (acao: string) => {
     switch (acao) {
       case 'ativou_governanca':
-        return <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">🏛️ Ativação de Governança</span>;
+        return <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgeGovActive}</span>;
       case 'ajustou_estoque':
-        return <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">📦 Ajuste de Estoque</span>;
+        return <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgeStockAdj}</span>;
       case 'concedeu_desconto':
-        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">🏷️ Desconto Comercial</span>;
+        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgeDiscount}</span>;
       case 'alterou_preco':
-        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">💲 Alteração de Preço</span>;
+        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgePriceChange}</span>;
       case 'convidou_colaborador':
-        return <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-full">👤 Novo Colaborador</span>;
+        return <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgeNewMember}</span>;
       case 'atualizou_colaborador':
-        return <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">⚙️ Alteração de Permissões</span>;
+        return <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgePermissionsChange}</span>;
       case 'revogou_sessoes':
-        return <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">🚫 Kill-Switch Sessões</span>;
+        return <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.audit.badgeRevokeSessions}</span>;
       default:
         return <span className="bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{acao}</span>;
     }
@@ -83,7 +83,8 @@ export default function AdminAuditoriaPage() {
   const formatDateTime = (iso: string) => {
     try {
       const d = new Date(iso);
-      return new Intl.DateTimeFormat('pt-BR', {
+      const localeCode = locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'pt-BR';
+      return new Intl.DateTimeFormat(localeCode, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -106,27 +107,23 @@ export default function AdminAuditoriaPage() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{locale === 'en' ? 'Back to Team' : locale === 'es' ? 'Volver al Equipo' : 'Voltar para Equipe'}</span>
+              <span>{t.audit.backToTeam}</span>
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-xs text-slate-500 font-semibold">{t.team.auditLogs}</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-serif-luxury text-slate-900 tracking-tight">
-            {locale === 'en' ? 'Store Audit Trail & Governance' : locale === 'es' ? 'Pista de Auditoría y Gobernanza' : 'Trilha de Auditoria & Governança da Loja'}
+            {t.audit.title}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            {locale === 'en'
-              ? 'Immutable log of all team actions, discount approvals and operational events'
-              : locale === 'es'
-              ? 'Registro inmutable de todas las acciones del equipo y aprobaciones de descuentos'
-              : 'Registro imutável de todas as ações de colaboradores, aprovações de descontos e ajustes operacionais'}
+            {t.audit.subtitle}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="p-3 bg-amber-50 border border-amber-200/60 rounded-xl flex items-center gap-2 text-xs font-bold text-amber-900">
             <Shield className="w-4 h-4 text-amber-700" />
-            <span>{locale === 'en' ? 'Encrypted Audit Active' : locale === 'es' ? 'Auditoría Cifrada Activa' : 'Auditoria Criptografada Ativa'}</span>
+            <span>{t.audit.badgeEncrypted}</span>
           </div>
         </div>
       </div>
@@ -135,7 +132,7 @@ export default function AdminAuditoriaPage() {
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
           {[
-            { id: 'todos', label: locale === 'en' ? 'All Events' : locale === 'es' ? 'Todos los Eventos' : 'Todos os Eventos' },
+            { id: 'todos', label: t.audit.tabAll },
             { id: 'produtos', label: t.adminNav.catalog },
             { id: 'pedidos', label: t.adminNav.orders },
             { id: 'equipe', label: t.adminNav.team },
@@ -162,7 +159,7 @@ export default function AdminAuditoriaPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por colaborador, ação ou motivo..."
+              placeholder={t.audit.searchPlaceholder}
               className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-amber-600"
             />
           </div>
@@ -174,11 +171,11 @@ export default function AdminAuditoriaPage() {
         {loading ? (
           <div className="p-12 text-center">
             <div className="w-8 h-8 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs text-slate-500 font-semibold">Carregando trilha de eventos...</p>
+            <p className="text-xs text-slate-500 font-semibold">{t.audit.loadingText}</p>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-xs">
-            Nenhum registro de auditoria encontrado para o filtro aplicado.
+            {t.audit.emptyText}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -209,7 +206,7 @@ export default function AdminAuditoriaPage() {
                       </span>
                       {log.entidade_id && (
                         <span>
-                          Alvo: <strong className="text-slate-600 font-mono">{log.entidade_id}</strong>
+                          {t.audit.targetLabel}: <strong className="text-slate-600 font-mono">{log.entidade_id}</strong>
                         </span>
                       )}
                     </div>
@@ -223,7 +220,7 @@ export default function AdminAuditoriaPage() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer shrink-0 self-end sm:self-center"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Ver Diffs</span>
+                    <span>{t.audit.viewDiffsBtn}</span>
                   </button>
                 )}
               </div>
@@ -238,7 +235,7 @@ export default function AdminAuditoriaPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Detalhes do Evento de Auditoria</h3>
+                <h3 className="text-base font-bold text-slate-900">{t.audit.diffModalTitle}</h3>
                 <p className="text-xs text-slate-500">
                   {activeDiffModal.colaborador_nome} &bull; {formatDateTime(activeDiffModal.created_at)}
                 </p>
@@ -254,20 +251,20 @@ export default function AdminAuditoriaPage() {
             <div className="py-4 space-y-4">
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
                 <div>
-                  <span className="text-slate-500">Ação:</span> <strong className="text-slate-800">{activeDiffModal.acao}</strong>
+                  <span className="text-slate-500">{t.audit.diffModalAction}:</span> <strong className="text-slate-800">{activeDiffModal.acao}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500">Entidade:</span> <strong className="text-slate-800">{activeDiffModal.entidade} ({activeDiffModal.entidade_id})</strong>
+                  <span className="text-slate-500">{t.audit.diffModalEntity}:</span> <strong className="text-slate-800">{activeDiffModal.entidade} ({activeDiffModal.entidade_id})</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500">Motivo:</span> <strong className="text-slate-800">{activeDiffModal.motivo}</strong>
+                  <span className="text-slate-500">{t.audit.diffModalReason}:</span> <strong className="text-slate-800">{activeDiffModal.motivo}</strong>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {/* Dados Anteriores */}
                 <div className="border border-rose-200 bg-rose-50/50 rounded-xl p-3">
-                  <span className="font-bold text-rose-800 block mb-2">⬅️ Dados Anteriores</span>
+                  <span className="font-bold text-rose-800 block mb-2">⬅️ {t.audit.prevData}</span>
                   <pre className="font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-rose-100 overflow-x-auto">
                     {JSON.stringify(activeDiffModal.dados_anteriores || {}, null, 2)}
                   </pre>
@@ -275,7 +272,7 @@ export default function AdminAuditoriaPage() {
 
                 {/* Dados Novos */}
                 <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-3">
-                  <span className="font-bold text-emerald-800 block mb-2">➡️ Dados Novos</span>
+                  <span className="font-bold text-emerald-800 block mb-2">➡️ {t.audit.newData}</span>
                   <pre className="font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-emerald-100 overflow-x-auto">
                     {JSON.stringify(activeDiffModal.dados_novos || {}, null, 2)}
                   </pre>
@@ -288,7 +285,7 @@ export default function AdminAuditoriaPage() {
                 onClick={() => setActiveDiffModal(null)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
               >
-                Fechar
+                {t.common.close}
               </button>
             </div>
           </div>

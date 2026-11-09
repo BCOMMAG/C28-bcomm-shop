@@ -2055,7 +2055,7 @@ export default function AdminPedidosPage() {
                 title="Gerenciar colunas visíveis no Kanban"
               >
                 <Eye className="w-3.5 h-3.5 text-slate-500" />
-                <span>Colunas</span>
+                <span>{t.orders.kanban.columnsBtn}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     hiddenKanbanColumns.length > 0
@@ -2073,10 +2073,10 @@ export default function AdminPedidosPage() {
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
                       <Eye className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Colunas do Kanban</span>
+                      <span>{t.orders.kanban.kanbanColumnsTitle}</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">
-                      {allKanbanColumnsList.length - hiddenKanbanColumns.length} de {allKanbanColumnsList.length} ativas
+                      {t.orders.kanban.activeColumnsCount(allKanbanColumnsList.length - hiddenKanbanColumns.length, allKanbanColumnsList.length)}
                     </span>
                   </div>
 
@@ -2116,13 +2116,13 @@ export default function AdminPedidosPage() {
                       onClick={handleShowAllColumns}
                       className="text-amber-700 hover:text-amber-900 font-semibold cursor-pointer py-1 px-1.5 rounded hover:bg-amber-50 transition-colors"
                     >
-                      Exibir Todas
+                      {t.orders.kanban.showAllColumns}
                     </button>
                     <button
                       onClick={() => handleToggleHideColumn('cancelado')}
                       className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100 transition-colors"
                     >
-                      {hiddenKanbanColumns.includes('cancelado') ? 'Mostrar Cancelados' : 'Ocultar Cancelados'}
+                      {hiddenKanbanColumns.includes('cancelado') ? t.orders.kanban.showCancelled : t.orders.kanban.hideCancelled}
                     </button>
                   </div>
                 </div>
@@ -2969,7 +2969,7 @@ export default function AdminPedidosPage() {
                     className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Restaurar Todas as Colunas</span>
+                    <span>{t.orders.kanban.restoreAllColumns}</span>
                   </button>
                 </div>
               ) : (
@@ -3041,7 +3041,7 @@ export default function AdminPedidosPage() {
                           </div>
                           <div className="flex items-center justify-between text-[11px] pt-0.5">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-700 shrink-0">
-                              {columnOrders.length} {columnOrders.length === 1 ? 'pedido' : 'pedidos'}
+                              {t.orders.kanban.ordersCount(columnOrders.length)}
                             </span>
                             <span className="text-[11px] font-bold text-slate-500 font-mono shrink-0">
                               {formatCurrency(columnTotal)}
@@ -3053,7 +3053,7 @@ export default function AdminPedidosPage() {
                 <div className="space-y-2 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
                   {columnOrders.length === 0 ? (
                     <div className="h-28 flex items-center justify-center text-center text-slate-400 text-[11px] border border-dashed border-slate-200 rounded-xl">
-                      Nenhum pedido nesta fase
+                      {t.orders.kanban.emptyStage}
                     </div>
                   ) : (
                     columnOrders.map((order) => {
@@ -3096,7 +3096,7 @@ export default function AdminPedidosPage() {
                               ) : null}
                               {giftDetails.isGift && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-full">
-                                  <Gift className="w-2.5 h-2.5 text-amber-700" /> Presente
+                                  <Gift className="w-2.5 h-2.5 text-amber-700" /> {t.orders.kanban.giftBadge}
                                 </span>
                               )}
                             </div>
@@ -3150,7 +3150,7 @@ export default function AdminPedidosPage() {
                             >
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-purple-600 shrink-0" />
-                                <span>Lead Parado (Follow-up)</span>
+                                <span>{t.orders.kanban.idleLead}</span>
                               </div>
                               {cleanPhone && (
                                 <a
@@ -3163,7 +3163,7 @@ export default function AdminPedidosPage() {
                                   className="text-[9px] font-black text-purple-800 hover:text-purple-950 underline cursor-pointer"
                                   title="Enviar mensagem de follow-up no WhatsApp para converter a venda"
                                 >
-                                  Chamar ↗
+                                  {t.orders.kanban.contactWhatsapp}
                                 </a>
                               )}
                             </div>
@@ -3176,8 +3176,8 @@ export default function AdminPedidosPage() {
                               className="p-1.5 rounded-lg border border-purple-200 bg-purple-50/70 text-[10px] space-y-1"
                             >
                               <div className="flex items-center justify-between text-purple-900 font-bold">
-                                <span>Estender Provador:</span>
-                                <span className="text-[9px] font-normal text-purple-700">mantém bloqueado</span>
+                                <span>{t.orders.kanban.extendFitting}</span>
+                                <span className="text-[9px] font-normal text-purple-700">{t.orders.kanban.fittingKeepsLocked}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 {[15, 30, 60].map((mins) => (
@@ -3220,12 +3220,12 @@ export default function AdminPedidosPage() {
                                   {isFromProvador ? (
                                     <>
                                       <Clock className="w-3 h-3 text-purple-700 shrink-0" />
-                                      <span>👗 Provador Expirado (Peça Devolvida à Vitrine)</span>
+                                      <span>👗 {formatOrderNotes(order.observacoes)}</span>
                                     </>
                                   ) : (
                                     <>
                                       <CheckCircle2 className="w-3 h-3 text-rose-600 shrink-0" />
-                                      <span>Peças Devolvidas ao Estoque</span>
+                                      <span>{t.orders.kanban.itemsReturnedToStock}</span>
                                     </>
                                   )}
                                 </div>
@@ -3242,7 +3242,7 @@ export default function AdminPedidosPage() {
                                     <div className="flex items-center justify-between gap-1">
                                       <span className="font-semibold text-slate-600 flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                        <span className="truncate">Peças Liberadas (Vitrine)</span>
+                                        <span className="truncate">{t.orders.kanban.itemsReleasedStorefront}</span>
                                       </span>
                                       <button
                                         onClick={(e) => {
@@ -3254,7 +3254,7 @@ export default function AdminPedidosPage() {
                                         title="Reativar reserva de estoque por 20 minutos caso a cliente queira fechar"
                                       >
                                         <RefreshCw className="w-2 h-2" />
-                                        <span>Reativar (20m)</span>
+                                        <span>{t.orders.kanban.reactivate20m}</span>
                                       </button>
                                     </div>
                                   </div>
@@ -3361,7 +3361,7 @@ export default function AdminPedidosPage() {
                                 className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] cursor-pointer transition-colors"
                                 title={`Avançar pedido para ${column.next}`}
                               >
-                                <span>Avançar</span>
+                                <span>{t.orders.kanban.advanceBtn}</span>
                                 <ArrowRight className="w-2.5 h-2.5" />
                               </button>
                             )}
@@ -3569,10 +3569,10 @@ export default function AdminPedidosPage() {
                         </div>
                         <div>
                           <span className="font-extrabold text-rose-900 text-xs block">
-                            Pedido Cancelado — Peças Liberadas para a Vitrine
+                            {t.orders.detailsModal.cancelledBannerTitle}
                           </span>
                           <span className="text-[11px] text-rose-700">
-                            O estoque deste pedido foi estornado e devolvido à vitrine online da loja.
+                            {t.orders.detailsModal.cancelledBannerDesc}
                           </span>
                         </div>
                       </div>
@@ -3591,10 +3591,10 @@ export default function AdminPedidosPage() {
                             </div>
                             <div>
                               <span className="font-extrabold text-slate-900 text-xs block">
-                                Peças Liberadas (Sem Reserva Ativa no Catálogo)
+                                {t.orders.detailsModal.releasedBannerTitle}
                               </span>
                               <span className="text-[11px] text-slate-600">
-                                As roupas deste pedido foram devolvidas à vitrine da loja e podem ser compradas por outras clientes.
+                                {t.orders.detailsModal.releasedBannerDesc}
                               </span>
                             </div>
                           </div>
@@ -3606,7 +3606,7 @@ export default function AdminPedidosPage() {
                               title="Reativar reserva por mais 20 minutos se a cliente quiser finalizar"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Reativar Reserva (+20 min)</span>
+                              <span>{t.orders.detailsModal.reactivateReservationBtn}</span>
                             </button>
                             <button
                               onClick={() => handleOpenReleaseModal(detailsModalOrder)}
@@ -3614,7 +3614,7 @@ export default function AdminPedidosPage() {
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
                               title="Cancelar este pedido definitivamente"
                             >
-                              <span>Cancelar Pedido</span>
+                              <span>{t.orders.detailsModal.cancelOrderDefinitiveBtn}</span>
                             </button>
                           </div>
                         </div>
@@ -3652,13 +3652,13 @@ export default function AdminPedidosPage() {
                         )}
                         <div>
                           <span className="font-extrabold text-slate-900 text-xs block">
-                            {isPausada ? 'Reserva Congelada no Sistema' : 'Reserva Provisória em Contagem'}
+                            {isPausada ? t.orders.detailsModal.frozenBannerTitle : t.orders.detailsModal.provisionalBannerTitle}
                           </span>
                           <span className="text-[11px] text-slate-600">
                             {isPausada
                               ? isOverdue
-                                ? `⚠️ Alerta: Reserva pausada há ${reserva.horas_pausada}h. Verifique com a cliente no WhatsApp.`
-                                : 'As peças deste pedido estão travadas para a cliente e NÃO expiram sozinhas.'
+                                ? t.orders.detailsModal.frozenBannerDesc(reserva.horas_pausada ?? 0)
+                                : t.orders.detailsModal.provisionalBannerDesc
                               : countdown.totalSeconds > 0
                               ? `Tempo restante: ${countdown.formatted} (horas:minutos:segundos).`
                               : 'Prazo da reserva provisória expirado.'}
@@ -3696,7 +3696,7 @@ export default function AdminPedidosPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition-colors cursor-pointer shadow-xs"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Retomar Contagem (+20 min)</span>
+                          <span>{t.orders.detailsModal.resumeCountingBtn}</span>
                         </button>
                       ) : (
                         <button
@@ -3731,7 +3731,7 @@ export default function AdminPedidosPage() {
                         title="Abrir WhatsApp com mensagem VIP informando que as peças estão congeladas para a cliente"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Avisar no WhatsApp</span>
+                        <span>{t.orders.detailsModal.alertWhatsappBtn}</span>
                       </button>
 
                       {/* Botão de Liberar Peças */}
@@ -3741,7 +3741,7 @@ export default function AdminPedidosPage() {
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100/80 border border-rose-200 transition-colors cursor-pointer"
                         title="Devolver peças imediatamente ao estoque disponível"
                       >
-                        <span>Liberar Peças</span>
+                        <span>{t.orders.detailsModal.releasePiecesBtn}</span>
                       </button>
                     </div>
                   </div>
@@ -3754,7 +3754,7 @@ export default function AdminPedidosPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-extrabold text-amber-900">
                       <Gift className="w-4 h-4 text-amber-700" />
-                      <span>Embalagem para Presente VIP</span>
+                      <span>{t.orders.detailsModal.vipGiftTitle}</span>
                       {dGift.fee !== undefined && dGift.fee > 0 && (
                         <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">
                           + {formatCurrency(dGift.fee)}
@@ -3763,21 +3763,21 @@ export default function AdminPedidosPage() {
                     </div>
                     {dGift.message && (
                       <button
-                        onClick={() => copyToClipboard(dGift.message || '', 'Dedicatória copiada!')}
+                        onClick={() => copyToClipboard(dGift.message || '', t.orders.detailsModal.dedicationCopied)}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 hover:text-white px-2 py-0.5 bg-amber-200/80 hover:bg-amber-800 rounded transition-colors cursor-pointer"
                       >
                         <Copy className="w-3 h-3" />
-                        <span>Copiar Dedicatória</span>
+                        <span>{t.orders.detailsModal.copyDedicationBtn}</span>
                       </button>
                     )}
                   </div>
                   {dGift.message ? (
                     <div className="bg-white p-2.5 rounded-lg border border-amber-200">
-                      <span className="text-[10px] text-amber-800 font-bold uppercase block mb-0.5">Dedicatória:</span>
+                      <span className="text-[10px] text-amber-800 font-bold uppercase block mb-0.5">{t.orders.detailsModal.dedicationLabel}</span>
                       <p className="italic font-serif text-slate-800 leading-relaxed">&ldquo;{dGift.message}&rdquo;</p>
                     </div>
                   ) : (
-                    <p className="text-amber-800 italic text-[11px]">Embalagem nobre sem mensagem de dedicatória escrita.</p>
+                    <p className="text-amber-800 italic text-[11px]">{t.orders.detailsModal.noDedicationText}</p>
                   )}
                 </div>
               )}
@@ -3838,7 +3838,7 @@ export default function AdminPedidosPage() {
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Expedição / Impressão</span>
+                    <span>{t.orders.detailsModal.btnExpedition}</span>
                   </button>
 
                   <button
@@ -3849,7 +3849,7 @@ export default function AdminPedidosPage() {
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Alterar Status</span>
+                    <span>{t.orders.detailsModal.btnChangeStatus}</span>
                   </button>
 
                   {(detailsModalOrder.status === 'pendente' || detailsModalOrder.status === 'aguardando_whatsapp') && (
@@ -3859,7 +3859,7 @@ export default function AdminPedidosPage() {
                       title="Retirar este pedido da fila de atendimento"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                      <span>Retirar da Fila</span>
+                      <span>{t.orders.detailsModal.btnRemoveQueue}</span>
                     </button>
                   )}
                 </div>
@@ -3868,7 +3868,7 @@ export default function AdminPedidosPage() {
                   onClick={() => setDetailsModalOrder(null)}
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer ml-auto"
                 >
-                  Fechar
+                  {t.common.close}
                 </button>
               </div>
             </div>
@@ -3954,7 +3954,7 @@ export default function AdminPedidosPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Atualizar Pedido #{statusModalOrder.numero_pedido}
+                {t.orders.statusModal.title(statusModalOrder.numero_pedido)}
               </h3>
               <button
                 onClick={() => setStatusModalOrder(null)}
@@ -3965,17 +3965,17 @@ export default function AdminPedidosPage() {
             </div>
 
             <p className="text-xs text-slate-600">
-              Selecione o novo status da venda. Se você marcar como <strong>&ldquo;Pago&rdquo;</strong>, o sistema dará baixa automática nas peças no estoque.
+              {t.orders.statusModal.desc}
             </p>
 
             <div className="space-y-2">
               {[
-                { id: 'pendente', label: 'Aguardando WhatsApp' },
-                { id: 'pago', label: 'Pago (Confirmação Automática de Estoque)' },
-                { id: 'em_separacao', label: 'Em Separação no Provador/Estoque' },
-                { id: 'enviado', label: 'Enviado aos Correios / Transportadora' },
-                { id: 'entregue', label: 'Entregue com Sucesso' },
-                { id: 'cancelado', label: 'Cancelado (Estorno de Estoque Automático)' }
+                { id: 'pendente', label: t.orders.statusModal.options.awaitingWhatsapp },
+                { id: 'pago', label: t.orders.statusModal.options.paid },
+                { id: 'em_separacao', label: t.orders.statusModal.options.inSeparation },
+                { id: 'enviado', label: t.orders.statusModal.options.shipped },
+                { id: 'entregue', label: t.orders.statusModal.options.delivered },
+                { id: 'cancelado', label: t.orders.statusModal.options.cancelled }
               ].map((s) => (
                 <label
                   key={s.id}
@@ -4002,14 +4002,14 @@ export default function AdminPedidosPage() {
                 onClick={() => setStatusModalOrder(null)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleSaveStatus}
                 disabled={isUpdatingStatus}
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
               >
-                {isUpdatingStatus ? 'Salvando...' : 'Confirmar Alteração'}
+                {isUpdatingStatus ? t.orders.statusModal.savingBtn : t.orders.statusModal.confirmBtn}
               </button>
             </div>
           </div>
@@ -4027,7 +4027,7 @@ export default function AdminPedidosPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Atualizar {selectedOrderIds.length} Pedidos em Lote
+                {t.orders.bulkStatusModal.title(selectedOrderIds.length)}
               </h3>
               <button
                 onClick={() => setBulkStatusModalOpen(false)}
@@ -4038,16 +4038,16 @@ export default function AdminPedidosPage() {
             </div>
 
             <p className="text-xs text-slate-600">
-              Selecione o novo status que será aplicado simultaneamente para todos os {selectedOrderIds.length} pedidos selecionados:
+              {t.orders.bulkStatusModal.desc(selectedOrderIds.length)}
             </p>
 
             <div className="space-y-2">
               {[
-                { id: 'pago', label: 'Marcar como Pagos' },
-                { id: 'em_separacao', label: 'Marcar como Em Separação' },
-                { id: 'enviado', label: 'Marcar como Enviados aos Correios' },
-                { id: 'entregue', label: 'Marcar como Entregues' },
-                { id: 'cancelado', label: 'Cancelar Pedidos Selecionados' }
+                { id: 'pago', label: t.orders.bulkStatusModal.options.markPaid },
+                { id: 'em_separacao', label: t.orders.bulkStatusModal.options.markInSeparation },
+                { id: 'enviado', label: t.orders.bulkStatusModal.options.markShipped },
+                { id: 'entregue', label: t.orders.bulkStatusModal.options.markDelivered },
+                { id: 'cancelado', label: t.orders.bulkStatusModal.options.cancelOrders }
               ].map((s) => (
                 <label
                   key={s.id}
@@ -4074,14 +4074,14 @@ export default function AdminPedidosPage() {
                 onClick={() => setBulkStatusModalOpen(false)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleSaveBulkStatus}
                 disabled={isUpdatingBulkStatus}
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
               >
-                {isUpdatingBulkStatus ? 'Atualizando...' : 'Confirmar em Lote'}
+                {isUpdatingBulkStatus ? t.orders.statusModal.savingBtn : t.orders.bulkStatusModal.confirmBtn(selectedOrderIds.length)}
               </button>
             </div>
           </div>
@@ -4236,51 +4236,51 @@ export default function AdminPedidosPage() {
                 <div className="space-y-4 font-mono">
                   <div className="text-center border-b border-slate-300 pb-3">
                     <h2 className="text-sm font-extrabold uppercase tracking-wider">
-                      DECLARAÇÃO DE CONTEÚDO
+                      {t.orders.contentDeclaration.title}
                     </h2>
                     <p className="text-[10px] text-slate-600">
-                      Conforme Portaria dos Correios & Legislação Postal Brasileira
+                      {t.orders.contentDeclaration.subheading}
                     </p>
                   </div>
 
                   {/* REMETENTE E DESTINATÁRIO */}
                   <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 text-[11px]">
                     <div className="space-y-1">
-                      <strong className="block text-slate-900 uppercase">REMETENTE:</strong>
-                      <p><strong>Nome/Razão:</strong> {lojaNome} Moda Feminina</p>
-                      <p><strong>Chave / Identificador:</strong> {chavePix}</p>
-                      <p><strong>Atendimento:</strong> {currentTenant?.whatsapp || '(41) 97347-601'}</p>
-                      <p><strong>Cidade/UF:</strong> Curitiba - PR | CEP: 80000-000</p>
+                      <strong className="block text-slate-900 uppercase">{t.orders.contentDeclaration.sender}</strong>
+                      <p><strong>{t.orders.contentDeclaration.nameEntity}</strong> {lojaNome} Moda Feminina</p>
+                      <p><strong>{t.orders.contentDeclaration.keyId}</strong> {chavePix}</p>
+                      <p><strong>{t.orders.contentDeclaration.service}</strong> {currentTenant?.whatsapp || '(41) 97347-601'}</p>
+                      <p><strong>{t.orders.contentDeclaration.cityUf}</strong> Curitiba - PR | CEP: 80000-000</p>
                     </div>
 
                     <div className="space-y-1 border-l border-slate-200 pl-4">
-                      <strong className="block text-slate-900 uppercase">DESTINATÁRIO:</strong>
-                      <p><strong>Nome:</strong> {printModalOrder.cliente_nome}</p>
-                      <p><strong>Telefone:</strong> {printModalOrder.cliente_telefone || '-'}</p>
+                      <strong className="block text-slate-900 uppercase">{t.orders.contentDeclaration.recipient}</strong>
+                      <p><strong>{t.orders.contentDeclaration.name}</strong> {formatCustomerDisplayName(printModalOrder.cliente_nome)}</p>
+                      <p><strong>{t.orders.contentDeclaration.phone}</strong> {printModalOrder.cliente_telefone || '-'}</p>
                       <p>
-                        <strong>Endereço:</strong> {printModalOrder.endereco_entrega?.logradouro},{' '}
+                        <strong>{t.orders.contentDeclaration.address}</strong> {printModalOrder.endereco_entrega?.logradouro},{' '}
                         {printModalOrder.endereco_entrega?.numero}{' '}
                         {printModalOrder.endereco_entrega?.complemento || ''}
                       </p>
                       <p>
-                        <strong>Bairro/Cidade:</strong> {printModalOrder.endereco_entrega?.bairro} -{' '}
+                        <strong>{t.orders.contentDeclaration.neighborhoodCity}</strong> {printModalOrder.endereco_entrega?.bairro} -{' '}
                         {printModalOrder.endereco_entrega?.cidade}/{printModalOrder.endereco_entrega?.uf || 'BR'}
                       </p>
-                      <p><strong>CEP:</strong> {printModalOrder.endereco_entrega?.cep}</p>
+                      <p><strong>{t.orders.contentDeclaration.cep}</strong> {printModalOrder.endereco_entrega?.cep}</p>
                     </div>
                   </div>
 
                   {/* DISCRIMINAÇÃO DOS ITENS */}
                   <div className="space-y-2">
-                    <strong className="block text-[11px] uppercase">DISCRIMINAÇÃO DO CONTEÚDO:</strong>
+                    <strong className="block text-[11px] uppercase">{t.orders.contentDeclaration.contentDetails}</strong>
                     <table className="w-full border-collapse border border-slate-300 text-[10px]">
                       <thead>
                         <tr className="bg-slate-100 border-b border-slate-300 text-left">
-                          <th className="p-1.5 border-r border-slate-300">Item</th>
-                          <th className="p-1.5 border-r border-slate-300">Conteúdo</th>
-                          <th className="p-1.5 border-r border-slate-300">Grade / Cor</th>
-                          <th className="p-1.5 border-r border-slate-300 text-center">Qtd</th>
-                          <th className="p-1.5 text-right">Valor (R$)</th>
+                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thItem}</th>
+                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thContent}</th>
+                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thSizeColor}</th>
+                          <th className="p-1.5 border-r border-slate-300 text-center">{t.orders.contentDeclaration.thQty}</th>
+                          <th className="p-1.5 text-right">{t.orders.contentDeclaration.thValue}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4299,7 +4299,7 @@ export default function AdminPedidosPage() {
                       <tfoot>
                         <tr className="bg-slate-50 font-bold">
                           <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">
-                            TOTAL DAS MERCADORIAS:
+                            {t.orders.contentDeclaration.totalMerchandise}
                           </td>
                           <td className="p-1.5 text-center border-r border-slate-300">
                             {(printModalOrder.itens_pedido || []).reduce((acc, i) => acc + (i.quantidade || 1), 0)}
@@ -4314,12 +4314,12 @@ export default function AdminPedidosPage() {
 
                   {/* DECLARAÇÃO LEGAL */}
                   <div className="text-[9px] text-slate-600 border border-slate-300 p-2 leading-relaxed">
-                    Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, não realizando com habitualidade ou em volume que caracterize intuito comercial operações de circulação de mercadorias. Sob as penas da lei, declaro que as informações acima são a expressão da verdade.
+                    {t.orders.contentDeclaration.legalNotice}
                   </div>
 
                   <div className="flex items-center justify-between pt-4 text-[10px]">
-                    <span>Data: ____/____/2026</span>
-                    <span>Assinatura do Emitente: ____________________________________</span>
+                    <span>{t.orders.contentDeclaration.dateLabel} ____/____/2026</span>
+                    <span>{t.orders.contentDeclaration.signatureLabel} ____________________________________</span>
                   </div>
                 </div>
               ) : (
@@ -4328,10 +4328,10 @@ export default function AdminPedidosPage() {
                   <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <div>
                       <h2 className="text-base font-extrabold text-slate-900">
-                        ROMANEIO DE SEPARAÇÃO & EXPEDIÇÃO
+                        {t.orders.packingSlip.title}
                       </h2>
                       <span className="text-xs text-amber-700 font-bold">
-                        Pedido #{printModalOrder.numero_pedido} &bull; Cliente: {printModalOrder.cliente_nome}
+                        Pedido #{printModalOrder.numero_pedido} &bull; Cliente: {formatCustomerDisplayName(printModalOrder.cliente_nome)}
                       </span>
                     </div>
                     <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold">
@@ -4342,7 +4342,7 @@ export default function AdminPedidosPage() {
                   {/* CHECKLIST DE ITENS */}
                   <div className="space-y-3">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                      Peças a Separar no Estoque:
+                      {t.orders.packingSlip.itemsToPick}
                     </span>
                     <div className="space-y-2">
                       {(printModalOrder.itens_pedido || []).map((it, idx) => (
@@ -4360,7 +4360,7 @@ export default function AdminPedidosPage() {
                                 {it.nome_produto}
                               </span>
                               <span className="text-[11px] text-slate-500">
-                                Cor: <strong className="text-slate-800">{it.cor}</strong> &bull; Tamanho: <strong className="text-slate-800">{it.tamanho}</strong> &bull; Qtd: <strong className="text-amber-800 font-bold">{it.quantidade} unidade(s)</strong>
+                                {t.orders.packingSlip.colorLabel}: <strong className="text-slate-800">{it.cor}</strong> &bull; {t.orders.packingSlip.sizeLabel}: <strong className="text-slate-800">{it.tamanho}</strong> &bull; {t.orders.packingSlip.qtyLabel}: <strong className="text-amber-800 font-bold">{it.quantidade} {t.orders.packingSlip.unitLabel}</strong>
                               </span>
                             </div>
                           </div>
@@ -4376,24 +4376,24 @@ export default function AdminPedidosPage() {
                   {/* CHECKLIST DE QUALIDADE */}
                   <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3 text-xs space-y-1.5">
                     <strong className="text-amber-900 block font-bold">
-                      Checklist de Embalagem Boutique:
+                      {t.orders.packingSlip.packagingChecklistTitle}
                     </strong>
                     <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700">
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Peças passadas e sem fiapos</span>
+                        <span>{t.orders.packingSlip.checklistItem1}</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Perfume característico da boutique</span>
+                        <span>{t.orders.packingSlip.checklistItem2}</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Cartão de agradecimento assinado</span>
+                        <span>{t.orders.packingSlip.checklistItem3}</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" className="rounded text-amber-600" />
-                        <span>Fita de cetim e papel seda</span>
+                        <span>{t.orders.packingSlip.checklistItem4}</span>
                       </label>
                     </div>
                   </div>
@@ -4403,14 +4403,14 @@ export default function AdminPedidosPage() {
                     <div className="border-2 border-amber-400 bg-amber-50 rounded-lg p-3.5 space-y-2">
                       <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs uppercase">
                         <Gift className="w-4 h-4 text-amber-700" />
-                        <span>Atenção Expedição: Pedido para Presente VIP!</span>
+                        <span>{t.orders.packingSlip.vipGiftAlertTitle}</span>
                       </div>
                       <div className="text-xs text-amber-950 space-y-1.5">
-                        <p>• Utilizar caixa rígida exclusiva da boutique com papel de seda e laço de cetim dourado.</p>
+                        <p>{t.orders.packingSlip.vipGiftAlertDesc1}</p>
                         {getOrderGiftDetails(printModalOrder).message ? (
                           <div className="bg-white p-2.5 rounded border border-amber-300">
                             <span className="text-[10px] uppercase font-bold text-amber-800 block mb-0.5">
-                              Dedicatória a ser transcrita no cartão:
+                              {t.orders.packingSlip.vipGiftDedicationLabel}
                             </span>
                             <p className="font-serif italic text-xs text-slate-800 leading-relaxed">
                               &ldquo;{getOrderGiftDetails(printModalOrder).message}&rdquo;
@@ -4418,7 +4418,7 @@ export default function AdminPedidosPage() {
                           </div>
                         ) : (
                           <p className="italic text-[11px] text-amber-800">
-                            • Incluir cartão especial em branco no envelope para a cliente preencher.
+                            {t.orders.packingSlip.vipGiftBlankCardDesc}
                           </p>
                         )}
                       </div>
@@ -4427,9 +4427,9 @@ export default function AdminPedidosPage() {
 
                   {/* ENDEREÇO DE ENVIO */}
                   <div className="border border-slate-200 rounded-lg p-3 text-xs space-y-1">
-                    <strong className="text-slate-800 block">Endereço de Destino:</strong>
+                    <strong className="text-slate-800 block">{t.orders.packingSlip.destinationAddress}</strong>
                     <p className="text-slate-600">
-                      {printModalOrder.cliente_nome} &bull; Tel: {printModalOrder.cliente_telefone || '-'}
+                      {formatCustomerDisplayName(printModalOrder.cliente_nome)} &bull; Tel: {printModalOrder.cliente_telefone || '-'}
                     </p>
                     <p className="text-slate-600">
                       {printModalOrder.endereco_entrega?.logradouro}, {printModalOrder.endereco_entrega?.numero}{' '}
@@ -4481,7 +4481,7 @@ export default function AdminPedidosPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-base">
-                    Liberar Peças da Reserva
+                    {t.orders.releaseModal.title}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Pedido #{releaseModalOrder.order.numero_pedido.replace(/^#+/, '')} • {formatCustomerDisplayName(releaseModalOrder.order.cliente_nome)}
@@ -4498,9 +4498,9 @@ export default function AdminPedidosPage() {
             </div>
 
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
-              <p className="font-semibold">O que você deseja fazer com este pedido?</p>
+              <p className="font-semibold">{t.orders.releaseModal.question}</p>
               <p className="text-[11px] text-amber-800 mt-0.5">
-                As peças serão imediatamente devolvidas à vitrine da loja para que outras clientes possam comprar.
+                {t.orders.releaseModal.desc}
               </p>
             </div>
 
@@ -4514,14 +4514,14 @@ export default function AdminPedidosPage() {
                 <div className="flex items-center justify-between font-extrabold text-xs text-rose-900">
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-rose-600" />
-                    Liberar Peças e Cancelar Pedido
+                    {t.orders.releaseModal.opt1Title}
                   </span>
                   <span className="text-[10px] bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded font-black uppercase">
-                    Recomendado
+                    {t.orders.releaseModal.opt1Badge}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 pl-5.5">
-                  Devolve as peças ao catálogo e move o pedido para a coluna <b>Cancelados</b>, mantendo o histórico de atendimento registrado.
+                  {t.orders.releaseModal.opt1Desc}
                 </p>
               </button>
 
@@ -4533,10 +4533,10 @@ export default function AdminPedidosPage() {
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
                   <RefreshCw className="w-4 h-4 text-slate-500" />
-                  <span>Apenas Devolver Peças (Manter Pedido Aberto)</span>
+                  <span>{t.orders.releaseModal.opt2Title}</span>
                 </div>
                 <p className="text-[11px] text-slate-600 pl-5.5">
-                  Libera o estoque para novas vendas, mas mantém o pedido em <b>Aguardando WhatsApp</b> com status de peças liberadas.
+                  {t.orders.releaseModal.opt2Desc}
                 </p>
               </button>
             </div>
@@ -4547,7 +4547,7 @@ export default function AdminPedidosPage() {
                 disabled={isProcessingRelease}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
               >
-                Voltar / Manter Como Está
+                {t.orders.releaseModal.cancelBtn}
               </button>
             </div>
           </div>
@@ -4572,10 +4572,10 @@ export default function AdminPedidosPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Regras de Inatividade e Funil de Follow-up
+                    {t.orders.inactivityRulesModal.title}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Controle de prazos e fluxo operacional para pedidos do WhatsApp
+                    {t.orders.inactivityRulesModal.subtitle}
                   </p>
                 </div>
               </div>
@@ -4592,10 +4592,10 @@ export default function AdminPedidosPage() {
             <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
               <p className="font-bold flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                Autonomia Temporal do Lojista
+                {t.orders.inactivityRulesModal.badgeAutonomy}
               </p>
               <p className="text-[11px] text-amber-800 leading-relaxed">
-                Configure com precisão em <b>minutos</b>, <b>horas</b> ou <b>dias</b> quando um pedido deve sair da fila ativa de <i>Aguardando WhatsApp</i> e entrar na coluna de <i>Não Finalizados (Follow-up)</i> para recuperação de vendas, sem ser descartado de imediato.
+                {t.orders.inactivityRulesModal.desc}
               </p>
             </div>
 
@@ -4610,19 +4610,19 @@ export default function AdminPedidosPage() {
                       onChange={(e) => setAutoDescartarInativosWhatsapp(e.target.checked)}
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
-                    <span>Ativar detecção de inatividade no WhatsApp</span>
+                    <span>{t.orders.inactivityRulesModal.activeDetectionLabel}</span>
                   </label>
                   <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                     autoDescartarInativosWhatsapp ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
                   }`}>
-                    {autoDescartarInativosWhatsapp ? 'Ativo' : 'Desativado'}
+                    {autoDescartarInativosWhatsapp ? t.orders.inactivityRulesModal.activeBadge : t.orders.inactivityRulesModal.disabledBadge}
                   </span>
                 </div>
 
                 {autoDescartarInativosWhatsapp && (
                   <div className="pt-2 border-t border-slate-200/60 space-y-2">
                     <label className="text-[11px] font-semibold text-slate-700 block">
-                      Mover para &quot;Não Finalizados&quot; após ausência de resposta:
+                      {t.orders.inactivityRulesModal.moveToFollowUpLabel}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -4640,9 +4640,9 @@ export default function AdminPedidosPage() {
                           onChange={(e) => setTempoInatividadeWhatsappUnidade(e.target.value as 'minutos' | 'horas' | 'dias')}
                           className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 cursor-pointer"
                         >
-                          <option value="minutos">Minutos</option>
-                          <option value="horas">Horas</option>
-                          <option value="dias">Dias</option>
+                          <option value="minutos">{t.orders.inactivityRulesModal.unitMinutes}</option>
+                          <option value="horas">{t.orders.inactivityRulesModal.unitHours}</option>
+                          <option value="dias">{t.orders.inactivityRulesModal.unitDays}</option>
                         </select>
                       </div>
                     </div>
@@ -4663,19 +4663,19 @@ export default function AdminPedidosPage() {
                       onChange={(e) => setAutoCancelarNaoFinalizados(e.target.checked)}
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
-                    <span>Auto-cancelar pedidos após período de follow-up</span>
+                    <span>{t.orders.inactivityRulesModal.autoCancelLabel}</span>
                   </label>
                   <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                     autoCancelarNaoFinalizados ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
                   }`}>
-                    {autoCancelarNaoFinalizados ? 'Ativo' : 'Manual'}
+                    {autoCancelarNaoFinalizados ? t.orders.inactivityRulesModal.activeBadge : t.orders.inactivityRulesModal.autoCancelBadgeManual}
                   </span>
                 </div>
 
                 {autoCancelarNaoFinalizados ? (
                   <div className="pt-2 border-t border-slate-200/60 space-y-2">
                     <label className="text-[11px] font-semibold text-slate-700 block">
-                      Cancelar definitivamente após permanecer em Não Finalizados por:
+                      {t.orders.inactivityRulesModal.cancelDefinitiveLabel}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -4693,9 +4693,9 @@ export default function AdminPedidosPage() {
                           onChange={(e) => setPrazoCancelamentoNaoFinalizadosUnidade(e.target.value as 'minutos' | 'horas' | 'dias')}
                           className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 cursor-pointer"
                         >
-                          <option value="minutos">Minutos</option>
-                          <option value="horas">Horas</option>
-                          <option value="dias">Dias</option>
+                          <option value="minutos">{t.orders.inactivityRulesModal.unitMinutes}</option>
+                          <option value="horas">{t.orders.inactivityRulesModal.unitHours}</option>
+                          <option value="dias">{t.orders.inactivityRulesModal.unitDays}</option>
                         </select>
                       </div>
                     </div>
@@ -4719,7 +4719,7 @@ export default function AdminPedidosPage() {
                 disabled={isSavingGovernance}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 type="button"
@@ -4730,12 +4730,12 @@ export default function AdminPedidosPage() {
                 {isSavingGovernance ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Salvando Regras...</span>
+                    <span>{t.orders.inactivityRulesModal.savingBtn}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Salvar Configurações</span>
+                    <span>{t.orders.inactivityRulesModal.saveBtn}</span>
                   </>
                 )}
               </button>

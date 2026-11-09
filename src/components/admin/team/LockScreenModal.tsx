@@ -141,13 +141,13 @@ export function LockScreenModal({
   const getCargoBadge = (cargo: string) => {
     switch (cargo) {
       case 'dono':
-        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">👑 Proprietário</span>;
+        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.posLockScreen.roleOwner}</span>;
       case 'gerente':
-        return <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">👔 Gerente</span>;
+        return <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.posLockScreen.roleManager}</span>;
       case 'atendente':
-        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">💬 Atendente</span>;
+        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.posLockScreen.roleSeller}</span>;
       case 'estoquista':
-        return <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">📦 Estoque</span>;
+        return <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{t.posLockScreen.roleStockist}</span>;
       default:
         return null;
     }
@@ -162,10 +162,10 @@ export function LockScreenModal({
             <Lock className="w-6 h-6" />
           </div>
           <h2 className="text-base font-bold font-serif-luxury tracking-wide">
-            Balcão Leidy Boutique
+            {t.posLockScreen.title('Leidy Boutique')}
           </h2>
           <p className="text-xs text-slate-300 mt-0.5">
-            {selectedMember ? `Digite o PIN de 4 dígitos para ${selectedMember.nome}` : 'Selecione quem está atendendo agora'}
+            {selectedMember ? t.posLockScreen.enterPinFor(selectedMember.nome) : t.posLockScreen.selectServing}
           </p>
         </div>
 
@@ -204,13 +204,13 @@ export function LockScreenModal({
                   className="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Sair do Painel</span>
+                  <span>{t.posLockScreen.signOut}</span>
                 </button>
                 <button
                   onClick={onClose}
                   className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
                 >
-                  Continuar Sessão Atual &rarr;
+                  {t.posLockScreen.continueSession}
                 </button>
               </div>
             </div>
@@ -235,7 +235,7 @@ export function LockScreenModal({
                   }}
                   className="text-[11px] font-semibold text-amber-800 hover:text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200"
                 >
-                  Trocar
+                  {t.posLockScreen.switchUser}
                 </button>
               </div>
 
@@ -246,9 +246,9 @@ export function LockScreenModal({
                     <Shield className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-rose-900">Terminal Pausado por Segurança</h4>
+                    <h4 className="text-xs font-bold text-rose-900">{t.posLockScreen.terminalLockedTitle}</h4>
                     <p className="text-[11px] text-rose-700 mt-0.5">
-                      3 tentativas incorretas de PIN detectadas. Aguarde para tentar novamente:
+                      {t.posLockScreen.terminalLockedDesc}
                     </p>
                     <span className="text-xl font-mono font-extrabold text-rose-800 block mt-1">
                       {Math.floor(lockoutRemaining / 60)
@@ -264,11 +264,11 @@ export function LockScreenModal({
                       onClick={() => setIsMasterUnlockOpen(true)}
                       className="text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-xl border border-amber-300 transition-colors w-full cursor-pointer"
                     >
-                      Desbloquear com Senha Mestra da Dona
+                      {t.posLockScreen.unlockMasterBtn}
                     </button>
                   ) : (
                     <form onSubmit={handleMasterUnlock} className="space-y-2 pt-2 border-t border-rose-200 text-left">
-                      <span className="text-[10px] text-slate-600 block font-semibold">Senha de Administrador:</span>
+                      <span className="text-[10px] text-slate-600 block font-semibold">{t.posLockScreen.masterPasswordLabel}</span>
                       <input
                         type="password"
                         required
@@ -284,13 +284,13 @@ export function LockScreenModal({
                           onClick={() => setIsMasterUnlockOpen(false)}
                           className="flex-1 py-1.5 text-[11px] text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
                         >
-                          Cancelar
+                          {t.common.cancel}
                         </button>
                         <button
                           type="submit"
                           className="flex-1 py-1.5 text-[11px] font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 shadow-2xs"
                         >
-                          Destravar
+                          {t.posLockScreen.unlockBtn}
                         </button>
                       </div>
                     </form>
@@ -334,7 +334,7 @@ export function LockScreenModal({
                       onClick={handleBackspace}
                       className="h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors shadow-2xs cursor-pointer"
                     >
-                      Limpar
+                      {t.posLockScreen.clearBtn}
                     </button>
                     <button
                       type="button"
@@ -362,7 +362,7 @@ export function LockScreenModal({
                   className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Voltar para lista de colaboradoras</span>
+                  <span>{t.posLockScreen.backToList}</span>
                 </button>
               </div>
             </div>
