@@ -234,7 +234,8 @@ export function ProductBatchImportModal({
   categoriesList,
   existingProducts = []
 }: ProductBatchImportModalProps) {
-  const { formatNumber, formatCurrency, t } = useAdminI18n();
+  const { formatNumber, formatCurrency, t, currency } = useAdminI18n();
+  const currencySymbol = currency === 'BRL' ? 'R$' : currency === 'EUR' ? '€' : '$';
   const [activeTab, setActiveTab] = useState<'grade' | 'excel'>('grade');
   const [file, setFile] = useState<File | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -891,7 +892,7 @@ export function ProductBatchImportModal({
       })
     );
     setLimitModalState(null);
-    setSuccessGlobal(`Total do lote aumentado para ${acrescimo} un e cor ${corTentada} adicionada!`);
+    setSuccessGlobal(`+${acrescimo} ${t.products.batchModal.pcsUnit} (${corTentada})`);
     setTimeout(() => setSuccessGlobal(null), 3500);
   };
 
@@ -2090,7 +2091,7 @@ export function ProductBatchImportModal({
                                 >
                                   {existingProducts.map((p) => (
                                     <option key={p.id} value={p.id}>
-                                      {p.nome} ({getProductRealStock(p)} un)
+                                      {p.nome} ({getProductRealStock(p)} {t.products.batchModal.pcsUnit})
                                     </option>
                                   ))}
                                 </select>
@@ -2139,14 +2140,14 @@ export function ProductBatchImportModal({
                             <div className="flex items-center gap-2">
                               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1 shrink-0">
                                 {isReposicao && <Lock className="w-3 h-3 text-slate-400" />}
-                                <span>Categoria:</span>
+                                <span>{t.products.batchModal.categoryLabel}</span>
                               </label>
                               {isReposicao ? (
                                 <div
                                   className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 truncate cursor-not-allowed flex items-center gap-1.5"
                                   title="Categoria vinculada ao produto existente."
                                 >
-                                  <span className="truncate">{categoriaNome || '(Sem categoria)'}</span>
+                                  <span className="truncate">{categoriaNome || t.products.batchModal.noCategory}</span>
                                   <Lock className="w-3 h-3 text-slate-400 shrink-0" />
                                 </div>
                               ) : creatingCategoryForRowId === row.id ? (
@@ -2154,7 +2155,7 @@ export function ProductBatchImportModal({
                                   <input
                                     type="text"
                                     autoFocus
-                                    placeholder="Nome da categoria..."
+                                    placeholder={t.products.batchModal.newCategoryPlaceholder}
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
                                     onKeyDown={(e) => {
@@ -2171,7 +2172,7 @@ export function ProductBatchImportModal({
                                     type="button"
                                     onClick={() => handleCreateCategoryInline(row.id, newCategoryName)}
                                     className="p-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-md cursor-pointer"
-                                    title="Salvar Categoria"
+                                    title={t.products.batchModal.saveCategoryTooltip}
                                   >
                                     <Check className="w-3 h-3" />
                                   </button>
@@ -2179,7 +2180,7 @@ export function ProductBatchImportModal({
                                     type="button"
                                     onClick={() => setCreatingCategoryForRowId(null)}
                                     className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md cursor-pointer"
-                                    title="Cancelar"
+                                    title={t.products.confirmModals.cancelBtn}
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -2197,7 +2198,7 @@ export function ProductBatchImportModal({
                                     }}
                                     className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs max-w-[170px] truncate"
                                   >
-                                    <option value="">(Sem categoria)</option>
+                                    <option value="">{t.products.batchModal.noCategory}</option>
                                     {localCategories.map((c) => (
                                       <option key={c.id} value={c.id}>
                                         {c.nome}
@@ -2211,9 +2212,9 @@ export function ProductBatchImportModal({
                                       setNewCategoryName('');
                                     }}
                                     className="px-2 py-1 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 text-[10px] font-bold text-amber-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                    title="Criar nova categoria inline"
+                                    title={t.products.batchModal.newBtn}
                                   >
-                                    <Plus className="w-3 h-3" /> Nova
+                                    <Plus className="w-3 h-3" /> {t.products.batchModal.newBtn.replace(/^\+\s*/, '')}
                                   </button>
                                 </div>
                               )}
@@ -2223,14 +2224,14 @@ export function ProductBatchImportModal({
                             <div className="flex items-center gap-2">
                               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1 shrink-0">
                                 {(isReposicao || !row.categoria_id) && <Lock className="w-3 h-3 text-slate-400" />}
-                                <span>Subcategoria:</span>
+                                <span>{t.products.batchModal.subcategoryLabel}</span>
                               </label>
                               {isReposicao ? (
                                 <div
                                   className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 truncate cursor-not-allowed flex items-center gap-1.5"
                                   title="Subcategoria vinculada ao produto existente."
                                 >
-                                  <span className="truncate">{row.subcategoria || '(Sem subcategoria)'}</span>
+                                  <span className="truncate">{row.subcategoria || t.products.batchModal.noSubcategory}</span>
                                   <Lock className="w-3 h-3 text-slate-400 shrink-0" />
                                 </div>
                               ) : !row.categoria_id ? (
@@ -2238,14 +2239,14 @@ export function ProductBatchImportModal({
                                   className="px-2.5 py-1 bg-slate-100 border border-dashed border-slate-300 rounded-lg text-xs font-medium text-slate-400 truncate cursor-not-allowed flex items-center gap-1.5"
                                   title="Selecione uma categoria primeiro para poder escolher ou criar uma subcategoria."
                                 >
-                                  <span>🔒 Requer categoria</span>
+                                  <span>{t.products.batchModal.requiresCategory}</span>
                                 </div>
                               ) : creatingSubcategoryForRowId === row.id ? (
                                 <div className="flex items-center gap-1">
                                   <input
                                     type="text"
                                     autoFocus
-                                    placeholder="Nova subcategoria..."
+                                    placeholder={t.products.batchModal.newSubcategoryPlaceholder}
                                     value={newSubcategoryName}
                                     onChange={(e) => setNewSubcategoryName(e.target.value)}
                                     onKeyDown={(e) => {
@@ -2262,7 +2263,7 @@ export function ProductBatchImportModal({
                                     type="button"
                                     onClick={() => handleCreateSubcategoryInline(row.id, newSubcategoryName)}
                                     className="p-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-md cursor-pointer"
-                                    title="Salvar Subcategoria"
+                                    title={t.products.batchModal.saveSubcategoryTooltip}
                                   >
                                     <Check className="w-3 h-3" />
                                   </button>
@@ -2270,7 +2271,7 @@ export function ProductBatchImportModal({
                                     type="button"
                                     onClick={() => setCreatingSubcategoryForRowId(null)}
                                     className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md cursor-pointer"
-                                    title="Cancelar"
+                                    title={t.products.confirmModals.cancelBtn}
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -2282,7 +2283,7 @@ export function ProductBatchImportModal({
                                     onChange={(e) => handleUpdateRow(row.id, 'subcategoria', e.target.value)}
                                     className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs max-w-[170px] truncate"
                                   >
-                                    <option value="">(Sem subcategoria)</option>
+                                    <option value="">{t.products.batchModal.noSubcategory}</option>
                                     {localSubcategories.map((s) => (
                                       <option key={s} value={s}>
                                         {s}
@@ -2296,9 +2297,9 @@ export function ProductBatchImportModal({
                                       setNewSubcategoryName('');
                                     }}
                                     className="px-2 py-1 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 text-[10px] font-bold text-amber-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                    title="Criar nova subcategoria inline"
+                                    title={t.products.batchModal.newBtn}
                                   >
-                                    <Plus className="w-3 h-3" /> Nova
+                                    <Plus className="w-3 h-3" /> {t.products.batchModal.newBtn.replace(/^\+\s*/, '')}
                                   </button>
                                 </div>
                               )}
@@ -2320,7 +2321,7 @@ export function ProductBatchImportModal({
                                 title="Visualizar Raio-X completo: estoque atual no banco por cor e tamanho, tags e projeção matemática com a remessa"
                               >
                                 <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Raio-X Estoque ({getProductRealStock(prodOriginal)} un)</span>
+                                <span>{t.products.batchModal.stockXrayBtn(getProductRealStock(prodOriginal))}</span>
                               </button>
                             )}
 
@@ -2343,7 +2344,7 @@ export function ProductBatchImportModal({
                                   title="Gerenciar imagens: fazer upload, trocar capa e ocultar cores esgotadas"
                                 >
                                   <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>Galeria de Fotos ({fotosCount})</span>
+                                  <span>{t.products.batchModal.photoGalleryBtn(fotosCount)}</span>
                                   {fotosOcultas > 0 && (
                                     <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 text-[9px] rounded-md font-mono font-bold" title={`${fotosOcultas} foto(s) oculta(s) do catálogo`}>
                                       {fotosOcultas} 🚫
@@ -2371,7 +2372,7 @@ export function ProductBatchImportModal({
                                   title="Configurar Tecido nobre e Descrição comercial da peça"
                                 >
                                   <FileText className="w-3.5 h-3.5 text-slate-500" />
-                                  <span>Tecido & Descrição</span>
+                                  <span>{t.products.batchModal.fabricAndDescBtn}</span>
                                   {hasDetalhes && (
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                   )}
@@ -2392,13 +2393,13 @@ export function ProductBatchImportModal({
                               </div>
                               <div>
                                 <h5 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                  <span>Galeria de Imagens da Peça</span>
+                                  <span>{t.products.batchModal.drawerPhotosTitle}</span>
                                   <span className="text-[10px] font-normal text-slate-500">
                                     • {row.fotos?.length || 0} foto(s) cadastradas
                                   </span>
                                 </h5>
                                 <p className="text-[11px] text-slate-500">
-                                  Vincule fotos às cores específicas para que a vitrine troque a imagem automaticamente quando o cliente selecionar uma cor. Use <strong>Ocultar</strong> para pausar fotos sem excluí-las.
+                                  {t.products.batchModal.drawerPhotosSubtitle}
                                 </p>
                               </div>
                             </div>
@@ -2409,12 +2410,12 @@ export function ProductBatchImportModal({
                                 {uploadingPhotoRowId === row.id ? (
                                   <>
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Enviando fotos...</span>
+                                    <span>{t.products.gallery.uploadingBtn}</span>
                                   </>
                                 ) : (
                                   <>
                                     <Upload className="w-3.5 h-3.5" />
-                                    <span>+ Carregar Fotos (R2)</span>
+                                    <span>{t.products.batchModal.drawerPhotosUploadBtn}</span>
                                   </>
                                 )}
                                 <input
@@ -2448,7 +2449,7 @@ export function ProductBatchImportModal({
                           {row.fotos && row.fotos.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-amber-200/50">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 mr-1 flex items-center gap-1">
-                                🎨 Filtrar por Cor:
+                                {t.products.gallery.filterColorLabel}
                               </span>
                               <button
                                 type="button"
@@ -2459,7 +2460,7 @@ export function ProductBatchImportModal({
                                     : 'bg-white text-slate-700 hover:bg-amber-100/60 border border-amber-200'
                                 }`}
                               >
-                                Todas ({row.fotos.length})
+                                {t.products.gallery.filterAllColors} ({row.fotos.length})
                               </button>
                               {row.cores.map((c) => {
                                 const countCor = (row.fotos || []).filter(
@@ -2681,11 +2682,11 @@ export function ProductBatchImportModal({
                               </div>
                               <div>
                                 <h5 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                  <span>Informações Complementares da Peça</span>
+                                  <span>{t.products.batchModal.drawerDetailsTitle}</span>
                                   <span className="text-[10px] font-normal text-slate-500">• Totalmente opcionais</span>
                                 </h5>
                                 <p className="text-[11px] text-slate-500">
-                                  Preencha o tecido nobre e a descrição comercial se desejar enriquecer o catálogo da boutique.
+                                  {t.products.batchModal.drawerDetailsSubtitle}
                                 </p>
                               </div>
                             </div>
@@ -2702,12 +2703,10 @@ export function ProductBatchImportModal({
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {/* Tecido */}
                             <div className="space-y-1.5 md:col-span-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                Tecido / Composição
-                              </label>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{t.products.batchModal.drawerFabricTitle}</label>
                               <input
                                 type="text"
-                                placeholder="Ex: Crepe Alfaiataria, Linho..."
+                                placeholder={t.products.batchModal.drawerFabricPlaceholder}
                                 value={row.tecido || ''}
                                 onChange={(e) => handleUpdateRow(row.id, 'tecido', e.target.value)}
                                 className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
@@ -2733,12 +2732,10 @@ export function ProductBatchImportModal({
 
                             {/* Descrição Comercial */}
                             <div className="space-y-1.5 md:col-span-2">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                Descrição Comercial do Produto (Opcional)
-                              </label>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{t.products.batchModal.drawerDescTitle}</label>
                               <textarea
                                 rows={3}
-                                placeholder="Descreva os diferenciais da peça, caimento, modelagem, ocasiões de uso..."
+                                placeholder={t.products.batchModal.drawerDescPlaceholder}
                                 value={row.descricao || ''}
                                 onChange={(e) => handleUpdateRow(row.id, 'descricao', e.target.value)}
                                 className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"
@@ -2760,14 +2757,14 @@ export function ProductBatchImportModal({
                               <div>
                                 <div className="flex items-center gap-2">
                                   <h5 className="text-xs font-bold text-slate-900 tracking-tight">
-                                    Raio-X de Estoque: {prodOriginal.nome}
+                                    {t.products.batchModal.drawerXrayTitle(prodOriginal.nome)}
                                   </h5>
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-100 text-blue-900">
-                                    {getProductRealStock(prodOriginal)} un no banco
+                                    {t.products.batchModal.xrayTotalInDatabase(getProductRealStock(prodOriginal))}
                                   </span>
                                 </div>
                                 <p className="text-[11px] text-slate-600">
-                                  Distribuição em tempo real das unidades por cor e tamanho, tags ativas e projeção com a remessa.
+                                  {t.products.batchModal.drawerXraySubtitle}
                                 </p>
                               </div>
                             </div>
@@ -2786,28 +2783,28 @@ export function ProductBatchImportModal({
                           <div className="flex flex-wrap items-center gap-2 bg-white/80 p-2.5 rounded-xl border border-blue-200/60 text-xs">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1">
                               <Activity className="w-3.5 h-3.5 text-blue-600" />
-                              Tags & Atributos Ativos:
+                              {t.products.batchModal.xrayTagsTitle}
                             </span>
 
                             {/* Tag de Estoque Crítico ou Saudável */}
                             {getProductRealStock(prodOriginal) <= 0 ? (
                               <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center gap-1">
-                                🚫 Esgotado no Banco
+                                {t.products.batchModal.xrayOutOfStock}
                               </span>
                             ) : getProductRealStock(prodOriginal) <= 3 ? (
                               <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] flex items-center gap-1">
-                                ⚡ Últimas {getProductRealStock(prodOriginal)} Peças
+                                {t.products.batchModal.xrayLastPieces(getProductRealStock(prodOriginal))}
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-bold text-[10px] flex items-center gap-1">
-                                ✓ Estoque Saudável ({getProductRealStock(prodOriginal)} un)
+                                {t.products.batchModal.xrayHealthyStock(getProductRealStock(prodOriginal))}
                               </span>
                             )}
 
                             {/* Tag Promoção */}
                             {prodOriginal.preco_promocional && prodOriginal.preco_promocional > 0 && (
                               <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[10px] flex items-center gap-1">
-                                🏷️ Em Promoção (R$ {formatBRL(prodOriginal.preco_promocional)})
+                                🏷️ Em Promoção ({formatCurrency(prodOriginal.preco_promocional)})
                               </span>
                             )}
 
@@ -2825,7 +2822,7 @@ export function ProductBatchImportModal({
 
                             {/* Preço de Venda Base Cadastrado */}
                             <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-900 font-mono font-bold text-[10px]">
-                              Preço Base Banco: R$ {formatBRL(prodOriginal.preco)}
+                              {t.products.batchModal.xrayBasePrice(formatCurrency(prodOriginal.preco))}
                             </span>
                           </div>
 
@@ -2834,14 +2831,12 @@ export function ProductBatchImportModal({
                             <table className="w-full text-left border-collapse text-xs">
                               <thead className="bg-blue-100/70 text-blue-950 font-bold uppercase text-[10px] border-b border-blue-200">
                                 <tr>
-                                  <th className="p-2.5 min-w-[130px]">Cor Cadastrada</th>
+                                  <th className="p-2.5 min-w-[130px]">{t.products.batchModal.xrayRegisteredColor}</th>
                                   {row.tamanhos.map((tam) => (
-                                    <th key={tam} className="p-2.5 text-center min-w-[90px]">
-                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam}
-                                    </th>
+                                    <th key={tam} className="p-2.5 text-center min-w-[90px]">{t.products.batchModal.thSizeHeader(tam === 'Tamanho Único' ? t.products.batchModal.oneSizeLabel : tam)}</th>
                                   ))}
-                                  <th className="p-2.5 text-center min-w-[110px]">Saldo Atual</th>
-                                  <th className="p-2.5 text-center min-w-[120px]">Novo Saldo Final</th>
+                                  <th className="p-2.5 text-center min-w-[110px]">{t.products.batchModal.xrayCurrentBalance}</th>
+                                  <th className="p-2.5 text-center min-w-[120px]">{t.products.batchModal.xrayProjectedBalance}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-blue-50">
@@ -2884,15 +2879,15 @@ export function ProductBatchImportModal({
                                                     : 'bg-emerald-100 text-emerald-800'
                                                 }`}
                                               >
-                                                Atual: {qtdAtual}
+                                                {t.products.batchModal.currentPrefix}: {qtdAtual}
                                               </span>
                                               {qtdNova > 0 && (
                                                 <span className="text-[10px] font-bold text-blue-700">
-                                                  +{qtdNova} un
+                                                  +{qtdNova} {t.products.batchModal.pcsUnit}
                                                 </span>
                                               )}
                                               <span className="text-[9px] text-slate-400 border-t border-slate-100 pt-0.5 w-full">
-                                                = {saldoFinal} un
+                                                = {saldoFinal} {t.products.batchModal.pcsUnit}
                                               </span>
                                             </div>
                                           </td>
@@ -2901,13 +2896,13 @@ export function ProductBatchImportModal({
 
                                       <td className="p-2.5 text-center font-mono font-bold text-xs text-slate-700">
                                         <span className="px-2 py-0.5 bg-slate-100 rounded-md">
-                                          {totalCorAtual} un
+                                          {totalCorAtual} {t.products.batchModal.pcsUnit}
                                         </span>
                                       </td>
 
                                       <td className="p-2.5 text-center font-mono font-bold text-xs text-blue-900">
                                         <span className="px-2 py-0.5 bg-blue-100 rounded-md">
-                                          {totalCorAtual + totalCorRemessa} un
+                                          {totalCorAtual + totalCorRemessa} {t.products.batchModal.pcsUnit}
                                         </span>
                                       </td>
                                     </tr>
@@ -2917,13 +2912,13 @@ export function ProductBatchImportModal({
                               <tfoot className="bg-blue-50/80 border-t border-blue-200 font-bold text-[11px] text-blue-950">
                                 <tr>
                                   <td className="p-2.5 text-slate-600 uppercase tracking-wider">
-                                    Totais Consolidados:
+                                    {t.products.batchModal.xrayConsolidatedTotals}
                                   </td>
                                   <td colSpan={row.tamanhos.length} className="p-2.5 text-right font-sans text-xs text-slate-600">
-                                    Estoque Atual no Banco: <strong>{getProductRealStock(prodOriginal)} un</strong> | Nova Remessa: <strong>+{metrics.totalAlocado} un</strong>
+                                    {t.products.batchModal.xrayCurrentStockLabel(getProductRealStock(prodOriginal))} | {t.products.batchModal.xrayNewShipmentLabel(metrics.totalAlocado)}
                                   </td>
                                   <td colSpan={2} className="p-2.5 text-center font-mono text-xs text-emerald-900 bg-emerald-50">
-                                    Novo Estoque Projetado: <strong>{getProductRealStock(prodOriginal) + metrics.totalAlocado} un</strong>
+                                    {t.products.batchModal.xrayProjectedStockLabel(getProductRealStock(prodOriginal) + metrics.totalAlocado)}
                                   </td>
                                 </tr>
                               </tfoot>
@@ -2939,16 +2934,16 @@ export function ProductBatchImportModal({
                           {/* Header (h-6) */}
                           <div className="flex items-center justify-between gap-1 h-6 shrink-0">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
-                              Preço de Venda
+                              {t.products.batchModal.salePriceLabel.replace(/:$/, '')}
                             </label>
                             <span className="text-[10px] font-mono font-semibold text-slate-500 shrink-0">
-                              R$ {formatBRL(row.preco)}
+                              {formatCurrency(row.preco)}
                             </span>
                           </div>
 
                           {/* Input (h-10) */}
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">{currencySymbol}</span>
                             <input
                               type="number"
                               step="0.01"
@@ -2962,16 +2957,16 @@ export function ProductBatchImportModal({
 
                           {/* Rodapé padronizado em 2 linhas (h-10) */}
                           <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-0.5 shrink-0">
-                            <span className="text-slate-600 block truncate">Valor oficial da vitrine</span>
+                            <span className="text-slate-600 block truncate">{t.products.batchModal.storefrontOfficialPrice}</span>
                             {isReposicao && prodOriginal && prodOriginal.preco !== row.preco ? (
                               <span
                                 className="text-amber-700 font-semibold truncate"
-                                title={`Preço original no catálogo: R$ ${formatBRL(prodOriginal.preco)}`}
+                                title={`${t.products.batchModal.storefrontOfficialPrice}: ${formatCurrency(prodOriginal.preco)}`}
                               >
-                                Diverge da loja (era R$ {formatBRL(prodOriginal.preco)})
+                                {t.products.batchModal.divergesFromCatalog(formatCurrency(prodOriginal.preco))}
                               </span>
                             ) : (
-                              <span className="text-slate-400 block truncate">Preço base de vitrine</span>
+                              <span className="text-slate-400 block truncate">{t.products.batchModal.storefrontBasePrice}</span>
                             )}
                           </div>
                         </div>
@@ -2981,20 +2976,20 @@ export function ProductBatchImportModal({
                           {/* Header (h-6) */}
                           <div className="flex items-center justify-between gap-1 h-6 shrink-0">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
-                              Promoção (Opcional)
+                              {t.products.batchModal.promoPriceLabel.replace(/:$/, '')} ({t.products.batchModal.optionalLabel})
                             </label>
                             {descontoPct > 0 ? (
                               <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
                                 -{descontoPct}% OFF
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-400 shrink-0">Opcional</span>
+                              <span className="text-[10px] text-slate-400 shrink-0">{t.products.batchModal.optionalLabel}</span>
                             )}
                           </div>
 
                           {/* Input (h-10) */}
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">{currencySymbol}</span>
                             <input
                               type="number"
                               step="0.01"
@@ -3004,7 +2999,7 @@ export function ProductBatchImportModal({
                                 handleUpdateRow(row.id, 'preco_promocional', parseFloat(e.target.value) || 0)
                               }
                               className="w-full pl-8 pr-3 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
-                              placeholder="Opcional"
+                              placeholder={t.products.batchModal.optionalPlaceholder}
                             />
                           </div>
 
@@ -3013,16 +3008,16 @@ export function ProductBatchImportModal({
                             {descontoPct > 0 ? (
                               <>
                                 <span className="font-mono font-medium text-slate-700 block truncate">
-                                  Economia de R$ {formatBRL(economiaCliente)}
+                                  {t.products.batchModal.savingsLabel(formatCurrency(economiaCliente))}
                                 </span>
                                 <span className="text-emerald-700 font-semibold block truncate">
-                                  ✓ Tag OFERTA ativa na vitrine
+                                  {t.products.batchModal.saleTagActiveBadge}
                                 </span>
                               </>
                             ) : (
                               <>
-                                <span className="text-slate-400 block truncate">Sem desconto ativo</span>
-                                <span className="text-slate-400 block truncate">Preço cheio na vitrine</span>
+                                <span className="text-slate-400 block truncate">{t.products.batchModal.noDiscountActive}</span>
+                                <span className="text-slate-400 block truncate">{t.products.batchModal.fullPriceBadge}</span>
                               </>
                             )}
                           </div>
@@ -3033,20 +3028,20 @@ export function ProductBatchImportModal({
                           {/* Header (h-6) */}
                           <div className="flex items-center justify-between gap-1 h-6 shrink-0">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
-                              Preço de Custo
+                              {t.products.batchModal.costPriceLabel.replace(/:$/, '')}
                             </label>
                             {margemPct > 0 ? (
                               <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
-                                {margemPct}% margem
+                                {t.products.batchModal.marginBadge(margemPct)}
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-400 shrink-0">Opcional</span>
+                              <span className="text-[10px] text-slate-400 shrink-0">{t.products.batchModal.optionalLabel}</span>
                             )}
                           </div>
 
                           {/* Input (h-10) */}
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">{currencySymbol}</span>
                             <input
                               type="number"
                               step="0.01"
@@ -3054,7 +3049,7 @@ export function ProductBatchImportModal({
                               value={row.preco_custo || ''}
                               onChange={(e) => handleUpdateRow(row.id, 'preco_custo', parseFloat(e.target.value) || 0)}
                               className="w-full pl-8 pr-3 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
-                              placeholder="Opcional"
+                              placeholder={t.products.batchModal.optionalPlaceholder}
                             />
                           </div>
 
@@ -3063,16 +3058,16 @@ export function ProductBatchImportModal({
                             {lucroUnitario > 0 ? (
                               <>
                                 <span className="font-mono text-slate-700 block truncate">
-                                  Lucro: R$ {formatBRL(lucroUnitario)}/un
+                                  {t.products.batchModal.profitPerUnit(formatCurrency(lucroUnitario))}
                                 </span>
                                 <span className="font-mono text-slate-500 block truncate">
-                                  Markup: {row.preco_custo && row.preco_custo > 0 ? (row.preco / row.preco_custo).toFixed(1) : 0}x sobre custo
+                                  {t.products.batchModal.markupOnCost(row.preco_custo && row.preco_custo > 0 ? (row.preco / row.preco_custo).toFixed(1) : '0')}
                                 </span>
                               </>
                             ) : (
                               <>
-                                <span className="text-slate-400 block truncate">Sem custo informado</span>
-                                <span className="text-slate-400 block truncate">Margem calculada no input</span>
+                                <span className="text-slate-400 block truncate">{t.products.batchModal.noCostEntered}</span>
+                                <span className="text-slate-400 block truncate">{t.products.batchModal.marginOnInput}</span>
                               </>
                             )}
                           </div>
@@ -3083,7 +3078,7 @@ export function ProductBatchImportModal({
                           {/* Header (h-6) com botões Auto e Distribuir */}
                           <div className="flex items-center justify-between gap-1 h-6 shrink-0">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
-                              Total da Remessa
+                              {t.products.batchModal.batchTotalQtyLabel}
                             </label>
                             <div className="flex items-center gap-1 shrink-0">
                               <button
@@ -3093,7 +3088,7 @@ export function ProductBatchImportModal({
                                 title="Distribuir total da remessa igualmente entre as células da grade"
                               >
                                 <Zap className="w-2.5 h-2.5 text-amber-600" />
-                                <span>Distribuir</span>
+                                <span>{t.products.batchModal.distributeBtn}</span>
                               </button>
                               <button
                                 type="button"
@@ -3102,7 +3097,7 @@ export function ProductBatchImportModal({
                                 title="Ajustar o total da remessa automaticamente pela soma da grade"
                               >
                                 <RefreshCw className="w-2.5 h-2.5" />
-                                <span>Auto</span>
+                                <span>{t.products.batchModal.autoBtn}</span>
                               </button>
                             </div>
                           </div>
@@ -3119,7 +3114,7 @@ export function ProductBatchImportModal({
                               className="w-full pl-3 pr-8 h-10 bg-white border border-slate-200 focus:border-amber-500 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-mono shadow-2xs"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                              un
+                              {t.products.batchModal.pcsUnit}
                             </span>
                           </div>
 
@@ -3127,7 +3122,7 @@ export function ProductBatchImportModal({
                           <div className="pt-1.5 border-t border-slate-200/60 flex flex-col justify-between text-[10px] leading-tight space-y-1.5 shrink-0">
                             <div className="flex items-center justify-between font-mono">
                               <span className="text-slate-600 font-semibold truncate">
-                                Alocado: {metrics.totalAlocado} / {metrics.totalLote} un
+                                {t.products.batchModal.allocatedRatio(metrics.totalAlocado, metrics.totalLote)}
                               </span>
                               <span
                                 className={`font-semibold shrink-0 ml-1 ${
@@ -3139,10 +3134,10 @@ export function ProductBatchImportModal({
                                 }`}
                               >
                                 {metrics.isLoteCompleto
-                                  ? '✓ 100% OK'
+                                  ? t.products.batchModal.statusOk
                                   : metrics.isLoteExcedido
-                                  ? `+${Math.abs(metrics.saldoRestante)} un`
-                                  : `Falta ${metrics.saldoRestante} un`}
+                                  ? t.products.batchModal.statusSurplus(Math.abs(metrics.saldoRestante))
+                                  : t.products.batchModal.statusDeficit(metrics.saldoRestante)}
                               </span>
                             </div>
 
@@ -3175,11 +3170,7 @@ export function ProductBatchImportModal({
                           <div className="flex items-center gap-2 text-amber-950">
                             <Tag className="w-4 h-4 text-amber-700 shrink-0" />
                             <span>
-                              <strong>Promoção ativa no catálogo:</strong> De R$ {formatBRL(prodOriginal.preco)} por{' '}
-                              <strong className="text-rose-600 font-mono">
-                                R$ {formatBRL(prodOriginal.preco_promocional)}
-                              </strong>
-                              . O preço promocional digitado acima será aplicado nesta nova remessa.
+                              {t.products.batchModal.activePromoNotice(formatCurrency(prodOriginal.preco), formatCurrency(prodOriginal.preco_promocional))}
                             </span>
                           </div>
                           <button
@@ -3187,7 +3178,7 @@ export function ProductBatchImportModal({
                             onClick={() => handleUpdateRow(row.id, 'preco_promocional', 0)}
                             className="text-[11px] font-bold text-slate-600 hover:text-slate-900 underline cursor-pointer"
                           >
-                            Encerrar Promoção (Voltar ao Preço Normal)
+                            {t.products.batchModal.endPromoBtn}
                           </button>
                         </div>
                       )}
@@ -3201,9 +3192,9 @@ export function ProductBatchImportModal({
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
                                 <Palette className="w-3 h-3 text-amber-600" />
-                                <span>Cores da Remessa:</span>
+                                <span>{t.products.batchModal.batchColorsTitle}</span>
                               </span>
-                              <span className="text-[10px] text-slate-400">(Clique para ativar/desativar)</span>
+                              <span className="text-[10px] text-slate-400">{t.products.batchModal.clickToToggleTip}</span>
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                               {BOUTIQUE_OFFICIAL_COLORS.map((cor) => {
@@ -3231,7 +3222,7 @@ export function ProductBatchImportModal({
                                     <span>{cor.nome.split(' ')[0]}</span>
                                     {isSelected && (
                                       <span className="px-1 py-0.2 rounded bg-amber-200/80 text-amber-900 text-[10px] font-mono">
-                                        {totalCor} un
+                                        {totalCor} {t.products.batchModal.pcsUnit}
                                       </span>
                                     )}
                                   </button>
@@ -3244,10 +3235,10 @@ export function ProductBatchImportModal({
                           <div className="space-y-1">
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                Tamanhos Ativos:
+                                {t.products.batchModal.activeSizesTitle}
                               </span>
                               <div className="flex items-center gap-1 text-[9px] text-slate-500">
-                                <span>Atalhos:</span>
+                                <span>{t.products.batchModal.shortcutsLabel}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleQuickGradePMG(row.id)}
@@ -3278,7 +3269,7 @@ export function ProductBatchImportModal({
                                         : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-700'
                                     }`}
                                   >
-                                    {tam === 'Tamanho Único' ? 'Único' : tam}
+                                    {tam === 'Tamanho Único' ? t.products.batchModal.oneSizeLabel : tam}
                                   </button>
                                 );
                               })}
@@ -3299,7 +3290,7 @@ export function ProductBatchImportModal({
                               }`}
                             >
                               <Package className="w-3.5 h-3.5" />
-                              <span>1. Matriz de Quantidades (Estoque)</span>
+                              <span>{t.products.batchModal.tabQuantityMatrix}</span>
                             </button>
 
                             <button
@@ -3315,7 +3306,7 @@ export function ProductBatchImportModal({
                               }`}
                             >
                               <DollarSign className="w-3.5 h-3.5" />
-                              <span>2. Preços & Promoções por Variação</span>
+                              <span>{t.products.batchModal.tabPriceMatrix}</span>
                               {row.tem_precos_diferenciados && (
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                               )}
@@ -3324,7 +3315,7 @@ export function ProductBatchImportModal({
 
                           {row.aba_matriz === 'precos' && (
                             <span className="text-[11px] text-amber-800 font-semibold">
-                              💡 Permite definir preço de venda ou promoção exclusivo para uma cor/tamanho específico!
+                              {t.products.batchModal.priceMatrixTip}
                             </span>
                           )}
                         </div>
@@ -3335,14 +3326,14 @@ export function ProductBatchImportModal({
                             <table className="w-full text-left border-collapse text-xs">
                               <thead className="bg-slate-100/80 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
                                 <tr>
-                                  <th className="p-2.5 min-w-[140px]">Cor Selecionada</th>
+                                  <th className="p-2.5 min-w-[140px]">{t.products.batchModal.thSelectedColor}</th>
                                   {row.tamanhos.map((tam) => (
                                     <th key={tam} className="p-2.5 text-center min-w-[70px]">
-                                      Tam. {tam === 'Tamanho Único' ? 'Único' : tam}
+                                      {t.products.batchModal.thSizeHeader(tam === 'Tamanho Único' ? t.products.batchModal.oneSizeLabel : tam)}
                                     </th>
                                   ))}
-                                  <th className="p-2.5 text-center min-w-[100px]">Total Cor</th>
-                                  <th className="p-2.5 text-center min-w-[110px]">Ações da Linha</th>
+                                  <th className="p-2.5 text-center min-w-[100px]">{t.products.batchModal.thTotalColor}</th>
+                                  <th className="p-2.5 text-center min-w-[110px]">{t.products.batchModal.thRowActions}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 bg-white">
@@ -3395,9 +3386,9 @@ export function ProductBatchImportModal({
                                               {isReposicao && (
                                                 <span
                                                   className="text-[9px] text-slate-400 font-mono mt-0.5"
-                                                  title={`Atual: ${qtdAtualBanco} + Novo: ${qtdAdicionando} = ${novoTotalProjetado}`}
+                                                  title={`${t.products.batchModal.currentPrefix}: ${qtdAtualBanco} + Novo: ${qtdAdicionando} = ${novoTotalProjetado}`}
                                                 >
-                                                  Atual: {qtdAtualBanco}
+                                                  {t.products.batchModal.currentPrefix}: {qtdAtualBanco}
                                                 </span>
                                               )}
                                             </div>
@@ -3408,7 +3399,7 @@ export function ProductBatchImportModal({
                                       {/* Total da Cor */}
                                       <td className="p-2.5 text-center font-mono font-bold text-xs text-slate-900">
                                         <span className="px-2 py-1 bg-slate-100 rounded-md">
-                                          {totalLinhaCor} un
+                                          {totalLinhaCor} {t.products.batchModal.pcsUnit}
                                         </span>
                                       </td>
 
@@ -3421,7 +3412,7 @@ export function ProductBatchImportModal({
                                             className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors"
                                             title="Dividir igualmente o total da cor entre os tamanhos selecionados"
                                           >
-                                            ⚡ Dividir
+                                            ⚡ {t.products.batchModal.splitBtn}
                                           </button>
                                           <button
                                             type="button"
@@ -3442,7 +3433,7 @@ export function ProductBatchImportModal({
                               <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-[11px] text-slate-700">
                                 <tr>
                                   <td className="p-2.5 text-slate-500 uppercase tracking-wider">
-                                    Total por Tamanho:
+                                    {t.products.batchModal.totalBySize}
                                   </td>
                                   {row.tamanhos.map((tam) => {
                                     const totalColunaTam = row.cores.reduce(
@@ -3457,7 +3448,7 @@ export function ProductBatchImportModal({
                                   })}
                                   <td colSpan={2} className="p-2.5 text-right font-mono">
                                     <div className="flex items-center justify-end gap-2">
-                                      <span className="text-slate-500 font-sans text-xs">Total Distribuído:</span>
+                                      <span className="text-slate-500 font-sans text-xs">{t.products.batchModal.totalDistributedLabelPrefix}</span>
                                       <span
                                         className={`px-2 py-0.5 rounded-md text-xs font-bold ${
                                           metrics.isLoteCompleto
@@ -3467,7 +3458,7 @@ export function ProductBatchImportModal({
                                             : 'bg-amber-100 text-amber-950'
                                         }`}
                                       >
-                                        {metrics.totalAlocado} / {metrics.totalLote} un
+                                        {metrics.totalAlocado} / {metrics.totalLote} {t.products.batchModal.pcsUnit}
                                       </span>
                                     </div>
                                   </td>
@@ -3497,7 +3488,7 @@ export function ProductBatchImportModal({
                                   className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
                                   title="Define o Preço Base da peça em todas as variações"
                                 >
-                                  ⚡ Replicar Base (R$ {formatBRL(row.preco)}) para Todos
+                                  ⚡ Replicar Base ({formatCurrency(row.preco)}) para Todos
                                 </button>
                                 <button
                                   type="button"
@@ -3517,7 +3508,7 @@ export function ProductBatchImportModal({
                                     <th className="p-2.5 min-w-[140px]">Cor</th>
                                     {row.tamanhos.map((tam) => (
                                       <th key={tam} className="p-2.5 text-center min-w-[130px]">
-                                        Tam. {tam === 'Tamanho Único' ? 'Único' : tam} (R$)
+                                        Tam. {tam === 'Tamanho Único' ? t.products.batchModal.oneSizeLabel : tam} ({currencySymbol})
                                       </th>
                                     ))}
                                     <th className="p-2.5 text-center min-w-[150px]">Ações da Cor</th>
@@ -3552,7 +3543,7 @@ export function ProductBatchImportModal({
                                               <div className="space-y-1">
                                                 {/* Preço de Venda do Tamanho */}
                                                 <div className="relative">
-                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">R$</span>
+                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currencySymbol}</span>
                                                   <input
                                                     type="number"
                                                     step="0.01"
@@ -3578,7 +3569,7 @@ export function ProductBatchImportModal({
 
                                                 {/* Promoção Específica */}
                                                 <div className="relative">
-                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">R$</span>
+                                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">{currencySymbol}</span>
                                                   <input
                                                     type="number"
                                                     step="0.01"
@@ -3677,20 +3668,20 @@ export function ProductBatchImportModal({
                             {metrics.isLoteCompleto ? (
                               <span className="text-emerald-700 font-bold flex items-center gap-1.5">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                <span>Lote 100% distribuído com sucesso ({metrics.totalAlocado} peças prontas para salvar).</span>
+                                <span>{t.products.batchModal.batchSuccessDistributed(metrics.totalAlocado)}</span>
                               </span>
                             ) : metrics.isLoteExcedido ? (
                               <span className="text-rose-700 font-bold flex items-center gap-1.5">
                                 <AlertTriangle className="w-4 h-4 text-rose-600" />
                                 <span>
-                                  Atenção: A grade excedeu o lote em {Math.abs(metrics.saldoRestante)} unidades! Ajuste as células ou aumente o lote.
+                                  {t.products.batchModal.batchSurplusWarning(Math.abs(metrics.saldoRestante))}
                                 </span>
                               </span>
                             ) : (
                               <span className="text-amber-700 font-semibold flex items-center gap-1.5">
                                 <Info className="w-4 h-4 text-amber-600" />
                                 <span>
-                                  Restam {metrics.saldoRestante} unidades para completar o lote de {metrics.totalLote} peças.
+                                  {t.products.batchModal.batchDeficitWarning(metrics.saldoRestante, metrics.totalLote)}
                                 </span>
                               </span>
                             )}
@@ -3702,7 +3693,7 @@ export function ProductBatchImportModal({
                               onClick={() => handleSyncTotalWithGrid(row.id)}
                               className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
                             >
-                              Ajustar Total do Lote para {metrics.totalAlocado} un
+                              {t.products.batchModal.adjustTotalToMatch(metrics.totalAlocado)}
                             </button>
                           )}
                         </div>
@@ -3714,7 +3705,7 @@ export function ProductBatchImportModal({
 
               {/* Tratamento para peças repetidas */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="font-bold text-slate-700">Comportamento de reposição:</span>
+                <span className="font-bold text-slate-700">{t.products.batchModal.restockBehaviorLabel}</span>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -3724,7 +3715,7 @@ export function ProductBatchImportModal({
                       onChange={() => setDuplicateAction('somar_estoque')}
                       className="text-amber-600 focus:ring-amber-500"
                     />
-                    <span className="text-slate-800 font-medium">Somar ao estoque existente (Reposição)</span>
+                    <span className="text-slate-800 font-medium">{t.products.batchModal.restockAddStock}</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -3734,7 +3725,7 @@ export function ProductBatchImportModal({
                       onChange={() => setDuplicateAction('ignorar')}
                       className="text-amber-600 focus:ring-amber-500"
                     />
-                    <span className="text-slate-600">Ignorar repetidas</span>
+                    <span className="text-slate-600">{t.products.batchModal.restockIgnoreDuplicates}</span>
                   </label>
                 </div>
               </div>
@@ -3842,34 +3833,29 @@ export function ProductBatchImportModal({
           {/* KPIs da Grade */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-slate-800">
-              <span className="text-slate-400">Total:</span>
-              <strong className="text-slate-900 font-mono">{totalModelos}</strong>
+              <strong className="text-slate-900 font-mono">{t.products.batchModal.kpiTotal(totalModelos)}</strong>
             </div>
 
             {totalNovas > 0 && (
               <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-amber-950">
                 <Sparkles className="w-3 h-3 text-amber-600" />
-                <span className="text-amber-700">Novas:</span>
-                <strong className="text-amber-900 font-mono">{totalNovas}</strong>
+                <strong className="text-amber-900 font-mono">{t.products.batchModal.kpiNew(totalNovas)}</strong>
               </div>
             )}
 
             {totalReposicoes > 0 && (
               <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-emerald-950">
                 <Package className="w-3 h-3 text-emerald-600" />
-                <span className="text-emerald-700">Reposições:</span>
-                <strong className="text-emerald-900 font-mono">{totalReposicoes}</strong>
+                <strong className="text-emerald-900 font-mono">{t.products.batchModal.kpiRestocks(totalReposicoes)}</strong>
               </div>
             )}
 
             <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-slate-800">
-              <span className="text-slate-500">Grade:</span>
-              <strong className="text-slate-900 font-mono">{totalVariacoes} vars</strong>
+              <strong className="text-slate-900 font-mono">{t.products.batchModal.kpiGridVars(totalVariacoes)}</strong>
             </div>
 
             <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg shadow-2xs font-semibold text-emerald-950">
-              <span className="text-emerald-700">Estoque Físico:</span>
-              <strong className="text-emerald-900 font-mono">+{totalEstoqueFisico} un</strong>
+              <strong className="text-emerald-900 font-mono">{t.products.batchModal.kpiPhysicalStock(totalEstoqueFisico)}</strong>
             </div>
           </div>
 
@@ -3917,10 +3903,10 @@ export function ProductBatchImportModal({
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                    Catálogo Visual de Peças para Reposição
+                    {t.products.batchModal.visualPickerTitle}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Clique em um produto da vitrine para carregá-lo instantaneamente na grade de reposição.
+                    {t.products.batchModal.visualPickerSubtitle}
                   </p>
                 </div>
               </div>
@@ -3943,7 +3929,7 @@ export function ProductBatchImportModal({
                     type="text"
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
-                    placeholder="Buscar por nome da peça, categoria ou código..."
+                    placeholder={t.products.batchModal.visualPickerSearchPlaceholder}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   {catalogSearch && (
@@ -3968,7 +3954,7 @@ export function ProductBatchImportModal({
                   }`}
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Somente Esgotados / Baixo Estoque (≤ 3 un)</span>
+                  <span>{t.products.batchModal.visualPickerLowStockOnly}</span>
                 </button>
               </div>
 
@@ -3983,7 +3969,7 @@ export function ProductBatchImportModal({
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Todas as Categorias ({existingProducts.length})
+                  {t.products.batchModal.visualPickerAllCategories(existingProducts.length)}
                 </button>
                 {categoriesList.map((cat) => {
                   const countInCat = existingProducts.filter((p) => p.categoria_id === cat.id).length;
@@ -4011,8 +3997,8 @@ export function ProductBatchImportModal({
               {filteredCatalogProducts.length === 0 ? (
                 <div className="p-12 text-center text-slate-400 space-y-2">
                   <Package className="w-10 h-10 mx-auto text-slate-300" />
-                  <p className="text-sm font-semibold">Nenhuma peça encontrada para os filtros selecionados.</p>
-                  <p className="text-xs">Tente limpar os termos de busca ou mudar a categoria.</p>
+                  <p className="text-sm font-semibold">{t.products.batchModal.visualPickerEmpty}</p>
+                  <p className="text-xs">{t.products.batchModal.visualPickerEmptyHint}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -4068,7 +4054,7 @@ export function ProductBatchImportModal({
                                   : 'bg-emerald-600 text-white'
                               }`}
                             >
-                              {isEsgotado ? 'Esgotado (0)' : `${realStock} un`}
+                              {isEsgotado ? `${t.products.outOfStock} (0)` : `${realStock} ${t.products.batchModal.pcsUnit}`}
                             </span>
                           </div>
 
@@ -4080,11 +4066,11 @@ export function ProductBatchImportModal({
 
                             <div className="flex items-center gap-2 text-xs">
                               <span className="font-mono font-bold text-slate-900">
-                                R$ {formatBRL(p.preco)}
+                                {formatCurrency(p.preco)}
                               </span>
                               {p.preco_promocional && p.preco_promocional > 0 && (
                                 <span className="font-mono font-bold text-rose-600 text-[11px] bg-rose-50 px-1 rounded">
-                                  R$ {formatBRL(p.preco_promocional)}
+                                  {formatCurrency(p.preco_promocional)}
                                 </span>
                               )}
                             </div>
@@ -4111,7 +4097,7 @@ export function ProductBatchImportModal({
                         {/* Botão de Seleção */}
                         <div className="pt-3 border-t border-slate-100 mt-3">
                           <div className="w-full py-1.5 px-3 bg-slate-50 group-hover:bg-amber-600 group-hover:text-white text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5">
-                            <span>Repor Esta Peça</span>
+                            <span>{t.products.batchModal.visualPickerRestockBtn}</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
@@ -4135,10 +4121,10 @@ export function ProductBatchImportModal({
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-slate-900">
-                  Limite do Lote Atingido ({limitModalState.totalLote} Unidades)
+                  {t.products.batchModal.limitReachedTitle(limitModalState.totalLote)}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Você já distribuiu todas as <strong>{limitModalState.totalLote} peças</strong> desta remessa entre as cores selecionadas:
+                  {t.products.batchModal.limitReachedDesc(limitModalState.totalLote)}
                 </p>
               </div>
             </div>
@@ -4148,7 +4134,7 @@ export function ProductBatchImportModal({
               {limitModalState.coresAlocadas.map((c) => (
                 <div key={c.cor} className="flex items-center justify-between text-slate-700">
                   <span className="font-semibold">• {c.cor}:</span>
-                  <span className="font-mono font-bold text-slate-900">{c.total} un</span>
+                  <span className="font-mono font-bold text-slate-900">{c.total} {t.products.batchModal.pcsUnit}</span>
                 </div>
               ))}
             </div>
@@ -4171,7 +4157,7 @@ export function ProductBatchImportModal({
                 className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Aumentar Total para {limitModalState.totalLote + 10} un e Ativar {limitModalState.corTentada.split(' ')[0]}</span>
+                <span>{t.products.batchModal.limitIncreaseBtn(limitModalState.totalLote + 10, limitModalState.corTentada.split(' ')[0])}</span>
               </button>
 
               <button
@@ -4179,7 +4165,7 @@ export function ProductBatchImportModal({
                 onClick={() => setLimitModalState(null)}
                 className="w-full py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
               >
-                Entendi, vou ajustar as unidades manualmente
+                {t.products.batchModal.limitManualBtn}
               </button>
             </div>
           </div>

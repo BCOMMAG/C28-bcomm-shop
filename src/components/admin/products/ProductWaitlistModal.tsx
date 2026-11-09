@@ -88,12 +88,16 @@ export function ProductWaitlistModal({
     const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const primeiroNome = lead.cliente_nome.split(' ')[0];
 
+    const messageText = t.products.waitlistModal.whatsappMessage(
+      product.nome,
+      lead.variacao_tamanho,
+      lead.variacao_cor || undefined
+    ).replace('{primeiroNome}', primeiroNome);
+
     const msg = encodeURIComponent(
-      `✨ Olá, ${primeiroNome}! Tudo bem com você? 🤍\n\n` +
-      `Aqui é da Leidy Boutique! Temos uma ótima notícia: a peça *${product.nome}* no tamanho *${lead.variacao_tamanho}*${lead.variacao_cor ? ` (Cor: ${lead.variacao_cor})` : ''} que você estava aguardando acabou de ser reposta no nosso estoque!\n\n` +
-      `Como temos poucas unidades neste lote, separei o link em primeira mão para você garantir antes que esgote:\n` +
-      `👉 https://bcomm-shop.pages.dev/catalogo?produto=${product.id}\n\n` +
-      `Se preferir que eu reserve para você ou queira tirar dúvidas de medidas, é só me avisar aqui! ✨`
+      `✨ Olá, ${primeiroNome}!\n\n` +
+      `${messageText}\n\n` +
+      `👉 https://bcomm-shop.pages.dev/catalogo?produto=${product.id}`
     );
 
     return `https://wa.me/${phoneWithDDI}?text=${msg}`;

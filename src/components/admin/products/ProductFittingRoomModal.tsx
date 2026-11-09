@@ -105,7 +105,7 @@ export function ProductFittingRoomModal({
     setLoading(false);
 
     if (res.success) {
-      setSuccessMsg('Peça reservada no provador com sucesso! Atendimento criado na Central de Pedidos.');
+      setSuccessMsg(t.products.fittingRoomModal.toastReservedSuccess);
       setLastCreatedOrderNum(res.numeroPedido || null);
       setClienteNome('');
       setClienteTelefone('');
@@ -120,7 +120,7 @@ export function ProductFittingRoomModal({
     const colab = getActiveColab();
     const ok = await cancelReservation(lojaId, id, colab.nome);
     if (ok) {
-      setSuccessMsg('Reserva liberada! Peça devolvida para a vitrine online.');
+      setSuccessMsg(t.products.fittingRoomModal.toastReleasedSuccess);
       await loadReservations();
       if (onReservationUpdated) onReservationUpdated();
     }
@@ -130,7 +130,7 @@ export function ProductFittingRoomModal({
     const colab = getActiveColab();
     const ok = await convertReservationToSale(lojaId, id, colab.nome);
     if (ok) {
-      setSuccessMsg('Venda registrada no balcão com sucesso!');
+      setSuccessMsg(t.products.fittingRoomModal.toastSaleSuccess);
       await loadReservations();
       if (onReservationUpdated) onReservationUpdated();
     }
