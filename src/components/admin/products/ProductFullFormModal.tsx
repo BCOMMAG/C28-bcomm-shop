@@ -843,19 +843,17 @@ export function ProductFullFormModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-bold text-slate-900 font-serif-luxury truncate">
-                  {isEdit ? 'Edição Completa da Peça' : 'Cadastrar Nova Peça no Catálogo'}
+                  {isEdit ? t.products.fullFormModal.titleEdit : t.products.fullFormModal.titleCreate}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                  {isEdit ? 'Dossiê Integral' : 'Novo Cadastro VIP'}
+                  {isEdit ? t.products.fullFormModal.badgeEdit : t.products.fullFormModal.badgeCreate}
                 </span>
               </div>
               <p className="text-xs text-slate-500 truncate">
                 {isEdit ? (
-                  <>
-                    {product?.nome} • Link Web: <span className="font-mono text-slate-700">{slug || product?.slug}</span>
-                  </>
+                  t.products.fullFormModal.subtitleEdit(product?.nome || '', slug || product?.slug || '')
                 ) : (
-                  'Preencha dados, fotos em alta definição, matriz de preços e estoque da boutique.'
+                  t.products.fullFormModal.subtitleCreate
                 )}
               </p>
             </div>
@@ -871,10 +869,10 @@ export function ProductFullFormModal({
                   ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
                   : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
               }`}
-              title={ativo ? 'Peça ativa e visível na vitrine' : 'Peça oculta/rascunho (invisível para clientes)'}
+              title={ativo ? t.products.fullFormModal.activeShowcaseLabel : t.products.fullFormModal.draftHiddenLabel}
             >
               <span className={`w-2 h-2 rounded-full ${ativo ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              <span className="hidden sm:inline">{ativo ? 'Ativa na Vitrine' : 'Rascunho (Oculta)'}</span>
+              <span className="hidden sm:inline">{ativo ? t.products.fullFormModal.activeShowcaseLabel : t.products.fullFormModal.draftHiddenLabel}</span>
             </button>
 
             {/* Alternador de Modo: Abas vs Scroll */}
@@ -892,21 +890,17 @@ export function ProductFullFormModal({
                   ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
                   : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
               }`}
-              title={
-                viewMode === 'scroll'
-                  ? 'Mudar para visualização em Abas separadas'
-                  : 'Mudar para visualização em Página Única Contínua (Scroll)'
-              }
+              title={viewMode === 'scroll' ? t.products.fullFormModal.modeTabsBtn : t.products.fullFormModal.modeScrollBtn}
             >
               {viewMode === 'scroll' ? (
                 <>
                   <Layers className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Modo em Abas</span>
+                  <span className="hidden sm:inline">{t.products.fullFormModal.modeTabsBtn}</span>
                 </>
               ) : (
                 <>
                   <ScrollText className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden sm:inline">Página Única (Scroll)</span>
+                  <span className="hidden sm:inline">{t.products.fullFormModal.modeScrollBtn}</span>
                 </>
               )}
             </button>
@@ -920,16 +914,16 @@ export function ProductFullFormModal({
                   ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-2xs font-black'
                   : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
               }`}
-              title="Abrir ou fechar o simulador do card da vitrine em tempo real"
+              title={t.products.fullFormModal.simulatorBtn}
             >
               <Eye className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden md:inline">Simulador</span>
+              <span className="hidden md:inline">{t.products.fullFormModal.simulatorBtn}</span>
             </button>
 
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
-              title="Fechar janela"
+              title="Esc"
             >
               <X className="w-5 h-5" />
             </button>
@@ -942,10 +936,10 @@ export function ProductFullFormModal({
         {viewMode === 'abas' ? (
           <div className="flex items-center gap-1 px-4 sm:px-5 border-b border-slate-200 bg-white overflow-x-auto scrollbar-none">
             {[
-              { id: 'geral', label: '1. Dados Gerais & Estilo', icon: FileText },
-              { id: 'midias', label: `2. Fotos & Vídeos (${mediaList.length})`, icon: Video },
-              { id: 'grade', label: `3. Grade de Estoque (${variacoes.length} vars)`, icon: Layers },
-              { id: 'comercial', label: '4. Precificação & Variações', icon: DollarSign }
+              { id: 'geral', label: t.products.fullFormModal.tab1General, icon: FileText },
+              { id: 'midias', label: t.products.fullFormModal.tab2Media(mediaList.length), icon: Video },
+              { id: 'grade', label: t.products.fullFormModal.tab3StockGrid(variacoes.length), icon: Layers },
+              { id: 'comercial', label: t.products.fullFormModal.tab4Pricing, icon: DollarSign }
             ].map((tab) => {
               const IconComponent = tab.icon;
               const isActive = activeTab === tab.id;
@@ -970,13 +964,13 @@ export function ProductFullFormModal({
           <div className="flex items-center gap-2 px-4 sm:px-5 py-2 border-b border-amber-200/80 bg-amber-50/40 overflow-x-auto scrollbar-none text-xs">
             <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <ScrollText className="w-3.5 h-3.5 text-amber-600" />
-              Página Única:
+              {t.products.fullFormModal.singlePageAnchorsTitle}
             </span>
             {[
-              { id: 'sec-form-geral', label: '1. Dados Gerais' },
-              { id: 'sec-form-midias', label: '2. Fotos & Vídeos' },
-              { id: 'sec-form-grade', label: '3. Grade de Estoque' },
-              { id: 'sec-form-comercial', label: '4. Precificação & Look' }
+              { id: 'sec-form-geral', label: t.products.fullFormModal.anchorGeneral },
+              { id: 'sec-form-midias', label: t.products.fullFormModal.anchorMedia },
+              { id: 'sec-form-grade', label: t.products.fullFormModal.anchorGrid },
+              { id: 'sec-form-comercial', label: t.products.fullFormModal.anchorPricing }
             ].map((anchor) => (
               <button
                 key={anchor.id}
@@ -1007,32 +1001,32 @@ export function ProductFullFormModal({
                       1
                     </div>
                     <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-                      Dados Gerais & Estilo da Peça
+                      {t.products.fullFormModal.secGeneralTitle}
                     </h4>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Nome da Peça *</label>
+                    <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.nameField}</label>
                     <input
                       type="text"
                       required
                       value={nome}
                       onChange={(e) => handleNameChange(e.target.value)}
-                      placeholder="Ex: Vestido Midi Seda Acetinada Florença"
+                      placeholder={t.products.fullFormModal.namePlaceholder}
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <label className="text-slate-700 font-bold">Link da Peça na Loja (Endereço Web)</label>
+                      <label className="text-slate-700 font-bold">{t.products.fullFormModal.slugField}</label>
                       <div className="relative inline-flex items-center group cursor-help">
                         <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
                         <div className="absolute right-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none">
-                          <span>É o final do endereço web desta peça (ex: <strong>.../produto/casaco-biamar-caramelo</strong>). É gerado automaticamente a partir do nome para facilitar o compartilhamento e o ranqueamento no Google.</span>
-                          <span className="text-amber-300 font-semibold mt-1">⚠️ Evite alterar após já ter divulgado o link em redes sociais para não quebrar acessos de clientes.</span>
+                          <span>{t.products.fullFormModal.slugHelpTooltip}</span>
+                          <span className="text-amber-300 font-semibold mt-1">{t.products.fullFormModal.slugHelpWarning}</span>
                           <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
                         </div>
                       </div>
@@ -1045,7 +1039,7 @@ export function ProductFullFormModal({
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">
-                      Gerado automaticamente. Altere apenas se necessário antes de divulgar a peça.
+                      {t.products.fullFormModal.slugAutoNotice}
                     </p>
                   </div>
                 </div>
@@ -1055,7 +1049,7 @@ export function ProductFullFormModal({
                   {/* Categoria com botão inline para cadastrar nova */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-slate-700 font-bold">Categoria</label>
+                      <label className="text-slate-700 font-bold">{t.products.fullFormModal.categoryField}</label>
                       {!isAddingNewCat && (
                         <button
                           type="button"
@@ -1063,7 +1057,7 @@ export function ProductFullFormModal({
                           className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
-                          <span>Nova Categoria</span>
+                          <span>{t.products.fullFormModal.newCategoryBtn}</span>
                         </button>
                       )}
                     </div>
@@ -1109,7 +1103,7 @@ export function ProductFullFormModal({
                         }}
                         className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
                       >
-                        <option value="">Selecione uma categoria...</option>
+                        <option value="">{t.products.fullFormModal.categoryField}...</option>
                         {categoriesList.map((cat) => (
                           <option key={cat.id} value={cat.id}>
                             {cat.nome}
@@ -1121,14 +1115,14 @@ export function ProductFullFormModal({
 
                   {/* Subcategoria com Trava de Cadeado quando sem categoria */}
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Subcategoria</label>
+                    <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.subcategoryField}</label>
                     {!categoriaId ? (
                       <div
                         className="w-full bg-slate-100 border border-dashed border-slate-300 rounded-lg p-2.5 text-slate-400 text-xs flex items-center gap-1.5 cursor-not-allowed"
-                        title="Selecione ou crie uma categoria antes de escolher uma subcategoria."
+                        title={t.products.fullFormModal.subcategoryPlaceholder}
                       >
                         <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>🔒 Requer categoria selecionada</span>
+                        <span>🔒 {t.products.fullFormModal.subcategoryPlaceholder}</span>
                       </div>
                     ) : (
                       <AdminCreatableSelect
@@ -1137,7 +1131,7 @@ export function ProductFullFormModal({
                         options={availableSubcats}
                         onChange={(val) => setSubcategoria(val)}
                         onCreateOption={(val) => handleCreateStoreAttribute('subcategorias', val)}
-                        placeholder="Selecione ou cadastre..."
+                        placeholder={t.products.fullFormModal.subcategoryPlaceholder}
                       />
                     )}
                   </div>
@@ -1145,12 +1139,12 @@ export function ProductFullFormModal({
                   {/* Tecido com 8 Pílulas Rápidas */}
                   <div className="sm:col-span-2 lg:col-span-1">
                     <AdminCreatableSelect
-                      label="Tecido / Composição"
+                      label={t.products.fullFormModal.fabricField}
                       value={tecido}
                       options={storeAttributes?.tecidos || []}
                       onChange={(val) => setTecido(val)}
                       onCreateOption={(val) => handleCreateStoreAttribute('tecidos', val)}
-                      placeholder="Selecione tecido..."
+                      placeholder={t.products.fullFormModal.fabricField}
                     />
                     {/* 8 Pílulas de Clique Rápido */}
                     <div className="flex flex-wrap gap-1 mt-1.5">
@@ -1174,24 +1168,24 @@ export function ProductFullFormModal({
                   {/* Modelagem */}
                   <div>
                     <AdminCreatableSelect
-                      label="Modelagem / Caimento"
+                      label={t.products.fullFormModal.fitField}
                       value={modelagem}
                       options={storeAttributes?.modelagens || []}
                       onChange={(val) => setModelagem(val)}
                       onCreateOption={(val) => handleCreateStoreAttribute('modelagens', val)}
-                      placeholder="Selecione modelagem..."
+                      placeholder={t.products.fullFormModal.fitField}
                     />
                   </div>
 
                   {/* Linha / Coleção */}
                   <div>
                     <AdminCreatableSelect
-                      label="Linha / Coleção"
+                      label={t.products.fullFormModal.lineCollectionField}
                       value={linha}
                       options={storeAttributes?.colecoes || []}
                       onChange={(val) => setLinha(val)}
                       onCreateOption={(val) => handleCreateStoreAttribute('colecoes', val)}
-                      placeholder="Selecione coleção..."
+                      placeholder={t.products.fullFormModal.lineCollectionField}
                     />
                   </div>
                 </div>
@@ -1199,26 +1193,26 @@ export function ProductFullFormModal({
                 {/* Descrição e Especificações Técnicas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-slate-700 mb-1 font-bold">Descrição da Peça</label>
+                    <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.descriptionField}</label>
                     <textarea
                       rows={3}
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500"
-                      placeholder="Descreva a elegância, caimento e proposta de estilo desta peça..."
+                      placeholder={t.products.fullFormModal.descriptionPlaceholder}
                     />
                   </div>
 
                   <div>
                     <label className="block text-slate-700 mb-1 font-bold">
-                      Detalhes & Especificações Técnicas (1 por linha)
+                      {t.products.fullFormModal.specsField}
                     </label>
                     <textarea
                       rows={3}
                       value={especificacoesTexto}
                       onChange={(e) => setEspecificacoesTexto(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
-                      placeholder="Ex: Forro interno suave&#10;Fechamento por zíper invisível&#10;Acabamento com costura pespontada"
+                      placeholder={t.products.fullFormModal.specsPlaceholder}
                     />
                   </div>
                 </div>
@@ -1260,7 +1254,7 @@ export function ProductFullFormModal({
                       3
                     </div>
                     <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-                      Grade de Estoque & Variações Físicas
+                      {t.products.fullFormModal.secStockTitle}
                     </h4>
                   </div>
                 )}
@@ -1270,7 +1264,7 @@ export function ProductFullFormModal({
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-amber-600" />
                     <span className="text-xs font-bold text-slate-800">
-                      Variações Físicas Cadastradas ({variacoes.length})
+                      {t.products.fullFormModal.secStockTitle} ({variacoes.length})
                     </span>
                   </div>
 
@@ -1279,14 +1273,14 @@ export function ProductFullFormModal({
                       type="button"
                       onClick={handleAutoGenerateSKUs}
                       className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer shadow-2xs flex items-center gap-1"
-                      title="Gera códigos SKU padronizados para todas as variações da grade"
+                      title={t.products.fullFormModal.autoSkuBtn}
                     >
                       <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>Auto-gerar SKUs</span>
+                      <span>{t.products.fullFormModal.autoSkuBtn}</span>
                     </button>
 
                     <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg shrink-0">
-                      Total: {variacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0)} un
+                      Total: {t.products.card.stockUnits(variacoes.reduce((acc, v) => acc + Number(v.estoque || 0), 0))}
                     </span>
                   </div>
                 </div>
@@ -1296,7 +1290,7 @@ export function ProductFullFormModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {variacoes.length === 0 ? (
                       <div className="col-span-full p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white">
-                        Nenhuma variação cadastrada na grade desta peça. Adicione cores e tamanhos abaixo.
+                        {t.products.fullFormModal.emptyStockGrid}
                       </div>
                     ) : (
                       variacoes.map((v, idx) => (
@@ -1358,7 +1352,7 @@ export function ProductFullFormModal({
                               type="button"
                               onClick={() => setVariacoes((prev) => prev.filter((_, i) => i !== idx))}
                               className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                              title="Remover variação"
+                              title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1374,10 +1368,10 @@ export function ProductFullFormModal({
                       <div>
                         <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                           <Plus className="w-3.5 h-3.5 text-amber-600" />
-                          Cadastrar Nova Cor com Múltiplos Tamanhos
+                          {t.products.fullFormModal.newColorTitle}
                         </h5>
                         <p className="text-[11px] text-slate-500">
-                          Selecione ou crie a cor e defina os tamanhos com seus respectivos estoques.
+                          {t.products.fullFormModal.newColorSubtitle}
                         </p>
                       </div>
 
@@ -1388,14 +1382,14 @@ export function ProductFullFormModal({
                           onClick={() => handleApplySizePreset('pmg')}
                           className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
                         >
-                          ⚡ Grade P, M, G
+                          {t.products.fullFormModal.colorPillPmg}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleApplySizePreset('numeros')}
                           className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
                         >
-                          ⚡ Grade 36 ao 44
+                          {t.products.fullFormModal.colorPillNum}
                         </button>
                       </div>
                     </div>
@@ -1404,7 +1398,7 @@ export function ProductFullFormModal({
                     <div className="space-y-2.5">
                       <div>
                         <label className="block text-slate-700 text-xs mb-1 font-bold">
-                          Selecione uma Cor da Boutique ou Crie Nova
+                          {t.products.fullFormModal.selectColorLabel}
                         </label>
                         <div className="flex items-center gap-2">
                           <span
@@ -1429,7 +1423,7 @@ export function ProductFullFormModal({
                             }}
                             className="flex-1 bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs focus:ring-1 focus:ring-amber-500"
                           >
-                            <option value="custom">✨ + Cadastrar Nova Cor Personalizada...</option>
+                            <option value="custom">{t.products.fullFormModal.customColorOption}</option>
                             {BOUTIQUE_OFFICIAL_COLORS.map((c) => (
                               <option key={c.nome} value={c.nome}>
                                 ■ {c.nome} ({c.hex})
@@ -1442,7 +1436,7 @@ export function ProductFullFormModal({
                       {selectedColorPreset === 'custom' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white border border-slate-200 rounded-xl">
                           <div>
-                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Nome da Nova Cor</label>
+                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">{t.products.fullFormModal.customColorNameLabel}</label>
                             <input
                               type="text"
                               value={newColorName}
@@ -1452,7 +1446,7 @@ export function ProductFullFormModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">Hex da Nova Cor</label>
+                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">{t.products.fullFormModal.customColorHexLabel}</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -1476,7 +1470,7 @@ export function ProductFullFormModal({
                     <div className="space-y-2 pt-2 border-t border-slate-200">
                       <div className="flex items-center justify-between">
                         <label className="text-slate-700 font-bold text-xs">
-                          Tamanhos e Quantidades para "{newColorName || 'esta cor'}":
+                          {t.products.fullFormModal.colorSizesTitle(newColorName || 'esta cor')}
                         </label>
                         <button
                           type="button"
@@ -1489,7 +1483,7 @@ export function ProductFullFormModal({
                           className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Adicionar Outro Tamanho</span>
+                          <span>{t.products.fullFormModal.addSizeBtn}</span>
                         </button>
                       </div>
 
@@ -1542,7 +1536,7 @@ export function ProductFullFormModal({
                                 type="button"
                                 onClick={() => setMultiSizeRows((prev) => prev.filter((r) => r.id !== row.id))}
                                 className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors"
-                                title="Remover tamanho"
+                                title="Delete"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1558,7 +1552,7 @@ export function ProductFullFormModal({
                       className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                      <span>Concluir e Inserir Cor e Tamanhos na Grade</span>
+                      <span>{t.products.fullFormModal.finishColorSizesBtn}</span>
                     </button>
                   </div>
                 </div>
@@ -1574,7 +1568,7 @@ export function ProductFullFormModal({
                       4
                     </div>
                     <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-                      Precificação Base, Custo (CMV) & Variações
+                      {t.products.fullFormModal.secPricingTitle}
                     </h4>
                   </div>
                 )}
@@ -1582,7 +1576,7 @@ export function ProductFullFormModal({
                 {/* Linha Única de 4 Colunas: Venda, Promo, Custo CMV (com margem discreta) e Botão Único */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                   <div>
-                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço de Venda ({currencySymbol}) *</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">{t.products.fullFormModal.basePriceField} ({currencySymbol}) *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1595,11 +1589,11 @@ export function ProductFullFormModal({
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 mb-1 text-xs font-bold">Preço Promocional ({currencySymbol})</label>
+                    <label className="block text-slate-700 mb-1 text-xs font-bold">{t.products.fullFormModal.basePromoField} ({currencySymbol})</label>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Opcional"
+                      placeholder={t.products.fullFormModal.basePromoPlaceholder}
                       value={precoPromocional}
                       onChange={(e) => setPrecoPromocional(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-sm focus:bg-white focus:ring-1 focus:ring-amber-500"
@@ -1608,20 +1602,20 @@ export function ProductFullFormModal({
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-slate-700 text-xs font-bold">Custo CMV ({currencySymbol})</label>
+                      <label className="block text-slate-700 text-xs font-bold">{t.products.fullFormModal.baseCostField} ({currencySymbol})</label>
                       {margemBrutaPct && (
                         <span
                           className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded"
                           title={`Lucro estimado: ${currencySymbol} ${lucroBrutoReais?.toFixed(2)}/un`}
                         >
-                          ✓ {margemBrutaPct}% margem
+                          ✓ {t.products.card.marginPct(margemBrutaPct)}
                         </span>
                       )}
                     </div>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Custo confecção"
+                      placeholder={t.products.fullFormModal.baseCostPlaceholder}
                       value={precoCusto}
                       onChange={(e) => setPrecoCusto(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-sm focus:bg-white focus:ring-1 focus:ring-amber-500"
@@ -1643,13 +1637,13 @@ export function ProductFullFormModal({
                           });
                         });
                         setPrecosDiferenciados(updated);
-                        showToast(`Preço base (R$ ${preco.toFixed(2).replace('.', ',')}) sincronizado com todas as variações da grade!`);
+                        showToast(`Preço base (${formatCurrency(preco)}) sincronizado com todas as variações da grade!`);
                       }}
                       className="w-full h-[38px] px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer transition-colors shadow-2xs flex items-center justify-center gap-1.5"
-                      title="Aplica o preço de venda e promocional base em todas as variações da grade"
+                      title={t.products.fullFormModal.replicateBaseBtn}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>⚡ Replicar Base na Grade</span>
+                      <span>{t.products.fullFormModal.replicateBaseBtn}</span>
                     </button>
                   </div>
                 </div>
@@ -1659,7 +1653,7 @@ export function ProductFullFormModal({
                   <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-1.5 text-xs">
                     <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                     <span>
-                      Atenção: O preço promocional (R$ {parsedPromo}) deve ser menor que o preço de venda (R$ {preco}).
+                      {t.products.fullFormModal.promoInconsistentAlert(formatCurrency(parsedPromo || 0), formatCurrency(preco))}
                     </span>
                   </div>
                 )}
@@ -1669,10 +1663,10 @@ export function ProductFullFormModal({
                   <div>
                     <h5 className="font-bold text-slate-800 text-xs font-serif-luxury flex items-center gap-1.5">
                       <DollarSign className="w-3.5 h-3.5 text-amber-600" />
-                      Precificação Granular por Variação (Cor × Tamanho)
+                      {t.products.fullFormModal.granularPricingTitle}
                     </h5>
                     <p className="text-[10px] text-slate-400">
-                      Itens com estoque zerado estão protegidos em cinza. Clique em qualquer um para desbloquear conscientemente.
+                      {t.products.fullFormModal.granularPricingNotice}
                     </p>
                   </div>
 
@@ -1693,10 +1687,10 @@ export function ProductFullFormModal({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 gap-2">
                     <div>
                       <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                        Sinalizadores Comerciais na Vitrine:
+                        {t.products.fullFormModal.showcaseFlagsTitle}
                       </span>
                       <p className="text-[10px] text-slate-400">
-                        Ative as tags que devem ser exibidas sobre a foto desta peça na vitrine e catálogo.
+                        {t.products.fullFormModal.showcaseFlagsNotice}
                       </p>
                     </div>
 
@@ -1704,10 +1698,10 @@ export function ProductFullFormModal({
                       type="button"
                       onClick={() => setIsSinalizadoresModalOpen(true)}
                       className="px-2.5 py-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs self-start sm:self-auto"
-                      title="Gerenciar cores, nomes e ícones oficiais de todos os sinalizadores da boutique"
+                      title={t.products.fullFormModal.manageFlagsBtn}
                     >
                       <Settings className="w-3.5 h-3.5 text-amber-700" />
-                      <span>⚙️ Gerenciar Sinalizadores</span>
+                      <span>{t.products.fullFormModal.manageFlagsBtn}</span>
                     </button>
                   </div>
 
@@ -1775,10 +1769,10 @@ export function ProductFullFormModal({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <label className="block text-slate-800 font-bold text-xs">
-                        👠 "Monte o Look" / Peças Combinadas (Cross-Sell)
+                        {t.products.fullFormModal.crossSellTitle}
                       </label>
                       <p className="text-[11px] text-slate-500">
-                        Selecione peças complementares para sugerir na vitrine e elevar o Ticket Médio:
+                        {t.products.fullFormModal.crossSellSubtitle}
                       </p>
                     </div>
                     <button
@@ -1787,13 +1781,13 @@ export function ProductFullFormModal({
                       className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{pairedSlugs.length > 0 ? 'Modificar Peças do Look' : '+ Selecionar Peças do Look'}</span>
+                      <span>{pairedSlugs.length > 0 ? t.products.fullFormModal.crossSellModifyBtn : t.products.fullFormModal.crossSellChooseBtn}</span>
                     </button>
                   </div>
 
                   {pairedSlugs.length === 0 ? (
                     <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 text-xs">
-                      Nenhuma peça complementar vinculada a este produto. Clique no botão acima para escolher com fotos e busca.
+                      {t.products.fullFormModal.crossSellEmpty}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
@@ -1824,7 +1818,7 @@ export function ProductFullFormModal({
                               </h6>
                               {pairedProd?.preco && (
                                 <span className="text-[11px] text-amber-900 font-semibold block">
-                                  R$ {pairedProd.preco.toFixed(2)}
+                                  {formatCurrency(pairedProd.preco)}
                                 </span>
                               )}
                             </div>
@@ -1832,7 +1826,7 @@ export function ProductFullFormModal({
                               type="button"
                               onClick={() => setPairedSlugs((prev) => prev.filter((item) => item !== s))}
                               className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Remover peça do look"
+                              title="Delete"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -1848,17 +1842,17 @@ export function ProductFullFormModal({
                   <div>
                     <label className="block text-slate-800 font-bold text-xs flex items-center gap-1.5">
                       <Truck className="w-4 h-4 text-amber-600" />
-                      <span>📦 Peso e Dimensões Específicas para Frete (Opcional)</span>
+                      <span>{t.products.fullFormModal.shippingTitle}</span>
                     </label>
                     <p className="text-[11px] text-slate-500">
-                      Deixe em branco para usar o <strong>Piloto Automático</strong> da loja (300g por peça em pacote padrão). Preencha apenas para peças pesadas ou volumosas (ex: casacos pesados, bolsas ou botas).
+                      {t.products.fullFormModal.shippingSubtitle}
                     </p>
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Peso (kg):
+                        {t.products.fullFormModal.weightKgLabel}
                       </label>
                       <input
                         type="text"
@@ -1870,7 +1864,7 @@ export function ProductFullFormModal({
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Altura (cm):
+                        {t.products.fullFormModal.heightCmLabel}
                       </label>
                       <input
                         type="text"
@@ -1882,7 +1876,7 @@ export function ProductFullFormModal({
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Largura (cm):
+                        {t.products.fullFormModal.widthCmLabel}
                       </label>
                       <input
                         type="text"
@@ -1894,7 +1888,7 @@ export function ProductFullFormModal({
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Comprimento (cm):
+                        {t.products.fullFormModal.lengthCmLabel}
                       </label>
                       <input
                         type="text"
@@ -1937,7 +1931,7 @@ export function ProductFullFormModal({
         {/* ============================================================== */}
         <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
           <span className="text-[11px] text-slate-500 hidden sm:inline">
-            💡 Dica: Pressione <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-800 font-mono font-bold">Ctrl + Enter</kbd> para salvar rapidamente.
+            {t.products.fullFormModal.shortcutNotice}
           </span>
 
           <div className="flex items-center gap-2.5 ml-auto">
@@ -1947,7 +1941,7 @@ export function ProductFullFormModal({
               disabled={isSaving}
               className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
-              Cancelar
+              {t.products.fullFormModal.cancelBtn}
             </button>
             <button
               type="button"
@@ -1958,12 +1952,12 @@ export function ProductFullFormModal({
               {isSaving ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Salvando no Banco & R2...</span>
+                  <span>{t.products.fullFormModal.savingBtn}</span>
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>{isEdit ? 'Salvar Cadastro Completo' : 'Salvar Peça no Catálogo'}</span>
+                  <span>{t.products.fullFormModal.saveBtn}</span>
                 </>
               )}
             </button>

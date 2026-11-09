@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import { CustomSinalizador, saveStoreSinalizadores, getStoreCustomAttributes } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface AdminSinalizadoresModalProps {
   isOpen: boolean;
@@ -55,6 +56,7 @@ export function AdminSinalizadoresModal({
   onUpdated,
   onToast
 }: AdminSinalizadoresModalProps) {
+  const { t } = useAdminI18n();
   const [sinalizadores, setSinalizadores] = useState<CustomSinalizador[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [novoNome, setNovoNome] = useState('');
@@ -87,13 +89,13 @@ export function AdminSinalizadoresModal({
 
   const handleRemoveCustom = (id: string) => {
     setSinalizadores((prev) => prev.filter((item) => item.id !== id));
-    showToast('Sinalizador removido da lista!', 'info');
+    showToast(t.products.flagsModal.toastRemoved, 'info');
   };
 
   const handleAddNovo = (nome?: string, icone?: string, cor?: string) => {
     const finalNome = (nome || novoNome).trim();
     if (!finalNome) {
-      showToast('Digite um nome para o novo sinalizador.', 'error');
+      showToast(t.products.flagsModal.toastNameRequired, 'error');
       return;
     }
 
@@ -118,7 +120,7 @@ export function AdminSinalizadoresModal({
     setSinalizadores((prev) => [...prev, novoItem]);
     setNovoNome('');
     setNovoIcone('✨');
-    showToast(`Sinalizador "${finalNome}" adicionado!`, 'success');
+    showToast(`"${finalNome}" +`, 'success');
   };
 
   const handleSave = async () => {
@@ -126,10 +128,10 @@ export function AdminSinalizadoresModal({
     try {
       const res = await saveStoreSinalizadores(tenantId, sinalizadores);
       if (onUpdated) onUpdated(res.sinalizadores);
-      showToast('Configurações globais de sinalizadores salvas com sucesso!', 'success');
+      showToast(t.products.flagsModal.toastSaved, 'success');
       onClose();
     } catch (err: any) {
-      showToast(err?.message || 'Falha ao salvar sinalizadores da loja.', 'error');
+      showToast(err?.message || 'Error', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -146,10 +148,10 @@ export function AdminSinalizadoresModal({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm sm:text-base font-serif-luxury">
-                Gerenciamento Global de Sinalizadores (Badges)
+                {t.products.flagsModal.title}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Altere cores, ícones e nomes oficiais. As alterações refletem imediatamente na vitrine e nos produtos.
+                {t.products.flagsModal.subtitle}
               </p>
             </div>
           </div>
@@ -169,10 +171,10 @@ export function AdminSinalizadoresModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                Sinalizadores Configurados ({sinalizadores.length})
+                {t.products.flagsModal.configuredFlagsTitle(sinalizadores.length)}
               </span>
               <span className="text-[11px] text-slate-400">
-                Os 4 sinalizadores do sistema são protegidos para garantir a integridade dos dados.
+                {t.products.flagsModal.systemFlagsNotice}
               </span>
             </div>
 
@@ -194,7 +196,7 @@ export function AdminSinalizadoresModal({
                         type="text"
                         value={s.icone || s.icon || '✨'}
                         onChange={(e) => handleUpdateItem(idx, { icone: e.target.value, icon: e.target.value })}
-                        title="Emoji ou Ícone"
+                        title="Emoji / Icon"
                         className="w-9 h-9 text-center bg-slate-50 border border-slate-300 rounded-lg text-base shrink-0 focus:bg-white"
                       />
 
@@ -204,17 +206,17 @@ export function AdminSinalizadoresModal({
                           type="text"
                           value={s.nome || s.label || ''}
                           onChange={(e) => handleUpdateItem(idx, { nome: e.target.value, label: e.target.value })}
-                          placeholder="Nome do sinalizador..."
+                          placeholder={t.products.flagsModal.flagNameLabel}
                           className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:bg-white"
                         />
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {s.isSystem ? (
                             <span className="text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 rounded">
-                              Sistema (Core)
+                              {t.products.flagsModal.coreBadge}
                             </span>
                           ) : (
                             <span className="text-[9px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-1.5 rounded">
-                              Personalizado
+                              {t.products.flagsModal.customBadge}
                             </span>
                           )}
                           <span className="text-[10px] text-slate-400 font-mono">id: {s.id}</span>
@@ -231,7 +233,7 @@ export function AdminSinalizadoresModal({
                           value={s.cor || s.color || '#C5A059'}
                           onChange={(e) => handleUpdateItem(idx, { cor: e.target.value, color: e.target.value })}
                           className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent shrink-0"
-                          title="Escolha a cor do badge"
+                          title={t.products.flagsModal.flagColorLabel}
                         />
                         <input
                           type="text"
@@ -248,7 +250,7 @@ export function AdminSinalizadoresModal({
                           backgroundColor: s.cor || s.color || '#C5A059',
                           color: s.textColor || '#ffffff'
                         }}
-                        title="Prévia exata do badge na vitrine da loja"
+                        title={t.products.flagsModal.previewLabel}
                       >
                         <span>{s.icone || s.icon || '✨'}</span>
                         <span className="truncate max-w-[100px]">{s.nome || 'Badge'}</span>
@@ -262,7 +264,7 @@ export function AdminSinalizadoresModal({
                           onChange={(e) => handleUpdateItem(idx, { ativo: e.target.checked })}
                           className="accent-amber-600 rounded"
                         />
-                        <span className="hidden sm:inline">{s.ativo !== false ? 'Ativo' : 'Oculto'}</span>
+                        <span className="hidden sm:inline">{s.ativo !== false ? t.products.flagsModal.activeLabel : t.products.flagsModal.hiddenLabel}</span>
                       </label>
 
                       {/* Excluir se for customizado */}
@@ -271,7 +273,7 @@ export function AdminSinalizadoresModal({
                           type="button"
                           onClick={() => handleRemoveCustom(s.id)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                          title="Excluir sinalizador personalizado"
+                          title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -287,13 +289,13 @@ export function AdminSinalizadoresModal({
           <div className="pt-4 space-y-3">
             <h5 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5 text-amber-600" />
-              Criar Novo Sinalizador Comercial
+              {t.products.flagsModal.newFlagTitle}
             </h5>
 
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Ícone</label>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.products.flagsModal.flagIconLabel}</label>
                   <input
                     type="text"
                     value={novoIcone}
@@ -304,7 +306,7 @@ export function AdminSinalizadoresModal({
                 </div>
 
                 <div className="sm:col-span-6">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Nome do Sinalizador</label>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.products.flagsModal.flagNameLabel}</label>
                   <input
                     type="text"
                     value={novoNome}
@@ -315,7 +317,7 @@ export function AdminSinalizadoresModal({
                 </div>
 
                 <div className="sm:col-span-4">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Cor Oficial</label>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.products.flagsModal.flagColorLabel}</label>
                   <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg p-1">
                     <input
                       type="color"
@@ -336,7 +338,7 @@ export function AdminSinalizadoresModal({
               {/* Botão Adicionar */}
               <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-slate-400 font-semibold">Sugestões rápidas:</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">{t.products.flagsModal.presetsTitle}</span>
                   {PRESETS_RAPIDOS.map((p) => (
                     <button
                       key={p.nome}
@@ -355,7 +357,7 @@ export function AdminSinalizadoresModal({
                   className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Adicionar à Lista</span>
+                  <span>{t.products.flagsModal.addToListBtn}</span>
                 </button>
               </div>
             </div>
@@ -365,7 +367,7 @@ export function AdminSinalizadoresModal({
         {/* Rodapé com Botões de Ação */}
         <div className="p-3.5 sm:p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
           <p className="text-[11px] text-slate-400 hidden sm:block">
-            As alterações são salvas na loja e refletidas instantaneamente na vitrine.
+            {t.products.flagsModal.footerNotice}
           </p>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -375,7 +377,7 @@ export function AdminSinalizadoresModal({
               disabled={isSaving}
               className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
             >
-              Cancelar
+              {t.products.flagsModal.cancelBtn}
             </button>
 
             <button
@@ -387,12 +389,12 @@ export function AdminSinalizadoresModal({
               {isSaving ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Salvando...</span>
+                  <span>{t.products.flagsModal.savingBtn}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Salvar Alterações Globais</span>
+                  <span>{t.products.flagsModal.saveBtn}</span>
                 </>
               )}
             </button>

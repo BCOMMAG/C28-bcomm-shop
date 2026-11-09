@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Search, Plus, Trash2, Check, X, Sparkles } from 'lucide-react';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface AdminCreatableSelectProps {
   label?: string;
@@ -24,12 +25,16 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
   onChange,
   onCreateOption,
   onDeleteOption,
-  placeholder = 'Selecione ou cadastre...',
+  placeholder,
   disabled = false,
   required = false,
-  emptyLabel = 'Deixar em branco',
+  emptyLabel,
   className = ''
 }) => {
+  const { t } = useAdminI18n();
+  const activePlaceholder = placeholder || t.products.creatableSelect.placeholder;
+  const activeEmptyLabel = emptyLabel || t.products.creatableSelect.emptyLabel;
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatingInline, setIsCreatingInline] = useState(false);
@@ -101,7 +106,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
   const handleDelete = async (e: React.MouseEvent, opt: string) => {
     e.stopPropagation();
     if (!onDeleteOption) return;
-    if (confirm(`Deseja realmente remover a opção "${opt}" das configurações da loja?`)) {
+    if (confirm(t.products.creatableSelect.confirmDelete(opt))) {
       await onDeleteOption(opt);
       if (value === opt) onChange('');
     }
@@ -133,7 +138,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <span className={`truncate font-semibold ${value ? 'text-slate-900' : 'text-slate-400 font-normal'}`}>
-          {value || placeholder}
+          {value || activePlaceholder}
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -160,7 +165,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                     setIsOpen(false);
                   }
                 }}
-                placeholder="Buscar ou cadastrar..."
+                placeholder={t.products.creatableSelect.searchPlaceholder}
                 className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 text-xs"
               />
             </div>
@@ -180,7 +185,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                   !value ? 'bg-amber-50/50 text-amber-800 font-bold' : ''
                 }`}
               >
-                <span>{emptyLabel}</span>
+                <span>{activeEmptyLabel}</span>
                 {!value && <Check className="w-3.5 h-3.5 text-amber-600" />}
               </button>
             )}
@@ -209,7 +214,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleDelete(e, opt)}
-                          title="Remover opção da loja"
+                          title={t.products.creatableSelect.deleteOptionTitle}
                           className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer"
                         >
                           <Trash2 className="w-3 h-3 text-slate-400 hover:text-rose-600" />
@@ -221,7 +226,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
               })
             ) : (
               <div className="p-3 text-center text-slate-400 italic">
-                Nenhuma opção encontrada com &quot;{searchTerm}&quot;
+                {t.products.creatableSelect.noOptionsFound(searchTerm)}
               </div>
             )}
           </div>
@@ -236,7 +241,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                 className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Cadastrar &quot;{searchTerm.trim()}&quot;</span>
+                <span>{t.products.creatableSelect.createOptionBtn(searchTerm.trim())}</span>
               </button>
             </div>
           )}
@@ -244,7 +249,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
           {/* Formulário Inline de Cadastro Manual */}
           {isCreatingInline ? (
             <div className="p-2.5 border-t border-slate-100 bg-slate-50 space-y-2">
-              <span className="text-[11px] font-bold text-slate-700 block">Cadastrar Nova Opção</span>
+              <span className="text-[11px] font-bold text-slate-700 block">{t.products.creatableSelect.newOptionModalTitle}</span>
               <div className="flex items-center gap-1.5">
                 <input
                   ref={inlineInputRef}
@@ -259,7 +264,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                       setIsCreatingInline(false);
                     }
                   }}
-                  placeholder="Nome da nova opção..."
+                  placeholder={t.products.creatableSelect.newOptionInputPlaceholder}
                   className="flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-amber-500"
                 />
                 <button
@@ -268,7 +273,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                   onClick={() => handleCreateNew(inlineInputValue)}
                   className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                 >
-                  Salvar
+                  {t.products.creatableSelect.saveBtn}
                 </button>
                 <button
                   type="button"
@@ -290,7 +295,7 @@ export const AdminCreatableSelect: React.FC<AdminCreatableSelectProps> = ({
                 className="w-full py-1.5 px-3 rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 text-amber-600" />
-                <span>+ Cadastrar Nova Opção</span>
+                <span>+ {t.products.creatableSelect.newOptionModalTitle}</span>
               </button>
             </div>
           )}

@@ -30,7 +30,7 @@ export function ProductVariationPriceMatrix({
   onChange,
   onFeedback
 }: ProductVariationPriceMatrixProps) {
-  const { currency } = useAdminI18n();
+  const { currency, t } = useAdminI18n();
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
 
   // Controle de células desbloqueadas manualmente pelo administrador mesmo sem estoque
@@ -77,12 +77,12 @@ export function ProductVariationPriceMatrix({
       });
     });
     onChange(updated);
-    onFeedback?.('Preço base replicado para todas as combinações da matriz!');
+    onFeedback?.(t.products.matrix.toastReplicatedBase);
   };
 
   const handleLimparPrecosDiferenciados = () => {
     onChange({});
-    onFeedback?.('Preços diferenciados limpos. Todas as variações agora herdam o preço base da peça.');
+    onFeedback?.(t.products.matrix.toastCleared);
   };
 
   const handleReplicarLinhaCor = (corNome: string) => {
@@ -100,7 +100,7 @@ export function ProductVariationPriceMatrix({
       };
     });
     onChange(updated);
-    onFeedback?.(`Preço do tamanho ${firstTam} replicado para todos os tamanhos da cor ${corNome}!`);
+    onFeedback?.(t.products.matrix.toastReplicatedRow(firstTam, corNome));
   };
 
   const handleReplicarColunaTamanho = (tamanho: string) => {
@@ -119,13 +119,13 @@ export function ProductVariationPriceMatrix({
       };
     });
     onChange(updated);
-    onFeedback?.(`Preço do tamanho ${tamanho} replicado em todas as cores!`);
+    onFeedback?.(t.products.matrix.toastReplicatedCol(tamanho));
   };
 
   if (cores.length === 0 || tamanhos.length === 0) {
     return (
       <div className="p-6 text-center bg-amber-50/50 rounded-xl border border-dashed border-amber-300 text-amber-900 text-xs">
-        Cadastre ao menos uma cor e um tamanho na grade acima para configurar preços por variação.
+        {t.products.matrix.emptyGrid}
       </div>
     );
   }
@@ -137,13 +137,13 @@ export function ProductVariationPriceMatrix({
         <table className="w-full text-left border-collapse text-xs">
           <thead className="bg-amber-100/70 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
             <tr>
-              <th className="p-2.5 min-w-[140px]">Cor</th>
+              <th className="p-2.5 min-w-[140px]">{t.products.matrix.thColor}</th>
               {tamanhos.map((tam) => (
                 <th key={tam} className="p-2.5 text-center min-w-[140px]">
-                  Tam. {tam === 'Tamanho Único' ? 'Único' : tam} ({currencySymbol})
+                  {t.products.matrix.thSize} {tam === 'Tamanho Único' ? t.products.matrix.singleSize : tam} ({currencySymbol})
                 </th>
               ))}
-              <th className="p-2.5 text-center min-w-[140px]">Ações da Cor</th>
+              <th className="p-2.5 text-center min-w-[140px]">{t.products.matrix.thActions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-amber-100 bg-white">
@@ -195,7 +195,7 @@ export function ProductVariationPriceMatrix({
                             <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold px-0.5 mb-1">
                               <span className="flex items-center gap-1 text-slate-500">
                                 <Lock className="w-2.5 h-2.5 text-slate-400" />
-                                {existsInGrade ? '0 un (Zerado)' : 'Fora da grade'}
+                                {existsInGrade ? t.products.matrix.stockZero : t.products.matrix.notInGrade}
                               </span>
                               <button
                                 type="button"
@@ -208,16 +208,16 @@ export function ProductVariationPriceMatrix({
                                   })
                                 }
                                 className="text-amber-700 hover:text-amber-900 underline text-[9px] cursor-pointer"
-                                title="Clique para desbloquear a edição deste preço"
+                                title={t.products.matrix.unlockNotice}
                               >
-                                Desbloquear
+                                {t.products.matrix.unlockBtn}
                               </button>
                             </div>
                           ) : isUnlockedManually ? (
                             <div className="flex items-center justify-between text-[9px] text-amber-800 font-bold px-0.5 mb-1">
                               <span className="flex items-center gap-1">
                                 <Unlock className="w-2.5 h-2.5 text-amber-600" />
-                                Desbloqueado (0 un)
+                                {t.products.matrix.unlockedBadge}
                               </span>
                               <button
                                 type="button"
@@ -229,15 +229,15 @@ export function ProductVariationPriceMatrix({
                                   });
                                 }}
                                 className="text-slate-400 hover:text-slate-600 text-[9px] cursor-pointer"
-                                title="Bloquear novamente"
+                                title={t.products.matrix.relockBtn}
                               >
-                                Bloquear
+                                {t.products.matrix.relockBtn}
                               </button>
                             </div>
                           ) : (
                             <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium px-0.5 mb-0.5">
-                              <span>Estoque:</span>
-                              <span className="font-bold text-slate-700">{estoqueNum} un</span>
+                              <span>{t.products.matrix.stockLabel}</span>
+                              <span className="font-bold text-slate-700">{estoqueNum} {t.products.matrix.stockUnit}</span>
                             </div>
                           )}
 
@@ -276,7 +276,7 @@ export function ProductVariationPriceMatrix({
                                   ? 'bg-amber-100/70 border border-amber-400 text-amber-950 font-black focus:ring-1 focus:ring-amber-500'
                                   : 'bg-white border border-slate-300 text-slate-900 focus:ring-1 focus:ring-amber-500'
                               }`}
-                              title={isBlocked ? `Bloqueado: ${corNome} Tam ${tam} está sem estoque. Clique para desbloquear.` : `Preço de venda para ${corNome} Tam ${tam}`}
+                              title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thSalePrice}: ${corNome} ${tam}`}
                             />
                           </div>
 
@@ -308,22 +308,22 @@ export function ProductVariationPriceMatrix({
                                   parseFloat(e.target.value) || 0
                                 );
                               }}
-                              placeholder={isBlocked ? 'Bloqueado' : 'Promoção'}
+                              placeholder={isBlocked ? t.products.matrix.blockedPlaceholder : t.products.matrix.promoPlaceholder}
                               className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
                                 isBlocked
                                   ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed placeholder:text-slate-400'
                                   : 'bg-rose-50/40 border border-rose-200 text-rose-900 focus:ring-1 focus:ring-rose-500'
                               }`}
-                              title={isBlocked ? `Bloqueado: ${corNome} Tam ${tam} está sem estoque. Clique para desbloquear.` : `Preço promocional para ${corNome} Tam ${tam}`}
+                              title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thPromoPrice}: ${corNome} ${tam}`}
                             />
                           </div>
 
                           {/* Badge Herança vs Personalizado */}
                           <div className="text-[9px]">
                             {hasCustom ? (
-                              <span className="text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded">★ Personalizado</span>
+                              <span className="text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded">{t.products.matrix.customBadge}</span>
                             ) : (
-                              <span className="text-slate-400">Herdando base</span>
+                              <span className="text-slate-400">{t.products.matrix.inheritedBadge}</span>
                             )}
                           </div>
                         </div>
@@ -337,10 +337,10 @@ export function ProductVariationPriceMatrix({
                       type="button"
                       onClick={() => handleReplicarLinhaCor(corNome)}
                       className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1"
-                      title={`Replicar o valor do primeiro tamanho em todos os tamanhos da cor ${corNome}`}
+                      title={t.products.matrix.replicateInColorTooltip(corNome)}
                     >
                       <Copy className="w-2.5 h-2.5" />
-                      <span>Replicar nesta Cor</span>
+                      <span>{t.products.matrix.replicateInColorBtn}</span>
                     </button>
                   </td>
                 </tr>
@@ -352,7 +352,7 @@ export function ProductVariationPriceMatrix({
           <tfoot className="bg-amber-50/80 border-t border-amber-200 text-[10px] font-bold text-amber-950">
             <tr>
               <td className="p-2 text-slate-500 uppercase tracking-wider">
-                Replicar Tamanho:
+                {t.products.matrix.replicateSizeFooter}
               </td>
               {tamanhos.map((tam) => (
                 <td key={tam} className="p-2 text-center">
@@ -360,14 +360,14 @@ export function ProductVariationPriceMatrix({
                     type="button"
                     onClick={() => handleReplicarColunaTamanho(tam)}
                     className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold cursor-pointer transition-colors"
-                    title={`Replicar o preço de ${tam} da primeira cor em todas as outras cores`}
+                    title={`Replicar ${tam}`}
                   >
-                    Em Todas
+                    {t.products.matrix.replicateInAllColorsBtn}
                   </button>
                 </td>
               ))}
               <td className="p-2 text-center text-slate-400 font-normal">
-                (Aplica na vertical)
+                {t.products.matrix.replicateVerticalHint}
               </td>
             </tr>
           </tfoot>
@@ -384,16 +384,16 @@ export function ProductVariationPriceMatrix({
               </div>
               <div className="flex-1">
                 <h4 className="font-bold text-slate-900 text-sm">
-                  Variação sem Estoque Físico
+                  {t.products.matrix.modalZeroStockTitle}
                 </h4>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  A peça na cor <strong className="text-slate-900 font-bold">{confirmModalData.corNome}</strong> e tamanho <strong className="text-slate-900 font-bold">{confirmModalData.tam}</strong> {confirmModalData.existsInGrade ? 'está atualmente com estoque zerado (0 unidades físicas).' : 'não foi cadastrada na grade física desta peça.'}
+                  {t.products.matrix.modalZeroStockDesc(confirmModalData.corNome, confirmModalData.tam, confirmModalData.existsInGrade)}
                 </p>
                 <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 mt-2 text-[11px] text-amber-900">
-                  💡 <strong>Por que este campo está bloqueado?</strong> Para evitar que preços sejam configurados para itens indisponíveis na vitrine.
+                  {t.products.matrix.modalZeroStockWhy} <strong>{t.products.matrix.modalZeroStockReason}</strong>
                 </div>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Deseja desbloquear a edição deste preço mesmo assim para deixar o valor pré-configurado quando houver reposição no estoque?
+                  {t.products.matrix.modalZeroStockQuestion}
                 </p>
               </div>
             </div>
@@ -404,7 +404,7 @@ export function ProductVariationPriceMatrix({
                 onClick={() => setConfirmModalData(null)}
                 className="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-colors"
               >
-                Cancelar / Manter Bloqueado
+                {t.products.matrix.modalCancelBtn}
               </button>
               <button
                 type="button"
@@ -412,12 +412,12 @@ export function ProductVariationPriceMatrix({
                   const k = `${confirmModalData.corNome}_${confirmModalData.tam}`;
                   setUnlockedCells((prev) => new Set([...prev, k]));
                   setConfirmModalData(null);
-                  onFeedback?.(`Edição de preço desbloqueada para ${confirmModalData.corNome} (${confirmModalData.tam})!`);
+                  onFeedback?.(t.products.matrix.toastUnlocked(confirmModalData.corNome, confirmModalData.tam));
                 }}
                 className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm flex items-center gap-1.5"
               >
                 <Unlock className="w-3.5 h-3.5" />
-                <span>Sim, Desbloquear e Editar Preço</span>
+                <span>{t.products.matrix.modalConfirmUnlockBtn}</span>
               </button>
             </div>
           </div>

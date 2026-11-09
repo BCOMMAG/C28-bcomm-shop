@@ -39,7 +39,7 @@ export function ProductCardPreviewDrawer({
   precosPorVariacao = {}
 }: ProductCardPreviewProps) {
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
-  const { formatCurrency } = useAdminI18n();
+  const { formatCurrency, t } = useAdminI18n();
 
   // Determina se há preços divergentes entre variações
   const precosValores = Object.values(precosPorVariacao)
@@ -75,10 +75,10 @@ export function ProductCardPreviewDrawer({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950 uppercase tracking-wider">
           <Eye className="w-4 h-4 text-amber-700" />
-          <span>Simulador da Vitrine (Card Live Preview)</span>
+          <span>{t.products.previewDrawer.title}</span>
         </div>
         <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
-          Em Tempo Real
+          {t.products.previewDrawer.badgeLive}
         </span>
       </div>
 
@@ -88,7 +88,7 @@ export function ProductCardPreviewDrawer({
           {displayPhotoUrl ? (
             <Image
               src={displayPhotoUrl}
-              alt={nome || 'Preview do Produto'}
+              alt={nome || t.products.previewDrawer.defaultName}
               fill
               sizes="280px"
               className="object-cover transition-transform duration-500 hover:scale-105"
@@ -96,7 +96,7 @@ export function ProductCardPreviewDrawer({
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1 p-4 text-center">
               <Package className="w-8 h-8 text-slate-300" />
-              <span className="text-[11px] text-slate-400 font-medium">Sem foto de capa</span>
+              <span className="text-[11px] text-slate-400 font-medium">{t.products.previewDrawer.noCoverPhoto}</span>
             </div>
           )}
 
@@ -104,22 +104,22 @@ export function ProductCardPreviewDrawer({
           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
             {destaque && (
               <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-xs">
-                🌟 Lançamento
+                {t.products.previewDrawer.badgeFeatured}
               </span>
             )}
             {maisVendido && (
               <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs">
-                🔥 Mais Vendido
+                {t.products.previewDrawer.badgeBestSeller}
               </span>
             )}
             {outlet && (
               <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
-                🏷️ Outlet
+                {t.products.previewDrawer.badgeOutlet}
               </span>
             )}
             {ultimasPecas && (
               <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-orange-600 text-white shadow-xs">
-                ⏳ Últimas Peças
+                {t.products.previewDrawer.badgeLastUnits}
               </span>
             )}
             {temPromo && (
@@ -143,7 +143,7 @@ export function ProductCardPreviewDrawer({
           {/* Categoria & Tecido */}
           <div className="flex items-center justify-between text-[10px] text-slate-500">
             <span className="font-bold uppercase tracking-wider truncate">
-              {categoriaNome || 'Categoria'}
+              {categoriaNome || t.products.previewDrawer.defaultCategory}
             </span>
             {tecido && (
               <span className="text-[9px] font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 truncate">
@@ -154,7 +154,7 @@ export function ProductCardPreviewDrawer({
 
           {/* Título da Peça */}
           <h5 className="font-bold text-slate-900 text-xs line-clamp-1 font-serif-luxury" title={nome}>
-            {nome || 'Nome da Nova Peça'}
+            {nome || t.products.previewDrawer.defaultName}
           </h5>
 
           {/* Cores Disponíveis (Hover interativo para testar troca de foto) */}
@@ -172,7 +172,7 @@ export function ProductCardPreviewDrawer({
                       : 'border-black/20 hover:scale-105'
                   }`}
                   style={{ backgroundColor: c.hex || '#1A1918' }}
-                  title={`Ver foto da cor: ${c.nome}`}
+                  title={t.products.previewDrawer.seeColorPhoto(c.nome)}
                 />
               ))}
               {cores.length > 6 && (
@@ -184,7 +184,7 @@ export function ProductCardPreviewDrawer({
           {/* Preços e Parcelamento */}
           <div className="pt-1 border-t border-slate-100">
             {temDivergencia && (
-              <span className="text-[10px] text-slate-500 block">A partir de</span>
+              <span className="text-[10px] text-slate-500 block">{t.products.previewDrawer.startingFrom}</span>
             )}
             <div className="flex items-baseline gap-1.5">
               <span className="font-extrabold text-slate-900 text-sm font-mono">
@@ -197,7 +197,7 @@ export function ProductCardPreviewDrawer({
               )}
             </div>
             <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
-              ou até 6x de {formatCurrency((temPromo ? precoPromocional! : menorPrecoVariacao) / 6)} sem juros
+              {t.products.previewDrawer.installments(formatCurrency((temPromo ? precoPromocional! : menorPrecoVariacao) / 6))}
             </span>
           </div>
         </div>

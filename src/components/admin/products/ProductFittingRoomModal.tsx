@@ -12,6 +12,7 @@ import {
   getActiveReservations
 } from '@/lib/reservas';
 import { AdminProductItem } from '@/lib/admin';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface ProductFittingRoomModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function ProductFittingRoomModal({
   lojaId,
   onReservationUpdated
 }: ProductFittingRoomModalProps) {
+  const { t } = useAdminI18n();
   const [activeReservations, setActiveReservations] = useState<ReservaEstoque[]>([]);
   const [selectedVariationId, setSelectedVariationId] = useState<string>('');
   const [duracaoMinutos, setDuracaoMinutos] = useState(30);
@@ -144,7 +146,7 @@ export function ProductFittingRoomModal({
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Reserva de Provador / Balcão</h2>
+              <h2 className="text-base font-bold text-slate-900">{t.products.fittingRoomModal.title}</h2>
               <p className="text-xs text-slate-500 truncate max-w-[300px]">{product.nome}</p>
             </div>
           </div>
@@ -173,13 +175,13 @@ export function ProductFittingRoomModal({
               {lastCreatedOrderNum && (
                 <div className="pt-2 border-t border-emerald-200 flex items-center justify-between">
                   <span className="font-mono text-xs font-black text-emerald-950">
-                    Pedido: #{lastCreatedOrderNum}
+                    {t.products.fittingRoomModal.orderCreatedLabel(lastCreatedOrderNum)}
                   </span>
                   <Link
                     href="/admin/pedidos"
                     className="inline-flex items-center gap-1 font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg text-[11px] transition-colors"
                   >
-                    <span>Ver no Kanban de Pedidos</span>
+                    <span>{t.products.fittingRoomModal.viewInKanbanBtn}</span>
                     <ArrowRight className="w-3 h-3 text-amber-700" />
                   </Link>
                 </div>
@@ -193,10 +195,10 @@ export function ProductFittingRoomModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
-                  <span>Peças no Provador no Momento ({activeReservations.length})</span>
+                  <span>{t.products.fittingRoomModal.activeRoomsTitle(activeReservations.length)}</span>
                 </span>
                 <span className="text-[10px] text-amber-800 font-semibold bg-amber-100 px-2 py-0.5 rounded-full">
-                  Travadas no site
+                  {t.products.fittingRoomModal.lockedOnSiteBadge}
                 </span>
               </div>
 
@@ -211,11 +213,11 @@ export function ProductFittingRoomModal({
                         {r.tamanho ? `Tam: ${r.tamanho}` : ''} {r.cor ? `• ${r.cor}` : ''}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        Por <strong>{r.vendedora_nome}</strong> &bull;{' '}
+                        {t.products.fittingRoomModal.bySeller(r.vendedora_nome)} &bull;{' '}
                         <span className="text-amber-800 font-bold">
-                          Restam ~{r.minutos_restantes} min
+                          {t.products.fittingRoomModal.remainingMin(r.minutos_restantes || 0)}
                         </span>
-                        {r.cliente_nome ? ` (Cliente: ${r.cliente_nome})` : ''}
+                        {r.cliente_nome ? ` (${t.products.fittingRoomModal.customerLabel(r.cliente_nome)})` : ''}
                       </div>
                     </div>
 
@@ -224,17 +226,17 @@ export function ProductFittingRoomModal({
                         type="button"
                         onClick={() => handleConvertToSale(r.id)}
                         className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-md transition-colors"
-                        title="Venda fechada no balcão"
+                        title={t.products.fittingRoomModal.sellBtn}
                       >
-                        Vender
+                        {t.products.fittingRoomModal.sellBtn}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleCancelReservation(r.id)}
                         className="px-2 py-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[10px] rounded-md transition-colors"
-                        title="Liberar volta para arara"
+                        title={t.products.fittingRoomModal.releaseBtn}
                       >
-                        Liberar
+                        {t.products.fittingRoomModal.releaseBtn}
                       </button>
                     </div>
                   </div>
@@ -246,14 +248,14 @@ export function ProductFittingRoomModal({
           {/* Formulário de Nova Reserva */}
           <form onSubmit={handleCreateReservation} className="space-y-4">
             <span className="text-xs font-bold text-slate-800 block">
-              + Nova Reserva Temporária (Trava de Estoque)
+              {t.products.fittingRoomModal.newReservationTitle}
             </span>
 
             {/* Variação (Tamanho / Cor) */}
             {product.variacoes && product.variacoes.length > 0 && (
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                  Selecione o Tamanho & Cor
+                  {t.products.fittingRoomModal.selectVariation}
                 </label>
                 <select
                   value={selectedVariationId}
@@ -262,7 +264,7 @@ export function ProductFittingRoomModal({
                 >
                   {product.variacoes.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.tamanho} &bull; {v.cor_nome} (Estoque físico: {v.estoque} un.)
+                      {v.tamanho} &bull; {v.cor_nome} {t.products.fittingRoomModal.physicalStockBadge(v.estoque)}
                     </option>
                   ))}
                 </select>
@@ -272,59 +274,59 @@ export function ProductFittingRoomModal({
             {/* Tempo de Duração */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { min: 15, label: '15 min', desc: 'Rápido' },
-                { min: 30, label: '30 min', desc: 'Padrão' },
-                { min: 60, label: '1 hora', desc: 'VIP / Condicional' }
-              ].map((t) => (
+                { min: 15, label: t.products.fittingRoomModal.duration15m, desc: t.products.fittingRoomModal.duration15mDesc },
+                { min: 30, label: t.products.fittingRoomModal.duration30m, desc: t.products.fittingRoomModal.duration30mDesc },
+                { min: 60, label: t.products.fittingRoomModal.duration60m, desc: t.products.fittingRoomModal.duration60mDesc }
+              ].map((tItem) => (
                 <button
-                  key={t.min}
+                  key={tItem.min}
                   type="button"
-                  onClick={() => setDuracaoMinutos(t.min)}
+                  onClick={() => setDuracaoMinutos(tItem.min)}
                   className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                    duracaoMinutos === t.min
+                    duracaoMinutos === tItem.min
                       ? 'border-amber-600 bg-amber-50 text-amber-900 font-bold'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="text-xs block">{t.label}</span>
-                  <span className="text-[9px] text-slate-400">{t.desc}</span>
+                  <span className="text-xs block">{tItem.label}</span>
+                  <span className="text-[9px] text-slate-400">{tItem.desc}</span>
                 </button>
               ))}
             </div>
 
             {/* Motivo da Reserva */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Motivo</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">{t.products.fittingRoomModal.reasonLabel}</label>
               <select
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value as any)}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600"
               >
-                <option value="provador">👗 Cliente no Provador da Loja</option>
-                <option value="whatsapp_pix">💬 Negociação WhatsApp (Aguardando PIX)</option>
-                <option value="condicional">🛍️ Condicional VIP (Levou para provar em casa)</option>
+                <option value="provador">{t.products.fittingRoomModal.reasonStoreFitting}</option>
+                <option value="whatsapp_pix">{t.products.fittingRoomModal.reasonWhatsappPix}</option>
+                <option value="condicional">{t.products.fittingRoomModal.reasonVipConditional}</option>
               </select>
             </div>
 
             {/* Dados da Cliente (Opcional) */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">Nome da Cliente (Opcional)</label>
+                <label className="block text-[10px] text-slate-500 mb-1">{t.products.fittingRoomModal.customerNameLabel}</label>
                 <input
                   type="text"
                   value={clienteNome}
                   onChange={(e) => setClienteNome(e.target.value)}
-                  placeholder="Ex: Mariana"
+                  placeholder={t.products.fittingRoomModal.customerNamePlaceholder}
                   className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">WhatsApp (Opcional)</label>
+                <label className="block text-[10px] text-slate-500 mb-1">{t.products.fittingRoomModal.customerWhatsappLabel}</label>
                 <input
                   type="text"
                   value={clienteTelefone}
                   onChange={(e) => setClienteTelefone(e.target.value)}
-                  placeholder="(11) 9..."
+                  placeholder={t.products.fittingRoomModal.customerWhatsappPlaceholder}
                   className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
                 />
               </div>
@@ -336,7 +338,7 @@ export function ProductFittingRoomModal({
                 onClick={onClose}
                 className="py-2 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                Fechar
+                {t.products.fittingRoomModal.closeBtn}
               </button>
               <button
                 type="submit"
@@ -344,7 +346,7 @@ export function ProductFittingRoomModal({
                 className="py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>{loading ? 'Travando...' : `Reservar por ${duracaoMinutos} min`}</span>
+                <span>{loading ? t.products.fittingRoomModal.lockingBtn : t.products.fittingRoomModal.reserveBtn(duracaoMinutos)}</span>
               </button>
             </div>
           </form>

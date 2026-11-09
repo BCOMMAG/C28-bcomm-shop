@@ -2025,12 +2025,12 @@ export default function AdminProdutosPage() {
         {[
           {
             id: 'todas',
-            label: 'Catálogo Operacional',
+            label: t.products.kpis.totalCatalog,
             icon: Package,
             value: countTotalCatalogo,
-            unit: 'modelos',
+            unit: t.products.kpis.modelsUnit,
             subValue: formatCurrency(valorTotalCatalogo),
-            subLabel: 'em estoque',
+            subLabel: t.products.kpis.inStockLabel,
             bgLight: 'bg-slate-50/70',
             border: 'border-slate-200',
             activeBorder: 'ring-2 ring-slate-700 border-slate-700',
@@ -2043,12 +2043,12 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'ativas',
-            label: 'Ativas na Vitrine',
+            label: t.products.kpis.activeShowcase,
             icon: CheckCircle2,
             value: totalAtivos,
-            unit: 'peças',
+            unit: t.products.kpis.piecesUnit,
             subValue: `${taxaAtivas}%`,
-            subLabel: 'do catálogo',
+            subLabel: t.products.kpis.ofCatalogLabel,
             bgLight: 'bg-emerald-50/70',
             border: 'border-emerald-200',
             activeBorder: 'ring-2 ring-emerald-500 border-emerald-500',
@@ -2061,11 +2061,11 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'pausadas',
-            label: 'Pausadas',
+            label: t.products.kpis.paused,
             icon: EyeOff,
             value: totalPausados,
-            unit: 'peças',
-            subValue: totalPausados > 0 ? 'Fora da vitrine' : 'Nenhuma',
+            unit: t.products.kpis.piecesUnit,
+            subValue: totalPausados > 0 ? t.products.kpis.outOfShowcase : t.products.kpis.nonePaused,
             subLabel: '',
             bgLight: 'bg-amber-50/70',
             border: 'border-amber-200',
@@ -2079,11 +2079,11 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'grade',
-            label: 'Estoque em Grade',
+            label: t.products.kpis.gridStock,
             icon: Layers,
             value: estoqueTotalPecas,
-            unit: 'un',
-            subValue: pecasCriticasCount > 0 ? `${pecasCriticasCount} críticas (≤ 2)` : 'Normal',
+            unit: t.products.kpis.unitsBadge,
+            subValue: pecasCriticasCount > 0 ? t.products.kpis.criticalWarning(pecasCriticasCount) : t.products.kpis.normalStock,
             subLabel: '',
             bgLight: 'bg-indigo-50/70',
             border: 'border-indigo-200',
@@ -2101,7 +2101,7 @@ export default function AdminProdutosPage() {
               className={`p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs relative ${
                 kpi.bgLight
               } ${kpi.isSelected ? kpi.activeBorder : `${kpi.border} hover:border-slate-400`}`}
-              title={`Filtrar por ${kpi.label}`}
+              title={t.products.kpis.filterTooltip(kpi.label)}
             >
               {kpi.isSelected && (
                 <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-600 animate-ping" />
@@ -2131,7 +2131,7 @@ export default function AdminProdutosPage() {
         {[
           {
             id: 'ativas',
-            label: 'Ativas na Vitrine',
+            label: t.products.lifecycle.active,
             count: countAtivas,
             icon: CheckCircle2,
             activeColor: 'text-emerald-700 border-emerald-500 bg-emerald-50/60 font-bold',
@@ -2139,7 +2139,7 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'pausadas',
-            label: 'Pausadas',
+            label: t.products.lifecycle.paused,
             count: countPausadas,
             icon: EyeOff,
             activeColor: 'text-rose-700 border-rose-500 bg-rose-50/60 font-bold',
@@ -2147,7 +2147,7 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'arquivadas',
-            label: 'Arquivadas',
+            label: t.products.lifecycle.archived,
             count: countArquivadas,
             icon: Archive,
             activeColor: 'text-slate-800 border-slate-600 bg-slate-100 font-bold',
@@ -2155,7 +2155,7 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'lixeira',
-            label: 'Lixeira (30 dias)',
+            label: t.products.lifecycle.trash30Days,
             count: countLixeira,
             icon: Trash2,
             activeColor: 'text-rose-800 border-rose-600 bg-rose-100/70 font-bold',
@@ -2163,7 +2163,7 @@ export default function AdminProdutosPage() {
           },
           {
             id: 'todas',
-            label: 'Todas as Peças',
+            label: t.products.lifecycle.allPieces,
             count: countTodasGeral,
             icon: Layers,
             activeColor: 'text-slate-900 border-slate-900 bg-slate-50 font-bold',
@@ -2206,7 +2206,7 @@ export default function AdminProdutosPage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar peça por nome, categoria ou referência... (Tecle /)"
+              placeholder={t.products.toolbar.searchPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs pl-8 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all placeholder:text-slate-400"
             />
             {searchTerm && (
@@ -2230,7 +2230,7 @@ export default function AdminProdutosPage() {
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              <span>Filtros</span>
+              <span>{t.products.toolbar.filtersBtn}</span>
               {activeFiltersCount > 0 && (
                 <span className="w-4 h-4 rounded-full bg-white text-amber-700 text-[10px] font-black flex items-center justify-center">
                   {activeFiltersCount}
@@ -2245,20 +2245,20 @@ export default function AdminProdutosPage() {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-                    Filtrar Catálogo
+                    {t.products.toolbar.filterCatalogTitle}
                   </span>
                   <button
                     onClick={handleClearAllFilters}
                     className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                   >
-                    Limpar Todos
+                    {t.products.toolbar.clearAll}
                   </button>
                 </div>
 
                 {/* Filtro por Categoria */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                    Coleção / Categoria
+                    {t.products.toolbar.collectionCategory}
                   </label>
                   <select
                     value={selectedCategory}
@@ -2267,7 +2267,7 @@ export default function AdminProdutosPage() {
                   >
                     {categoriesFilter.map((cat) => (
                       <option key={cat} value={cat}>
-                        {cat === 'todas' ? 'Todas as Coleções' : cat}
+                        {cat === 'todas' ? t.products.toolbar.allCollections : cat}
                       </option>
                     ))}
                   </select>
@@ -2276,17 +2276,17 @@ export default function AdminProdutosPage() {
                 {/* Status Comercial / Grade */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                    Status Comercial / Grade
+                    {t.products.toolbar.commercialStatusGrade}
                   </label>
                   <div className="grid grid-cols-2 gap-1.5 text-xs">
                     {[
-                      { id: 'todos', label: 'Todas as Peças' },
-                      { id: 'criticos', label: '⚠️ Reposição (≤ 2)' },
-                      { id: 'destaques', label: '🌟 Destaques' },
-                      { id: 'mais_vendidos', label: '🔥 Mais Vendidos' },
-                      { id: 'outlet', label: '🏷️ Outlet' },
-                      { id: 'ultimas_pecas', label: '⏳ Últimas Peças' },
-                      { id: 'esgotados', label: '⛔ Esgotados' }
+                      { id: 'todos', label: t.products.toolbar.statusAll },
+                      { id: 'criticos', label: t.products.toolbar.statusRestockCritical },
+                      { id: 'destaques', label: t.products.toolbar.statusFeatured },
+                      { id: 'mais_vendidos', label: t.products.toolbar.statusBestSellers },
+                      { id: 'outlet', label: t.products.toolbar.statusOutlet },
+                      { id: 'ultimas_pecas', label: t.products.toolbar.statusLastPieces },
+                      { id: 'esgotados', label: t.products.toolbar.statusOutOfStock }
                     ].map((st) => {
                       const checked = stockFilter === st.id;
                       return (
@@ -2317,31 +2317,31 @@ export default function AdminProdutosPage() {
                 {/* Ordenação Comercial */}
                 <div className="space-y-1.5 pt-2 border-t border-slate-100">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                    Ordenar Catálogo
+                    {t.products.toolbar.sortCatalog}
                   </label>
                   <select
                     value={sortOrder}
                     onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs p-2 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                   >
-                    <option value="recentes">Padrão / Mais Recentes</option>
-                    <option value="menor_estoque">Menor Estoque (Críticos Primeiro)</option>
-                    <option value="maior_estoque">Maior Estoque</option>
-                    <option value="maior_preco">Maior Preço de Venda</option>
-                    <option value="menor_preco">Menor Preço de Venda</option>
-                    <option value="nome">Nome da Peça (A-Z)</option>
+                    <option value="recentes">{t.products.toolbar.sortRecent}</option>
+                    <option value="menor_estoque">{t.products.toolbar.sortLowestStock}</option>
+                    <option value="maior_estoque">{t.products.toolbar.sortHighestStock}</option>
+                    <option value="maior_preco">{t.products.toolbar.sortHighestPrice}</option>
+                    <option value="menor_preco">{t.products.toolbar.sortLowestPrice}</option>
+                    <option value="nome">{t.products.toolbar.sortNameAZ}</option>
                   </select>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[11px] text-slate-500">
-                    {sortedProducts.length} peça(s) encontrada(s)
+                    {t.products.toolbar.piecesFound(sortedProducts.length)}
                   </span>
                   <button
                     onClick={() => setIsFilterPopoverOpen(false)}
                     className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer"
                   >
-                    Ver Resultados
+                    {t.products.toolbar.viewResults}
                   </button>
                 </div>
               </div>
@@ -2353,7 +2353,7 @@ export default function AdminProdutosPage() {
             onClick={fetchProductsData}
             disabled={loading}
             className="inline-flex items-center justify-center p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer shrink-0"
-            title="Atualizar listagem de produtos do catálogo"
+            title={t.products.toolbar.refreshTooltip}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : 'text-slate-600'}`} />
           </button>
@@ -2362,10 +2362,10 @@ export default function AdminProdutosPage() {
           <button
             onClick={() => setIsCollectionsModalOpen(true)}
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer shadow-2xs shrink-0"
-            title="Curadoria direta de Vitrines: Lançamentos, Mais Vendidos, Outlet e Categorias"
+            title={t.products.toolbar.collectionsTooltip}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>Vitrines & Destaques</span>
+            <span>{t.products.toolbar.collectionsAndFeaturesBtn}</span>
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
@@ -2375,10 +2375,10 @@ export default function AdminProdutosPage() {
             <button
               onClick={() => setIsActionsDropdownOpen(!isActionsDropdownOpen)}
               className="admin-btn-primary px-3.5 py-2 text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
-              title="Ações e ferramentas do catálogo"
+              title={t.products.toolbar.catalogActionsBtn}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Ações do Catálogo</span>
+              <span>{t.products.toolbar.catalogActionsBtn}</span>
               <ChevronDown className={`w-3 h-3 transition-transform ${isActionsDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -2386,7 +2386,7 @@ export default function AdminProdutosPage() {
               <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-1.5 border-b border-slate-100">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Ferramentas do Catálogo
+                    {t.products.toolbar.catalogToolsHeader}
                   </span>
                 </div>
 
@@ -2407,8 +2407,8 @@ export default function AdminProdutosPage() {
                     <Plus className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-bold block">Cadastrar Peça</span>
-                    <span className="text-[10px] text-slate-400 block">Nova peça com grade e fotos</span>
+                    <span className="font-bold block">{t.products.toolbar.actionCreateProduct}</span>
+                    <span className="text-[10px] text-slate-400 block">{t.products.toolbar.actionCreateProductDesc}</span>
                   </div>
                 </button>
 
@@ -2429,8 +2429,8 @@ export default function AdminProdutosPage() {
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-semibold block">Importar em Lote</span>
-                    <span className="text-[10px] text-slate-400 block">Planilha Excel (.xlsx) ou CSV</span>
+                    <span className="font-semibold block">{t.products.toolbar.actionBatchImport}</span>
+                    <span className="text-[10px] text-slate-400 block">{t.products.toolbar.actionBatchImportDesc}</span>
                   </div>
                 </button>
 
@@ -2451,8 +2451,8 @@ export default function AdminProdutosPage() {
                     <Tag className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-semibold block">Sinalizadores Comerciais</span>
-                    <span className="text-[10px] text-slate-400 block">Badges, tags e destaques</span>
+                    <span className="font-semibold block">{t.products.toolbar.actionCommercialFlags}</span>
+                    <span className="text-[10px] text-slate-400 block">{t.products.toolbar.actionCommercialFlagsDesc}</span>
                   </div>
                 </button>
 
@@ -2473,8 +2473,8 @@ export default function AdminProdutosPage() {
                     <Sparkles className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-semibold block text-slate-900">Gestor de Vitrines & Coleções</span>
-                    <span className="text-[10px] text-slate-400 block">Lançamentos, Mais Vendidos e Outlet</span>
+                    <span className="font-semibold block text-slate-900">{t.products.toolbar.actionCuratorShowcase}</span>
+                    <span className="text-[10px] text-slate-400 block">{t.products.toolbar.actionCuratorShowcaseDesc}</span>
                   </div>
                 </button>
 
@@ -2492,8 +2492,8 @@ export default function AdminProdutosPage() {
                     <Download className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-semibold block">Exportar para Excel</span>
-                    <span className="text-[10px] text-slate-400 block">Planilha com estoques e margem</span>
+                    <span className="font-semibold block">{t.products.toolbar.actionExportExcel}</span>
+                    <span className="text-[10px] text-slate-400 block">{t.products.toolbar.actionExportExcelDesc}</span>
                   </div>
                 </button>
               </div>
@@ -2511,7 +2511,7 @@ export default function AdminProdutosPage() {
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
-              title="Modo Cards Detalhados"
+              title={t.products.toolbar.viewCardsTooltip}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -2523,7 +2523,7 @@ export default function AdminProdutosPage() {
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
-              title="Modo Tabela / Lista Compacta"
+              title={t.products.toolbar.viewListTooltip}
             >
               <List className="w-4 h-4" />
             </button>
@@ -2535,7 +2535,7 @@ export default function AdminProdutosPage() {
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
-              title="Modo Colunas Verticais / Kanban Operacional"
+              title={t.products.toolbar.viewKanbanTooltip}
             >
               <Kanban className="w-4 h-4" />
             </button>
@@ -2548,17 +2548,11 @@ export default function AdminProdutosPage() {
             <div className="flex items-center gap-2">
               <Info className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                Nenhuma peça ativa encontrada com esse termo. Mas encontramos{' '}
-                {searchResultsInOtherTabs.pausadas > 0 && (
-                  <strong>{searchResultsInOtherTabs.pausadas} peça(s) pausada(s)</strong>
+                {t.products.toolbar.crossSearchNotice(
+                  searchResultsInOtherTabs.pausadas,
+                  searchResultsInOtherTabs.arquivadas,
+                  searchResultsInOtherTabs.lixeira
                 )}
-                {searchResultsInOtherTabs.arquivadas > 0 && (
-                  <span> e <strong>{searchResultsInOtherTabs.arquivadas} arquivada(s)</strong></span>
-                )}
-                {searchResultsInOtherTabs.lixeira > 0 && (
-                  <span> e <strong>{searchResultsInOtherTabs.lixeira} na lixeira</strong></span>
-                )}
-                .
               </span>
             </div>
             {searchResultsInOtherTabs.pausadas > 0 && (
@@ -2566,7 +2560,7 @@ export default function AdminProdutosPage() {
                 onClick={() => setLifecycleTab('pausadas')}
                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer transition-colors shrink-0"
               >
-                Ver Pausadas
+                {t.products.toolbar.viewPausedBtn}
               </button>
             )}
           </div>
@@ -2575,11 +2569,11 @@ export default function AdminProdutosPage() {
         {/* Chips de Filtros Ativos */}
         {activeFiltersCount > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap text-[11px] px-1 animate-in fade-in duration-150">
-            <span className="text-slate-400 font-bold uppercase text-[10px]">Filtros ativos:</span>
+            <span className="text-slate-400 font-bold uppercase text-[10px]">{t.products.toolbar.activeFiltersLabel}</span>
 
             {selectedCategory !== 'todas' && (
               <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
-                Coleção: {selectedCategory}
+                {t.products.toolbar.filterChipCollection(selectedCategory)}
                 <button
                   onClick={() => setSelectedCategory('todas')}
                   className="hover:text-amber-950 cursor-pointer ml-0.5"
@@ -2591,7 +2585,7 @@ export default function AdminProdutosPage() {
 
             {stockFilter !== 'todos' && (
               <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
-                Status: {stockFilter}
+                {t.products.toolbar.filterChipStatus(stockFilter)}
                 <button
                   onClick={() => setStockFilter('todos')}
                   className="hover:text-amber-950 cursor-pointer ml-0.5"
@@ -2603,7 +2597,7 @@ export default function AdminProdutosPage() {
 
             {searchTerm.trim() !== '' && (
               <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full font-bold">
-                Busca: “{searchTerm}”
+                {t.products.toolbar.filterChipSearch(searchTerm)}
                 <button
                   onClick={() => setSearchTerm('')}
                   className="hover:text-slate-950 cursor-pointer ml-0.5"
@@ -2615,7 +2609,7 @@ export default function AdminProdutosPage() {
 
             {sortOrder !== 'recentes' && (
               <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full font-bold">
-                Ordem: {sortOrder}
+                {t.products.toolbar.filterChipSort(sortOrder)}
                 <button
                   onClick={() => setSortOrder('recentes')}
                   className="hover:text-slate-950 cursor-pointer ml-0.5"
@@ -2629,7 +2623,7 @@ export default function AdminProdutosPage() {
               onClick={handleClearAllFilters}
               className="text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer ml-1"
             >
-              Limpar todos
+              {t.products.toolbar.clearAllFiltersBtn}
             </button>
           </div>
         )}
@@ -2639,20 +2633,20 @@ export default function AdminProdutosPage() {
       {loading ? (
         <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl">
           <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-          <span>Carregando catálogo de peças...</span>
+          <span>{t.products.toolbar.loadingCatalog}</span>
         </div>
       ) : sortedProducts.length === 0 ? (
         <div className="p-16 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-xl space-y-3">
           <Package className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-800">Nenhuma peça encontrada</p>
-          <p className="text-xs">Tente ajustar o termo digitado ou os filtros aplicados.</p>
+          <p className="text-sm font-bold text-slate-800">{t.products.toolbar.noPiecesFound}</p>
+          <p className="text-xs">{t.products.toolbar.adjustSearchTip}</p>
           <div className="flex items-center justify-center gap-2 pt-1">
             {activeFiltersCount > 0 && (
               <button
                 onClick={handleClearAllFilters}
                 className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               >
-                Limpar Filtros
+                {t.products.toolbar.clearFiltersBtn}
               </button>
             )}
             <button
@@ -2660,7 +2654,7 @@ export default function AdminProdutosPage() {
               className="admin-btn-primary px-4 py-2 text-xs font-bold uppercase tracking-wider"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Cadastrar Nova Peça</span>
+              <span>{t.products.toolbar.createNewPieceBtn}</span>
             </button>
           </div>
         </div>
@@ -2680,8 +2674,8 @@ export default function AdminProdutosPage() {
               />
               <span>
                 {selectedProductIds.size === 0
-                  ? `Selecionar todas as ${sortedProducts.length} peças filtradas`
-                  : `${selectedProductIds.size} de ${sortedProducts.length} peças selecionadas`}
+                  ? t.products.card.selectAllFiltered(sortedProducts.length)
+                  : t.products.card.selectedCount(selectedProductIds.size, sortedProducts.length)}
               </span>
             </label>
 
@@ -2690,7 +2684,7 @@ export default function AdminProdutosPage() {
                 onClick={() => setSelectedProductIds(new Set())}
                 className="text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer text-xs"
               >
-                Limpar seleção
+                {t.products.card.clearSelection}
               </button>
             )}
           </div>
@@ -2729,7 +2723,7 @@ export default function AdminProdutosPage() {
                       type="button"
                       onClick={() => handleToggleSelectProduct(product.id)}
                       className="text-slate-400 hover:text-amber-600 transition-colors p-1 shrink-0 cursor-pointer"
-                      title={selectedProductIds.has(product.id) ? 'Desmarcar peça' : 'Selecionar para ações em lote'}
+                      title={selectedProductIds.has(product.id) ? t.products.card.unselectTooltip : t.products.card.selectTooltip}
                     >
                       {selectedProductIds.has(product.id) ? (
                         <CheckSquare className="w-4 h-4 text-amber-600" />
@@ -2751,7 +2745,7 @@ export default function AdminProdutosPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
-                          Sem Foto
+                          {t.products.card.noPhoto}
                         </div>
                       )}
                       {product.midias && product.midias.some((m) => m.tipo === 'video') && (
@@ -2771,17 +2765,17 @@ export default function AdminProdutosPage() {
                         {/* Badges de Ciclo de Vida */}
                         {isPausada && (
                           <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs">
-                            PAUSADA (FORA DA VITRINE)
+                            {t.products.card.badgePaused}
                           </span>
                         )}
                         {isLixeira && (
                           <span className="text-[10px] bg-rose-700 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs flex items-center gap-1">
-                            <Trash2 className="w-3 h-3" /> LIXEIRA • {diasRestantesLixeira} DIAS RESTANTES
+                            <Trash2 className="w-3 h-3" /> {t.products.card.badgeTrash(diasRestantesLixeira)}
                           </span>
                         )}
                         {isArquivada && (
                           <span className="text-[10px] bg-slate-700 text-white px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-2xs flex items-center gap-1">
-                            <Archive className="w-3 h-3" /> ARQUIVADA (FORA DE LINHA)
+                            <Archive className="w-3 h-3" /> {t.products.card.badgeArchived}
                           </span>
                         )}
 
@@ -2793,9 +2787,9 @@ export default function AdminProdutosPage() {
                               handleToggleProductFlag(product.id, 'destaque', true);
                             }}
                             className="text-[10px] bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
-                            title="🌟 Lançamento/Destaque: clique para remover da vitrine"
+                            title={t.products.card.flagFeaturedTooltip}
                           >
-                            <span>🌟 Destaque</span>
+                            <span>{t.products.card.flagFeatured}</span>
                             <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                           </button>
                         )}
@@ -2807,9 +2801,9 @@ export default function AdminProdutosPage() {
                               handleToggleProductFlag(product.id, 'mais_vendido', true);
                             }}
                             className="text-[10px] bg-purple-50 text-purple-800 hover:bg-purple-100 hover:border-purple-300 border border-purple-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
-                            title="🔥 Mais Vendido: clique para remover da vitrine"
+                            title={t.products.card.flagBestSellerTooltip}
                           >
-                            <span>🔥 Mais Vendido</span>
+                            <span>{t.products.card.flagBestSeller}</span>
                             <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                           </button>
                         )}
@@ -2821,9 +2815,9 @@ export default function AdminProdutosPage() {
                               handleToggleProductFlag(product.id, 'outlet', true);
                             }}
                             className="text-[10px] bg-rose-50 text-rose-800 hover:bg-rose-100 hover:border-rose-300 border border-rose-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
-                            title="🏷️ Outlet: clique para remover do Bazar/Outlet"
+                            title={t.products.card.flagOutletTooltip}
                           >
-                            <span>🏷️ Outlet</span>
+                            <span>{t.products.card.flagOutlet}</span>
                             <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                           </button>
                         )}
@@ -2835,15 +2829,15 @@ export default function AdminProdutosPage() {
                               handleToggleProductFlag(product.id, 'ultimas_pecas', true);
                             }}
                             className="text-[10px] bg-orange-50 text-orange-800 hover:bg-orange-100 hover:border-orange-300 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-1"
-                            title="⏳ Últimas Peças: clique para remover"
+                            title={t.products.card.flagLastPiecesTooltip}
                           >
-                            <span>⏳ Últimas Peças</span>
+                            <span>{t.products.card.flagLastPieces}</span>
                             <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                           </button>
                         )}
                         {reservedStockMap[product.id] > 0 && !isPausada && !isLixeira && (
                           <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase animate-pulse flex items-center gap-1">
-                            👗 {reservedStockMap[product.id]} no provador
+                            {t.products.card.flagInFittingRoom(reservedStockMap[product.id])}
                           </span>
                         )}
                         {(aviseMeSummary[product.id] || 0) > 0 && !isPausada && !isLixeira && (
@@ -2854,19 +2848,19 @@ export default function AdminProdutosPage() {
                               setIsWaitlistModalOpen(true);
                             }}
                             className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 px-2 py-0.5 rounded font-bold uppercase transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                            title="Clientes aguardando reposição desta peça"
+                            title={t.products.card.btnWaitlist(aviseMeSummary[product.id])}
                           >
                             <Bell className="w-3 h-3 text-purple-600" />
-                            <span>{aviseMeSummary[product.id]} na fila</span>
+                            <span>{t.products.card.flagInWaitlist(aviseMeSummary[product.id])}</span>
                           </button>
                         )}
                       </div>
                       <h3 className="text-sm font-bold text-slate-900 mt-1 truncate" title={product.nome}>
                         {product.nome}
                       </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={`Slug: ${product.slug}${product.tecido ? ` • Tecido: ${product.tecido}` : ''}`}>
-                        Slug: <span className="font-mono text-slate-700">{product.slug}</span>
-                        {product.tecido && ` • Tecido: ${product.tecido}`}
+                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={`${t.products.card.slugLabel} ${product.slug}${product.tecido ? ` • ${t.products.card.fabricLabel} ${product.tecido}` : ''}`}>
+                        {t.products.card.slugLabel} <span className="font-mono text-slate-700">{product.slug}</span>
+                        {product.tecido && ` • ${t.products.card.fabricLabel} ${product.tecido}`}
                       </p>
                     </div>
                   </div>
@@ -2874,7 +2868,7 @@ export default function AdminProdutosPage() {
                   {/* Preço, Custo e Estoque */}
                   <div className="flex items-center justify-between xl:justify-end gap-3 sm:gap-6 shrink-0 flex-nowrap">
                     <div className="w-24 sm:w-28 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Preço de Venda</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.salePrice}</span>
                       {hasPromo ? (
                         <div>
                           <span className="text-xs line-through text-slate-400 block">
@@ -2892,17 +2886,17 @@ export default function AdminProdutosPage() {
                     </div>
 
                     <div className="w-24 sm:w-28 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Custo (CMV)</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.costCmv}</span>
                       <span className="text-xs font-semibold text-slate-700 block">
                         {product.preco_custo ? formatCurrency(product.preco_custo) : formatCurrency(custo)}
                       </span>
                       <span className="text-[10px] font-bold text-emerald-700 font-mono block">
-                        {margemBruta.toFixed(0)}% margem
+                        {t.products.card.marginPct(margemBruta.toFixed(0))}
                       </span>
                     </div>
 
                     <div className="w-16 sm:w-20 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Estoque</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.stock}</span>
                       <span
                         className={`text-xs font-extrabold block ${
                           product.estoque_total > 5
@@ -2912,7 +2906,7 @@ export default function AdminProdutosPage() {
                             : 'text-rose-700'
                         }`}
                       >
-                        {product.estoque_total > 0 ? `${product.estoque_total} un` : 'Esgotado'}
+                        {product.estoque_total > 0 ? t.products.card.stockUnits(product.estoque_total) : t.products.card.outOfStockBadge}
                       </span>
                     </div>
 
@@ -2921,21 +2915,21 @@ export default function AdminProdutosPage() {
                       <div className="flex items-center gap-2 shrink-0 flex-nowrap">
                         <button
                           onClick={() => handleRestoreProduct(product)}
-                          title="Restaurar peça da lixeira para o catálogo"
+                          title={t.products.card.restoreTooltip}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restaurar Peça</span>
+                          <span>{t.products.card.btnRestore}</span>
                         </button>
 
                         {isDono && (
                           <button
                             onClick={() => setPermanentDeleteModalProduct(product)}
-                            title="Excluir permanentemente do banco e mídias"
+                            title={t.products.card.deletePermanentTooltip}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Excluir Definitivo</span>
+                            <span>{t.products.card.btnDeleteDefinitive}</span>
                           </button>
                         )}
                       </div>
@@ -2943,25 +2937,25 @@ export default function AdminProdutosPage() {
                       <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
                         <button
                           onClick={() => handleUnarchiveProduct(product)}
-                          title="Desarquivar e retornar ao catálogo operacional"
+                          title={t.products.card.unarchiveTooltip}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                         >
                           <ArchiveRestore className="w-3.5 h-3.5" />
-                          <span>Desarquivar</span>
+                          <span>{t.products.card.btnUnarchive}</span>
                         </button>
 
                         <button
                           onClick={() => handleRequestEdit(product)}
-                          title="Editar Cadastro da Peça"
+                          title={t.products.card.editFullTooltip}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          <span>Editar</span>
+                          <span>{t.products.card.btnEdit}</span>
                         </button>
 
                         <button
                           onClick={() => handleOpenDeleteModal(product)}
-                          title="Mover para lixeira"
+                          title={t.products.card.trashTooltip}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -2973,7 +2967,7 @@ export default function AdminProdutosPage() {
                         <Link
                           href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
                           target="_blank"
-                          title="Ver peça na vitrine pública da boutique"
+                          title={t.products.card.viewStorefrontTooltip}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -2982,18 +2976,18 @@ export default function AdminProdutosPage() {
                         {/* Editar Cadastro Completo */}
                         <button
                           onClick={() => handleRequestEdit(product)}
-                          title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Editar Cadastro Completo da Peça'}
+                          title={isPausada ? t.products.card.editPausedTooltip : t.products.card.editFullTooltip}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          <span>Editar</span>
+                          <span>{t.products.card.btnEdit}</span>
                         </button>
 
                         {/* Editar Preços Rápido (desabilitado se pausada) */}
                         <button
                           onClick={() => !isPausada && handleOpenEdit(product)}
                           disabled={isPausada}
-                          title={isPausada ? 'Peça pausada: reative na vitrine ou use Editar para alterar' : 'Ajuste Rápido de Preços e CMV'}
+                          title={isPausada ? t.products.card.editPricesDisabledTooltip : t.products.card.editPricesTooltip}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
                             isPausada
                               ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
@@ -3001,7 +2995,7 @@ export default function AdminProdutosPage() {
                           }`}
                         >
                           <DollarSign className="w-3.5 h-3.5 text-slate-500" />
-                          <span className="hidden sm:inline">Preços</span>
+                          <span className="hidden sm:inline">{t.products.card.btnPrices}</span>
                         </button>
 
                         {/* Botão Provador / Reserva (30 min) (desabilitado se pausada) */}
@@ -3012,7 +3006,7 @@ export default function AdminProdutosPage() {
                             setIsFittingModalOpen(true);
                           }}
                           disabled={isPausada}
-                          title={isPausada ? 'Peça pausada: não é possível reservar no provador' : 'Travar peça no provador por 30 minutos'}
+                          title={isPausada ? t.products.card.fittingDisabledTooltip : t.products.card.fittingTooltip}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
                             isPausada
                               ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
@@ -3024,8 +3018,8 @@ export default function AdminProdutosPage() {
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
                           <span className="hidden sm:inline">
                             {(reservedStockMap[product.id] || 0) > 0
-                              ? `${reservedStockMap[product.id]} no provador`
-                              : 'Provador'}
+                              ? t.products.card.flagInFittingRoom(reservedStockMap[product.id])
+                              : t.products.card.btnFittingRoom}
                           </span>
                         </button>
 
@@ -3036,18 +3030,18 @@ export default function AdminProdutosPage() {
                               setSelectedWaitlistProduct(product);
                               setIsWaitlistModalOpen(true);
                             }}
-                            title="Ver clientes aguardando reposição"
+                            title={t.products.card.btnWaitlist(aviseMeSummary[product.id])}
                             className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs"
                           >
                             <Bell className="w-3.5 h-3.5 text-purple-600" />
-                            <span className="hidden sm:inline">Fila ({aviseMeSummary[product.id]})</span>
+                            <span className="hidden sm:inline">{t.products.card.btnWaitlist(aviseMeSummary[product.id])}</span>
                           </button>
                         )}
 
                         {/* Pausar / Ativar */}
                         <button
                           onClick={() => handleToggleActive(product)}
-                          title={product.ativo ? 'Pausar da vitrine pública' : 'Ativar na vitrine pública'}
+                          title={product.ativo ? t.products.card.pauseTooltip : t.products.card.activateTooltip}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border ${
                             product.ativo
                               ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-800 border-slate-300'
@@ -3055,24 +3049,24 @@ export default function AdminProdutosPage() {
                           }`}
                         >
                           {product.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          <span className="hidden sm:inline">{product.ativo ? 'Pausar' : 'Ativar'}</span>
+                          <span className="hidden sm:inline">{product.ativo ? t.products.card.btnPause : t.products.card.btnActivate}</span>
                         </button>
 
                         {/* Duplicar Peça */}
                         <button
                           onClick={() => handleDuplicateProduct(product)}
                           disabled={duplicatingId === product.id}
-                          title="Duplicar peça em 1 clique"
+                          title={t.products.card.duplicateTooltip}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
-                          <span className="hidden sm:inline">Duplicar</span>
+                          <span className="hidden sm:inline">{t.products.card.btnDuplicate}</span>
                         </button>
 
                         {/* Arquivar Peça */}
                         <button
                           onClick={() => handleArchiveProduct(product)}
-                          title="Arquivar peça fora de linha"
+                          title={t.products.card.unarchiveTooltip}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
                         >
                           <Archive className="w-4 h-4" />
@@ -3081,7 +3075,7 @@ export default function AdminProdutosPage() {
                         {/* Excluir (Mover para Lixeira) */}
                         <button
                           onClick={() => handleOpenDeleteModal(product)}
-                          title="Mover peça para a Lixeira (30 dias)"
+                          title={t.products.card.trashTooltip}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -3092,7 +3086,7 @@ export default function AdminProdutosPage() {
                           data-testid="btn-expand-product-grid"
                           onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title={isExpanded ? 'Recolher grade' : 'Ver variações de cor e tamanho'}
+                          title={isExpanded ? t.products.card.hideGridBtn : t.products.card.expandGridBtn(product.variacoes?.length || 0)}
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
@@ -3107,7 +3101,7 @@ export default function AdminProdutosPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <Layers className="w-3.5 h-3.5 text-amber-600" />
-                        Grade de Cores, Tamanhos & Estoque por Peça
+                        {t.products.matrix.title}
                       </span>
                     </div>
 
@@ -3137,7 +3131,7 @@ export default function AdminProdutosPage() {
                                 onClick={() => handleQuickVariationStockChange(v.id, product.id, -1)}
                                 disabled={updatingVarId === v.id || v.estoque <= 0}
                                 className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                title="Diminuir estoque (-1)"
+                                title="-1"
                               >
                                 -
                               </button>
@@ -3170,14 +3164,13 @@ export default function AdminProdutosPage() {
                                       ? 'bg-amber-50 text-amber-800 border-amber-200 focus:bg-white'
                                       : 'bg-rose-50 text-rose-800 border-rose-200 focus:bg-white'
                                   }`}
-                                  title="Digite a quantidade e tecle Enter (ou clique fora) para salvar"
                                 />
                               </div>
                               <button
                                 onClick={() => handleQuickVariationStockChange(v.id, product.id, 1)}
                                 disabled={updatingVarId === v.id}
                                 className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition-colors disabled:opacity-30 cursor-pointer"
-                                title="Aumentar estoque (+1)"
+                                title="+1"
                               >
                                 +
                               </button>
@@ -3187,7 +3180,7 @@ export default function AdminProdutosPage() {
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500 italic">
-                        Peça com estoque simples (sem grade subdividida por cor/tamanho).
+                        {t.products.matrix.subtitle}
                       </p>
                     )}
                   </div>
@@ -3213,13 +3206,13 @@ export default function AdminProdutosPage() {
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
                   </th>
-                  <th className="p-3 w-14">{t.products.colPhoto}</th>
-                  <th className="p-3">{t.products.colName}</th>
-                  <th className="p-3">{t.products.colPrice}</th>
-                  <th className="p-3">{locale === 'en' ? 'Cost / Margin' : locale === 'es' ? 'Costo / Margen' : 'Custo / Margem'}</th>
-                  <th className="p-3">{t.products.colStock}</th>
-                  <th className="p-3 text-center">{t.products.colStatus}</th>
-                  <th className="p-3 text-right">{t.products.colActions}</th>
+                  <th className="p-3 w-14">{t.products.table.thPhoto}</th>
+                  <th className="p-3">{t.products.table.thProductSku}</th>
+                  <th className="p-3">{t.products.table.thSalePrice}</th>
+                  <th className="p-3">{t.products.table.thCostCmv} / {t.products.table.thMargin}</th>
+                  <th className="p-3">{t.products.table.thStock}</th>
+                  <th className="p-3 text-center">{t.products.table.thVisibility}</th>
+                  <th className="p-3 text-right">{t.products.table.thActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -3283,23 +3276,23 @@ export default function AdminProdutosPage() {
                           <span
                             className="font-bold text-slate-900 block hover:text-amber-700 transition-colors cursor-pointer"
                             onClick={() => handleRequestEdit(product)}
-                            title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Clique para abrir o dossiê da peça'}
+                            title={isPausada ? t.products.card.editPausedTooltip : t.products.card.editFullTooltip}
                           >
                             {product.nome}
                           </span>
                           {isPausada && (
                             <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-black uppercase">
-                              Pausada
+                              {t.products.lifecycle.paused}
                             </span>
                           )}
                           {isLixeira && (
                             <span className="text-[9px] bg-rose-700 text-white px-1.5 py-0.2 rounded font-black uppercase">
-                              Lixeira ({diasRestantesLixeira}d)
+                              {t.products.card.badgeTrash(diasRestantesLixeira)}
                             </span>
                           )}
                           {isArquivada && (
                             <span className="text-[9px] bg-slate-700 text-white px-1.5 py-0.2 rounded font-black uppercase">
-                              Arquivada
+                              {t.products.lifecycle.archived}
                             </span>
                           )}
                           {product.destaque && (
@@ -3310,9 +3303,9 @@ export default function AdminProdutosPage() {
                                 handleToggleProductFlag(product.id, 'destaque', true);
                               }}
                               className="text-[9px] bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400 border border-amber-300 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                              title="🌟 Lançamento/Destaque: clique para remover da vitrine"
+                              title={t.products.card.flagFeaturedTooltip}
                             >
-                              <span>🌟 Destaque</span>
+                              <span>{t.products.card.flagFeatured}</span>
                               <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                             </button>
                           )}
@@ -3324,9 +3317,9 @@ export default function AdminProdutosPage() {
                                 handleToggleProductFlag(product.id, 'mais_vendido', true);
                               }}
                               className="text-[9px] bg-purple-50 text-purple-800 hover:bg-purple-100 hover:border-purple-300 border border-purple-200 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                              title="🔥 Mais Vendido: clique para remover da vitrine"
+                              title={t.products.card.flagBestSellerTooltip}
                             >
-                              <span>🔥 Mais Vendido</span>
+                              <span>{t.products.card.flagBestSeller}</span>
                               <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                             </button>
                           )}
@@ -3338,9 +3331,9 @@ export default function AdminProdutosPage() {
                                 handleToggleProductFlag(product.id, 'outlet', true);
                               }}
                               className="text-[9px] bg-rose-50 text-rose-800 hover:bg-rose-100 hover:border-rose-300 border border-rose-200 px-1.5 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                              title="🏷️ Outlet: clique para remover da vitrine"
+                              title={t.products.card.flagOutletTooltip}
                             >
-                              <span>🏷️ Outlet</span>
+                              <span>{t.products.card.flagOutlet}</span>
                               <X className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
                             </button>
                           )}
@@ -3384,7 +3377,7 @@ export default function AdminProdutosPage() {
                               : 'text-rose-700'
                           }`}
                         >
-                          Margem: {margemBruta.toFixed(1)}%
+                          {t.products.card.marginPct(margemBruta.toFixed(1))}
                         </span>
                       </td>
 
@@ -3400,10 +3393,10 @@ export default function AdminProdutosPage() {
                                 : 'bg-rose-50 text-rose-800 border border-rose-200'
                             }`}
                           >
-                            {product.estoque_total} un
+                            {t.products.card.stockUnits(product.estoque_total)}
                           </span>
                           {product.variacoes && product.variacoes.length > 0 && (
-                            <span className="text-[10px] text-slate-400" title={`${product.variacoes.length} variações na grade`}>
+                            <span className="text-[10px] text-slate-400" title={`${product.variacoes.length} variações`}>
                               ({product.variacoes.length} vars)
                             </span>
                           )}
@@ -3414,11 +3407,11 @@ export default function AdminProdutosPage() {
                       <td className="p-3 text-center whitespace-nowrap">
                         {isLixeira ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                            <Trash2 className="w-3 h-3" /> Lixeira ({diasRestantesLixeira}d)
+                            <Trash2 className="w-3 h-3" /> {t.products.card.badgeTrash(diasRestantesLixeira)}
                           </span>
                         ) : isArquivada ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800">
-                            <Archive className="w-3 h-3" /> Arquivada
+                            <Archive className="w-3 h-3" /> {t.products.lifecycle.archived}
                           </span>
                         ) : (
                           <button
@@ -3428,17 +3421,17 @@ export default function AdminProdutosPage() {
                                 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
                             }`}
-                            title={product.ativo ? 'Clique para pausar da vitrine' : 'Clique para ativar na vitrine'}
+                            title={product.ativo ? t.products.card.pauseTooltip : t.products.card.activateTooltip}
                           >
                             {product.ativo ? (
                               <>
                                 <Eye className="w-3 h-3 text-emerald-600" />
-                                <span>Ativa</span>
+                                <span>{t.products.lifecycle.active}</span>
                               </>
                             ) : (
                               <>
                                 <EyeOff className="w-3 h-3 text-rose-600" />
-                                <span>Pausada</span>
+                                <span>{t.products.lifecycle.paused}</span>
                               </>
                             )}
                           </button>
@@ -3453,7 +3446,7 @@ export default function AdminProdutosPage() {
                               <button
                                 onClick={() => handleRestoreProduct(product)}
                                 className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                title="Restaurar peça da lixeira"
+                                title={t.products.card.restoreTooltip}
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
                               </button>
@@ -3461,7 +3454,7 @@ export default function AdminProdutosPage() {
                                 <button
                                   onClick={() => setPermanentDeleteModalProduct(product)}
                                   className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="Excluir permanentemente"
+                                  title={t.products.card.deletePermanentTooltip}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -3472,21 +3465,21 @@ export default function AdminProdutosPage() {
                               <button
                                 onClick={() => handleUnarchiveProduct(product)}
                                 className="p-1.5 rounded-lg text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
-                                title="Desarquivar peça"
+                                title={t.products.card.unarchiveTooltip}
                               >
                                 <ArchiveRestore className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleRequestEdit(product)}
                                 className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                                title="Editar dados"
+                                title={t.products.card.editFullTooltip}
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleOpenDeleteModal(product)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Mover para lixeira"
+                                title={t.products.card.trashTooltip}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -3501,7 +3494,7 @@ export default function AdminProdutosPage() {
                                     ? 'opacity-30 cursor-not-allowed text-slate-400'
                                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
                                 }`}
-                                title={isPausada ? 'Peça pausada: não é possível alterar preços rápidos' : 'Edição rápida de preço e estoque'}
+                                title={isPausada ? t.products.card.editPricesDisabledTooltip : t.products.card.editPricesTooltip}
                               >
                                 <DollarSign className="w-3.5 h-3.5" />
                               </button>
@@ -3509,7 +3502,7 @@ export default function AdminProdutosPage() {
                               <button
                                 onClick={() => handleRequestEdit(product)}
                                 className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-amber-800 transition-colors cursor-pointer"
-                                title={isPausada ? 'Peça pausada: clique para confirmar edição' : 'Abrir dossiê completo da peça'}
+                                title={isPausada ? t.products.card.editPausedTooltip : t.products.card.editFullTooltip}
                               >
                                 <FileText className="w-3.5 h-3.5" />
                               </button>
@@ -3518,7 +3511,7 @@ export default function AdminProdutosPage() {
                                 onClick={() => handleDuplicateProduct(product)}
                                 disabled={duplicatingId === product.id}
                                 className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
-                                title="Duplicar peça em 1 clique"
+                                title={t.products.card.duplicateTooltip}
                               >
                                 <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
                               </button>
@@ -3526,7 +3519,7 @@ export default function AdminProdutosPage() {
                               <button
                                 onClick={() => handleArchiveProduct(product)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
-                                title="Arquivar peça fora de linha"
+                                title={t.products.card.unarchiveTooltip}
                               >
                                 <Archive className="w-3.5 h-3.5" />
                               </button>
@@ -3534,7 +3527,7 @@ export default function AdminProdutosPage() {
                               <button
                                 onClick={() => handleOpenDeleteModal(product)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Mover para a lixeira (30 dias)"
+                                title={t.products.card.trashTooltip}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -3557,21 +3550,21 @@ export default function AdminProdutosPage() {
           {[
             {
               id: 'ativas',
-              label: 'Ativas na Vitrine',
+              label: t.products.kanbanCatalog.colActive,
               filter: (p: AdminProductItem) => p.ativo,
               color: 'border-emerald-400 bg-emerald-50/40 text-emerald-900',
               badgeColor: 'bg-emerald-100 text-emerald-800'
             },
             {
               id: 'pausadas',
-              label: 'Pausadas / Rascunhos',
+              label: t.products.kanbanCatalog.colPaused,
               filter: (p: AdminProductItem) => !p.ativo,
               color: 'border-amber-400 bg-amber-50/40 text-amber-900',
               badgeColor: 'bg-amber-100 text-amber-800'
             },
             {
               id: 'criticas',
-              label: 'Estoque Crítico / Esgotadas',
+              label: t.products.kanbanCatalog.colCritical,
               filter: (p: AdminProductItem) => (p.estoque_total || 0) <= 2,
               color: 'border-rose-400 bg-rose-50/40 text-rose-900',
               badgeColor: 'bg-rose-100 text-rose-800'
@@ -3592,7 +3585,7 @@ export default function AdminProdutosPage() {
                       {col.label}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono block">
-                      {formatCurrency(colValor)} em estoque
+                      {formatCurrency(colValor)} {t.products.kpis.inStockLabel}
                     </span>
                   </div>
                   <span className={`text-xs font-black px-2 py-0.5 rounded-full ${col.badgeColor}`}>
@@ -3604,7 +3597,7 @@ export default function AdminProdutosPage() {
                 <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 max-h-[70vh]">
                   {colProducts.length === 0 ? (
                     <div className="p-8 text-center text-xs text-slate-400 bg-white/60 rounded-xl border border-dashed border-slate-200">
-                      Nenhuma peça neste status
+                      {t.products.kanbanCatalog.emptyCol}
                     </div>
                   ) : (
                     colProducts.map((product) => {
@@ -3658,21 +3651,21 @@ export default function AdminProdutosPage() {
                                   : 'bg-rose-50 text-rose-800'
                               }`}
                             >
-                              {product.estoque_total} un em grade
+                              {t.products.card.stockUnits(product.estoque_total)}
                             </span>
 
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleToggleActive(product)}
                                 className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                title={product.ativo ? 'Pausar da vitrine' : 'Ativar na vitrine'}
+                                title={product.ativo ? t.products.card.pauseTooltip : t.products.card.activateTooltip}
                               >
-                                {product.ativo ? 'Pausar' : 'Ativar'}
+                                {product.ativo ? t.products.card.btnPause : t.products.card.btnActivate}
                               </button>
                               <button
                                 onClick={() => handleOpenEdit(product)}
                                 className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-                                title="Edição rápida"
+                                title={t.products.card.editPricesTooltip}
                               >
                                 <Edit2 className="w-3 h-3" />
                               </button>
@@ -3715,7 +3708,7 @@ export default function AdminProdutosPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                Editar Preço & Estoque
+                {t.products.quickPriceModal.title}
               </h3>
               <button
                 onClick={() => setEditingProduct(null)}
@@ -3729,7 +3722,7 @@ export default function AdminProdutosPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Preço de Venda (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold">{t.products.quickPriceModal.salePriceLabel}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -3740,11 +3733,11 @@ export default function AdminProdutosPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Preço Promocional (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold">{t.products.quickPriceModal.promoPriceLabel}</label>
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="Vazio para sem promoção"
+                  placeholder={t.products.quickPriceModal.promoPlaceholder}
                   value={editPromoPrice}
                   onChange={(e) => setEditPromoPrice(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900"
@@ -3752,11 +3745,11 @@ export default function AdminProdutosPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Preço de Custo CMV (R$)</label>
+                <label className="block text-slate-700 mb-1 font-bold">{t.products.quickPriceModal.costPriceLabel}</label>
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="Para cálculo do Lucro Real"
+                  placeholder={t.products.quickPriceModal.costPlaceholder}
                   value={editCostPrice}
                   onChange={(e) => setEditCostPrice(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900"
@@ -3764,7 +3757,7 @@ export default function AdminProdutosPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Estoque Total</label>
+                <label className="block text-slate-700 mb-1 font-bold">{t.products.quickPriceModal.totalStockLabel}</label>
                 <input
                   type="number"
                   value={editStock}
@@ -3776,7 +3769,7 @@ export default function AdminProdutosPage() {
               {/* Tags & Sinalizadores Promocionais */}
               <div className="pt-2.5 border-t border-slate-100 space-y-2">
                 <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                  Tags & Sinalizadores Promocionais:
+                  {t.products.quickPriceModal.flagsSectionTitle}
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
@@ -3786,7 +3779,7 @@ export default function AdminProdutosPage() {
                       onChange={(e) => setEditDestaque(e.target.checked)}
                       className="accent-amber-600 rounded"
                     />
-                    <span className="font-semibold text-slate-800">🌟 Destaque</span>
+                    <span className="font-semibold text-slate-800">{t.products.quickPriceModal.flagFeaturedLabel}</span>
                   </label>
                   <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
                     <input
@@ -3795,7 +3788,7 @@ export default function AdminProdutosPage() {
                       onChange={(e) => setEditMaisVendido(e.target.checked)}
                       className="accent-purple-600 rounded"
                     />
-                    <span className="font-semibold text-slate-800">🔥 Mais Vendido</span>
+                    <span className="font-semibold text-slate-800">{t.products.quickPriceModal.flagBestSellerLabel}</span>
                   </label>
                   <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
                     <input
@@ -3804,7 +3797,7 @@ export default function AdminProdutosPage() {
                       onChange={(e) => setEditOutlet(e.target.checked)}
                       className="accent-rose-600 rounded"
                     />
-                    <span className="font-semibold text-slate-800">🏷️ Outlet</span>
+                    <span className="font-semibold text-slate-800">{t.products.quickPriceModal.flagOutletLabel}</span>
                   </label>
                   <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
                     <input
@@ -3813,7 +3806,7 @@ export default function AdminProdutosPage() {
                       onChange={(e) => setEditUltimasPecas(e.target.checked)}
                       className="accent-orange-600 rounded"
                     />
-                    <span className="font-semibold text-slate-800">⏳ Últimas Peças</span>
+                    <span className="font-semibold text-slate-800">{t.products.quickPriceModal.flagLastPiecesLabel}</span>
                   </label>
                 </div>
               </div>
@@ -3824,14 +3817,14 @@ export default function AdminProdutosPage() {
                 onClick={() => setEditingProduct(null)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.products.quickPriceModal.cancelBtn}
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={isSaving}
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
               >
-                {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                {isSaving ? t.products.quickPriceModal.savingBtn : t.products.quickPriceModal.saveBtn}
               </button>
             </div>
           </div>
@@ -3846,7 +3839,7 @@ export default function AdminProdutosPage() {
               {selectedProductIds.size}
             </span>
             <span className="text-xs font-semibold hidden sm:inline text-slate-200">
-              peça(s) selecionada(s)
+              {t.products.bulkActions.selectedCount(selectedProductIds.size)}
             </span>
           </div>
 
@@ -3858,7 +3851,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Restaurar Selecionadas</span>
+                <span>{t.products.bulkActions.btnRestore}</span>
               </button>
             </>
           ) : (
@@ -3869,7 +3862,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>Ativar</span>
+                <span>{t.products.bulkActions.btnActivate}</span>
               </button>
 
               <button
@@ -3878,7 +3871,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <EyeOff className="w-3.5 h-3.5" />
-                <span>Pausar</span>
+                <span>{t.products.bulkActions.btnPause}</span>
               </button>
 
               <button
@@ -3887,7 +3880,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <Tag className="w-3.5 h-3.5" />
-                <span>% Desconto</span>
+                <span>{t.products.bulkActions.btnDiscount}</span>
               </button>
 
               <button
@@ -3896,7 +3889,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Mover Categoria</span>
+                <span>{t.products.bulkActions.btnChangeCategory}</span>
               </button>
 
               <button
@@ -3905,7 +3898,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <Archive className="w-3.5 h-3.5 text-slate-300" />
-                <span>Arquivar</span>
+                <span>{t.products.bulkActions.btnArchive}</span>
               </button>
 
               <button
@@ -3914,7 +3907,7 @@ export default function AdminProdutosPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>Lixeira (30d)</span>
+                <span>{t.products.bulkActions.btnTrash}</span>
               </button>
 
               <div className="h-4 w-[1px] bg-slate-700 hidden sm:block" />
@@ -3923,30 +3916,30 @@ export default function AdminProdutosPage() {
                 onClick={() => handleBulkPromotionalFlagAction('destaque', true)}
                 disabled={isBulkActionRunning}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                title="Adicionar selecionadas à vitrine de Lançamentos/Destaque"
+                title="🌟"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>+ Lançamentos</span>
+                <span>{t.products.bulkActions.btnAddFeatured}</span>
               </button>
 
               <button
                 onClick={() => handleBulkPromotionalFlagAction('mais_vendido', true)}
                 disabled={isBulkActionRunning}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                title="Adicionar selecionadas à vitrine de Mais Vendidos"
+                title="🔥"
               >
                 <Flame className="w-3.5 h-3.5 text-purple-400" />
-                <span>+ Mais Vendidos</span>
+                <span>{t.products.bulkActions.btnAddBestSeller}</span>
               </button>
 
               <button
                 onClick={() => handleBulkPromotionalFlagAction('outlet', true)}
                 disabled={isBulkActionRunning}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                title="Adicionar selecionadas ao Bazar & Outlet"
+                title="🏷️"
               >
                 <Tag className="w-3.5 h-3.5 text-rose-400" />
-                <span>+ Outlet</span>
+                <span>{t.products.bulkActions.btnAddOutlet}</span>
               </button>
             </>
           )}
@@ -3954,10 +3947,10 @@ export default function AdminProdutosPage() {
           <button
             onClick={() => setSelectedProductIds(new Set())}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ml-1 shrink-0"
-            title="Cancelar seleção (ou tecle Esc)"
+            title="Esc"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Limpar (Esc)</span>
+            <span>{t.products.bulkActions.btnClearSelection}</span>
           </button>
         </div>
       )}
@@ -3971,14 +3964,11 @@ export default function AdminProdutosPage() {
             </div>
 
             <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-              Esta peça está pausada
+              {t.products.confirmModals.pausedModalTitle}
             </h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              A peça <strong className="text-slate-900">{pausedConfirmProduct.nome}</strong> está atualmente fora da vitrine da sua loja.
+              {t.products.confirmModals.pausedModalDesc(pausedConfirmProduct.nome)}
             </p>
-            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-              Você pode alterar informações, fotos, grade e preços normalmente. Porém, saiba que nenhuma alteração ficará visível para os seus clientes até que você reative a peça na vitrine.
-            </div>
 
             <div className="mt-6 flex items-center justify-end gap-2.5">
               <button
@@ -3986,14 +3976,14 @@ export default function AdminProdutosPage() {
                 onClick={() => setPausedConfirmProduct(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
               >
-                Cancelar
+                {t.products.confirmModals.cancelBtn}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmEditPaused}
                 className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-lg cursor-pointer transition-colors shadow-2xs"
               >
-                Sim, Continuar Edição
+                {t.products.confirmModals.continuePausedBtn}
               </button>
             </div>
           </div>
@@ -4009,13 +3999,13 @@ export default function AdminProdutosPage() {
             </div>
 
             <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-              Excluir definitivamente?
+              {t.products.confirmModals.permanentDeleteTitle}
             </h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Você está prestes a apagar permanentemente a peça <strong className="text-slate-900">{permanentDeleteModalProduct.nome}</strong>.
+              {t.products.confirmModals.permanentDeleteDesc(permanentDeleteModalProduct.nome)}
             </p>
             <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 leading-relaxed">
-              Esta ação removerá fotos e variações de estoque. Caso a peça já possua vendas registradas, o registro contábil e fiscal é preservado de forma anônima.
+              {t.products.confirmModals.permanentDeleteWarning}
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-2.5">
@@ -4024,14 +4014,14 @@ export default function AdminProdutosPage() {
                 onClick={() => setPermanentDeleteModalProduct(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
               >
-                Cancelar
+                {t.products.confirmModals.cancelBtn}
               </button>
               <button
                 type="button"
                 onClick={() => handlePermanentDelete(permanentDeleteModalProduct)}
                 className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer transition-colors shadow-2xs"
               >
-                Excluir Definitivamente
+                {t.products.confirmModals.confirmDeleteBtn}
               </button>
             </div>
           </div>
@@ -4046,7 +4036,7 @@ export default function AdminProdutosPage() {
               <div className="flex items-center gap-2">
                 <Trash2 className="w-5 h-5 text-rose-600" />
                 <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
-                  Mover Peça para a Lixeira
+                  {t.products.confirmModals.moveToTrashTitle}
                 </h3>
               </div>
               <button
@@ -4069,7 +4059,7 @@ export default function AdminProdutosPage() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
-                    Sem Foto
+                    {t.products.card.noPhoto}
                   </div>
                 )}
               </div>
@@ -4081,7 +4071,7 @@ export default function AdminProdutosPage() {
                   {deleteModalProduct.nome}
                 </h4>
                 <span className="text-xs text-slate-500 block mt-1">
-                  Estoque: <strong>{deleteModalProduct.estoque_total} un</strong> • Preço: <strong>{formatCurrency(deleteModalProduct.preco)}</strong>
+                  {t.products.card.stock}: <strong>{t.products.card.stockUnits(deleteModalProduct.estoque_total)}</strong> • {t.products.card.salePrice}: <strong>{formatCurrency(deleteModalProduct.preco)}</strong>
                 </span>
               </div>
             </div>
@@ -4089,10 +4079,10 @@ export default function AdminProdutosPage() {
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
                 <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Período de Retenção de 30 Dias</span>
+                <span>{t.products.confirmModals.moveToTrashRetention}</span>
               </div>
               <p className="text-xs text-amber-800 leading-relaxed">
-                A peça será desativada da vitrine da loja e movida para a <strong>Lixeira</strong>. Ela não aparecerá no catálogo diário, mas ficará guardada com segurança por 30 dias para você restaurar a qualquer momento caso deseje.
+                {t.products.confirmModals.moveToTrashDesc}
               </p>
             </div>
 
@@ -4102,14 +4092,14 @@ export default function AdminProdutosPage() {
                 disabled={isDeletingProduct}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Cancelar
+                {t.products.confirmModals.cancelBtn}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={isDeletingProduct}
                 className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors cursor-pointer shadow-sm"
               >
-                {isDeletingProduct ? 'Movendo...' : 'Mover para Lixeira (30 dias)'}
+                {isDeletingProduct ? t.products.confirmModals.moveToTrashMovingBtn : t.products.confirmModals.moveToTrashBtn}
               </button>
             </div>
           </div>
@@ -4140,11 +4130,11 @@ export default function AdminProdutosPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
             <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-              Aplicar Desconto em {selectedProductIds.size} Peças
+              {t.products.bulkActions.discountModalTitle(selectedProductIds.size)}
             </h4>
             <div>
               <label className="block text-slate-700 text-xs mb-1 font-semibold">
-                Percentual de Desconto (% OFF):
+                {t.products.bulkActions.discountInputLabel}
               </label>
               <input
                 type="number"
@@ -4152,6 +4142,7 @@ export default function AdminProdutosPage() {
                 max="90"
                 value={bulkDiscountValue}
                 onChange={(e) => setBulkDiscountValue(e.target.value)}
+                placeholder={t.products.bulkActions.discountPlaceholder}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-bold text-center text-sm"
               />
             </div>
@@ -4160,14 +4151,14 @@ export default function AdminProdutosPage() {
                 onClick={() => setShowBulkDiscountModal(false)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.products.bulkActions.cancelBtn}
               </button>
               <button
                 onClick={handleBulkApplyDiscountAction}
                 disabled={isBulkActionRunning}
                 className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
               >
-                {isBulkActionRunning ? 'Aplicando...' : 'Aplicar Desconto'}
+                {isBulkActionRunning ? t.products.confirmModals.deletingBtn : t.products.bulkActions.applyDiscountBtn}
               </button>
             </div>
           </div>
@@ -4179,18 +4170,18 @@ export default function AdminProdutosPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
             <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-              Mover {selectedProductIds.size} Peças para Categoria
+              {t.products.bulkActions.categoryModalTitle(selectedProductIds.size)}
             </h4>
             <div>
               <label className="block text-slate-700 text-xs mb-1 font-semibold">
-                Selecione a Categoria de Destino:
+                {t.products.bulkActions.selectCategoryLabel}
               </label>
               <select
                 value={bulkCategoryTarget}
                 onChange={(e) => setBulkCategoryTarget(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs"
               >
-                <option value="">Selecione...</option>
+                <option value="">{t.products.bulkActions.selectCategoryLabel}</option>
                 {categoriesList.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.nome}
@@ -4203,14 +4194,14 @@ export default function AdminProdutosPage() {
                 onClick={() => setShowBulkCategoryModal(false)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                Cancelar
+                {t.products.bulkActions.cancelBtn}
               </button>
               <button
                 onClick={handleBulkUpdateCategoryAction}
                 disabled={isBulkActionRunning || !bulkCategoryTarget}
                 className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 cursor-pointer"
               >
-                {isBulkActionRunning ? 'Movendo...' : 'Confirmar Mudança'}
+                {isBulkActionRunning ? t.products.confirmModals.deletingBtn : t.products.bulkActions.applyCategoryBtn}
               </button>
             </div>
           </div>

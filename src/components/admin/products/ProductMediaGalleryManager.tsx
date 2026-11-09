@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { parseMediaColor, isVideoUrl } from '@/lib/products';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface FormMediaItem {
   id?: string;
@@ -54,6 +55,7 @@ export function ProductMediaGalleryManager({
   onChange,
   onToast
 }: ProductMediaGalleryManagerProps) {
+  const { t } = useAdminI18n();
   const [uploading, setUploading] = useState(false);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string>('todas');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -134,12 +136,12 @@ export function ProductMediaGalleryManager({
       }
 
       if (successCount > 0) {
-        showToast(`${successCount} mídia(s) otimizada(s) em WebP e salva(s) com sucesso!`);
+        showToast(t.products.gallery.toastSuccess(successCount));
       } else {
-        showToast('Nenhuma mídia foi salva.', 'error');
+        showToast(t.products.gallery.toastNone, 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Erro inesperado no upload.', 'error');
+      showToast(err?.message || t.products.gallery.toastUnexpectedError, 'error');
     } finally {
       setUploading(false);
     }
@@ -194,14 +196,14 @@ export function ProductMediaGalleryManager({
         uploadError: null,
         tempFile: undefined
       };
-      showToast('Mídia enviada com sucesso para o Cloudflare R2!');
+      showToast(t.products.gallery.toastR2Success);
     } else {
       refreshed[index] = {
         ...refreshed[index],
         isUploading: false,
         uploadError: res.error || 'Falha no upload'
       };
-      showToast('Falha ao reenviar arquivo.', 'error');
+      showToast(t.products.gallery.toastR2Error, 'error');
     }
     onChange(refreshed);
   };
@@ -227,7 +229,7 @@ export function ProductMediaGalleryManager({
   const handleSetMainCover = (index: number) => {
     const targetItem = mediaList[index];
     if (targetItem && (targetItem.tipo === 'video' || isVideoUrl(targetItem.url))) {
-      showToast('Um arquivo de vídeo não pode ser definido como Capa Principal da vitrine.', 'error');
+      showToast(t.products.gallery.toastVideoCoverError, 'error');
       return;
     }
     if (onCoverIndexChange) onCoverIndexChange(index);
@@ -242,7 +244,7 @@ export function ProductMediaGalleryManager({
     }));
     onChange(reordered);
     if (onCoverIndexChange) onCoverIndexChange(0);
-    showToast('Foto definida como Capa Principal da vitrine!');
+    showToast(t.products.gallery.toastMainCoverSuccess);
   };
 
   // Definir ou Alterar Cor Vinculada
@@ -257,7 +259,7 @@ export function ProductMediaGalleryManager({
       return { ...m, label: newLabel };
     });
     onChange(updated);
-    showToast(newColor ? `Foto vinculada à cor "${newColor}"!` : 'Vínculo de cor removido.');
+    showToast(newColor ? t.products.gallery.toastLinkedColor(newColor) : t.products.gallery.toastUnlinkedColor);
   };
 
   // Definir Capa da Cor
@@ -266,7 +268,7 @@ export function ProductMediaGalleryManager({
     if (!targetItem) return;
     const parsedTarget = parseMediaColor(targetItem.label || undefined);
     if (!parsedTarget.colorName) {
-      showToast('Vincule a foto a uma cor antes de torná-la Capa da Cor.', 'info');
+      showToast(t.products.gallery.toastColorCoverRequired, 'info');
       return;
     }
 
@@ -294,8 +296,8 @@ export function ProductMediaGalleryManager({
     onChange(updated);
     showToast(
       nextIsCover
-        ? `Definida como Capa Oficial da cor ${corAlvo} na vitrine!`
-        : `Removido status de capa da cor ${corAlvo}.`
+        ? t.products.gallery.toastSetColorCoverSuccess(corAlvo)
+        : t.products.gallery.toastRemoveColorCoverSuccess(corAlvo)
     );
   };
 
@@ -316,8 +318,8 @@ export function ProductMediaGalleryManager({
     onChange(updated);
     showToast(
       nextIsHidden
-        ? 'Foto ocultada da vitrine! (Preservada no acervo)'
-        : 'Foto reativada na vitrine da loja!'
+        ? t.products.gallery.toastHideSuccess
+        : t.products.gallery.toastUnhideSuccess
     );
   };
 
@@ -328,7 +330,7 @@ export function ProductMediaGalleryManager({
     if (onCoverIndexChange && coverIndex >= updated.length) {
       onCoverIndexChange(0);
     }
-    showToast('Mídia removida da galeria.');
+    showToast(t.products.gallery.toastDeleted);
   };
 
   // Filtragem de fotos no acervo
@@ -353,7 +355,7 @@ export function ProductMediaGalleryManager({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-bold text-slate-900 text-sm font-serif-luxury">
-              Fotos e Vídeos da Peça ({mediaList.length} mídias)
+              {t.products.gallery.titleWithCount(mediaList.length)}
             </h4>
             {/* Botão Discreto de Dica 9:16 */}
             <div className="relative">
@@ -361,10 +363,10 @@ export function ProductMediaGalleryManager({
                 type="button"
                 onClick={() => setShowTip916(!showTip916)}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 cursor-pointer transition-colors"
-                title="Dica de proporção Mobile First"
+                title={t.products.gallery.tip916Btn}
               >
                 <Smartphone className="w-3 h-3 text-amber-700" />
-                <span>Dica 9:16</span>
+                <span>{t.products.gallery.tip916Btn}</span>
                 <Info className="w-2.5 h-2.5 text-amber-600" />
               </button>
 
@@ -374,7 +376,7 @@ export function ProductMediaGalleryManager({
                   <div className="flex items-center justify-between font-bold text-amber-300 text-[11px]">
                     <span className="flex items-center gap-1">
                       <Smartphone className="w-3.5 h-3.5" />
-                      Proporção 9:16 Vertical (1080×1920)
+                      {t.products.gallery.tip916Title}
                     </span>
                     <button
                       type="button"
@@ -385,20 +387,20 @@ export function ProductMediaGalleryManager({
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Fotos verticais e Reels de provador ocupam a tela inteira das clientes no smartphone, destacando o caimento do tecido e aumentando a conversão.
+                    {t.products.gallery.tip916Desc}
                   </p>
                 </div>
               )}
             </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Vincule fotos às cores da grade, eleja a capa de cada cor e oculte imagens sem deletar.
+            {t.products.gallery.subtitle}
           </p>
         </div>
 
         <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer text-xs transition-colors shadow-sm shrink-0">
           <Upload className={`w-4 h-4 ${uploading ? 'animate-bounce' : ''}`} />
-          <span>{uploading ? 'Enviando mídias...' : '+ Adicionar Fotos / Vídeos'}</span>
+          <span>{uploading ? t.products.gallery.uploadingBtn : t.products.gallery.btnSelectFiles}</span>
           <input
             type="file"
             multiple
@@ -414,7 +416,7 @@ export function ProductMediaGalleryManager({
       {availableColors.length > 0 && mediaList.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mr-1 shrink-0">
-            <Filter className="w-3 h-3 text-amber-600" /> Filtrar Cor:
+            <Filter className="w-3 h-3 text-amber-600" /> {t.products.gallery.filterColorLabel}
           </span>
           <button
             type="button"
@@ -425,7 +427,7 @@ export function ProductMediaGalleryManager({
                 : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
             }`}
           >
-            Todas ({mediaList.length})
+            {t.products.gallery.filterAllColors} ({mediaList.length})
           </button>
 
           {/* Primeiras 2 cores como botões rápidos */}
@@ -469,7 +471,7 @@ export function ProductMediaGalleryManager({
                   : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              <option value="" disabled className="text-slate-500 bg-white">Mais Cores ({availableColors.length - 2}) ▾</option>
+              <option value="" disabled className="text-slate-500 bg-white">{t.products.gallery.filterMoreColors(availableColors.length - 2)}</option>
               {availableColors.slice(2).map((c) => {
                 const count = mediaList.filter((m) => {
                   const p = parseMediaColor(m.label || undefined);
@@ -481,7 +483,7 @@ export function ProductMediaGalleryManager({
                   </option>
                 );
               })}
-              <option value="sem_cor" className="text-slate-900 bg-white">Sem cor vinculada</option>
+              <option value="sem_cor" className="text-slate-900 bg-white">{t.products.gallery.filterNoColor}</option>
             </select>
           )}
 
@@ -495,7 +497,7 @@ export function ProductMediaGalleryManager({
                   : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              Sem cor ({mediaList.filter((m) => !parseMediaColor(m.label || undefined).colorName).length})
+              {t.products.gallery.filterNoColor} ({mediaList.filter((m) => !parseMediaColor(m.label || undefined).colorName).length})
             </button>
           )}
         </div>
@@ -512,10 +514,10 @@ export function ProductMediaGalleryManager({
         >
           <Upload className={`w-8 h-8 text-slate-400 group-hover:text-amber-600 transition-colors ${uploading ? 'animate-bounce text-amber-600' : ''}`} />
           <span className="text-xs font-bold text-slate-700">
-            {isDragOver ? 'Solte as fotos ou vídeos aqui!' : 'Nenhuma foto ou vídeo cadastrado nesta peça.'}
+            {isDragOver ? t.products.gallery.dropzoneHover : t.products.gallery.dropzoneText}
           </span>
           <span className="text-[11px] text-slate-500">
-            Clique aqui para subir múltiplas fotos ou arraste arquivos para o Cloudflare R2.
+            {t.products.gallery.dropzoneSubtext}
           </span>
           <input
             type="file"
@@ -528,7 +530,7 @@ export function ProductMediaGalleryManager({
         </label>
       ) : filteredListWithIndices.length === 0 ? (
         <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs">
-          Nenhuma foto encontrada para o filtro de cor selecionado.
+          {t.products.gallery.emptyFiltered}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
@@ -554,7 +556,7 @@ export function ProductMediaGalleryManager({
                   {foto.isUploading && (
                     <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center text-white z-20 animate-fade-in">
                       <Loader2 className="w-6 h-6 animate-spin text-amber-400 mb-1" />
-                      <span className="text-[10px] font-bold text-amber-200">Enviando R2...</span>
+                      <span className="text-[10px] font-bold text-amber-200">{t.products.gallery.uploadingR2}</span>
                     </div>
                   )}
 
@@ -570,7 +572,7 @@ export function ProductMediaGalleryManager({
                         className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-xs"
                       >
                         <RefreshCw className="w-3 h-3" />
-                        <span>Tentar Novamente</span>
+                        <span>{t.products.gallery.retryBtn}</span>
                       </button>
                     </div>
                   )}
@@ -585,7 +587,7 @@ export function ProductMediaGalleryManager({
                       </div>
                       <span className="absolute bottom-1.5 left-1.5 bg-rose-600 text-white font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
                         <Video className="w-2.5 h-2.5" />
-                        Vídeo Provador
+                        {t.products.gallery.fittingVideoBadge}
                       </span>
                     </div>
                   ) : (
@@ -603,12 +605,12 @@ export function ProductMediaGalleryManager({
                   <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
                     {isMainCover ? (
                       <span className="bg-amber-500 text-slate-950 font-black text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs">
-                        ⭐ Capa Principal
+                        {t.products.gallery.coverBadge}
                       </span>
                     ) : parsed.isColorCover ? (
                       <span className="bg-amber-400 text-slate-950 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
                         <Star className="w-2.5 h-2.5 fill-slate-950" />
-                        Capa {parsed.colorName}
+                        {t.products.gallery.colorCoverBadge(parsed.colorName || '')}
                       </span>
                     ) : (
                       <span className="bg-slate-900/80 text-white font-bold text-[9px] px-1.5 py-0.5 rounded">
@@ -618,7 +620,7 @@ export function ProductMediaGalleryManager({
 
                     {parsed.isHidden && (
                       <span className="bg-rose-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded shadow-xs">
-                        Oculta
+                        {t.products.gallery.hiddenBadge}
                       </span>
                     )}
                   </div>
@@ -638,36 +640,36 @@ export function ProductMediaGalleryManager({
                   {isMainCover ? (
                     <div className="w-full py-1 px-1.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded flex items-center justify-center gap-1 shadow-2xs">
                       <Star className="w-3 h-3 fill-slate-950 text-slate-950" />
-                      <span>⭐ Capa Principal da Peça</span>
+                      <span>{t.products.gallery.mainCoverFixed}</span>
                     </div>
                   ) : !isVideo ? (
                     <button
                       type="button"
                       onClick={() => handleSetMainCover(originalIndex)}
                       className="w-full py-1.5 px-2 bg-amber-100 hover:bg-amber-500 hover:text-slate-950 text-amber-900 border border-amber-300/80 font-bold text-[10px] rounded-md cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs group/btn"
-                      title="Definir esta foto como a Capa Principal #1 do catálogo e vitrine"
+                      title={t.products.gallery.setCoverTooltip}
                     >
                       <Star className="w-3 h-3 text-amber-700 group-hover/btn:fill-slate-950 group-hover/btn:text-slate-950 transition-colors" />
-                      <span>Definir como Capa Principal</span>
+                      <span>{t.products.gallery.setCoverBtn}</span>
                     </button>
                   ) : (
                     <div className="w-full py-1 px-1.5 bg-slate-900 text-rose-300 border border-rose-800/60 font-bold text-[9px] rounded flex items-center justify-center gap-1 text-center">
                       <Video className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                      <span>Vídeo Provador (Dossiê)</span>
+                      <span>{t.products.gallery.fittingVideoDossier}</span>
                     </div>
                   )}
 
                   {/* Seletor de Vínculo de Cor */}
                   <div>
                     <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">
-                      🎨 Vincular à Cor:
+                      {t.products.gallery.linkToColorBtn}
                     </label>
                     <select
                       value={parsed.colorName || ''}
                       onChange={(e) => handleSetColor(originalIndex, e.target.value)}
                       className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     >
-                      <option value="">Sem cor vinculada</option>
+                      <option value="">{t.products.gallery.unlinkedColorOption}</option>
                       {availableColors.map((c) => (
                         <option key={c.nome} value={c.nome}>
                           {c.nome}
@@ -692,13 +694,13 @@ export function ProductMediaGalleryManager({
                       }`}
                       title={
                         parsed.colorName
-                          ? `Definir esta foto como a miniatura oficial da cor "${parsed.colorName}" na vitrine`
-                          : 'Vincule uma cor no campo acima para ativar'
+                          ? `${t.products.gallery.setColorCoverBtn}: "${parsed.colorName}"`
+                          : t.products.gallery.toastColorCoverRequired
                       }
                     >
                       <Star className={`w-3 h-3 ${parsed.isColorCover ? 'fill-slate-950' : ''}`} />
                       <span className="truncate">
-                        {parsed.isColorCover ? 'Capa da Cor' : parsed.colorName ? 'Capa da Cor' : 'Capa de Cor'}
+                        {t.products.gallery.setColorCoverBtn}
                       </span>
                     </button>
 
@@ -711,17 +713,17 @@ export function ProductMediaGalleryManager({
                           ? 'bg-rose-100 text-rose-800 border border-rose-300'
                           : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                       }`}
-                      title={parsed.isHidden ? 'Reexibir foto no catálogo' : 'Ocultar foto do catálogo sem deletar'}
+                      title={parsed.isHidden ? t.products.gallery.showInStorefrontBtn : t.products.gallery.hideFromStorefrontBtn}
                     >
                       {parsed.isHidden ? (
                         <>
                           <Eye className="w-3 h-3 text-rose-600" />
-                          <span>Reexibir</span>
+                          <span>{t.products.gallery.showInStorefrontBtn}</span>
                         </>
                       ) : (
                         <>
                           <EyeOff className="w-3 h-3 text-slate-500" />
-                          <span>Ocultar</span>
+                          <span>{t.products.gallery.hideFromStorefrontBtn}</span>
                         </>
                       )}
                     </button>
@@ -737,7 +739,7 @@ export function ProductMediaGalleryManager({
                         className={`p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors ${
                           originalIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
                         }`}
-                        title="Mover para a frente (posição anterior)"
+                        title={t.products.gallery.moveLeftTooltip}
                       >
                         <ArrowLeft className="w-3.5 h-3.5" />
                       </button>
@@ -748,7 +750,7 @@ export function ProductMediaGalleryManager({
                         className={`p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors ${
                           originalIndex === mediaList.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
                         }`}
-                        title="Mover para trás (próxima posição)"
+                        title={t.products.gallery.moveRightTooltip}
                       >
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -759,7 +761,7 @@ export function ProductMediaGalleryManager({
                         type="button"
                         onClick={() => handleDelete(originalIndex)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                        title="Remover mídia da galeria da peça"
+                        title={t.products.gallery.deleteTooltip}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

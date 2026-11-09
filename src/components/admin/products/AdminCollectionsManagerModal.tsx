@@ -114,7 +114,7 @@ export function AdminCollectionsManagerModal({
   onUpdated,
   onToast
 }: AdminCollectionsManagerModalProps) {
-  const { formatCurrency } = useAdminI18n();
+  const { formatCurrency, t } = useAdminI18n();
   const [activeTab, setActiveTab] = useState<CollectionTab>(initialTab || 'destaque');
   // Modo de exibição: 'current' (peças na seção) | 'add_catalog' (navegador de catálogo para adicionar)
   const [viewMode, setViewMode] = useState<'current' | 'add_catalog'>('current');
@@ -128,6 +128,34 @@ export function AdminCollectionsManagerModal({
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   // Seleção de peças na aba 'add_catalog' (para inclusão em lote)
   const [selectedAddProductIds, setSelectedAddProductIds] = useState<Set<string>>(new Set());
+
+  const tabTitles: Record<CollectionTab, { title: string; subtitle: string; label: string }> = useMemo(() => ({
+    destaque: {
+      title: t.products.collectionsModal.tabFeatured,
+      subtitle: t.products.collectionsModal.featuredDesc,
+      label: t.products.collectionsModal.tabFeatured.replace(/^🌟\s*/, '')
+    },
+    mais_vendido: {
+      title: t.products.collectionsModal.tabBestSellers,
+      subtitle: t.products.collectionsModal.bestSellersDesc,
+      label: t.products.collectionsModal.tabBestSellers.replace(/^🔥\s*/, '')
+    },
+    outlet: {
+      title: t.products.collectionsModal.tabOutlet,
+      subtitle: t.products.collectionsModal.outletDesc,
+      label: t.products.collectionsModal.tabOutlet.replace(/^🏷️\s*/, '')
+    },
+    ultimas_pecas: {
+      title: t.products.collectionsModal.tabLastPieces,
+      subtitle: t.products.collectionsModal.lastPiecesDesc,
+      label: t.products.collectionsModal.tabLastPieces.replace(/^⏳\s*/, '')
+    },
+    categorias: {
+      title: t.products.collectionsModal.tabCategories,
+      subtitle: t.products.collectionsModal.categoriesDesc,
+      label: t.products.collectionsModal.tabCategories.replace(/^📁\s*/, '')
+    }
+  }), [t]);
 
   if (!isOpen) return null;
 
@@ -441,10 +469,10 @@ export function AdminCollectionsManagerModal({
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg font-serif-luxury text-amber-400 flex items-center gap-2">
-                <span>Gestor de Vitrines, Destaques & Catálogo</span>
+                <span>{t.products.collectionsModal.title}</span>
               </h3>
               <p className="text-xs text-slate-300">
-                Gerencie peças com suporte a multisseções simultâneas. Adicione ou remova produtos em lote.
+                {t.products.collectionsModal.subtitle}
               </p>
             </div>
           </div>
@@ -453,7 +481,7 @@ export function AdminCollectionsManagerModal({
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            title="Fechar (Esc)"
+            title={t.products.collectionsModal.closeBtn}
           >
             <X className="w-5 h-5" />
           </button>
@@ -492,7 +520,7 @@ export function AdminCollectionsManagerModal({
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${isActive ? cfg.color : 'text-slate-400'}`} />
-                <span>{cfg.title.split(' ')[1] || cfg.title}</span>
+                <span>{tabTitles[tabKey]?.label || cfg.title.split(' ')[1] || cfg.title}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                     isActive ? 'bg-amber-100 text-amber-900 font-bold' : 'bg-slate-200 text-slate-600'
@@ -510,18 +538,18 @@ export function AdminCollectionsManagerModal({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                <span>{currentTabCfg.title}</span>
+                <span>{tabTitles[activeTab]?.title || currentTabCfg.title}</span>
                 <span className="text-xs font-normal text-slate-500 font-mono">
-                  ({currentCollectionProducts.length} peças nesta seleção)
+                  ({t.products.collectionsModal.curatedCount(currentCollectionProducts.length)})
                 </span>
               </h4>
-              <p className="text-xs text-slate-500 mt-0.5">{currentTabCfg.subtitle}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{tabTitles[activeTab]?.subtitle || currentTabCfg.subtitle}</p>
             </div>
 
             {/* Seletor de Categoria se for a aba de categorias */}
             {activeTab === 'categorias' && (
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-semibold text-slate-700">Categoria:</span>
+                <span className="text-xs font-semibold text-slate-700">{t.products.batchModal.categoryLabel}:</span>
                 <select
                   value={selectedCatId}
                   onChange={(e) => {
@@ -554,7 +582,7 @@ export function AdminCollectionsManagerModal({
                 }`}
               >
                 <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
-                <span>Peças Nesta Seção ({currentCollectionProducts.length})</span>
+                <span>{t.products.collectionsModal.viewModeCurrent(currentCollectionProducts.length)}</span>
               </button>
 
               <button
@@ -567,7 +595,7 @@ export function AdminCollectionsManagerModal({
                 }`}
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Adicionar Peças do Catálogo ({candidateProducts.length})</span>
+                <span>{t.products.collectionsModal.viewModeAdd(candidateProducts.length)}</span>
               </button>
             </div>
 
@@ -581,8 +609,8 @@ export function AdminCollectionsManagerModal({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={
                     viewMode === 'add_catalog'
-                      ? 'Filtrar peças do catálogo para adicionar...'
-                      : 'Filtrar peças já presentes nesta seção...'
+                      ? t.products.collectionsModal.filterAddPlaceholder
+                      : t.products.collectionsModal.filterCurrentPlaceholder
                   }
                   className="w-full pl-9 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
                 />
@@ -603,7 +631,7 @@ export function AdminCollectionsManagerModal({
                   onChange={(e) => setCatalogCategoryFilter(e.target.value)}
                   className="px-2.5 py-1.5 text-[11px] font-semibold rounded-xl border border-slate-200 bg-slate-50 text-slate-800 cursor-pointer shrink-0"
                 >
-                  <option value="todos">Todas Categorias</option>
+                  <option value="todos">{t.products.collectionsModal.allCategoriesOption}</option>
                   {categoriesList.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nome}
@@ -635,8 +663,8 @@ export function AdminCollectionsManagerModal({
                   />
                   <span>
                     {selectedProductIds.size > 0
-                      ? `${selectedProductIds.size} peça(s) selecionada(s)`
-                      : 'Selecionar todas as peças desta seção'}
+                      ? t.products.collectionsModal.selectedCurrentCount(selectedProductIds.size)
+                      : t.products.collectionsModal.selectAllCurrent}
                   </span>
                 </label>
 
@@ -651,8 +679,8 @@ export function AdminCollectionsManagerModal({
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>
                         {isProcessingId === 'bulk_remove'
-                          ? 'Removendo...'
-                          : `Remover ${selectedProductIds.size} selecionadas`}
+                          ? t.products.collectionsModal.removingBtn
+                          : t.products.collectionsModal.removeSelectedBtn(selectedProductIds.size)}
                       </span>
                     </button>
                   )}
@@ -663,7 +691,7 @@ export function AdminCollectionsManagerModal({
                     className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Adicionar Peças</span>
+                    <span>{t.products.collectionsModal.addToShowcaseBtn}</span>
                   </button>
                 </div>
               </div>
@@ -677,9 +705,9 @@ export function AdminCollectionsManagerModal({
                     <ShoppingBag className="w-6 h-6" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-slate-800 text-sm">Nenhuma peça nesta seção no momento</h5>
+                    <h5 className="font-bold text-slate-800 text-sm">{t.products.collectionsModal.emptyShowcaseTitle}</h5>
                     <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                      Esta vitrine está vazia. Clique no botão abaixo para abrir o catálogo navegável e escolher as peças com 1 clique.
+                      {t.products.collectionsModal.emptyShowcaseDesc}
                     </p>
                   </div>
                   <button
@@ -688,7 +716,7 @@ export function AdminCollectionsManagerModal({
                     className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-sm cursor-pointer inline-flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>+ Abrir Catálogo e Adicionar Peças</span>
+                    <span>{t.products.collectionsModal.openCatalogBtn}</span>
                   </button>
                 </div>
               ) : (
@@ -743,7 +771,7 @@ export function AdminCollectionsManagerModal({
                             </span>
                             {!product.ativo && (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
-                                Pausada
+                                {t.products.lifecycle.paused}
                               </span>
                             )}
                           </div>
@@ -756,11 +784,11 @@ export function AdminCollectionsManagerModal({
                           </h5>
 
                           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                            Preço:{' '}
+                            {t.products.quickPriceModal.salePriceLabel}:{' '}
                             <span className="font-bold text-slate-800">
                               {formatCurrency(Number(product.preco || 0))}
                             </span>{' '}
-                            • Estoque:{' '}
+                            • {t.products.table.thStock}:{' '}
                             <span
                               className={`font-bold ${
                                 product.estoque_total > 5 ? 'text-emerald-700' : 'text-amber-700'
@@ -773,7 +801,7 @@ export function AdminCollectionsManagerModal({
                           {/* Chips de Multisseção com 1 Clique */}
                           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                             <span className="text-[10px] font-semibold text-slate-400 mr-1">
-                              Presente também em:
+                              {t.products.collectionsModal.alsoInLabel}
                             </span>
 
                             <button
@@ -785,9 +813,9 @@ export function AdminCollectionsManagerModal({
                                   ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                               }`}
-                              title="Clique para ativar/desativar em Lançamentos"
+                              title={t.products.quickPriceModal.flagFeaturedLabel}
                             >
-                              <span>🌟 Lançamento</span>
+                              <span>🌟 {tabTitles.destaque.label}</span>
                               {product.destaque && <Check className="w-2.5 h-2.5" />}
                             </button>
 
@@ -800,9 +828,9 @@ export function AdminCollectionsManagerModal({
                                   ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                               }`}
-                              title="Clique para ativar/desativar em Mais Vendidos"
+                              title={t.products.quickPriceModal.flagBestSellerLabel}
                             >
-                              <span>🔥 Mais Vendido</span>
+                              <span>🔥 {tabTitles.mais_vendido.label}</span>
                               {product.mais_vendido && <Check className="w-2.5 h-2.5" />}
                             </button>
 
@@ -815,9 +843,9 @@ export function AdminCollectionsManagerModal({
                                   ? 'bg-rose-100 text-rose-900 border-rose-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                               }`}
-                              title="Clique para ativar/desativar no Outlet"
+                              title={t.products.quickPriceModal.flagOutletLabel}
                             >
-                              <span>🏷️ Outlet</span>
+                              <span>🏷️ {tabTitles.outlet.label}</span>
                               {product.outlet && <Check className="w-2.5 h-2.5" />}
                             </button>
 
@@ -830,9 +858,9 @@ export function AdminCollectionsManagerModal({
                                   ? 'bg-orange-100 text-orange-900 border-orange-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                               }`}
-                              title="Clique para ativar/desativar em Últimas Peças"
+                              title={t.products.quickPriceModal.flagLastPiecesLabel}
                             >
-                              <span>⏳ Últimas Peças</span>
+                              <span>⏳ {tabTitles.ultimas_pecas.label}</span>
                               {product.ultimas_pecas && <Check className="w-2.5 h-2.5" />}
                             </button>
                           </div>
@@ -843,7 +871,7 @@ export function AdminCollectionsManagerModal({
                       <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                         {activeTab === 'categorias' && (
                           <div className="flex items-center gap-1 text-xs">
-                            <span className="text-slate-400 text-[11px]">Mover:</span>
+                            <span className="text-slate-400 text-[11px]">{t.products.collectionsModal.moveCategoryLabel}</span>
                             <select
                               value={product.categoria_id || ''}
                               disabled={isProcessingId === product.id}
@@ -864,10 +892,10 @@ export function AdminCollectionsManagerModal({
                           disabled={isProcessingId === product.id}
                           onClick={() => handleRemoveProduct(product)}
                           className="px-2.5 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
-                          title={`Remover de ${currentTabCfg.title}`}
+                          title={t.products.collectionsModal.removeSingleBtn}
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span className="hidden sm:inline">Remover</span>
+                          <span className="hidden sm:inline">{t.products.collectionsModal.removeSingleBtn}</span>
                         </button>
                       </div>
                     </div>
@@ -896,8 +924,8 @@ export function AdminCollectionsManagerModal({
                 />
                 <span>
                   {selectedAddProductIds.size > 0
-                    ? `${selectedAddProductIds.size} de ${candidateProducts.length} peça(s) selecionada(s)`
-                    : `Selecionar todas as ${candidateProducts.length} peças encontradas`}
+                    ? `${selectedAddProductIds.size} / ${candidateProducts.length}`
+                    : t.products.collectionsModal.selectAllCandidates(candidateProducts.length)}
                 </span>
               </label>
 
@@ -911,10 +939,10 @@ export function AdminCollectionsManagerModal({
                   <Plus className="w-4 h-4" />
                   <span>
                     {isProcessingId === 'bulk_add'
-                      ? 'Inserindo...'
+                      ? t.products.collectionsModal.insertingBtn
                       : selectedAddProductIds.size > 0
-                      ? `Inserir ${selectedAddProductIds.size} selecionadas nesta seção`
-                      : 'Inserir selecionadas'}
+                      ? t.products.collectionsModal.insertSelectedBtn(selectedAddProductIds.size)
+                      : t.products.collectionsModal.insertSingleBtn}
                   </span>
                 </button>
               </div>
@@ -927,9 +955,9 @@ export function AdminCollectionsManagerModal({
                   <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                     <Search className="w-5 h-5" />
                   </div>
-                  <h5 className="font-bold text-slate-700 text-sm">Nenhuma outra peça encontrada</h5>
+                  <h5 className="font-bold text-slate-700 text-sm">{t.products.collectionsModal.emptyCandidatesTitle}</h5>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Todas as peças ativas do catálogo já estão inseridas nesta seleção, ou nenhum produto corresponde aos filtros aplicados.
+                    {t.products.collectionsModal.emptyCandidatesDesc}
                   </p>
                 </div>
               ) : (
@@ -982,22 +1010,22 @@ export function AdminCollectionsManagerModal({
                             </span>
                             {p.destaque && (
                               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                                🌟 Lançamento
+                                🌟 {tabTitles.destaque.label}
                               </span>
                             )}
                             {p.mais_vendido && (
                               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-200">
-                                🔥 Mais Vendido
+                                🔥 {tabTitles.mais_vendido.label}
                               </span>
                             )}
                             {p.outlet && (
                               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 border border-rose-200">
-                                🏷️ Outlet
+                                🏷️ {tabTitles.outlet.label}
                               </span>
                             )}
                             {p.ultimas_pecas && (
                               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-900 border border-orange-200">
-                                ⏳ Últimas Peças
+                                ⏳ {tabTitles.ultimas_pecas.label}
                               </span>
                             )}
                           </div>
@@ -1007,11 +1035,11 @@ export function AdminCollectionsManagerModal({
                           </h5>
 
                           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                            Preço:{' '}
+                            {t.products.quickPriceModal.salePriceLabel}:{' '}
                             <span className="font-bold text-slate-800">
                               {formatCurrency(Number(p.preco || 0))}
                             </span>{' '}
-                            • Estoque:{' '}
+                            • {t.products.table.thStock}:{' '}
                             <span
                               className={`font-bold ${
                                 p.estoque_total > 5 ? 'text-emerald-700' : 'text-amber-700'
@@ -1034,7 +1062,7 @@ export function AdminCollectionsManagerModal({
                         className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50 self-end sm:self-center"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>{isProcessingId === p.id ? 'Inserindo...' : 'Inserir'}</span>
+                        <span>{isProcessingId === p.id ? t.products.collectionsModal.insertingBtn : t.products.collectionsModal.insertSingleBtn}</span>
                       </button>
                     </div>
                   );
@@ -1049,7 +1077,7 @@ export function AdminCollectionsManagerModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              Todas as alterações são gravadas em tempo real no banco e refletem na vitrine pública.
+              {t.products.collectionsModal.footerNotice}
             </span>
           </div>
 
@@ -1061,7 +1089,7 @@ export function AdminCollectionsManagerModal({
                 onClick={handleBulkAddProducts}
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
               >
-                Inserir {selectedAddProductIds.size} selecionadas
+                {t.products.collectionsModal.insertSelectedBtn(selectedAddProductIds.size)}
               </button>
             )}
 
@@ -1070,7 +1098,7 @@ export function AdminCollectionsManagerModal({
               onClick={onClose}
               className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer"
             >
-              Concluir & Fechar
+              {t.products.collectionsModal.footerDoneBtn}
             </button>
           </div>
         </div>
