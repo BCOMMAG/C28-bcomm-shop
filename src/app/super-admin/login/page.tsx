@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles, Server } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isMasterUser } from '@/lib/team';
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
@@ -28,6 +29,11 @@ export default function SuperAdminLoginPage() {
       });
 
       if (!error && data?.session) {
+        if (!isMasterUser(data.session.user)) {
+          await supabase.auth.signOut();
+          setErrorMsg('Acesso negado. Esta conta não possui privilégios de Super Administrador.');
+          return;
+        }
         localStorage.setItem('bcomm_super_admin_auth', 'true');
         localStorage.setItem('bcomm_super_admin_user', email);
         router.push('/super-admin/');

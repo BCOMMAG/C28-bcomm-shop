@@ -49,7 +49,8 @@ export function isMasterUser(emailOrMetadata?: any): boolean {
       'admin@bcomm.shop',
       'master@bcomm.shop',
       'suporte@bcomm.shop',
-      'leonardo@bcomm.shop'
+      'leonardo@bcomm.shop',
+      'superadmin@bcomm.com.br'
     ];
     return masterEmails.includes(clean) || clean.endsWith('@bcomm.shop');
   }

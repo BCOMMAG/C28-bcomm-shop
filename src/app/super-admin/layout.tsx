@@ -19,6 +19,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isMasterUser } from '@/lib/team';
 
 export default function SuperAdminLayout({
   children
@@ -58,7 +59,7 @@ export default function SuperAdminLayout({
     try {
       const supabase = getSupabaseBrowserClient();
       supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) {
+        if (data?.session && isMasterUser(data.session.user)) {
           setIsAuthenticated(true);
         } else {
           setIsAuthenticated(false);
