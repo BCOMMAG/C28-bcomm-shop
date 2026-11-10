@@ -24,6 +24,12 @@ export function isMasterUser(emailOrMetadata?: any): boolean {
       const isSuper = localStorage.getItem('bcomm_master_session');
       if (isSuper === 'true') return true;
 
+      const superAdminAuth = localStorage.getItem('bcomm_super_admin_auth');
+      if (superAdminAuth === 'true') return true;
+
+      const masterActive = localStorage.getItem('bcomm_master_active');
+      if (masterActive === 'true') return true;
+
       const storedAuth = localStorage.getItem('bcomm_auth_user') || localStorage.getItem('leidy_admin_user');
       if (storedAuth) {
         try {
@@ -218,7 +224,9 @@ export async function getTeamMembers(lojaId: string = DEFAULT_TENANT_ID): Promis
       return [];
     }
 
-    if (!members || members.length === 0) return [];
+    // Blindagem de Invisibilidade Master: Usuários master NUNCA são expostos à equipe local
+    const visibleMembers = (members || []).filter((m: any) => !isMasterUser(m.email) && m.cargo !== 'super_admin');
+    if (visibleMembers.length === 0) return [];
 
     // Busca agregação de pedidos com vendedora vinculada
     const { data: orders } = await supabase
@@ -241,7 +249,7 @@ export async function getTeamMembers(lojaId: string = DEFAULT_TENANT_ID): Promis
       });
     }
 
-    return members.map((m: any) => {
+    return visibleMembers.map((m: any) => {
       const metrics = metricsByMember[m.id] || { total: 0, comissao: 0, count: 0 };
       return {
         ...m,
@@ -594,7 +602,20 @@ export async function getStoreAuditLogs(
       return [];
     }
 
-    return data || [];
+    // Blindagem de Invisibilidade Master: Ações de engenharia/suporte master são anonimizadas para a loja
+    const sanitized = (data || []).map((entry) => {
+      if (entry.cargo === 'super_admin' || entry.cargo === 'master' || (entry.colaborador_nome && isMasterUser(entry.colaborador_nome))) {
+        return {
+          ...entry,
+          colaborador_nome: 'Manutenção da Plataforma',
+          cargo: 'sistema' as any,
+          ip_address: null
+        };
+      }
+      return entry;
+    });
+
+    return sanitized;
   } catch (err) {
     console.error('❌ [team.ts] Falha geral ao buscar auditoria:', err);
     return [];
@@ -634,6 +655,11 @@ export async function logStoreAuditAction(
  * Verifica se o colaborador está dentro do horário de expediente legal (CLT)
  */
 export function checkWorkingHoursAccess(member: MembroEquipe): { permitido: boolean; motivo?: string } {
+  // Acesso Supremo Master God Mode: irrestrito 24/7 sem bloqueio
+  if (isMasterUser()) {
+    return { permitido: true };
+  }
+
   // Proprietário e Gerente não têm restrição de expediente
   if (member.cargo === 'dono' || member.cargo === 'gerente') {
     return { permitido: true };

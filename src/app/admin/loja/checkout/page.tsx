@@ -274,7 +274,7 @@ export default function CheckoutSettingsPage() {
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-pink-700 bg-white px-2 py-0.5 rounded-md border border-pink-300 shrink-0">
-                    Ativo
+                    {t.common.active}
                   </span>
                 </div>
               </div>

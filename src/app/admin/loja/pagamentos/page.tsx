@@ -320,7 +320,7 @@ export default function PaymentSettingsPage() {
             <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600 font-medium">
               <span>{t.storePayments.modeProduction}</span>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <Check className="w-3 h-3" /> Ativo
+                <Check className="w-3 h-3" /> {t.common.active}
               </span>
             </div>
           </div>

@@ -1095,7 +1095,7 @@ export default function AppearanceSettingsPage() {
               />
             ) : (
               <span className="text-[10px] text-slate-400 text-center px-2">
-                1200 x 630 px recomendado
+                {t.storeAppearance.ogRecommended}
               </span>
             )}
             {ogImageUrl && (
@@ -1116,7 +1116,7 @@ export default function AppearanceSettingsPage() {
             ) : (
               <Upload className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{isUploadingOgImage ? 'Enviando...' : 'Carregar OG (1200x630)'}</span>
+            <span>{isUploadingOgImage ? t.storeAppearance.uploading : t.storeAppearance.uploadOg}</span>
             <input
               type="file"
               accept="image/*"
@@ -1156,7 +1156,7 @@ export default function AppearanceSettingsPage() {
 
       {/* Slogan da Boutique */}
       <div className="pt-2 text-xs">
-        <label className="block text-slate-700 mb-1 font-bold">Slogan Oficial da Boutique</label>
+        <label className="block text-slate-700 mb-1 font-bold">{t.storeAppearance.sloganLabel}</label>
         <div className="relative">
           <Type className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -1182,7 +1182,7 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-              2. Atmosfera & Plano de Fundo da Loja
+              {t.storeAppearance.secAtmosphereTitle}
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{t.storeAppearance.secAtmosphereBadge}</span>
             </h2>
             <p className="text-[11px] text-slate-500">
@@ -1221,20 +1221,20 @@ export default function AppearanceSettingsPage() {
               />
               <div className="absolute inset-0 bg-black/25" />
               <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" /> Oficial Boutique
+                <Sparkles className="w-2.5 h-2.5" /> {t.storeAppearance.optOfficialBadge}
               </span>
               {siteBgTipo === 'imagem' && (siteBgImageUrl === '/images/plano-de-fundo.webp' || siteBgImageUrl === '/images/plano-de-fundo.jpg' || !siteBgImageUrl) && (
                 <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-                  <Check className="w-2.5 h-2.5" /> Ativo
+                  <Check className="w-2.5 h-2.5" /> {t.storeAppearance.activeBadge}
                 </span>
               )}
             </div>
 
             <div className="flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-bold text-slate-900">Boutique & Jardim Vertical</h3>
+                <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optOfficialTitle}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
-                  Foto do acervo oficial com jardim verde e espelhos dourados.
+                  {t.storeAppearance.optOfficialDesc}
                 </p>
               </div>
 
@@ -1246,7 +1246,7 @@ export default function AppearanceSettingsPage() {
                     className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5 text-amber-600" />
-                    Em Uso na Loja
+                    {t.storeAppearance.inUseBadge}
                   </button>
                 ) : (
                   <button
@@ -1258,7 +1258,7 @@ export default function AppearanceSettingsPage() {
                     }}
                     className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
                   >
-                    Ativar Oficial
+                    {t.storeAppearance.activateOfficialBtn}
                   </button>
                 )}
               </div>
@@ -1282,7 +1282,7 @@ export default function AppearanceSettingsPage() {
               </span>
               {siteBgTipo === 'video' && (
                 <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-                  <Check className="w-2.5 h-2.5" /> Ativo
+                  <Check className="w-2.5 h-2.5" /> {t.storeAppearance.activeBadge}
                 </span>
               )}
             </div>
@@ -1303,7 +1303,7 @@ export default function AppearanceSettingsPage() {
                     className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5 text-amber-600" />
-                    Em Uso na Loja
+                    {t.storeAppearance.inUseBadge}
                   </button>
                 ) : (
                   <button
@@ -1339,11 +1339,11 @@ export default function AppearanceSettingsPage() {
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-sky-400 border border-sky-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md">
-                    Personalizada R2
+                    {t.storeAppearance.customR2Badge}
                   </span>
                   {siteBgTipo === 'imagem' && siteBgImageUrl === siteBgCustomUrl && (
                     <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-                      <Check className="w-2.5 h-2.5" /> Ativo
+                      <Check className="w-2.5 h-2.5" /> {t.storeAppearance.activeBadge}
                     </span>
                   )}
                 </div>
@@ -1352,14 +1352,14 @@ export default function AppearanceSettingsPage() {
                   <div>
                     <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optUploadTitle}</h3>
                     <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
-                      Armazenada com entrega de alta velocidade na nuvem da boutique.
+                      {t.storeAppearance.customR2Desc}
                     </p>
                   </div>
 
                   <div className="pt-2 space-y-1.5">
                     {siteBgTipo === 'imagem' && siteBgImageUrl === siteBgCustomUrl ? (
                       <div className="py-1 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg text-center flex items-center justify-center gap-1">
-                        <Check className="w-3.5 h-3.5 text-amber-600" /> Em Uso
+                        <Check className="w-3.5 h-3.5 text-amber-600" /> {t.storeAppearance.inUseBadge}
                       </div>
                     ) : (
                       <button
@@ -1371,14 +1371,14 @@ export default function AppearanceSettingsPage() {
                         }}
                         className="w-full py-1 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg cursor-pointer"
                       >
-                        Ativar Esta Imagem
+                        {t.storeAppearance.activateCustomBtn}
                       </button>
                     )}
 
                     <div className="flex items-center gap-1.5">
                       <label className="flex-1 py-1 px-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-[10px] cursor-pointer text-center flex items-center justify-center gap-1 transition-colors">
                         {isUploadingBgImage ? <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-500" /> : <Upload className="w-2.5 h-2.5" />}
-                        <span>{isUploadingBgImage ? 'Enviando...' : 'Substituir'}</span>
+                        <span>{isUploadingBgImage ? t.storeAppearance.uploading : t.storeAppearance.replaceBtn}</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1390,7 +1390,7 @@ export default function AppearanceSettingsPage() {
                       <button
                         type="button"
                         onClick={handleRemoveCustomBgImage}
-                        title="Excluir imagem personalizada"
+                        title={t.storeAppearance.deleteCustomTooltip}
                         className="p-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1407,7 +1407,7 @@ export default function AppearanceSettingsPage() {
                 <div>
                   <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optUploadNew}</h3>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Envie qualquer foto ou textura (PNG, JPG, WebP) para o R2.
+                    {t.storeAppearance.uploadCustomHint}
                   </p>
                 </div>
                 <label className="w-full mt-3 py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer transition-colors flex items-center justify-center gap-1.5">
@@ -1416,7 +1416,7 @@ export default function AppearanceSettingsPage() {
                   ) : (
                     <Upload className="w-3.5 h-3.5 text-amber-400" />
                   )}
-                  <span>{isUploadingBgImage ? 'Enviando...' : 'Carregar Imagem'}</span>
+                  <span>{isUploadingBgImage ? t.storeAppearance.uploading : t.storeAppearance.uploadImageBtn}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -1447,11 +1447,11 @@ export default function AppearanceSettingsPage() {
                 <span className="text-[8px] font-mono text-slate-600">{siteBgLight}</span>
               </div>
               <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-slate-200 border border-slate-700 text-[9px] font-bold px-2 py-0.5 rounded-md">
-                Minimalista
+                {t.storeAppearance.modeSolid}
               </span>
               {siteBgTipo === 'solido' && (
                 <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-                  <Check className="w-2.5 h-2.5" /> Ativo
+                  <Check className="w-2.5 h-2.5" /> {t.storeAppearance.activeBadge}
                 </span>
               )}
             </div>
@@ -1472,7 +1472,7 @@ export default function AppearanceSettingsPage() {
                     className="w-full py-1.5 px-2 bg-amber-600/10 text-amber-800 border border-amber-600/30 text-[11px] font-bold rounded-lg cursor-default flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5 text-amber-600" />
-                    Em Uso na Loja
+                    {t.storeAppearance.inUseBadge}
                   </button>
                 ) : (
                   <button
@@ -1499,7 +1499,7 @@ export default function AppearanceSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-slate-800 block">
-                Contraste & Escurecimento (Overlay)
+                {t.storeAppearance.overlaySliderTitle}
               </span>
               <span className="text-[11px] text-slate-500">
                 {t.storeAppearance.overlaySliderDesc}
@@ -1564,7 +1564,7 @@ export default function AppearanceSettingsPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
                 <span className="flex items-center gap-1">
-                  <Sun className="w-3 h-3 text-amber-500" /> Claro
+                  <Sun className="w-3 h-3 text-amber-500" /> {t.storeAppearance.lightModeLabel}
                 </span>
                 <span className="font-mono text-[9px] text-slate-500">{siteBgLight}</span>
               </div>
@@ -1594,7 +1594,7 @@ export default function AppearanceSettingsPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
                 <span className="flex items-center gap-1">
-                  <Moon className="w-3 h-3 text-indigo-500" /> Escuro
+                  <Moon className="w-3 h-3 text-indigo-500" /> {t.storeAppearance.darkModeLabel}
                 </span>
                 <span className="font-mono text-[9px] text-slate-500">{siteBgDark}</span>
               </div>
@@ -1650,13 +1650,13 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>3. Tela de Abertura & Carregamento da Boutique (Preloader de Luxo)</span>
+              <span>{t.storeAppearance.secPreloaderTitle}</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                NOVO
+                {t.storeAppearance.badgeNew}
               </span>
             </h2>
             <p className="text-[11px] text-slate-500">
-              Cobre a vitrine enquanto os recursos carregam e revela a loja pronta (0% a 100%), eliminando o carregamento fragmentado de componentes.
+              {t.storeAppearance.secPreloaderDesc}
             </p>
           </div>
         </div>
@@ -1683,7 +1683,7 @@ export default function AppearanceSettingsPage() {
             <span className="ml-2.5 text-xs font-bold text-slate-700">
               {preloaderAtivo ? (
                 <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  🟢 Ativado na Vitrine
+                  {t.storeAppearance.preloaderActivated}
                 </span>
               ) : (
                 <span className="text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
@@ -1698,7 +1698,7 @@ export default function AppearanceSettingsPage() {
       {/* SELETOR DOS 3 MODELOS VISUAIS */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-slate-800 block">
-          Escolha o Modelo Visual da Tela de Abertura:
+          {t.storeAppearance.preloaderModelChoice}
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Modelo 1: Haute Couture */}
@@ -1712,11 +1712,11 @@ export default function AppearanceSettingsPage() {
           >
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-900">1. Haute Couture (Recomendado)</span>
+                <span className="text-xs font-bold text-slate-900">{t.storeAppearance.modelHauteCouture}</span>
                 {preloaderModelo === 'haute_couture' && <Check className="w-4 h-4 text-amber-600" />}
               </div>
               <p className="text-[11px] text-slate-500 mb-3">
-                Contador grande de 00% a 100%, logotipo oficial da boutique no centro, barra dourada ultrafina e slogan.
+                {t.storeAppearance.modelHauteCoutureDesc}
               </p>
             </div>
             {/* Miniatura Ilustrativa */}
@@ -1738,11 +1738,11 @@ export default function AppearanceSettingsPage() {
           >
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-900">2. Monograma & Pulso Dourado</span>
+                <span className="text-xs font-bold text-slate-900">{t.storeAppearance.modelMonogram}</span>
                 {preloaderModelo === 'monograma' && <Check className="w-4 h-4 text-amber-600" />}
               </div>
               <p className="text-[11px] text-slate-500 mb-3">
-                Minimalismo refinado com monograma central pulsante, barra linear compacta e porcentagem sutil.
+                {t.storeAppearance.modelMonogramDesc}
               </p>
             </div>
             {/* Miniatura Ilustrativa */}
@@ -1766,11 +1766,11 @@ export default function AppearanceSettingsPage() {
           >
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-900">3. Editorial Dark Luxury</span>
+                <span className="text-xs font-bold text-slate-900">{t.storeAppearance.modelEditorialDark}</span>
                 {preloaderModelo === 'editorial_dark' && <Check className="w-4 h-4 text-amber-600" />}
               </div>
               <p className="text-[11px] text-slate-500 mb-3">
-                Fundo escuro acetinado com logotipo dourado e efeito cortina teatral que se recolhe verticalmente.
+                {t.storeAppearance.modelEditorialDarkDesc}
               </p>
             </div>
             {/* Miniatura Ilustrativa */}
@@ -1788,7 +1788,7 @@ export default function AppearanceSettingsPage() {
         {/* Cor de Fundo */}
         <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800">Cor de Fundo da Abertura</span>
+            <span className="text-xs font-bold text-slate-800">{t.storeAppearance.preloaderBgColor}</span>
             <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderFundo}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -1821,7 +1821,7 @@ export default function AppearanceSettingsPage() {
         {/* Cor Primária / Destaque */}
         <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800">Cor da Barra & Acentos</span>
+            <span className="text-xs font-bold text-slate-800">{t.storeAppearance.preloaderBarColor}</span>
             <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderCorPrimaria}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -1888,7 +1888,7 @@ export default function AppearanceSettingsPage() {
       {/* ELEMENTOS VISÍVEIS & FREQUÊNCIA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
         <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-          <span className="text-xs font-bold text-slate-800 block">Elementos Exibidos na Abertura:</span>
+          <span className="text-xs font-bold text-slate-800 block">{t.storeAppearance.preloaderElementsTitle}</span>
           <div className="space-y-1.5 text-xs text-slate-700">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -1897,7 +1897,7 @@ export default function AppearanceSettingsPage() {
                 onChange={(e) => setPreloaderExibirLogo(e.target.checked)}
                 className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
               />
-              <span>Exibir Logotipo Oficial da Boutique</span>
+              <span>{t.storeAppearance.preloaderShowLogo}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -1915,7 +1915,7 @@ export default function AppearanceSettingsPage() {
                 onChange={(e) => setPreloaderExibirSlogan(e.target.checked)}
                 className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
               />
-              <span>Exibir Slogan / Frase da Marca</span>
+              <span>{t.storeAppearance.preloaderShowSlogan}</span>
             </label>
           </div>
         </div>
@@ -1981,7 +1981,7 @@ export default function AppearanceSettingsPage() {
         </div>
         <div>
           <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            4. Plano de Fundo do Menu Superior (Header da Vitrine)
+            {t.storeAppearance.secHeaderBgTitle}
           </h2>
           <p className="text-[11px] text-slate-500">
             {t.storeAppearance.headerStyleDesc}
@@ -2003,7 +2003,7 @@ export default function AppearanceSettingsPage() {
           <Eye className="w-4 h-4" />
           <span>{t.storeAppearance.headerTransparent}</span>
           <span className="text-[10px] font-normal opacity-80">
-            Fundo limpo sobre o banner hero
+            {t.storeAppearance.headerTransparentHint}
           </span>
         </button>
 
@@ -2018,7 +2018,7 @@ export default function AppearanceSettingsPage() {
           )}
         >
           <Layers className="w-4 h-4" />
-          <span>Vidro Fosco (Backdrop Blur)</span>
+          <span>{t.storeAppearance.headerBlur}</span>
           <span className="text-[10px] font-normal opacity-80">
             {t.storeAppearance.headerTransparentDesc}
           </span>
@@ -2037,7 +2037,7 @@ export default function AppearanceSettingsPage() {
           <Palette className="w-4 h-4" />
           <span>{t.storeAppearance.headerSolid}</span>
           <span className="text-[10px] font-normal opacity-80">
-            Fundo opaco definido
+            {t.storeAppearance.headerSolidHint}
           </span>
         </button>
       </div>
@@ -2046,7 +2046,7 @@ export default function AppearanceSettingsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
           <span className="text-xs font-bold text-slate-800 block">
-            Cor do Menu Modo Claro
+            {t.storeAppearance.menuBgLightTitle}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -2066,7 +2066,7 @@ export default function AppearanceSettingsPage() {
 
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
           <span className="text-xs font-bold text-slate-800 block">
-            Cor do Menu Modo Escuro
+            {t.storeAppearance.menuBgDarkTitle}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -2095,7 +2095,7 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              5. Faixa Superior de Avisos da Vitrine (Announcement Bar)
+              {t.storeAppearance.secAnnouncementTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
               {t.storeAppearance.topBarNoticeDesc}
@@ -2107,7 +2107,7 @@ export default function AppearanceSettingsPage() {
           href="/admin/loja/banners#editor-barra-avisos"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors w-fit"
         >
-          <span>Personalizar Barra em Banners & Topo</span>
+          <span>{t.storeAppearance.customizeBarBtn}</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -2116,7 +2116,7 @@ export default function AppearanceSettingsPage() {
       <div className="rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-600">
           <span className="font-semibold">{t.storeAppearance.topBarNoticePreview}</span>
-          <span className="text-[10px] text-slate-400">Sincronizada em tempo real via Supabase</span>
+          <span className="text-[10px] text-slate-400">{t.storeAppearance.supabaseSync}</span>
         </div>
 
         <div
@@ -2148,7 +2148,7 @@ export default function AppearanceSettingsPage() {
         </div>
         <div>
           <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            6. Tipografia & Cores Usadas no Menu Superior
+            {t.storeAppearance.secMenuTypographyTitle}
           </h2>
           <p className="text-[11px] text-slate-500">
             {t.storeAppearance.menuNavDesc}
@@ -2179,7 +2179,7 @@ export default function AppearanceSettingsPage() {
 
         {/* Tamanho da Fonte */}
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-          <span className="font-bold text-slate-800 block">Tamanho da Fonte</span>
+          <span className="font-bold text-slate-800 block">{t.storeAppearance.menuFontSizeTitle}</span>
           <div className="grid grid-cols-3 gap-1.5 pt-0.5">
             {['11px', '12px', '13px'].map((sz) => (
               <button
@@ -2204,7 +2204,7 @@ export default function AppearanceSettingsPage() {
 
         {/* Cor de Destaque no Hover */}
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-          <span className="font-bold text-slate-800 block">Cor de Destaque no Hover</span>
+          <span className="font-bold text-slate-800 block">{t.storeAppearance.menuHoverColor}</span>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -2220,7 +2220,7 @@ export default function AppearanceSettingsPage() {
             />
           </div>
           <span className="text-[10px] text-slate-400 block">
-            Cor do link ao passar o mouse ou quando ativo.
+            {t.storeAppearance.menuHoverHint}
           </span>
         </div>
       </div>
@@ -2230,7 +2230,7 @@ export default function AppearanceSettingsPage() {
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Sun className="w-3.5 h-3.5 text-amber-500" />
-            Cor dos Links (Modo Claro)
+            {t.storeAppearance.menuLinksColorLight}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -2251,7 +2251,7 @@ export default function AppearanceSettingsPage() {
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Moon className="w-3.5 h-3.5 text-indigo-500" />
-            Cor dos Links (Modo Escuro / Hero)
+            {t.storeAppearance.menuLinksColorDark}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -2327,7 +2327,7 @@ export default function AppearanceSettingsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             )}
           >
-            Tudo Igual (Unificado)
+            {t.storeAppearance.styleModeUnified}
           </button>
           <button
             type="button"
@@ -2351,7 +2351,7 @@ export default function AppearanceSettingsPage() {
             {!secoesModoIndependente ? t.storeAppearance.styleDefaultLabel(true) : t.storeAppearance.styleDefaultLabel(false)}
           </span>
           <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
-            Global
+            {t.storeAppearance.badgeGlobal}
           </span>
         </div>
 
@@ -2452,7 +2452,7 @@ export default function AppearanceSettingsPage() {
                   {t.storeAppearance.secLancamentosHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoLancamentosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                  {secaoLancamentosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                  {secaoLancamentosAtivo ? t.storeAppearance.activeOnStorefront : t.storeAppearance.hiddenBadge}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2464,7 +2464,7 @@ export default function AppearanceSettingsPage() {
                   className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-lanc-cust" className="text-[11px] text-slate-600 cursor-pointer">
-                  Personalizar fontes e cores
+                  {t.storeAppearance.customizeFontsAndColors}
                 </label>
               </div>
             </div>
@@ -2515,7 +2515,7 @@ export default function AppearanceSettingsPage() {
                       onClick={() => setSecaoLancamentosBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
-                      Limpar
+                      {t.storeAppearance.clearBtn}
                     </button>
                   </div>
                 </div>
@@ -2538,7 +2538,7 @@ export default function AppearanceSettingsPage() {
                   {t.storeAppearance.secMaisVendidosHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoMaisVendidosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                  {secaoMaisVendidosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                  {secaoMaisVendidosAtivo ? t.storeAppearance.activeOnStorefront : t.storeAppearance.hiddenBadge}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2550,7 +2550,7 @@ export default function AppearanceSettingsPage() {
                   className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-mv-cust" className="text-[11px] text-slate-600 cursor-pointer">
-                  Personalizar fontes e cores
+                  {t.storeAppearance.customizeFontsAndColors}
                 </label>
               </div>
             </div>
@@ -2601,7 +2601,7 @@ export default function AppearanceSettingsPage() {
                       onClick={() => setSecaoMaisVendidosBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
-                      Limpar
+                      {t.storeAppearance.clearBtn}
                     </button>
                   </div>
                 </div>
@@ -2624,7 +2624,7 @@ export default function AppearanceSettingsPage() {
                   {t.storeAppearance.secOutletHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoOutletAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                  {secaoOutletAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                  {secaoOutletAtivo ? t.storeAppearance.activeOnStorefront : t.storeAppearance.hiddenBadge}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2636,7 +2636,7 @@ export default function AppearanceSettingsPage() {
                   className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-outlet-cust" className="text-[11px] text-slate-600 cursor-pointer">
-                  Personalizar fontes e cores
+                  {t.storeAppearance.customizeFontsAndColors}
                 </label>
               </div>
             </div>
@@ -2687,7 +2687,7 @@ export default function AppearanceSettingsPage() {
                       onClick={() => setSecaoOutletBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
-                      Limpar
+                      {t.storeAppearance.clearBtn}
                     </button>
                   </div>
                 </div>
@@ -2710,7 +2710,7 @@ export default function AppearanceSettingsPage() {
                   {t.storeAppearance.secUltimasPecasHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoUltimasPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                  {secaoUltimasPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                  {secaoUltimasPecasAtivo ? t.storeAppearance.activeOnStorefront : t.storeAppearance.hiddenBadge}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2722,7 +2722,7 @@ export default function AppearanceSettingsPage() {
                   className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-up-cust" className="text-[11px] text-slate-600 cursor-pointer">
-                  Personalizar fontes e cores
+                  {t.storeAppearance.customizeFontsAndColors}
                 </label>
               </div>
             </div>
@@ -2773,7 +2773,7 @@ export default function AppearanceSettingsPage() {
                       onClick={() => setSecaoUltimasPecasBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
-                      Limpar
+                      {t.storeAppearance.clearBtn}
                     </button>
                   </div>
                 </div>
@@ -2796,7 +2796,7 @@ export default function AppearanceSettingsPage() {
                   {t.storeAppearance.secTodasAsPecasHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoTodasAsPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                  {secaoTodasAsPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
+                  {secaoTodasAsPecasAtivo ? t.storeAppearance.activeOnStorefront : t.storeAppearance.hiddenBadge}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2808,7 +2808,7 @@ export default function AppearanceSettingsPage() {
                   className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-todas-cust" className="text-[11px] text-slate-600 cursor-pointer">
-                  Personalizar fontes e cores
+                  {t.storeAppearance.customizeFontsAndColors}
                 </label>
               </div>
             </div>
@@ -2882,7 +2882,7 @@ export default function AppearanceSettingsPage() {
                       onClick={() => setSecaoTodasAsPecasBgDark('')}
                       className="text-[10px] text-slate-500 underline cursor-pointer"
                     >
-                      Limpar
+                      {t.storeAppearance.clearBtn}
                     </button>
                   </div>
                 </div>
@@ -3040,7 +3040,7 @@ export default function AppearanceSettingsPage() {
                     }
                   >
                     <span>{t.storeAppearance.piecesCount(count)}</span>
-                    {count === 0 && <span className="text-[10px] font-sans font-bold text-amber-700 hidden sm:inline">(Oculta)</span>}
+                    {count === 0 && <span className="text-[10px] font-sans font-bold text-amber-700 hidden sm:inline">({t.storeAppearance.hiddenBadge})</span>}
                   </span>
 
                   {/* Botão Gerenciar Peças da Seção */}
@@ -3084,12 +3084,12 @@ export default function AppearanceSettingsPage() {
                     {secao.ativo ? (
                       <>
                         <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="hidden sm:inline">Ativa</span>
+                        <span className="hidden sm:inline">{t.storeAppearance.activeBadge}</span>
                       </>
                     ) : (
                       <>
                         <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="hidden sm:inline">Oculta</span>
+                        <span className="hidden sm:inline">{t.storeAppearance.hiddenBadge}</span>
                       </>
                     )}
                   </button>
@@ -3189,12 +3189,12 @@ export default function AppearanceSettingsPage() {
           {exibirQuantidadeEstoqueConsumidor ? (
             <>
               <ToggleRight className="w-5 h-5 text-emerald-600" />
-              <span>Exibindo Quantidade Exata</span>
+              <span>{t.storeAppearance.stockExactDisplay}</span>
             </>
           ) : (
             <>
               <ToggleLeft className="w-5 h-5 text-slate-400" />
-              <span>Quantidade Oculta ao Cliente</span>
+              <span>{t.storeAppearance.stockHiddenDisplay}</span>
             </>
           )}
         </button>
@@ -3203,9 +3203,9 @@ export default function AppearanceSettingsPage() {
       <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 text-xs text-slate-600 space-y-2">
         <p className="font-semibold text-slate-800">
           {exibirQuantidadeEstoqueConsumidor ? (
-            <span className="text-emerald-700">✓ Modo Transparente Ativo:</span>
+            <span className="text-emerald-700">{t.storeAppearance.stockTransparentActive}</span>
           ) : (
-            <span className="text-slate-700">🔒 Modo Sigilo Comercial Ativo:</span>
+            <span className="text-slate-700">{t.storeAppearance.stockSecrecyActive}</span>
           )}
         </p>
         <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-500">
@@ -3239,7 +3239,7 @@ export default function AppearanceSettingsPage() {
                 10. Sinalizadores Comerciais da Vitrine (Badges)
               </h2>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${exibirBadgesNaVitrine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                {exibirBadgesNaVitrine ? 'Badges Ativos na Vitrine' : 'Visual Limpo (Minimal Luxury)'}
+                {exibirBadgesNaVitrine ? t.storeAppearance.badgesActiveBadge : t.storeAppearance.badgesCleanVisual}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
@@ -3254,7 +3254,7 @@ export default function AppearanceSettingsPage() {
           className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
         >
           <Tag className="w-3.5 h-3.5 text-amber-700" />
-          <span>Gerenciar Cores & Badges Globais</span>
+          <span>{t.storeAppearance.manageBadgesBtn}</span>
         </button>
       </div>
 
@@ -3265,10 +3265,10 @@ export default function AppearanceSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <span className="font-bold text-slate-900 text-xs block">
-                Exibir Selos Comerciais nas Fotos
+                {t.storeAppearance.showBadgesOnPhotos}
               </span>
               <span className="text-[10px] text-slate-500">
-                (Best Seller, New Arrival, Outlet, Custom Badges)
+                {t.storeAppearance.showBadgesOnPhotosHint}
               </span>
             </div>
 
@@ -3285,18 +3285,18 @@ export default function AppearanceSettingsPage() {
               {exibirBadgesNaVitrine ? (
                 <>
                   <ToggleRight className="w-4 h-4 text-emerald-600" />
-                  <span>Exibindo</span>
+                  <span>{t.storeAppearance.showingBadges}</span>
                 </>
               ) : (
                 <>
                   <ToggleLeft className="w-4 h-4 text-slate-400" />
-                  <span>Foto Limpa</span>
+                  <span>{t.storeAppearance.cleanPhoto}</span>
                 </>
               )}
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            {exibirBadgesNaVitrine ? t.storeAppearance.badgesOnPhotosDesc : '🔒 As imagens das peças na loja ficam 100% livres de selos flutuantes, valorizando o ensaio fotográfico e o acabamento nobre.'}
+            {exibirBadgesNaVitrine ? t.storeAppearance.badgesOnPhotosDesc : t.storeAppearance.badgesCleanDesc}
           </p>
         </div>
 
@@ -3305,10 +3305,10 @@ export default function AppearanceSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <span className="font-bold text-slate-900 text-xs block">
-                Exibir Selo de Escassez na Foto
+                {t.storeAppearance.showUrgencyOnPhoto}
               </span>
               <span className="text-[10px] text-slate-500">
-                (Urgency badge overlaid on photo)
+                {t.storeAppearance.showUrgencyOnPhotoHint}
               </span>
             </div>
 
@@ -3325,24 +3325,24 @@ export default function AppearanceSettingsPage() {
               {exibirSeloEscassezFoto ? (
                 <>
                   <ToggleRight className="w-4 h-4 text-amber-600" />
-                  <span>Exibindo Selo</span>
+                  <span>{t.storeAppearance.showingUrgency}</span>
                 </>
               ) : (
                 <>
                   <ToggleLeft className="w-4 h-4 text-slate-400" />
-                  <span>Foto Sem Selo</span>
+                  <span>{t.storeAppearance.photoNoUrgency}</span>
                 </>
               )}
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            {exibirSeloEscassezFoto ? t.storeAppearance.badgesUrgencyDesc : '🔒 A escassez será comunicada apenas no modal e no botão de sacola, mantendo o card da vitrine visualmente elegante.'}
+            {exibirSeloEscassezFoto ? t.storeAppearance.badgesUrgencyDesc : t.storeAppearance.urgencyCleanDesc}
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-        <span className="text-xs font-semibold text-slate-600">Badges:</span>
+        <span className="text-xs font-semibold text-slate-600">{t.storeAppearance.badgePrefix}</span>
         {((currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || []).map((s: any) => (
           <div
             key={s.id}
@@ -3418,7 +3418,7 @@ export default function AppearanceSettingsPage() {
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              Por Categoria
+              {t.storeAppearance.tabByCategory}
             </button>
             <button
               type="button"
@@ -3430,7 +3430,7 @@ export default function AppearanceSettingsPage() {
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              Curadoria Manual
+              {t.storeAppearance.tabManual}
             </button>
             <button
               type="button"
@@ -3449,7 +3449,7 @@ export default function AppearanceSettingsPage() {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Selecione a Categoria da Loja:
+                  {t.storeAppearance.catSelectPrompt}
                 </label>
                 <select
                   value={selectedNewCatId}
@@ -3560,7 +3560,7 @@ export default function AppearanceSettingsPage() {
                         onClick={() => handleRestoreNativeSection(padrao.id)}
                         className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
                       >
-                        Restaurar
+                        {t.storeAppearance.tabRestore}
                       </button>
                     </div>
                   ))}
@@ -3576,7 +3576,7 @@ export default function AppearanceSettingsPage() {
               onClick={() => setIsAddSectionModalOpen(false)}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
             >
-              Cancelar
+              {t.storeAppearance.cancelBtn}
             </button>
             {newSectionType !== 'restaurar_nativa' && (
               <button

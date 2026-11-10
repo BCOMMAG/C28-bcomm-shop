@@ -1543,6 +1543,11 @@ export interface StoreCategoriesTranslations {
   subPlaceholder: string;
   deleteWarning: (count: number) => string;
   deleteActionDesc: string;
+  removeSubcategoryTooltip: (sub: string) => string;
+  editCategoryTooltip: string;
+  deleteCategoryTooltip: string;
+  btnAddSubcategory: string;
+  confirmDeleteModalHeader: (name: string) => string;
 }
 
 export interface StoreCouponsTranslations {
@@ -1595,6 +1600,11 @@ export interface StoreCouponsTranslations {
   valueRequired: string;
   noMinOrder: string;
   minOrderPlaceholder: string;
+  statusActiveCheckout: string;
+  statusPaused: string;
+  pauseCouponTooltip: string;
+  activateCouponTooltip: string;
+  deleteCouponTooltip: string;
 }
 
 export interface StoreMenuTranslations {
@@ -2030,6 +2040,7 @@ export interface StoreLogisticsTranslations {
   pickupInstructionsPlaceholder: string;
   liveSimTitle: string;
   liveSimEmptyDesc: string;
+  activeInStore: string;
 }
 
 export interface StoreAppearanceTranslations {
@@ -2215,6 +2226,70 @@ export interface StoreAppearanceTranslations {
   toastSecPiecesUpdated: (title: string) => string;
   confirmRemoveNativeSec: (title: string) => string;
   confirmDeleteCustomSec: (title: string) => string;
+  optOfficialBadge: string;
+  activeBadge: string;
+  inUseBadge: string;
+  activateOfficialBtn: string;
+  customR2Badge: string;
+  customR2Desc: string;
+  activateCustomBtn: string;
+  replaceBtn: string;
+  deleteCustomTooltip: string;
+  uploadCustomHint: string;
+  lightModeLabel: string;
+  darkModeLabel: string;
+  badgeNew: string;
+  preloaderActivated: string;
+  preloaderModelChoice: string;
+  modelHauteCoutureDesc: string;
+  modelMonogramDesc: string;
+  modelEditorialDarkDesc: string;
+  preloaderBgColor: string;
+  preloaderBarColor: string;
+  preloaderElementsTitle: string;
+  preloaderShowLogo: string;
+  preloaderShowSlogan: string;
+  secHeaderBgTitle: string;
+  headerTransparentHint: string;
+  headerBlur: string;
+  headerSolidHint: string;
+  menuBgLightTitle: string;
+  menuBgDarkTitle: string;
+  customizeBarBtn: string;
+  supabaseSync: string;
+  secMenuTypographyTitle: string;
+  menuFontSizeTitle: string;
+  menuHoverColor: string;
+  menuHoverHint: string;
+  menuLinksColorLight: string;
+  menuLinksColorDark: string;
+  styleModeUnified: string;
+  badgeGlobal: string;
+  activeOnStorefront: string;
+  hiddenBadge: string;
+  customizeFontsAndColors: string;
+  clearBtn: string;
+  stockExactDisplay: string;
+  stockHiddenDisplay: string;
+  stockTransparentActive: string;
+  stockSecrecyActive: string;
+  badgesCleanVisual: string;
+  badgesActiveBadge: string;
+  manageBadgesBtn: string;
+  showBadgesOnPhotos: string;
+  showBadgesOnPhotosHint: string;
+  showingBadges: string;
+  cleanPhoto: string;
+  badgesCleanDesc: string;
+  showUrgencyOnPhoto: string;
+  showUrgencyOnPhotoHint: string;
+  showingUrgency: string;
+  photoNoUrgency: string;
+  urgencyCleanDesc: string;
+  badgePrefix: string;
+  tabRestoreNatives: string;
+  catSelectPrompt: string;
+  cancelBtn: string;
 }
 
 

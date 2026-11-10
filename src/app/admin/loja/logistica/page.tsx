@@ -1166,7 +1166,7 @@ export default function ShippingSettingsPage() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Adicionar Faixa</span>
+                  <span>{t.storeLogistics.addTierBtn}</span>
                 </button>
               </div>
 
@@ -1194,7 +1194,7 @@ export default function ShippingSettingsPage() {
                             type="button"
                             onClick={() => handleRemoveFaixaDesconto(idx)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                            title="Remover esta faixa"
+                            title={t.storeLogistics.removeTierBtn}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1970,7 +1970,7 @@ export default function ShippingSettingsPage() {
                 </div>
                 <div className="mt-3 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[10px] text-slate-400">
                   <span>Prazo: {opt.deliveryDays}</span>
-                  <span className="text-emerald-400 font-semibold">Ativo na Loja</span>
+                  <span className="text-emerald-400 font-semibold">{t.storeLogistics.activeInStore}</span>
                 </div>
               </div>
             ))}

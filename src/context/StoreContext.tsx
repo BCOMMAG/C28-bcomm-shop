@@ -11,6 +11,7 @@ import { normalizeTenantSlug, isPlatformHostname } from '@/lib/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getActiveReservations, ReservaEstoque } from '@/lib/reservas';
 import { getStorefrontTranslation, StorefrontTranslations } from '@/lib/i18n/storefront';
+import { isMasterUser } from '@/lib/team';
 
 export interface VariationAvailability {
   status: 'disponivel' | 'em_reserva' | 'esgotado';
@@ -95,6 +96,9 @@ interface StoreContextType {
   storeLanguage: string;
   formatStorePrice: (val: number, overrideCurrency?: string) => string;
   st: StorefrontTranslations;
+  // Acesso Supremo Master God Mode
+  switchTenant: (storeOrSlugOrId: Loja | string) => Promise<void>;
+  isMaster: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -122,10 +126,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
         let targetSegment = pathSegments[0];
 
-        // Se estiver dentro do painel administrativo (/admin), prioriza a loja autenticada do lojista
+        // Se estiver dentro do painel administrativo (/admin), prioriza a loja impersonada ou autenticada
         if (targetSegment === 'admin') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const querySlug = urlParams.get('loja') || urlParams.get('impersonate');
+          const impersonatedSlug = localStorage.getItem('bcomm_impersonated_tenant_slug');
           const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
-          if (adminLojaSlug) {
+          if (querySlug) {
+            targetSegment = querySlug;
+          } else if (impersonatedSlug) {
+            targetSegment = impersonatedSlug;
+          } else if (adminLojaSlug) {
             targetSegment = adminLojaSlug;
           }
         }
@@ -174,10 +185,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
         let targetSegment = pathSegments[0];
 
-        // Se estiver dentro do painel administrativo (/admin), prioriza a loja autenticada do lojista
+        // Se estiver dentro do painel administrativo (/admin), prioriza a loja impersonada ou autenticada
         if (targetSegment === 'admin') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const querySlug = urlParams.get('loja') || urlParams.get('impersonate');
+          const impersonatedSlug = localStorage.getItem('bcomm_impersonated_tenant_slug');
           const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
-          if (adminLojaSlug) {
+          if (querySlug) {
+            targetSegment = querySlug;
+          } else if (impersonatedSlug) {
+            targetSegment = impersonatedSlug;
+          } else if (adminLojaSlug) {
             targetSegment = adminLojaSlug;
           }
         }
@@ -335,12 +353,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       let tenant = DEFAULT_LEIDY_TENANT;
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        const slugParam = urlParams.get('loja');
+        const slugParam = urlParams.get('loja') || urlParams.get('impersonate');
         const pathSegments = window.location.pathname.split('/').filter(Boolean);
         const firstSegment = pathSegments[0];
         const knownRoutes = ['admin', 'super-admin', 'catalogo', 'checkout', 'favoritos', 'minha-conta', 'cliente'];
 
-        if (slugParam) {
+        if (firstSegment === 'admin' && slugParam) {
+          tenant = await getTenantBySlug(slugParam);
+          try {
+            localStorage.setItem('bcomm_impersonated_tenant_id', tenant.id);
+            localStorage.setItem('bcomm_impersonated_tenant_slug', tenant.slug);
+            localStorage.setItem('bcomm_admin_loja_id', tenant.id);
+            localStorage.setItem('bcomm_admin_loja_slug', tenant.slug);
+          } catch {}
+        } else if (slugParam) {
           tenant = await getTenantBySlug(slugParam);
           // Transição suave para a rota limpa sem query param feio
           try {
@@ -353,14 +379,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.warn('Erro ao atualizar URL limpa:', e);
           }
         } else if (firstSegment === 'admin') {
-          // No painel administrativo, prioriza estritamente a loja do lojista autenticado
+          // No painel administrativo, prioriza tenant impersonado pelo Master ou loja autenticada
+          const impersonatedId = localStorage.getItem('bcomm_impersonated_tenant_id');
+          const impersonatedSlug = localStorage.getItem('bcomm_impersonated_tenant_slug');
           const adminLojaId = localStorage.getItem('bcomm_admin_loja_id');
           const adminLojaSlug = localStorage.getItem('bcomm_admin_loja_slug');
+
+          const targetId = impersonatedId || adminLojaId;
+          const targetSlug = impersonatedSlug || adminLojaSlug;
+
           let resolvedAdminTenant: Loja | null = null;
-          if (adminLojaId) {
-            resolvedAdminTenant = await getTenantById(adminLojaId);
-          } else if (adminLojaSlug) {
-            resolvedAdminTenant = await getTenantBySlug(adminLojaSlug);
+          if (targetId) {
+            resolvedAdminTenant = await getTenantById(targetId);
+          } else if (targetSlug) {
+            resolvedAdminTenant = await getTenantBySlug(targetSlug);
           }
           if (resolvedAdminTenant) {
             tenant = resolvedAdminTenant;
@@ -1212,6 +1244,67 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return getStorefrontTranslation(storeLanguage);
   }, [storeLanguage]);
 
+  // Indicador de privilégio Master God Mode
+  const [isMaster, setIsMaster] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return isMasterUser();
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsMaster(isMasterUser());
+    }
+  }, []);
+
+  // Alternador instantâneo de lojas para o Super Admin / Modo Master
+  const switchTenant = useCallback(async (storeOrSlugOrId: Loja | string) => {
+    try {
+      let store: Loja | null = null;
+      if (typeof storeOrSlugOrId === 'object' && storeOrSlugOrId?.id) {
+        store = storeOrSlugOrId;
+      } else if (typeof storeOrSlugOrId === 'string') {
+        if (storeOrSlugOrId.length > 30) {
+          store = await getTenantById(storeOrSlugOrId);
+        } else {
+          store = await getTenantBySlug(storeOrSlugOrId);
+        }
+      }
+
+      if (!store) return;
+
+      setCurrentTenant(store);
+      setIsLoadingProducts(true);
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('bcomm_impersonated_tenant_id', store.id);
+          localStorage.setItem('bcomm_impersonated_tenant_slug', store.slug);
+          localStorage.setItem('bcomm_admin_loja_id', store.id);
+          localStorage.setItem('bcomm_admin_loja_slug', store.slug);
+          const canonical = getCanonicalDbSlug(store.slug);
+          localStorage.setItem(`bcomm_tenant_${store.slug}`, JSON.stringify(store));
+          localStorage.setItem(`bcomm_tenant_${canonical}`, JSON.stringify(store));
+          localStorage.setItem('bcomm_tenant_last', JSON.stringify(store));
+        } catch {}
+      }
+
+      const [prods, banners] = await Promise.all([
+        getStoreProducts(store.id),
+        getAdminHeroBanners(store.id)
+      ]);
+      setProducts(prods || []);
+      const activeBanners = (banners || []).filter((b) => b.ativo);
+      setHeroBanners(activeBanners);
+      setHeroBanner(activeBanners[0] || null);
+      setIsLoadingProducts(false);
+    } catch (err) {
+      console.error('Erro ao alternar tenant (switchTenant):', err);
+      setIsLoadingProducts(false);
+    }
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -1278,7 +1371,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         storeCurrency,
         storeLanguage,
         formatStorePrice,
-        st
+        st,
+        // Modo Master God Mode
+        switchTenant,
+        isMaster
       }}
     >
       {children}

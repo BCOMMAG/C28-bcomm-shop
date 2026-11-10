@@ -357,11 +357,11 @@ export default function AdminCuponsPage() {
                     <td className="py-3.5 px-4">
                       {coupon.ativo ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Ativo no Checkout
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t.storeCoupons.statusActiveCheckout}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600">
-                          Pausado
+                          {t.storeCoupons.statusPaused}
                         </span>
                       )}
                     </td>
@@ -370,7 +370,7 @@ export default function AdminCuponsPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleToggleActive(coupon)}
-                          title={coupon.ativo ? 'Pausar cupom' : 'Ativar cupom'}
+                          title={coupon.ativo ? t.storeCoupons.pauseCouponTooltip : t.storeCoupons.activateCouponTooltip}
                           className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                             coupon.ativo
                               ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border-slate-300'
@@ -382,7 +382,7 @@ export default function AdminCuponsPage() {
 
                         <button
                           onClick={() => handleDelete(coupon)}
-                          title="Excluir cupom"
+                          title={t.storeCoupons.deleteCouponTooltip}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Lock, Unlock, Users, Shield, ArrowLeft, LogOut, Check, AlertCircle } from 'lucide-react';
-import { MembroEquipe, verifyMemberPin } from '@/lib/team';
+import { MembroEquipe, verifyMemberPin, isMasterUser } from '@/lib/team';
 import { getStoreSettings } from '@/lib/admin';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -50,7 +50,7 @@ export function LockScreenModal({
     return () => clearInterval(interval);
   }, [lockoutRemaining]);
 
-  if (!isOpen) return null;
+  if (!isOpen || isMasterUser()) return null;
 
   const handleDigit = (digit: string) => {
     if (lockoutRemaining > 0) return;

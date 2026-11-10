@@ -281,12 +281,22 @@ export default function SuperAdminLojasPage() {
 
                       <Link
                         href={`/admin/?loja=${store.slug}`}
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('bcomm_super_admin_auth', 'true');
+                            localStorage.setItem('bcomm_master_active', 'true');
+                            localStorage.setItem('bcomm_impersonated_tenant_id', store.id);
+                            localStorage.setItem('bcomm_impersonated_tenant_slug', store.slug);
+                            localStorage.setItem('bcomm_admin_loja_id', store.id);
+                            localStorage.setItem('bcomm_admin_loja_slug', store.slug);
+                          }
+                        }}
                         target="_blank"
-                        className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-1.5"
-                        title="Abrir painel administrativo desta boutique"
+                        className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-500/60 rounded-lg transition-colors flex items-center gap-1.5 font-bold shadow-xs cursor-pointer"
+                        title="Assumir painel desta boutique como Master God Mode (1-Click)"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#38BDF8]" />
-                        <span>Acessar Admin</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Acessar Loja (Master)</span>
                       </Link>
 
                       <Link

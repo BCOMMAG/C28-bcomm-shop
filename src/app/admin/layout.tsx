@@ -48,6 +48,7 @@ import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getStorefrontUrl } from '@/lib/routes';
 import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser } from '@/lib/team';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
+import { MasterImpersonationBar } from '@/components/admin/MasterImpersonationBar';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
 import { AdminI18nProvider, useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -134,6 +135,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Checagem de autenticação Master God Mode (Prioridade Máxima)
+    if (isMasterUser()) {
+      setIsAuthenticated(true);
+      setIsMaster(true);
+      return;
+    }
+
     // Checagem de autenticação local + Supabase
     const localAuth = typeof window !== 'undefined'
       ? (localStorage.getItem('bcomm_admin_auth') || localStorage.getItem('leidy_admin_auth'))
@@ -216,6 +224,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Carrega a equipe e o colaborador ativo da sessão
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (isMaster) {
+      setActiveMember(null);
+      return;
+    }
     const activeLojaId = currentTenant?.id || DEFAULT_TENANT_ID;
     const loadTeam = async () => {
       try {
@@ -332,6 +344,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   ];
 
   const allowedNavItems = navItems.filter((item) => {
+    if (isMaster) return true;
     if (!activeMember || activeMember.cargo === 'dono') return true;
     if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
@@ -343,6 +356,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   });
 
   const isRouteBlocked = (() => {
+    if (isMaster) return false;
     if (!activeMember || activeMember.cargo === 'dono') return false;
     if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
     if (cleanPath.startsWith('/admin/configuracoes/assinatura') && activeMember.cargo !== 'gerente') return true;
@@ -716,33 +730,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           isSidebarCollapsed ? "md:pl-20" : "md:pl-64"
         )}
       >
-        {/* BARRA EXCLUSIVA MODO MASTER SAAS (100% INVISÍVEL PARA LOJISTAS) */}
-        {isMaster && (
-          <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-200 border-b border-amber-500/30 px-4 py-2 flex flex-wrap items-center justify-between text-xs gap-3 z-40 sticky top-0 print:hidden shadow-md">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 font-bold text-amber-400">
-                <Crown className="w-4 h-4 text-amber-400" />
-                <span>Modo Master BCOMM SaaS</span>
-              </div>
-              <span className="text-amber-500/40 hidden sm:inline">|</span>
-              <span className="text-slate-300 text-[11px] hidden sm:inline">
-                Loja Ativa: <strong className="text-white">{lojaNome}</strong>{lojaSlug ? ` (${lojaSlug})` : ''}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 hidden md:inline">
-                Acesso Global Irrestrito
-              </span>
-              <Link
-                href="/super-admin/lojas"
-                className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white font-bold transition-all flex items-center gap-1.5 text-[11px]"
-              >
-                <span>Painel Super Admin</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* BARRA EXCLUSIVA MODO MASTER SAAS COM ALTERNADOR GLOBAL (100% INVISÍVEL PARA LOJISTAS) */}
+        <MasterImpersonationBar />
 
         {/* TOPBAR FIXO DO APLICATIVO */}
         <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs print:hidden">
@@ -874,47 +863,69 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Settings className="w-4 h-4" />
             </Link>
 
-            {/* Botão Balcão / PIN Rápido */}
-            <button
-              type="button"
-              onClick={() => setIsLockScreenOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
-              title="Bloquear painel e alternar colaboradora via PIN"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.adminHeader.posPin}</span>
-            </button>
-
-            <div className="h-5 w-[1px] bg-slate-200" />
-
-            {/* Perfil Administrador com Avatar */}
-            <div
-              onClick={() => setIsLockScreenOpen(true)}
-              className="flex items-center gap-2.5 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
-              title="Clique para alternar colaboradora com PIN"
-            >
+            {/* Perfil do Operador / Master God Mode */}
+            {isMaster ? (
               <div
-                className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs"
-                style={{ backgroundColor: c.sidebarBg }}
+                className="flex items-center gap-2 pl-1 select-none"
+                title="Acesso Supremo Master God Mode (Invisível na Equipe)"
               >
-                {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
+                <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shadow-xs">
+                  ⚡
+                </div>
+                <div className="hidden lg:block text-left text-xs leading-tight">
+                  <span className="font-bold text-amber-900 block truncate max-w-[130px]">
+                    Master Admin
+                  </span>
+                  <span className="text-[10px] text-amber-600 font-bold block uppercase tracking-wide">
+                    God Mode
+                  </span>
+                </div>
               </div>
-              <div className="hidden lg:block text-left text-xs leading-tight">
-                <span className="font-bold text-slate-900 block truncate max-w-[130px]">
-                  {activeMember?.nome || 'Administrador'}
-                </span>
-                <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
-                  {(() => {
-                    const cargo = (activeMember?.cargo || 'dono').toLowerCase();
-                    if (cargo === 'dono') return t.team.roleOwner;
-                    if (cargo === 'gerente') return t.team.roleManager;
-                    if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
-                    if (cargo === 'estoquista') return t.team.roleStockist;
-                    return activeMember?.cargo || t.team.roleOwner;
-                  })()}
-                </span>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Botão Balcão / PIN Rápido */}
+                <button
+                  type="button"
+                  onClick={() => setIsLockScreenOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
+                  title="Bloquear painel e alternar colaboradora via PIN"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.adminHeader.posPin}</span>
+                </button>
+
+                <div className="h-5 w-[1px] bg-slate-200" />
+
+                {/* Perfil Administrador com Avatar */}
+                <div
+                  onClick={() => setIsLockScreenOpen(true)}
+                  className="flex items-center gap-2.5 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
+                  title="Clique para alternar colaboradora com PIN"
+                >
+                  <div
+                    className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs"
+                    style={{ backgroundColor: c.sidebarBg }}
+                  >
+                    {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="hidden lg:block text-left text-xs leading-tight">
+                    <span className="font-bold text-slate-900 block truncate max-w-[130px]">
+                      {activeMember?.nome || 'Administrador'}
+                    </span>
+                    <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
+                      {(() => {
+                        const cargo = (activeMember?.cargo || 'dono').toLowerCase();
+                        if (cargo === 'dono') return t.team.roleOwner;
+                        if (cargo === 'gerente') return t.team.roleManager;
+                        if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
+                        if (cargo === 'estoquista') return t.team.roleStockist;
+                        return activeMember?.cargo || t.team.roleOwner;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Botão Sair */}
             <button
@@ -963,7 +974,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* CANVAS PRINCIPAL (Aproveitamento total da tela sem bordas mortas) */}
         <main className="flex-1 w-full max-w-[1700px] mx-auto p-4 sm:p-6 lg:p-8">
-          {activeMember && activeMember.horario_restrito && !checkWorkingHoursAccess(activeMember).permitido ? (
+          {!isMaster && activeMember && activeMember.horario_restrito && !checkWorkingHoursAccess(activeMember).permitido ? (
             <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
               <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
                 <Clock className="w-8 h-8" />
@@ -992,7 +1003,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             </div>
-          ) : isRouteBlocked ? (
+          ) : !isMaster && isRouteBlocked ? (
             <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
               <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4">
                 <Ban className="w-8 h-8" />
