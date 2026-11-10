@@ -128,7 +128,7 @@ export default function CheckoutSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">{t.common?.loading || 'Carregando parâmetros de checkout...'}</span>
+        <span className="text-xs font-medium">{t.common?.loading}</span>
       </div>
     );
   }
@@ -159,7 +159,7 @@ export default function CheckoutSettingsPage() {
               {t.storeCheckout.pageTitle}
             </h1>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-pink-100 text-pink-800 border border-pink-200 flex items-center gap-1">
-              <ShoppingBag className="w-3 h-3 text-pink-600" /> Operação & Conversão
+              <ShoppingBag className="w-3 h-3 text-pink-600" /> {t.storeCheckout.headerTag}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -180,7 +180,7 @@ export default function CheckoutSettingsPage() {
       {/* DASHBOARD PANORÂMICO DE 2 COLUNAS TEMÁTICAS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* =========================================================================
-            COLUNA 1: EXPERIÊNCIA DA SACOLA & CONSUMIDOR FINAL
+            {t.storeCheckout.col1Title}
             ========================================================================= */}
         <div className="space-y-6">
           {/* CARD 1: EMBALAGEM PARA PRESENTE & DEDICATÓRIA */}
@@ -236,7 +236,7 @@ export default function CheckoutSettingsPage() {
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 block">
-                      {locale === 'en' ? `0 ${currencySymbol} for complimentary boutique gift.` : locale === 'es' ? `0 ${currencySymbol} como cortesía de la boutique.` : `${currencySymbol} 0 para cortesia da boutique.`}
+                      {t.storeCheckout.giftFreeBoutique(currencySymbol)}
                     </span>
                   </div>
 
@@ -249,7 +249,7 @@ export default function CheckoutSettingsPage() {
                         className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-slate-300"
                       />
                       <div>
-                        <span className="font-bold text-slate-800 block text-xs">Permitir Dedicatória</span>
+                        <span className="font-bold text-slate-800 block text-xs">{t.storeCheckout.giftDedicationTitle}</span>
                         <span className="text-[10px] text-slate-500">
                           Campo de texto na sacola para recado especial
                         </span>
@@ -269,7 +269,7 @@ export default function CheckoutSettingsPage() {
                         {t.storeCheckout.giftPreviewTitle}
                       </span>
                       <span className="text-[10px] text-pink-800">
-                        &quot;É presente? Adicione caixa com laço por R$ {Number(taxaPresente).toFixed(2).replace('.', ',')}&quot;
+                        {t.storeCheckout.giftSimTitle(Number(taxaPresente).toFixed(2).replace('.', ','))}
                       </span>
                     </div>
                   </div>
@@ -280,7 +280,7 @@ export default function CheckoutSettingsPage() {
               </div>
             ) : (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                Embalagem especial desativada. As compras serão enviadas na embalagem padrão da loja.
+                {t.storeCheckout.giftDisabledNotice}
               </div>
             )}
           </div>
@@ -304,7 +304,7 @@ export default function CheckoutSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
               <div>
                 <label className="block text-slate-700 mb-1 font-bold text-[11px]">
-                  {locale === 'en' ? `Minimum Order (${currencySymbol})` : locale === 'es' ? `Pedido Mínimo (${currencySymbol})` : `Valor Mínimo (${currencySymbol})`}
+                  {t.storeCheckout.minOrderColTitle(currencySymbol)}
                 </label>
                 <div className="relative">
                   <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
@@ -319,7 +319,7 @@ export default function CheckoutSettingsPage() {
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  {locale === 'en' ? 'Leave 0 to allow purchases of any amount.' : locale === 'es' ? 'Deje 0 para permitir compras de cualquier monto.' : 'Deixe 0 para permitir compras sem valor mínimo.'}
+                  {t.storeCheckout.minOrderZeroHint}
                 </span>
               </div>
 
@@ -329,7 +329,7 @@ export default function CheckoutSettingsPage() {
                     <>
                       {locale === 'en' ? 'Orders with subtotal below ' : locale === 'es' ? 'Pedidos con subtotal inferior a ' : 'Pedidos com subtotal inferior a '}
                       <strong>{formatCurrency(Number(pedidoMinimoValor))}</strong>
-                      {locale === 'en' ? ' will be blocked until the target is met.' : locale === 'es' ? ' serán bloqueados hasta alcanzar la meta.' : ' serão bloqueados até atingir a meta.'}
+                      {t.storeCheckout.minOrderCheckoutBlock}
                     </>
                   ) : (
                     locale === 'en'
@@ -374,11 +374,11 @@ export default function CheckoutSettingsPage() {
             <div className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
               {exibirQuantidadeEstoqueConsumidor ? (
                 <span className="text-emerald-700 font-medium">
-                  ✓ <strong>Modo Transparente:</strong> Exibe o número real de unidades quando o estoque for &le; 5 peças (ex: &quot;Restam 2 peças&quot;). Acima de 5 unidades, exibe apenas &quot;Disponível em estoque&quot;.
+                  {t.storeCheckout.stockVisTransparent}
                 </span>
               ) : (
                 <span className="text-slate-600 font-medium">
-                  🔒 <strong>Sigilo Comercial:</strong> Oculta contagens e avisos de escassez. Informa com total elegância apenas &quot;Disponível em estoque para envio imediato!&quot; sem expor os níveis do estoque físico.
+                  {t.storeCheckout.stockVisCommercialSecret}
                 </span>
               )}
             </div>
@@ -386,7 +386,7 @@ export default function CheckoutSettingsPage() {
         </div>
 
         {/* =========================================================================
-            COLUNA 2: OPERAÇÃO, WHATSAPP & PROTEÇÃO DE VENDAS
+            {t.storeCheckout.col2Title}
             ========================================================================= */}
         <div className="space-y-6">
           {/* CARD 4: RESERVA TEMPORÁRIA ANTI-VENDA DUPLA */}
@@ -464,16 +464,16 @@ export default function CheckoutSettingsPage() {
                 <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
                     <Timer className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Gatilho de Urgência no WhatsApp do Cliente:</span>
+                    <span>{t.storeCheckout.holdWhatsappTitle}</span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-mono bg-white/70 p-2 rounded-lg border border-amber-200/60">
-                    &quot;⏱️ *Reserva Provisória:* Peças retidas por <strong>{tempoReservaMinutos} minutos</strong> para seu atendimento!&quot;
+                    {t.storeCheckout.holdWhatsappTrigger(tempoReservaMinutos)}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                Reserva temporária desativada. As peças não serão retidas provisoriamente durante o atendimento.
+                {t.storeCheckout.holdDisabledNotice}
               </div>
             )}
           </div>
@@ -595,7 +595,7 @@ export default function CheckoutSettingsPage() {
                         className="mt-0.5 text-amber-600 focus:ring-amber-500"
                       />
                       <div>
-                        <span className="font-bold text-xs block">Coluna Não Finalizados</span>
+                        <span className="font-bold text-xs block">{t.storeCheckout.inactiveColTitle}</span>
                         <span className="text-[10px] text-slate-500 leading-snug block mt-0.5">
                           Coluna exclusiva para leads abandonados
                         </span>
@@ -608,13 +608,13 @@ export default function CheckoutSettingsPage() {
                 <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-2.5 flex items-start gap-2 text-sky-900">
                   <ShieldCheck className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
                   <div className="text-[10px] leading-relaxed">
-                    <strong>Blindagem VIP:</strong> Reservas pausadas/congeladas pela atendente ficam 100% protegidas contra descarte automático.
+                    {t.storeCheckout.vipShieldNotice}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                Limpeza de inativos desativada. Todos os pedidos permanecerão na coluna pendente indefinidamente.
+                {t.storeCheckout.inactiveDisabledNotice}
               </div>
             )}
           </div>

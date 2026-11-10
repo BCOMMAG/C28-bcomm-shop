@@ -84,7 +84,7 @@ export default function AppearanceSettingsPage() {
   const initialSnapshotRef = React.useRef<string>('');
 
   useEffect(() => {
-    setFormName('Aparência da Loja Virtual');
+    setFormName(t.unsavedChangesModal.formNames.storeAppearance);
   }, [setFormName]);
 
   const [loading, setLoading] = useState(true);
@@ -103,7 +103,7 @@ export default function AppearanceSettingsPage() {
   const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
   const [ogImageUrl, setOgImageUrl] = useState('');
-  const [slogan, setSlogan] = useState('Moda Feminina Autêntica & Elegância Diária');
+  const [slogan, setSlogan] = useState('');
 
   // Plano de Fundo do Site
   const [siteBgTipo, setSiteBgTipo] = useState<'solido' | 'imagem' | 'video'>('solido');
@@ -147,8 +147,8 @@ export default function AppearanceSettingsPage() {
   const [secaoLancamentosTituloDark, setSecaoLancamentosTituloDark] = useState('#FFFFFF');
   const [secaoLancamentosSubtituloLight, setSecaoLancamentosSubtituloLight] = useState('#FAF8F5');
   const [secaoLancamentosSubtituloDark, setSecaoLancamentosSubtituloDark] = useState('#FAF8F5');
-  const [secaoLancamentosTitulo, setSecaoLancamentosTitulo] = useState('Lançamentos Exclusivos');
-  const [secaoLancamentosSubtitulo, setSecaoLancamentosSubtitulo] = useState('As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.');
+  const [secaoLancamentosTitulo, setSecaoLancamentosTitulo] = useState('');
+  const [secaoLancamentosSubtitulo, setSecaoLancamentosSubtitulo] = useState('');
 
   // Seção Mais Vendidos
   const [secaoMaisVendidosAtivo, setSecaoMaisVendidosAtivo] = useState(true);
@@ -161,7 +161,7 @@ export default function AppearanceSettingsPage() {
   const [secaoMaisVendidosSubtituloLight, setSecaoMaisVendidosSubtituloLight] = useState('#FAF8F5');
   const [secaoMaisVendidosSubtituloDark, setSecaoMaisVendidosSubtituloDark] = useState('#FAF8F5');
   const [secaoMaisVendidosTitulo, setSecaoMaisVendidosTitulo] = useState('Mais Vendidos & Queridinhos');
-  const [secaoMaisVendidosSubtitulo, setSecaoMaisVendidosSubtitulo] = useState('As criações favoritas e mais desejadas pelas nossas clientes.');
+  const [secaoMaisVendidosSubtitulo, setSecaoMaisVendidosSubtitulo] = useState('');
 
   // Seção OUTLET
   const [secaoOutletAtivo, setSecaoOutletAtivo] = useState(true);
@@ -174,7 +174,7 @@ export default function AppearanceSettingsPage() {
   const [secaoOutletSubtituloLight, setSecaoOutletSubtituloLight] = useState('#FAF8F5');
   const [secaoOutletSubtituloDark, setSecaoOutletSubtituloDark] = useState('#FAF8F5');
   const [secaoOutletTitulo, setSecaoOutletTitulo] = useState('Bazar & Oportunidades');
-  const [secaoOutletSubtitulo, setSecaoOutletSubtitulo] = useState('Peças selecionadas com condições especiais por tempo limitado.');
+  const [secaoOutletSubtitulo, setSecaoOutletSubtitulo] = useState('');
 
   // Seção Últimas Peças
   const [secaoUltimasPecasAtivo, setSecaoUltimasPecasAtivo] = useState(true);
@@ -186,14 +186,14 @@ export default function AppearanceSettingsPage() {
   const [secaoUltimasPecasTituloDark, setSecaoUltimasPecasTituloDark] = useState('#FFFFFF');
   const [secaoUltimasPecasSubtituloLight, setSecaoUltimasPecasSubtituloLight] = useState('#FAF8F5');
   const [secaoUltimasPecasSubtituloDark, setSecaoUltimasPecasSubtituloDark] = useState('#FAF8F5');
-  const [secaoUltimasPecasTitulo, setSecaoUltimasPecasTitulo] = useState('Últimas Peças');
+  const [secaoUltimasPecasTitulo, setSecaoUltimasPecasTitulo] = useState('');
   const [secaoUltimasPecasSubtitulo, setSecaoUltimasPecasSubtitulo] = useState('Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.');
 
   // Seção Todas as Peças (Catálogo Geral da Vitrine)
   const [secaoTodasAsPecasAtivo, setSecaoTodasAsPecasAtivo] = useState(true);
   const [secaoTodasAsPecasCustomizado, setSecaoTodasAsPecasCustomizado] = useState(false);
-  const [secaoTodasAsPecasTitulo, setSecaoTodasAsPecasTitulo] = useState('Todas as Peças');
-  const [secaoTodasAsPecasSubtitulo, setSecaoTodasAsPecasSubtitulo] = useState('Conheça todas as criações e modelos exclusivos disponíveis na boutique.');
+  const [secaoTodasAsPecasTitulo, setSecaoTodasAsPecasTitulo] = useState('');
+  const [secaoTodasAsPecasSubtitulo, setSecaoTodasAsPecasSubtitulo] = useState('');
   const [secaoTodasAsPecasFont, setSecaoTodasAsPecasFont] = useState('Playfair Display');
   const [secaoTodasAsPecasBgLight, setSecaoTodasAsPecasBgLight] = useState('');
   const [secaoTodasAsPecasBgDark, setSecaoTodasAsPecasBgDark] = useState('');
@@ -334,8 +334,8 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.lancamentos) {
               setSecaoLancamentosAtivo(data.secoesVitrine.lancamentos.ativo !== false);
-              setSecaoLancamentosTitulo(data.secoesVitrine.lancamentos.titulo || 'Lançamentos Exclusivos');
-              setSecaoLancamentosSubtitulo(data.secoesVitrine.lancamentos.subtitulo || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.');
+              setSecaoLancamentosTitulo(data.secoesVitrine.lancamentos.titulo || t.storeAppearance.defaultLancamentosTitle);
+              setSecaoLancamentosSubtitulo(data.secoesVitrine.lancamentos.subtitulo || t.storeAppearance.defaultLancamentosSubtitle);
               setSecaoLancamentosCustomizado(Boolean(data.secoesVitrine.lancamentos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.lancamentos.ativo)));
               setSecaoLancamentosFont(data.secoesVitrine.lancamentos.tituloFont || 'Playfair Display');
               setSecaoLancamentosBgLight(data.secoesVitrine.lancamentos.bgLight || '');
@@ -348,7 +348,7 @@ export default function AppearanceSettingsPage() {
             if (data.secoesVitrine.maisVendidos) {
               setSecaoMaisVendidosAtivo(data.secoesVitrine.maisVendidos.ativo !== false);
               setSecaoMaisVendidosTitulo(data.secoesVitrine.maisVendidos.titulo || 'Mais Vendidos & Queridinhos');
-              setSecaoMaisVendidosSubtitulo(data.secoesVitrine.maisVendidos.subtitulo || 'As criações favoritas e mais desejadas pelas nossas clientes.');
+              setSecaoMaisVendidosSubtitulo(data.secoesVitrine.maisVendidos.subtitulo || t.storeAppearance.defaultMaisVendidosSubtitle);
               setSecaoMaisVendidosCustomizado(Boolean(data.secoesVitrine.maisVendidos.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.maisVendidos.ativo)));
               setSecaoMaisVendidosFont(data.secoesVitrine.maisVendidos.tituloFont || 'Playfair Display');
               setSecaoMaisVendidosBgLight(data.secoesVitrine.maisVendidos.bgLight || '');
@@ -361,7 +361,7 @@ export default function AppearanceSettingsPage() {
             if (data.secoesVitrine.outlet) {
               setSecaoOutletAtivo(data.secoesVitrine.outlet.ativo !== false);
               setSecaoOutletTitulo(data.secoesVitrine.outlet.titulo || 'Bazar & Oportunidades');
-              setSecaoOutletSubtitulo(data.secoesVitrine.outlet.subtitulo || 'Peças selecionadas com condições especiais por tempo limitado.');
+              setSecaoOutletSubtitulo(data.secoesVitrine.outlet.subtitulo || t.storeAppearance.defaultOutletSubtitle);
               setSecaoOutletCustomizado(Boolean(data.secoesVitrine.outlet.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.outlet.ativo)));
               setSecaoOutletFont(data.secoesVitrine.outlet.tituloFont || 'Playfair Display');
               setSecaoOutletBgLight(data.secoesVitrine.outlet.bgLight || '');
@@ -373,7 +373,7 @@ export default function AppearanceSettingsPage() {
             }
             if (data.secoesVitrine.ultimasPecas) {
               setSecaoUltimasPecasAtivo(data.secoesVitrine.ultimasPecas.ativo !== false);
-              setSecaoUltimasPecasTitulo(data.secoesVitrine.ultimasPecas.titulo || 'Últimas Peças');
+              setSecaoUltimasPecasTitulo(data.secoesVitrine.ultimasPecas.titulo || t.storeAppearance.defaultUltimasPecasTitle);
               setSecaoUltimasPecasSubtitulo(data.secoesVitrine.ultimasPecas.subtitulo || 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.');
               setSecaoUltimasPecasCustomizado(Boolean(data.secoesVitrine.ultimasPecas.customizado || (data.secoesVitrine.modoIndependente && data.secoesVitrine.ultimasPecas.ativo)));
               setSecaoUltimasPecasFont(data.secoesVitrine.ultimasPecas.tituloFont || 'Playfair Display');
@@ -387,8 +387,8 @@ export default function AppearanceSettingsPage() {
             if (data.secoesVitrine.todasAsPecas) {
               setSecaoTodasAsPecasAtivo(data.secoesVitrine.todasAsPecas.ativo !== false);
               setSecaoTodasAsPecasCustomizado(Boolean(data.secoesVitrine.todasAsPecas.customizado));
-              setSecaoTodasAsPecasTitulo(data.secoesVitrine.todasAsPecas.titulo || 'Todas as Peças');
-              setSecaoTodasAsPecasSubtitulo(data.secoesVitrine.todasAsPecas.subtitulo || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.');
+              setSecaoTodasAsPecasTitulo(data.secoesVitrine.todasAsPecas.titulo || t.storeAppearance.defaultTodasAsPecasTitle);
+              setSecaoTodasAsPecasSubtitulo(data.secoesVitrine.todasAsPecas.subtitulo || t.storeAppearance.defaultTodasAsPecasSubtitle);
               setSecaoTodasAsPecasFont(data.secoesVitrine.todasAsPecas.tituloFont || 'Playfair Display');
               setSecaoTodasAsPecasBgLight(data.secoesVitrine.todasAsPecas.bgLight || '');
               setSecaoTodasAsPecasBgDark(data.secoesVitrine.todasAsPecas.bgDark || '');
@@ -581,8 +581,8 @@ export default function AppearanceSettingsPage() {
         secoesLista,
         lancamentos: {
           ativo: secaoLancamentosAtivo,
-          titulo: secaoLancamentosTitulo.trim() || 'Lançamentos Exclusivos',
-          subtitulo: secaoLancamentosSubtitulo.trim() || 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.',
+          titulo: secaoLancamentosTitulo.trim() || t.storeAppearance.defaultLancamentosTitle,
+          subtitulo: secaoLancamentosSubtitulo.trim() || t.storeAppearance.defaultLancamentosSubtitle,
           tituloFont: secaoLancamentosCustomizado ? secaoLancamentosFont : secaoGlobalFont,
           bgLight: (secaoLancamentosCustomizado ? secaoLancamentosBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoLancamentosCustomizado ? secaoLancamentosBgDark : secaoGlobalBgDark) || undefined,
@@ -594,7 +594,7 @@ export default function AppearanceSettingsPage() {
         maisVendidos: {
           ativo: secaoMaisVendidosAtivo,
           titulo: secaoMaisVendidosTitulo.trim() || 'Mais Vendidos & Queridinhos',
-          subtitulo: secaoMaisVendidosSubtitulo.trim() || 'As criações favoritas e mais desejadas pelas nossas clientes.',
+          subtitulo: secaoMaisVendidosSubtitulo.trim() || t.storeAppearance.defaultMaisVendidosSubtitle,
           tituloFont: secaoMaisVendidosCustomizado ? secaoMaisVendidosFont : secaoGlobalFont,
           bgLight: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoMaisVendidosCustomizado ? secaoMaisVendidosBgDark : secaoGlobalBgDark) || undefined,
@@ -606,7 +606,7 @@ export default function AppearanceSettingsPage() {
         outlet: {
           ativo: secaoOutletAtivo,
           titulo: secaoOutletTitulo.trim() || 'Bazar & Oportunidades',
-          subtitulo: secaoOutletSubtitulo.trim() || 'Peças selecionadas com condições especiais por tempo limitado.',
+          subtitulo: secaoOutletSubtitulo.trim() || t.storeAppearance.defaultOutletSubtitle,
           tituloFont: secaoOutletCustomizado ? secaoOutletFont : secaoGlobalFont,
           bgLight: (secaoOutletCustomizado ? secaoOutletBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoOutletCustomizado ? secaoOutletBgDark : secaoGlobalBgDark) || undefined,
@@ -617,7 +617,7 @@ export default function AppearanceSettingsPage() {
         },
         ultimasPecas: {
           ativo: secaoUltimasPecasAtivo,
-          titulo: secaoUltimasPecasTitulo.trim() || 'Últimas Peças',
+          titulo: secaoUltimasPecasTitulo.trim() || t.storeAppearance.defaultUltimasPecasTitle,
           subtitulo: secaoUltimasPecasSubtitulo.trim() || 'Poucas unidades restantes em estoque. Garanta a sua antes que esgote definitivamente.',
           tituloFont: secaoUltimasPecasCustomizado ? secaoUltimasPecasFont : secaoGlobalFont,
           bgLight: (secaoUltimasPecasCustomizado ? secaoUltimasPecasBgLight : secaoGlobalBgLight) || undefined,
@@ -629,8 +629,8 @@ export default function AppearanceSettingsPage() {
         },
         todasAsPecas: {
           ativo: secaoTodasAsPecasAtivo,
-          titulo: secaoTodasAsPecasTitulo.trim() || 'Todas as Peças',
-          subtitulo: secaoTodasAsPecasSubtitulo.trim() || 'Conheça todas as criações e modelos exclusivos disponíveis na boutique.',
+          titulo: secaoTodasAsPecasTitulo.trim() || t.storeAppearance.defaultTodasAsPecasTitle,
+          subtitulo: secaoTodasAsPecasSubtitulo.trim() || t.storeAppearance.defaultTodasAsPecasSubtitle,
           tituloFont: secaoTodasAsPecasCustomizado ? secaoTodasAsPecasFont : secaoGlobalFont,
           bgLight: (secaoTodasAsPecasCustomizado ? secaoTodasAsPecasBgLight : secaoGlobalBgLight) || undefined,
           bgDark: (secaoTodasAsPecasCustomizado ? secaoTodasAsPecasBgDark : secaoGlobalBgDark) || undefined,
@@ -785,7 +785,7 @@ export default function AppearanceSettingsPage() {
 
     setSecoesLista((prev) => prev.filter((s) => s.id !== id).map((s, idx) => ({ ...s, ordem: idx })));
     if (editingSectionId === id) setEditingSectionId(null);
-    showToast(`Seção "${sec.titulo}" removida da vitrine.`);
+    showToast(t.storeAppearance.toastSecRemoved(sec.titulo));
   };
 
   const handleUpdateSectionField = (id: string, field: keyof SecaoHomeItem, value: any) => {
@@ -798,12 +798,12 @@ export default function AppearanceSettingsPage() {
     if (newSectionType === 'categoria') {
       const cat = categoriesList.find((c) => c.id === selectedNewCatId);
       if (!cat) {
-        showToast('Selecione uma categoria válida.', 'error');
+        showToast(t.storeAppearance.toastCatRequired, 'error');
         return;
       }
       const existing = secoesLista.find((s) => s.categoriaId === cat.id);
       if (existing) {
-        showToast(`A categoria "${cat.nome}" já possui uma vitrine configurada.`, 'error');
+        showToast(t.storeAppearance.toastCatExists(cat.nome), 'error');
         return;
       }
 
@@ -811,7 +811,7 @@ export default function AppearanceSettingsPage() {
         id: `sec_cat_${cat.id}`,
         tipo: 'categoria',
         titulo: newSectionTitle.trim() || cat.nome,
-        subtitulo: newSectionSubtitle.trim() || `Confira as peças exclusivas da categoria ${cat.nome}.`,
+        subtitulo: newSectionSubtitle.trim() || cat.nome,
         ativo: true,
         ordem: secoesLista.length,
         categoriaId: cat.id,
@@ -819,24 +819,24 @@ export default function AppearanceSettingsPage() {
       };
 
       setSecoesLista((prev) => [...prev, novaSecao]);
-      showToast(`Vitrine da categoria "${cat.nome}" adicionada à Home!`);
+      showToast(t.storeAppearance.toastCatAdded(cat.nome));
     } else if (newSectionType === 'custom_curadoria') {
       if (!newSectionTitle.trim()) {
-        showToast('Informe um título para a seção personalizada.', 'error');
+        showToast(t.storeAppearance.toastTitleRequired, 'error');
         return;
       }
       const novaSecao: SecaoHomeItem = {
         id: `sec_custom_${Date.now()}`,
         tipo: 'custom_curadoria',
         titulo: newSectionTitle.trim(),
-        subtitulo: newSectionSubtitle.trim() || 'Seleção especial com modelos selecionados pela boutique.',
+        subtitulo: newSectionSubtitle.trim() || t.storeAppearance.pageSubtitle,
         ativo: true,
         ordem: secoesLista.length,
         produtoIds: []
       };
 
       setSecoesLista((prev) => [...prev, novaSecao]);
-      showToast(`Nova seção "${newSectionTitle}" criada! Clique em "Gerenciar Peças" para compor os produtos.`);
+      showToast(t.storeAppearance.toastManualSecCreated(newSectionTitle));
     }
 
     // Reset modal
@@ -850,7 +850,7 @@ export default function AppearanceSettingsPage() {
     if (!padrao) return;
 
     if (secoesLista.some((s) => s.id === nativaId)) {
-      showToast('Esta seção já está presente na sua vitrine.', 'error');
+      showToast(t.storeAppearance.toastSecAlreadyPresent, 'error');
       return;
     }
 
@@ -860,7 +860,7 @@ export default function AppearanceSettingsPage() {
     };
 
     setSecoesLista((prev) => [...prev, restaurada]);
-    showToast(`Seção "${padrao.titulo}" restaurada com sucesso!`);
+    showToast(t.storeAppearance.toastSecRestored(padrao.titulo));
     setIsAddSectionModalOpen(false);
   };
 
@@ -874,7 +874,7 @@ export default function AppearanceSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">{t.common?.loading || 'Carregando configurações visuais da vitrine...'}</span>
+        <span className="text-xs font-medium">{t.common?.loading || 'Loading visual settings...'}</span>
       </div>
     );
   }
@@ -935,7 +935,7 @@ export default function AppearanceSettingsPage() {
                 className="max-h-full w-auto object-contain"
               />
             ) : (
-              <span className="text-[11px] text-slate-400 font-medium">Logo padrão</span>
+              <span className="text-[11px] text-slate-400 font-medium">{t.storeAppearance.faviconDefault}</span>
             )}
             {logoUrl && (
               <button
@@ -955,7 +955,7 @@ export default function AppearanceSettingsPage() {
             ) : (
               <Upload className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{isUploadingLogo ? 'Enviando...' : 'Carregar Imagem'}</span>
+            <span>{isUploadingLogo ? t.storeAppearance.uploading : t.storeAppearance.uploadImageBtn}</span>
             <input
               type="file"
               accept="image/*"
@@ -1008,7 +1008,7 @@ export default function AppearanceSettingsPage() {
             ) : (
               <Upload className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{isUploadingDarkLogo ? 'Enviando...' : 'Carregar Imagem'}</span>
+            <span>{isUploadingDarkLogo ? t.storeAppearance.uploading : t.storeAppearance.uploadImageBtn}</span>
             <input
               type="file"
               accept="image/*"
@@ -1041,7 +1041,7 @@ export default function AppearanceSettingsPage() {
                 className="w-8 h-8 object-contain"
               />
             ) : (
-              <span className="text-[11px] text-slate-400 font-medium">Padrão da loja</span>
+              <span className="text-[11px] text-slate-400 font-medium">{t.storeAppearance.faviconDefault}</span>
             )}
             {faviconUrl && (
               <button
@@ -1061,7 +1061,7 @@ export default function AppearanceSettingsPage() {
             ) : (
               <Upload className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{isUploadingFavicon ? 'Enviando...' : 'Carregar Ícone'}</span>
+            <span>{isUploadingFavicon ? t.storeAppearance.uploading : t.storeAppearance.uploadIcon}</span>
             <input
               type="file"
               accept="image/*"
@@ -1134,7 +1134,7 @@ export default function AppearanceSettingsPage() {
           <div className="w-24 h-16 rounded-lg overflow-hidden bg-slate-200 shrink-0 border border-slate-300">
             <Image
               src={ogImageUrl}
-              alt="Prévia Social"
+              alt="Social Preview"
               width={96}
               height={64}
               className="w-full h-full object-cover"
@@ -1142,7 +1142,7 @@ export default function AppearanceSettingsPage() {
           </div>
           <div className="min-w-0">
             <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-              Prévia do Compartilhamento no WhatsApp
+              {t.storeAppearance.socialPreviewTitle}
             </span>
             <h4 className="text-xs font-bold text-slate-900 truncate">
               {currentTenant?.nome || 'Minha Boutique'} | Curadoria Exclusiva
@@ -1163,12 +1163,12 @@ export default function AppearanceSettingsPage() {
             type="text"
             value={slogan}
             onChange={(e) => setSlogan(e.target.value)}
-            placeholder="Ex: Moda Feminina Autêntica & Elegância Diária"
+            placeholder={t.storeAppearance.sloganPlaceholder}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
           />
         </div>
         <span className="text-[10px] text-slate-400 mt-1 block">
-          Frase de impacto exibida no subtítulo da vitrine e nas tags de compartilhamento social.
+          {t.storeAppearance.sloganDesc}
         </span>
       </div>
     </div>
@@ -1183,25 +1183,23 @@ export default function AppearanceSettingsPage() {
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
               2. Atmosfera & Plano de Fundo da Loja
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                Home & Catálogo
-              </span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{t.storeAppearance.secAtmosphereBadge}</span>
             </h2>
             <p className="text-[11px] text-slate-500">
-              Selecione o plano de fundo da loja. Ele é aplicado de forma contínua e imersiva na página inicial e no catálogo.
+              {t.storeAppearance.secAtmosphereDesc}
             </p>
           </div>
         </div>
 
         <div className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-          Modo Atual: <strong className="text-slate-900 capitalize">{siteBgTipo === 'solido' ? 'Cor Sólida (Inativo)' : siteBgTipo}</strong>
+          {t.storeAppearance.modeCurrent(siteBgTipo === 'solido' ? t.storeAppearance.modeSolid : siteBgTipo === 'video' ? t.storeAppearance.modeVideo : siteBgTipo === 'imagem' ? t.storeAppearance.modeImage : t.storeAppearance.modePattern)}
         </div>
       </div>
 
       {/* Galeria de Opções de Fundo */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-slate-800 block">
-          Galeria de Fundos Disponíveis
+          {t.storeAppearance.bgGalleryTitle}
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -1280,7 +1278,7 @@ export default function AppearanceSettingsPage() {
               <div className="absolute inset-0 bg-radial from-amber-950/20 to-black/80" />
               <Film className="w-8 h-8 text-amber-400/80 group-hover:scale-110 transition-transform" />
               <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                <Film className="w-2.5 h-2.5" /> Vídeo MP4
+                <Film className="w-2.5 h-2.5" /> {t.storeAppearance.modeVideo}
               </span>
               {siteBgTipo === 'video' && (
                 <span className="absolute bottom-2 right-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
@@ -1291,9 +1289,9 @@ export default function AppearanceSettingsPage() {
 
             <div className="flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-bold text-slate-900">Vídeo Atmosférico</h3>
+                <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optVideoTitle}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
-                  Movimento sutil e suave contínuo em mudo ao fundo.
+                  {t.storeAppearance.optVideoDesc}
                 </p>
               </div>
 
@@ -1313,12 +1311,10 @@ export default function AppearanceSettingsPage() {
                     onClick={() => {
                       setSiteBgTipo('video');
                       if (!siteBgVideoUrl) setSiteBgVideoUrl('/video/plano-de-fundo.mp4');
-                      showToast('Vídeo atmosférico ativado!');
+                      showToast(t.storeAppearance.optVideoToast);
                     }}
                     className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    Ativar Vídeo
-                  </button>
+                  >{t.storeAppearance.optVideoBtn}</button>
                 )}
               </div>
             </div>
@@ -1354,7 +1350,7 @@ export default function AppearanceSettingsPage() {
 
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xs font-bold text-slate-900">Upload Próprio</h3>
+                    <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optUploadTitle}</h3>
                     <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
                       Armazenada com entrega de alta velocidade na nuvem da boutique.
                     </p>
@@ -1409,7 +1405,7 @@ export default function AppearanceSettingsPage() {
                   <ImageIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900">Nova Imagem Própria</h3>
+                  <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optUploadNew}</h3>
                   <p className="text-[10px] text-slate-500 mt-1">
                     Envie qualquer foto ou textura (PNG, JPG, WebP) para o R2.
                   </p>
@@ -1462,9 +1458,9 @@ export default function AppearanceSettingsPage() {
 
             <div className="flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-bold text-slate-900">Cor Sólida / Neutro</h3>
+                <h3 className="text-xs font-bold text-slate-900">{t.storeAppearance.optSolidTitle}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
-                  Inativa fotos e vídeos, exibindo fundo liso minimalista.
+                  {t.storeAppearance.optSolidDesc}
                 </p>
               </div>
 
@@ -1483,12 +1479,10 @@ export default function AppearanceSettingsPage() {
                     type="button"
                     onClick={() => {
                       setSiteBgTipo('solido');
-                      showToast('Plano de fundo definido para cor sólida.');
+                      showToast(t.storeAppearance.optSolidToast);
                     }}
                     className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    Inativar Mídias
-                  </button>
+                  >{t.storeAppearance.optSolidBtn}</button>
                 )}
               </div>
             </div>
@@ -1508,7 +1502,7 @@ export default function AppearanceSettingsPage() {
                 Contraste & Escurecimento (Overlay)
               </span>
               <span className="text-[11px] text-slate-500">
-                Controla a camada escura sobre a foto/vídeo para máxima legibilidade dos textos e vestidos.
+                {t.storeAppearance.overlaySliderDesc}
               </span>
             </div>
             <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800">
@@ -1531,7 +1525,7 @@ export default function AppearanceSettingsPage() {
             {siteBgTipo === 'imagem' ? (
               <Image
                 src={siteBgImageUrl || '/images/plano-de-fundo.webp'}
-                alt="Prévia de Fundo"
+                alt="Background Preview"
                 fill
                 className="object-cover"
               />
@@ -1553,7 +1547,7 @@ export default function AppearanceSettingsPage() {
                 {storeName.toUpperCase()}
               </span>
               <span className="text-amber-300 text-[10px] font-sans drop-shadow">
-                Prévia de Legibilidade com {siteBgTipo === 'solido' ? '0' : siteBgOverlay}% de Overlay
+                {t.storeAppearance.overlayPreviewLabel(siteBgTipo === 'solido' ? '0' : siteBgOverlay)}
               </span>
             </div>
           </div>
@@ -1562,7 +1556,7 @@ export default function AppearanceSettingsPage() {
         {/* Configuração de Cores Base / Sólidas */}
         <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
           <span className="text-xs font-bold text-slate-800 block">
-            Cores Base do Site (Carregamento & Modo Sólido)
+            {t.storeAppearance.baseColorsTitle}
           </span>
 
           <div className="grid grid-cols-2 gap-3">
@@ -1631,7 +1625,7 @@ export default function AppearanceSettingsPage() {
           {siteBgTipo === 'video' && (
             <div className="pt-2 border-t border-slate-200/80 space-y-1">
               <label className="text-[10px] font-bold text-slate-700 block">
-                URL do Vídeo MP4
+                {t.storeAppearance.videoUrlLabel}
               </label>
               <input
                 type="text"
@@ -1672,10 +1666,10 @@ export default function AppearanceSettingsPage() {
             type="button"
             onClick={handleTestPreloader}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-            title="Dispara a animação na sua tela agora para você testar"
+            title={t.storeAppearance.testAnimationTitle}
           >
             <Play className="w-3.5 h-3.5 text-amber-600 fill-amber-600/30" />
-            <span>Testar Animação Agora</span>
+            <span>{t.storeAppearance.testAnimationBtn}</span>
           </button>
 
           <label className="relative inline-flex items-center cursor-pointer">
@@ -1693,7 +1687,7 @@ export default function AppearanceSettingsPage() {
                 </span>
               ) : (
                 <span className="text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-                  ⏸️ Desativado (Padrão)
+                  ⏸️ {t.storeAppearance.modeSolid}
                 </span>
               )}
             </span>
@@ -1808,7 +1802,7 @@ export default function AppearanceSettingsPage() {
               {[
                 { name: 'Creme', color: '#FAF8F5' },
                 { name: 'Branco', color: '#FFFFFF' },
-                { name: 'Ônix', color: '#1A1918' },
+                { name: 'Onyx', color: '#1A1918' },
                 { name: 'Preto', color: '#0D0C0B' }
               ].map((c) => (
                 <button
@@ -1841,7 +1835,7 @@ export default function AppearanceSettingsPage() {
               {[
                 { name: 'Champagne', color: '#DFBE76' },
                 { name: 'Dourado', color: '#C5A059' },
-                { name: 'Rosé', color: '#E0A99A' },
+                { name: 'Rose', color: '#E0A99A' },
                 { name: 'Prata', color: '#94A3B8' }
               ].map((c) => (
                 <button
@@ -1860,7 +1854,7 @@ export default function AppearanceSettingsPage() {
         {/* Cor do Texto / Dígitos */}
         <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800">Cor dos Dígitos (0-100%)</span>
+            <span className="text-xs font-bold text-slate-800">{t.storeAppearance.preloaderDigitsColor}</span>
             <span className="font-mono text-[10px] text-slate-400 uppercase">{preloaderCorTexto}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -1912,7 +1906,7 @@ export default function AppearanceSettingsPage() {
                 onChange={(e) => setPreloaderExibirPorcentagem(e.target.checked)}
                 className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
               />
-              <span>Exibir Contador Numérico Percentual (0% a 100%)</span>
+              <span>{t.storeAppearance.preloaderShowCounter}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -1927,7 +1921,7 @@ export default function AppearanceSettingsPage() {
         </div>
 
         <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-          <span className="text-xs font-bold text-slate-800 block">Frequência de Exibição nas Páginas:</span>
+          <span className="text-xs font-bold text-slate-800 block">{t.storeAppearance.preloaderFrequencyLabel}</span>
           <div className="space-y-2 text-xs">
             <label
               onClick={() => setPreloaderFrequencia('todas_as_paginas')}
@@ -1945,9 +1939,9 @@ export default function AppearanceSettingsPage() {
                 className="mt-0.5 text-amber-600"
               />
               <div>
-                <span>Em Todas as Páginas e Trocas de Rota (Recomendado)</span>
+                <span>{t.storeAppearance.preloaderFreqAllPages}</span>
                 <p className="text-[10px] font-normal text-slate-500 mt-0.5">
-                  Abertura completa na entrada e transição suave nas trocas para Catálogo, Favoritos, etc.
+                  {t.storeAppearance.preloaderFreqAllPagesDesc}
                 </p>
               </div>
             </label>
@@ -1968,9 +1962,9 @@ export default function AppearanceSettingsPage() {
                 className="mt-0.5 text-amber-600"
               />
               <div>
-                <span>Apenas no Primeiro Acesso da Sessão (Home)</span>
+                <span>{t.storeAppearance.preloaderFreqFirstOnly}</span>
                 <p className="text-[10px] font-normal text-slate-500 mt-0.5">
-                  Exibe a abertura na primeira vez que a cliente entra; nas páginas internas o carregamento é direto.
+                  {t.storeAppearance.preloaderFreqFirstOnlyDesc}
                 </p>
               </div>
             </label>
@@ -1990,7 +1984,7 @@ export default function AppearanceSettingsPage() {
             4. Plano de Fundo do Menu Superior (Header da Vitrine)
           </h2>
           <p className="text-[11px] text-slate-500">
-            Personalize o comportamento do cabeçalho da loja sobre o banner e durante a rolagem.
+            {t.storeAppearance.headerStyleDesc}
           </p>
         </div>
       </div>
@@ -2007,7 +2001,7 @@ export default function AppearanceSettingsPage() {
           )}
         >
           <Eye className="w-4 h-4" />
-          <span>Transparente Dinâmico</span>
+          <span>{t.storeAppearance.headerTransparent}</span>
           <span className="text-[10px] font-normal opacity-80">
             Fundo limpo sobre o banner hero
           </span>
@@ -2026,7 +2020,7 @@ export default function AppearanceSettingsPage() {
           <Layers className="w-4 h-4" />
           <span>Vidro Fosco (Backdrop Blur)</span>
           <span className="text-[10px] font-normal opacity-80">
-            Efeito translúcido contemporâneo
+            {t.storeAppearance.headerTransparentDesc}
           </span>
         </button>
 
@@ -2041,7 +2035,7 @@ export default function AppearanceSettingsPage() {
           )}
         >
           <Palette className="w-4 h-4" />
-          <span>Cor Sólida Personalizada</span>
+          <span>{t.storeAppearance.headerSolid}</span>
           <span className="text-[10px] font-normal opacity-80">
             Fundo opaco definido
           </span>
@@ -2104,7 +2098,7 @@ export default function AppearanceSettingsPage() {
               5. Faixa Superior de Avisos da Vitrine (Announcement Bar)
             </h2>
             <p className="text-[11px] text-slate-500">
-              A faixa de destaque exibida no topo absoluto do site (frete grátis, avisos promocionais e atendimento).
+              {t.storeAppearance.topBarNoticeDesc}
             </p>
           </div>
         </div>
@@ -2121,7 +2115,7 @@ export default function AppearanceSettingsPage() {
       {/* Prévia da Barra Atual */}
       <div className="rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-600">
-          <span className="font-semibold">Prévia da Barra Ativa na Vitrine:</span>
+          <span className="font-semibold">{t.storeAppearance.topBarNoticePreview}</span>
           <span className="text-[10px] text-slate-400">Sincronizada em tempo real via Supabase</span>
         </div>
 
@@ -2136,12 +2130,12 @@ export default function AppearanceSettingsPage() {
           <Sparkles className="w-3.5 h-3.5" />
           <span>
             {currentTenant?.configuracoes_visuais?.barra_aviso ||
-              'Frete Grátis para todo o Brasil acima de R$ 350 | Atendimento VIP via WhatsApp'}
+              t.storeAppearance.topBarNoticeDesc}
           </span>
         </div>
 
         <p className="text-[11px] text-slate-500 italic">
-          💡 Dica: Você pode alterar a cor de fundo, cor do texto, fonte e escolher entre ícones como caminhão, presente ou coração diretamente no módulo de Banners & Topo.
+          {t.storeAppearance.topBarNoticeTip}
         </p>
       </div>
     </div>
@@ -2157,7 +2151,7 @@ export default function AppearanceSettingsPage() {
             6. Tipografia & Cores Usadas no Menu Superior
           </h2>
           <p className="text-[11px] text-slate-500">
-            Personalize a fonte tipográfica, tamanho e cores dos links do cabeçalho da vitrine para modo claro e escuro.
+            {t.storeAppearance.menuNavDesc}
           </p>
         </div>
       </div>
@@ -2165,21 +2159,21 @@ export default function AppearanceSettingsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
         {/* Família Tipográfica */}
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-          <span className="font-bold text-slate-800 block">Fonte Tipográfica do Menu</span>
+          <span className="font-bold text-slate-800 block">{t.storeAppearance.menuFontTitle}</span>
           <select
             value={menuFontFamily}
             onChange={(e) => setMenuFontFamily(e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800"
           >
-            <option value="Montserrat">Montserrat (Moderno & Legível)</option>
+            <option value="Montserrat">Montserrat</option>
             <option value="Playfair Display">Playfair Display (Alta Costura & Serifado)</option>
             <option value="Cinzel">Cinzel (Luxo & Joalheria)</option>
-            <option value="Cormorant Garamond">Cormorant Garamond (Clássico Refinado)</option>
+            <option value="Cormorant Garamond">Cormorant Garamond</option>
             <option value="Inter">Inter (Clean & Minimalista)</option>
-            <option value="Poppins">Poppins (Geométrico Contemporâneo)</option>
+            <option value="Poppins">Poppins</option>
           </select>
           <span className="text-[10px] text-slate-400 block">
-            Aplica-se à Linha 1, Linha 2 e à Gaveta Lateral Mobile.
+            {t.storeAppearance.menuFontHint}
           </span>
         </div>
 
@@ -2204,7 +2198,7 @@ export default function AppearanceSettingsPage() {
             ))}
           </div>
           <span className="text-[10px] text-slate-400 block">
-            12px é o padrão ouro de elegância e equilíbrio visual.
+            {t.storeAppearance.menuFontGoldStandard}
           </span>
         </div>
 
@@ -2279,14 +2273,14 @@ export default function AppearanceSettingsPage() {
       {/* Prévia Interativa do Menu */}
       <div className="p-4 rounded-xl border border-slate-200 bg-slate-900 text-white space-y-2">
         <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-          Prévia em Tempo Real dos Links do Menu
+          {t.storeAppearance.menuPreviewTitle}
         </span>
         <div
           className="flex items-center gap-6 py-2 overflow-x-auto"
           style={{ fontFamily: menuFontFamily, fontSize: menuFontSize }}
         >
           <span style={{ color: menuCorHoverLight }} className="font-semibold cursor-pointer">
-            Lançamentos 2026
+            {t.storeAppearance.defaultLancamentosTitle}
           </span>
           <span style={{ color: menuCorTextoDark }} className="opacity-90 hover:opacity-100 cursor-pointer">
             Alfaiataria
@@ -2313,10 +2307,10 @@ export default function AppearanceSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              7. Tipografias & Cores Usadas no Site por Seção
+              {t.storeAppearance.secStylesTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Configure se todas as seções compartilham o mesmo estilo ou se cada uma terá plano de fundo, fonte e cores exclusivas.
+              {t.storeAppearance.secStylesDesc}
             </p>
           </div>
         </div>
@@ -2345,7 +2339,7 @@ export default function AppearanceSettingsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             )}
           >
-            Diferente por Seção
+            {t.storeAppearance.styleModeIndependent}
           </button>
         </div>
       </div>
@@ -2354,9 +2348,7 @@ export default function AppearanceSettingsPage() {
       <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3 text-xs">
         <div className="flex items-center justify-between">
           <span className="font-bold text-slate-900">
-            {!secoesModoIndependente
-              ? 'Estilo Padrão (Aplicado a Todas as Seções da Home)'
-              : 'Estilo Padrão (Fallback Geral)'}
+            {!secoesModoIndependente ? t.storeAppearance.styleDefaultLabel(true) : t.storeAppearance.styleDefaultLabel(false)}
           </span>
           <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
             Global
@@ -2365,21 +2357,21 @@ export default function AppearanceSettingsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Fonte dos Títulos</label>
+            <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
             <select
               value={secaoGlobalFont}
               onChange={(e) => setSecaoGlobalFont(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
             >
               <option value="Playfair Display">Playfair Display (Serifada Luxo)</option>
-              <option value="Montserrat">Montserrat (Contemporânea)</option>
-              <option value="Cinzel">Cinzel (Clássica Romana)</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Cinzel">Cinzel</option>
               <option value="Cormorant Garamond">Cormorant Garamond (Elegante)</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Cor do Título (Claro)</label>
+            <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -2397,7 +2389,7 @@ export default function AppearanceSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Cor do Título (Escuro)</label>
+            <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleDark}</label>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -2415,7 +2407,7 @@ export default function AppearanceSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção (Opcional)</label>
+            <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -2442,7 +2434,7 @@ export default function AppearanceSettingsPage() {
       {secoesModoIndependente && (
         <div className="space-y-4 pt-1">
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Personalização Individual das Seções da Home
+            {t.storeAppearance.customSecIndividualTitle}
           </h3>
 
           {/* 1. Lançamentos Exclusivos */}
@@ -2457,7 +2449,7 @@ export default function AppearanceSettingsPage() {
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-lanc-ativo" className="font-bold text-slate-900 cursor-pointer">
-                  1. Seção Lançamentos Exclusivos (#lancamentos)
+                  {t.storeAppearance.secLancamentosHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoLancamentosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
                   {secaoLancamentosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
@@ -2480,7 +2472,7 @@ export default function AppearanceSettingsPage() {
             {secaoLancamentosCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
                   <select
                     value={secaoLancamentosFont}
                     onChange={(e) => setSecaoLancamentosFont(e.target.value)}
@@ -2493,7 +2485,7 @@ export default function AppearanceSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2510,7 +2502,7 @@ export default function AppearanceSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2543,7 +2535,7 @@ export default function AppearanceSettingsPage() {
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-mv-ativo" className="font-bold text-slate-900 cursor-pointer">
-                  2. Seção Mais Vendidos (#mais-vendidos)
+                  {t.storeAppearance.secMaisVendidosHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoMaisVendidosAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
                   {secaoMaisVendidosAtivo ? 'Ativa na Vitrine' : 'Oculta'}
@@ -2566,7 +2558,7 @@ export default function AppearanceSettingsPage() {
             {secaoMaisVendidosCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
                   <select
                     value={secaoMaisVendidosFont}
                     onChange={(e) => setSecaoMaisVendidosFont(e.target.value)}
@@ -2579,7 +2571,7 @@ export default function AppearanceSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2596,7 +2588,7 @@ export default function AppearanceSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2629,7 +2621,7 @@ export default function AppearanceSettingsPage() {
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-outlet-ativo" className="font-bold text-slate-900 cursor-pointer">
-                  3. Seção OUTLET & BAZAR (#outlet)
+                  {t.storeAppearance.secOutletHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoOutletAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
                   {secaoOutletAtivo ? 'Ativa na Vitrine' : 'Oculta'}
@@ -2652,7 +2644,7 @@ export default function AppearanceSettingsPage() {
             {secaoOutletCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
                   <select
                     value={secaoOutletFont}
                     onChange={(e) => setSecaoOutletFont(e.target.value)}
@@ -2665,7 +2657,7 @@ export default function AppearanceSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2682,7 +2674,7 @@ export default function AppearanceSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2715,7 +2707,7 @@ export default function AppearanceSettingsPage() {
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-up-ativo" className="font-bold text-slate-900 cursor-pointer">
-                  4. Seção Últimas Peças (#ultimas-pecas)
+                  {t.storeAppearance.secUltimasPecasHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoUltimasPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
                   {secaoUltimasPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
@@ -2738,7 +2730,7 @@ export default function AppearanceSettingsPage() {
             {secaoUltimasPecasCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
                   <select
                     value={secaoUltimasPecasFont}
                     onChange={(e) => setSecaoUltimasPecasFont(e.target.value)}
@@ -2751,7 +2743,7 @@ export default function AppearanceSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2768,7 +2760,7 @@ export default function AppearanceSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2801,7 +2793,7 @@ export default function AppearanceSettingsPage() {
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="sec-todas-ativo" className="font-bold text-slate-900 cursor-pointer">
-                  5. Seção Todas as Peças (#todas-as-pecas)
+                  {t.storeAppearance.secTodasAsPecasHeader}
                 </label>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${secaoTodasAsPecasAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
                   {secaoTodasAsPecasAtivo ? 'Ativa na Vitrine' : 'Oculta'}
@@ -2823,22 +2815,22 @@ export default function AppearanceSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Título da Seção</label>
+                <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.secTodasAsPecasInputTitle}</label>
                 <input
                   type="text"
                   value={secaoTodasAsPecasTitulo}
                   onChange={(e) => setSecaoTodasAsPecasTitulo(e.target.value)}
-                  placeholder="Ex: Todas as Peças ou Coleção Completa"
+                  placeholder="Ex: All Creations"
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Subtítulo Explicativo</label>
+                <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.secTodasAsPecasInputSubtitle}</label>
                 <input
                   type="text"
                   value={secaoTodasAsPecasSubtitulo}
                   onChange={(e) => setSecaoTodasAsPecasSubtitulo(e.target.value)}
-                  placeholder="Ex: Conheça todas as criações exclusivas disponíveis..."
+                  placeholder="Ex: Discover our exclusive collection..."
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
                 />
               </div>
@@ -2847,7 +2839,7 @@ export default function AppearanceSettingsPage() {
             {secaoTodasAsPecasCustomizado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fonte do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.fontTitleSelect}</label>
                   <select
                     value={secaoTodasAsPecasFont}
                     onChange={(e) => setSecaoTodasAsPecasFont(e.target.value)}
@@ -2860,7 +2852,7 @@ export default function AppearanceSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Cor do Título</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.colorTitleLight}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2877,7 +2869,7 @@ export default function AppearanceSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fundo da Seção</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t.storeAppearance.bgSectionOptional}</label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="color"
@@ -2911,14 +2903,14 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                8. Seções da Página Inicial (Vitrine Home)
+                {t.storeAppearance.secManagerTitle}
               </h2>
               <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
                 {secoesLista.filter((s) => s.ativo).length} ativas / {secoesLista.length} no total
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Personalize a ordem de exibição, visibilidade, títulos e gerencie diretamente as peças de cada vitrine.
+              {t.storeAppearance.secManagerDesc}
             </p>
           </div>
         </div>
@@ -2929,7 +2921,7 @@ export default function AppearanceSettingsPage() {
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-2xs cursor-pointer shrink-0 self-start sm:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Nova Seção na Home</span>
+          <span>{t.storeAppearance.newSectionBtn}</span>
         </button>
       </div>
 
@@ -2940,7 +2932,7 @@ export default function AppearanceSettingsPage() {
           const isExpanded = editingSectionId === secao.id;
 
           let badgeIcon = <Sparkles className="w-3.5 h-3.5 text-amber-600" />;
-          let badgeLabel = '🌟 Lançamento';
+          let badgeLabel = t.storeAppearance.badgeLaunch;
           let badgeClass = 'bg-amber-50 text-amber-900 border-amber-200';
 
           if (secao.tipo === 'nativa_mais_vendidos') {
@@ -2953,11 +2945,11 @@ export default function AppearanceSettingsPage() {
             badgeClass = 'bg-rose-50 text-rose-900 border-rose-200';
           } else if (secao.tipo === 'nativa_ultimas_pecas') {
             badgeIcon = <Clock className="w-3.5 h-3.5 text-orange-600" />;
-            badgeLabel = '⏳ Últimas Peças';
+            badgeLabel = t.storeAppearance.badgeLastPieces;
             badgeClass = 'bg-orange-50 text-orange-900 border-orange-200';
           } else if (secao.tipo === 'nativa_todas_pecas') {
             badgeIcon = <Layers className="w-3.5 h-3.5 text-slate-600" />;
-            badgeLabel = '📁 Catálogo Geral';
+            badgeLabel = t.storeAppearance.badgeCatalog;
             badgeClass = 'bg-slate-100 text-slate-800 border-slate-200';
           } else if (secao.tipo === 'categoria') {
             badgeIcon = <FolderOpen className="w-3.5 h-3.5 text-sky-600" />;
@@ -3044,11 +3036,10 @@ export default function AppearanceSettingsPage() {
                     )}
                     title={
                       count === 0
-                        ? 'Atenção: como esta seção possui 0 peças qualificadas em estoque, a vitrine da Home oculta a seção automaticamente para evitar espaços em branco.'
-                        : `${count} peças prontas para exibição nesta vitrine`
+                        ? t.storeAppearance.emptyPiecesWarning : t.storeAppearance.piecesCount(count)
                     }
                   >
-                    <span>{count} peça(s)</span>
+                    <span>{t.storeAppearance.piecesCount(count)}</span>
                     {count === 0 && <span className="text-[10px] font-sans font-bold text-amber-700 hidden sm:inline">(Oculta)</span>}
                   </span>
 
@@ -3057,10 +3048,10 @@ export default function AppearanceSettingsPage() {
                     type="button"
                     onClick={() => setCuratingSection(secao)}
                     className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    title="Adicionar ou remover peças desta seção com 1 clique"
+                    title={t.storeAppearance.managePiecesTooltip}
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Gerenciar Peças</span>
+                    <span>{t.storeAppearance.managePiecesBtn}</span>
                   </button>
 
                   {/* Botão Editar Textos & Visual Inline */}
@@ -3073,7 +3064,7 @@ export default function AppearanceSettingsPage() {
                         ? 'bg-slate-900 text-amber-400 border-slate-900'
                         : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
                     )}
-                    title={isExpanded ? 'Fechar edição' : 'Editar título e subtítulo'}
+                    title={t.storeAppearance.editSecTextsTooltip(isExpanded)}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
@@ -3108,7 +3099,7 @@ export default function AppearanceSettingsPage() {
                     type="button"
                     onClick={() => handleDeleteSection(secao.id)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                    title="Remover seção da vitrine da Home"
+                    title={t.storeAppearance.removeSecTooltip}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -3121,25 +3112,25 @@ export default function AppearanceSettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Título Exibido na Vitrine:
+                        {t.storeAppearance.secTitleInputLabel}
                       </label>
                       <input
                         type="text"
                         value={secao.titulo}
                         onChange={(e) => handleUpdateSectionField(secao.id, 'titulo', e.target.value)}
-                        placeholder="Ex: Lançamentos Exclusivos"
+                        placeholder={t.storeAppearance.defaultLancamentosTitle}
                         className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 font-medium"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Subtítulo / Descrição de Apoio:
+                        {t.storeAppearance.secSubtitleInputLabel}
                       </label>
                       <input
                         type="text"
                         value={secao.subtitulo || ''}
                         onChange={(e) => handleUpdateSectionField(secao.id, 'subtitulo', e.target.value)}
-                        placeholder="Ex: As últimas novidades que acabaram de chegar..."
+                        placeholder={t.storeAppearance.defaultLancamentosSubtitle}
                         className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900"
                       />
                     </div>
@@ -3147,15 +3138,13 @@ export default function AppearanceSettingsPage() {
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[11px] text-slate-500">
-                      ID interno da seção: <code className="font-mono text-slate-700">#{secao.id}</code>
+                      {t.storeAppearance.secInternalIdLabel(secao.id)}
                     </span>
                     <button
                       type="button"
                       onClick={() => setEditingSectionId(null)}
                       className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 transition-colors cursor-pointer"
-                    >
-                      Fechar Edição
-                    </button>
+                    >{t.storeAppearance.closeEditBtn}</button>
                   </div>
                 </div>
               )}
@@ -3175,14 +3164,14 @@ export default function AppearanceSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                9. Exibição de Estoque para o Consumidor
+                {t.storeAppearance.stockConsumerTitle}
               </h2>
               <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
                 Global
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Escolha se o catálogo e o modal de produtos devem expor a quantidade numérica exata de peças restantes aos clientes.
+              {t.storeAppearance.stockConsumerDesc}
             </p>
           </div>
         </div>
@@ -3222,15 +3211,15 @@ export default function AppearanceSettingsPage() {
         <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-500">
           {exibirQuantidadeEstoqueConsumidor ? (
             <>
-              <li>Quando restarem 5 peças ou menos no estoque real, o catálogo mostrará: <strong className="text-slate-700">&quot;Restam X peças&quot;</strong> ou <strong className="text-slate-700">&quot;Última peça&quot;</strong>.</li>
-              <li>No modal de produto, o cliente verá a contagem precisa da variação selecionada (ex: <strong className="text-slate-700">&quot;Últimas 2 unidades deste tamanho&quot;</strong>).</li>
-              <li>Peças com estoque abundante (mais de 5 unidades) não criam falsa urgência e exibem <strong className="text-slate-700">&quot;Disponível em estoque&quot;</strong>.</li>
+              <li>{t.storeAppearance.stockRule1}</li>
+              <li>{t.storeAppearance.stockRule2}</li>
+              <li>{t.storeAppearance.stockRule3}</li>
             </>
           ) : (
             <>
-              <li>O sistema <strong className="text-slate-700">nunca expõe contagens nem frases de escassez</strong> aos clientes. Não haverá selos nem avisos de &quot;Últimas unidades&quot;.</li>
-              <li>No modal, informa com total discrição e elegância apenas <strong className="text-slate-700">&quot;Disponível em estoque para envio imediato!&quot;</strong> enquanto houver peças disponíveis.</li>
-              <li>Se uma variação ou tamanho estiver esgotado no estoque real, o sistema informará com clareza <strong className="text-slate-700">&quot;Tamanho esgotado no momento nesta cor&quot;</strong> e habilitará o botão de aviso.</li>
+              <li>{t.storeAppearance.stockRule4}</li>
+              <li>{t.storeAppearance.stockRule5}</li>
+              <li>{t.storeAppearance.stockRule6}</li>
             </>
           )}
         </ul>
@@ -3254,7 +3243,7 @@ export default function AppearanceSettingsPage() {
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Escolha se as fotos das peças na vitrine pública devem exibir selos sobrepostos (ex: Lançamento, Mais Vendido, Outlet) ou manter as imagens 100% limpas.
+              {t.storeAppearance.badgesOnPhotosTitle}
             </p>
           </div>
         </div>
@@ -3279,7 +3268,7 @@ export default function AppearanceSettingsPage() {
                 Exibir Selos Comerciais nas Fotos
               </span>
               <span className="text-[10px] text-slate-500">
-                (Mais Vendido, Lançamento, Outlet, Badges Personalizados)
+                (Best Seller, New Arrival, Outlet, Custom Badges)
               </span>
             </div>
 
@@ -3301,15 +3290,13 @@ export default function AppearanceSettingsPage() {
               ) : (
                 <>
                   <ToggleLeft className="w-4 h-4 text-slate-400" />
-                  <span>Ocultos (Foto Limpa)</span>
+                  <span>Foto Limpa</span>
                 </>
               )}
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            {exibirBadgesNaVitrine
-              ? '✓ Os sinalizadores que você configurar aparecerão sobre a foto das peças no catálogo (com inteligência de contexto para não repetir selo na própria seção).'
-              : '🔒 As imagens das peças na loja ficam 100% livres de selos flutuantes, valorizando o ensaio fotográfico e o acabamento nobre.'}
+            {exibirBadgesNaVitrine ? t.storeAppearance.badgesOnPhotosDesc : '🔒 As imagens das peças na loja ficam 100% livres de selos flutuantes, valorizando o ensaio fotográfico e o acabamento nobre.'}
           </p>
         </div>
 
@@ -3321,7 +3308,7 @@ export default function AppearanceSettingsPage() {
                 Exibir Selo de Escassez na Foto
               </span>
               <span className="text-[10px] text-slate-500">
-                (Adesivo &quot;Restam X peças&quot; ou &quot;Última peça&quot; sobreposto à foto)
+                (Urgency badge overlaid on photo)
               </span>
             </div>
 
@@ -3349,15 +3336,13 @@ export default function AppearanceSettingsPage() {
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            {exibirSeloEscassezFoto
-              ? '✓ Peças com estoque baixo (&le; 5 unidades) colarão um selo marrom de urgência sobre a imagem.'
-              : '🔒 A escassez será comunicada apenas no modal e no botão de sacola, mantendo o card da vitrine visualmente elegante.'}
+            {exibirSeloEscassezFoto ? t.storeAppearance.badgesUrgencyDesc : '🔒 A escassez será comunicada apenas no modal e no botão de sacola, mantendo o card da vitrine visualmente elegante.'}
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-        <span className="text-xs font-semibold text-slate-600">Badges ativos da boutique:</span>
+        <span className="text-xs font-semibold text-slate-600">Badges:</span>
         {((currentTenant as any)?.configuracoes_visuais?.atributos_pecas?.sinalizadores || []).map((s: any) => (
           <div
             key={s.id}
@@ -3409,7 +3394,7 @@ export default function AppearanceSettingsPage() {
                 <Plus className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                Adicionar Seção na Página Inicial
+                {t.storeAppearance.modalNewSecTitle}
               </h3>
             </div>
             <button
@@ -3456,9 +3441,7 @@ export default function AppearanceSettingsPage() {
                   ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               )}
-            >
-              Restaurar Seção
-            </button>
+            >{t.storeAppearance.tabRestore}</button>
           </div>
 
           {/* Conteúdo da Modalidade 1: Por Categoria */}
@@ -3481,7 +3464,7 @@ export default function AppearanceSettingsPage() {
                 >
                   {categoriesList.map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.nome} ({catalogProducts.filter((p) => p.categoria_id === cat.id).length} peças)
+                      {cat.nome} ({catalogProducts.filter((p) => p.categoria_id === cat.id).length})
                     </option>
                   ))}
                 </select>
@@ -3489,26 +3472,26 @@ export default function AppearanceSettingsPage() {
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Título da Seção na Vitrine:
+                  {t.storeAppearance.secTitleInputLabel}
                 </label>
                 <input
                   type="text"
                   value={newSectionTitle}
                   onChange={(e) => setNewSectionTitle(e.target.value)}
-                  placeholder="Ex: Vestidos & Macacões Nobres"
+                  placeholder="Ex: Dresses & Jumpsuits"
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Subtítulo / Descrição de Apoio:
+                  {t.storeAppearance.secSubtitleInputLabel}
                 </label>
                 <input
                   type="text"
                   value={newSectionSubtitle}
                   onChange={(e) => setNewSectionSubtitle(e.target.value)}
-                  placeholder="Ex: As peças com maior elegância e caimento impecável..."
+                  placeholder="Ex: Elegant pieces with flawless drape..."
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900"
                 />
               </div>
@@ -3520,32 +3503,32 @@ export default function AppearanceSettingsPage() {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Título da Coleção / Vitrine:
+                  {t.storeAppearance.manualCollectionTitle}
                 </label>
                 <input
                   type="text"
                   value={newSectionTitle}
                   onChange={(e) => setNewSectionTitle(e.target.value)}
-                  placeholder="Ex: Coleção Réveillon 2026"
+                  placeholder="Ex: Holiday Collection 2026"
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  Subtítulo / Frase de Efeito:
+                  {t.storeAppearance.manualCollectionSubtitle}
                 </label>
                 <input
                   type="text"
                   value={newSectionSubtitle}
                   onChange={(e) => setNewSectionSubtitle(e.target.value)}
-                  placeholder="Ex: Seleção especial de peças para comemorar os melhores momentos..."
+                  placeholder="Ex: Special curated selection to celebrate moments..."
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900"
                 />
               </div>
 
               <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px]">
-                💡 <strong>Dica:</strong> Após criar esta seção, utilize o botão <strong>"Gerenciar Peças"</strong> na lista para selecionar exatamente quais modelos farão parte dela.
+                {t.storeAppearance.manualCollectionTip}
               </div>
             </div>
           )}
@@ -3554,12 +3537,12 @@ export default function AppearanceSettingsPage() {
           {newSectionType === 'restaurar_nativa' && (
             <div className="space-y-2.5 text-xs">
               <p className="text-slate-500 text-[11px]">
-                Se você excluiu alguma das seções comerciais padrão da vitrine, clique para restaurá-la:
+                {t.storeAppearance.restoreSecPrompt}
               </p>
 
               {SECOES_VITRINE_PADRAO.filter((p) => !secoesLista.some((s) => s.id === p.id)).length === 0 ? (
                 <div className="p-4 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
-                  Todas as seções padrão já estão presentes na sua vitrine.
+                  {t.storeAppearance.allNativesPresent}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -3600,9 +3583,7 @@ export default function AppearanceSettingsPage() {
                 type="button"
                 onClick={handleCreateNewSection}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-all shadow-2xs cursor-pointer"
-              >
-                Adicionar à Vitrine
-              </button>
+              >{t.storeAppearance.btnAddToStorefront}</button>
             )}
           </div>
         </div>
@@ -3639,7 +3620,7 @@ export default function AppearanceSettingsPage() {
           try {
             await refreshProducts();
           } catch { }
-          showToast(`Peças da seção "${curatingSection.titulo}" atualizadas com sucesso!`);
+          showToast(t.storeAppearance.toastSecPiecesUpdated(curatingSection.titulo));
         }}
         onToast={showToast}
       />

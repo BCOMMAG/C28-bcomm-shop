@@ -102,7 +102,7 @@ export default function AdminCuponsPage() {
     const res = await deleteAdminCoupon(coupon.id);
     if (res.success) {
       setCoupons((prev) => prev.filter((c) => c.id !== coupon.id));
-      showToast(`Cupom "${coupon.codigo}" excluído com sucesso!`);
+      showToast(t.storeCoupons.toastDeleted(coupon.codigo));
     } else {
       showToast(res.error || 'Erro ao excluir cupom.', 'error');
     }
@@ -111,11 +111,11 @@ export default function AdminCuponsPage() {
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCode.trim()) {
-      showToast('Informe o código do cupom.', 'error');
+      showToast(t.storeCoupons.codeRequired, 'error');
       return;
     }
     if (!newDiscountValue.trim() || Number(newDiscountValue) <= 0) {
-      showToast('Informe um valor de desconto válido.', 'error');
+      showToast(t.storeCoupons.valueRequired, 'error');
       return;
     }
 
@@ -151,7 +151,7 @@ export default function AdminCuponsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    showToast(`Código "${text}" copiado!`);
+    showToast(t.storeCoupons.toastCodeCopied(text));
   };
 
   // Filtros
@@ -196,7 +196,7 @@ export default function AdminCuponsPage() {
               {t.storeCoupons.pageTitle}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              {locale === 'en' ? 'Real-time Validation' : locale === 'es' ? 'Validación en Tiempo Real' : 'Validação em Tempo Real'}
+              {t.storeCoupons.validationBadge}
             </span>
           </div>
           <p className="admin-body text-xs text-slate-500 mt-1">
@@ -297,7 +297,7 @@ export default function AdminCuponsPage() {
           <div className="p-16 text-center text-xs text-slate-500 space-y-2">
             <Tag className="w-8 h-8 text-slate-300 mx-auto" />
             <p className="text-sm font-bold text-slate-800">{locale === 'en' ? 'No coupons found' : locale === 'es' ? 'No se encontraron cupones' : 'Nenhum cupom encontrado'}</p>
-            <p className="text-xs">{locale === 'en' ? 'Click "New Coupon" to create your first promotion.' : locale === 'es' ? 'Haga clic en "Nuevo Cupón" para crear su primera promoción.' : 'Clique no botão "Novo Cupom" para criar sua primeira campanha promocional.'}</p>
+            <p className="text-xs">{t.storeCoupons.emptyStateDesc}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -322,7 +322,7 @@ export default function AdminCuponsPage() {
                         </span>
                         <button
                           onClick={() => copyToClipboard(coupon.codigo)}
-                          title="Copiar código"
+                          title={t.storeCoupons.btnCopyCode}
                           className="text-slate-400 hover:text-slate-700 p-1 rounded"
                         >
                           <Copy className="w-3.5 h-3.5" />
@@ -346,7 +346,7 @@ export default function AdminCuponsPage() {
                       {coupon.valor_minimo > 0 ? (
                         <span className="font-medium">{formatCurrency(coupon.valor_minimo)}</span>
                       ) : (
-                        <span className="text-slate-400 italic">Sem valor mínimo</span>
+                        <span className="text-slate-400 italic">{t.storeCoupons.noMinOrder}</span>
                       )}
                     </td>
 
@@ -466,13 +466,13 @@ export default function AdminCuponsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    {locale === 'en' ? `Minimum Order (${currencySymbol})` : locale === 'es' ? `Pedido Mínimo (${currencySymbol})` : `Pedido Mínimo (${currencySymbol})`}
+                    `${t.storeCoupons.minOrderLabel} (${currencySymbol})`
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder={locale === 'en' ? '0 = No minimum' : locale === 'es' ? '0 = Sin mínimo' : '0 = Sem mínimo'}
+                    placeholder={t.storeCoupons.minOrderPlaceholder}
                     value={newMinOrderValue}
                     onChange={(e) => setNewMinOrderValue(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:ring-2 focus:ring-amber-500"

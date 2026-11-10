@@ -3,8 +3,10 @@
 import React from 'react';
 import { AlertTriangle, Save, Trash2, X, Loader2 } from 'lucide-react';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export const UnsavedChangesModal: React.FC = () => {
+  const { t } = useAdminI18n();
   const {
     isModalOpen,
     isSaving,
@@ -45,17 +47,17 @@ export const UnsavedChangesModal: React.FC = () => {
 
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-900 dark:text-stone-100">
-              Alterações Não Salvas!
+              {t.unsavedChangesModal.title}
             </h3>
             <p className="text-xs text-slate-500 dark:text-stone-400 leading-relaxed">
-              Você modificou parâmetros em <strong>{formName}</strong>, mas ainda não clicou em salvar. O que deseja fazer antes de sair?
+              {t.unsavedChangesModal.description(formName || '')}
             </p>
           </div>
         </div>
 
         {/* Destaque explicativo */}
         <div className="bg-slate-50 dark:bg-stone-800/60 p-3 rounded-xl border border-slate-200 dark:border-stone-800 text-[11px] text-slate-600 dark:text-stone-300">
-          💡 Se descartar, as regras e dados anteriores continuarão valendo normalmente na sua loja.
+          {t.unsavedChangesModal.hint}
         </div>
 
         {/* Ações em 3 Níveis */}
@@ -70,12 +72,12 @@ export const UnsavedChangesModal: React.FC = () => {
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Salvando alterações...</span>
+                <span>{t.unsavedChangesModal.saving}</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Salvar e Prosseguir</span>
+                <span>{t.unsavedChangesModal.saveAndProceed}</span>
               </>
             )}
           </button>
@@ -89,7 +91,7 @@ export const UnsavedChangesModal: React.FC = () => {
               className="py-2.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-900/50 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Descartar</span>
+              <span>{t.unsavedChangesModal.discard}</span>
             </button>
 
             {/* Ação 3: Continuar Editando */}

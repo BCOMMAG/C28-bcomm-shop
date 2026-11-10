@@ -166,7 +166,7 @@ export default function AdminBannersPage() {
     setActiveBannerId(banner.id);
     setTitulo(banner.titulo || '');
     setSubtitulo(banner.subtitulo || '');
-    setCtaTexto(banner.cta_texto || 'Conhecer Coleção');
+    setCtaTexto(banner.cta_texto || t.storeBanners.ctaPlaceholder);
     setCtaLink(banner.cta_link || '#lancamentos');
     setTipoMidia(banner.tipo_midia || 'video');
     setDesktopMediaUrl(banner.desktop_media_url);
@@ -190,8 +190,8 @@ export default function AdminBannersPage() {
   // Prepara formulário para cadastrar um novo banner
   const handleAddNewBanner = () => {
     setActiveBannerId(undefined);
-    setTitulo('Nova Coleção');
-    setSubtitulo('Destaques Exclusivos com Modelagem Impecável');
+    setTitulo(t.storeBanners.colLancamentosLabel);
+    setSubtitulo(t.storeBanners.subtitlePlaceholder);
     setCtaTexto('Explorar Agora');
     setCtaLink('#lancamentos');
     setTipoMidia('image');
@@ -202,7 +202,7 @@ export default function AdminBannersPage() {
     // Rola suavemente até o editor
     const el = document.getElementById('editor-banner-form');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showToast('Formulário pronto para cadastrar novo banner!');
+    showToast(t.storeBanners.toastReadyNew);
   };
 
   // Alternar status ativo/pausado do banner
@@ -255,7 +255,7 @@ export default function AdminBannersPage() {
     if (res.success) {
       showToast('Ordem dos banners atualizada!');
     } else {
-      showToast(res.error || 'Erro ao salvar reordenação', 'error');
+      showToast(res.error || t.storeBanners.toastReorderError, 'error');
       await fetchBannersAndCatalog();
     }
   };
@@ -272,9 +272,9 @@ export default function AdminBannersPage() {
         setDesktopMediaUrl(res.url);
         if (file.type.startsWith('video/')) setTipoMidia('video');
         else if (file.type.startsWith('image/')) setTipoMidia('image');
-        showToast('Mídia Desktop enviada com sucesso!');
+        showToast(t.storeBanners.toastDesktopSuccess);
       } else {
-        showToast(res.error || 'Falha ao enviar mídia desktop', 'error');
+        showToast(res.error || t.storeBanners.toastDesktopError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro no upload desktop', 'error');
@@ -293,9 +293,9 @@ export default function AdminBannersPage() {
       const res = await uploadBrowserFileToR2(file, tenantSlug, 'banners');
       if (res.success && res.url) {
         setMobileMediaUrl(res.url);
-        showToast('Mídia Mobile (9:16) enviada com sucesso!');
+        showToast(t.storeBanners.toastMobileSuccess);
       } else {
-        showToast(res.error || 'Falha ao enviar mídia mobile', 'error');
+        showToast(res.error || t.storeBanners.toastMobileError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro no upload mobile', 'error');
@@ -345,7 +345,7 @@ export default function AdminBannersPage() {
         await fetchBannersAndCatalog();
         showToast(`Banner e Barra Superior salvos e publicados na vitrine da ${lojaNome}!`);
       } else {
-        showToast(resBanner.error || resBarra.error || 'Erro ao salvar alterações.', 'error');
+        showToast(resBanner.error || resBarra.error || t.storeBanners.toastError, 'error');
       }
     } catch (err: any) {
       showToast(err?.message || 'Erro inesperado ao salvar banner.', 'error');
@@ -470,7 +470,7 @@ export default function AdminBannersPage() {
                         #{index + 1}
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                        {isBannerVideo ? 'Vídeo MP4' : 'Foto'}
+                        {isBannerVideo ? t.storeBanners.mediaTypeVideo : t.storeBanners.mediaTypePhoto}
                       </span>
                     </div>
 
@@ -483,7 +483,7 @@ export default function AdminBannersPage() {
                           : 'bg-slate-100 text-slate-500 border border-slate-300'
                       }`}
                     >
-                      {banner.ativo ? '🟢 Ativo' : '⏸️ Pausado'}
+                      {banner.ativo ? `🟢 ${t.storeBanners.badgeActive}` : `⏸️ ${t.storeBanners.badgePaused}`}
                     </button>
                   </div>
 
@@ -520,10 +520,10 @@ export default function AdminBannersPage() {
                   {/* Informações de Texto */}
                   <div className="space-y-1 mb-3">
                     <h3 className="font-bold text-slate-900 text-xs truncate">
-                      {banner.titulo || 'Sem título'}
+                      {banner.titulo || t.storeBanners.untitled}
                     </h3>
                     <p className="text-[11px] text-slate-500 line-clamp-1">
-                      {banner.subtitulo || 'Sem subtítulo'}
+                      {banner.subtitulo || t.storeBanners.noSubtitle}
                     </p>
                     <div className="flex items-center gap-1.5 pt-1 text-[10px] font-semibold text-slate-600 truncate">
                       <Link2 className="w-3 h-3 text-amber-600 shrink-0" />
@@ -539,7 +539,7 @@ export default function AdminBannersPage() {
                         disabled={index === 0}
                         onClick={(e) => handleMoveBanner(index, 'up', e)}
                         className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
-                        title="Mover para cima"
+                        title={t.storeBanners.moveUp}
                       >
                         <ArrowUp className="w-3.5 h-3.5" />
                       </button>
@@ -548,7 +548,7 @@ export default function AdminBannersPage() {
                         disabled={index === banners.length - 1}
                         onClick={(e) => handleMoveBanner(index, 'down', e)}
                         className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
-                        title="Mover para baixo"
+                        title={t.storeBanners.moveDown}
                       >
                         <ArrowDown className="w-3.5 h-3.5" />
                       </button>
@@ -561,14 +561,14 @@ export default function AdminBannersPage() {
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3" />
-                        <span>Editar</span>
+                        <span>{t.storeBanners.btnEdit}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={(e) => handleDeleteBanner(banner.id, e)}
                         className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
-                        title="Excluir banner"
+                        title={t.storeBanners.btnDelete}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -591,16 +591,16 @@ export default function AdminBannersPage() {
               </div>
               <div>
                 <h2 className="font-bold text-slate-900 uppercase tracking-wider text-sm">
-                  {activeBannerId ? '2. Editando Banner Selecionado' : '2. Cadastrando Novo Banner'}
+                  {activeBannerId ? `2. ${t.storeBanners.formTitleEdit}` : `2. ${t.storeBanners.formTitleCreate}`}
                 </h2>
                 <p className="text-[11px] text-slate-500">
-                  Faça o upload das versões para Computador (16:9) e Celular (9:16) e configure o destino do clique.
+                  {t.storeBanners.formSubtitle}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-600">Tipo de Mídia:</span>
+              <span className="text-[11px] font-bold text-slate-600">{t.storeBanners.mediaTypeLabel}</span>
               <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 font-bold text-[11px]">
                 <button
                   type="button"
@@ -611,7 +611,7 @@ export default function AdminBannersPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Vídeo MP4
+                  {t.storeBanners.mediaTypeVideo}
                 </button>
                 <button
                   type="button"
@@ -622,7 +622,7 @@ export default function AdminBannersPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Imagem
+                  {t.storeBanners.mediaTypePhoto}
                 </button>
               </div>
             </div>
@@ -667,7 +667,7 @@ export default function AdminBannersPage() {
                   ) : (
                     <Upload className="w-3.5 h-3.5 text-amber-400" />
                   )}
-                  <span>{uploadingDesktop ? 'Enviando...' : 'Subir Arquivo Desktop (R2)'}</span>
+                  <span>{uploadingDesktop ? t.storeBanners.uploadingMedia : t.storeBanners.uploadDesktopBtn}</span>
                   <input
                     type="file"
                     accept={tipoMidia === 'video' ? 'video/mp4,video/*' : 'image/*'}
@@ -681,7 +681,7 @@ export default function AdminBannersPage() {
                 type="text"
                 value={desktopMediaUrl}
                 onChange={(e) => setDesktopMediaUrl(e.target.value)}
-                placeholder="URL direta da mídia desktop"
+                placeholder={t.storeBanners.desktopUrlPlaceholder}
                 className="w-full bg-white border border-slate-200 rounded-lg p-2 text-[11px] font-mono text-slate-600"
               />
             </div>
@@ -723,7 +723,7 @@ export default function AdminBannersPage() {
                   ) : (
                     <Upload className="w-3.5 h-3.5 text-amber-400" />
                   )}
-                  <span>{uploadingMobile ? 'Enviando...' : 'Subir Arquivo Mobile (R2)'}</span>
+                  <span>{uploadingMobile ? t.storeBanners.uploadingMedia : t.storeBanners.uploadMobileBtn}</span>
                   <input
                     type="file"
                     accept={tipoMidia === 'video' ? 'video/mp4,video/*' : 'image/*'}
@@ -737,7 +737,7 @@ export default function AdminBannersPage() {
                 type="text"
                 value={mobileMediaUrl}
                 onChange={(e) => setMobileMediaUrl(e.target.value)}
-                placeholder="URL direta da mídia mobile"
+                placeholder={t.storeBanners.mobileUrlPlaceholder}
                 className="w-full bg-white border border-slate-200 rounded-lg p-2 text-[11px] font-mono text-slate-600"
               />
             </div>
@@ -773,7 +773,7 @@ export default function AdminBannersPage() {
                 type="text"
                 value={subtitulo}
                 onChange={(e) => setSubtitulo(e.target.value)}
-                placeholder="Ex: Curadoria Exclusiva em Moda Feminina com tecidos nobres e acabamento de alfaiataria."
+                placeholder={t.storeBanners.subtitlePlaceholder}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
               />
             </div>
@@ -788,12 +788,12 @@ export default function AdminBannersPage() {
                   <span>{t.storeBanners.linkPickerTitle}</span>
                 </label>
                 <span className="text-[11px] text-slate-500">
-                  O cliente será direcionado para este link ao clicar no botão CTA ou diretamente sobre o banner.
+                  {t.storeBanners.linkPickerDesc}
                 </span>
               </div>
 
               <div className="bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center gap-1.5">
-                <span className="text-slate-400">Link Atual:</span>
+                <span className="text-slate-400">{t.storeBanners.currentLink}</span>
                 <span className="text-amber-700">{ctaLink || '#lancamentos'}</span>
               </div>
             </div>
@@ -805,7 +805,7 @@ export default function AdminBannersPage() {
                 { id: 'categoria', label: t.storeBanners.tabCategory, icon: Grid },
                 { id: 'produto', label: t.storeBanners.tabProduct, icon: PackageCheck },
                 { id: 'custom', label: t.storeBanners.tabCustom, icon: ExternalLink },
-                { id: 'none', label: 'Apenas Rolagem Suave', icon: ArrowDown }
+                { id: 'none', label: t.storeBanners.tabSmoothScroll, icon: ArrowDown }
               ].map((tab) => {
                 const isCurrentTab = linkPickerType === tab.id;
                 const Icon = tab.icon;
@@ -834,14 +834,14 @@ export default function AdminBannersPage() {
             {linkPickerType === 'colecao' && (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="font-bold text-slate-700 block">
-                  Escolha a Coleção / Seção de Destaque da Loja:
+                  {t.storeBanners.chooseCollectionTitle}
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[
-                    { label: 'Lançamentos 2026', link: '#lancamentos', desc: 'Rola para a vitrine de novidades' },
-                    { label: 'Mais Vendidos', link: '#mais-vendidos', desc: 'Peças com maior procura' },
-                    { label: 'OUTLET / Bazar', link: '#outlet', desc: 'Ofertas com descontos especiais' },
-                    { label: 'Últimas Peças', link: '#ultimas-pecas', desc: 'Estoque final e urgência' }
+                    { label: t.storeBanners.colLancamentosLabel, link: '#lancamentos', desc: t.storeBanners.colLancamentosDesc },
+                    { label: t.storeBanners.colMaisVendidosLabel, link: '#mais-vendidos', desc: t.storeBanners.colMaisVendidosDesc },
+                    { label: t.storeBanners.colOutletLabel, link: '#outlet', desc: t.storeBanners.colOutletDesc },
+                    { label: t.storeBanners.colUltimasPecasLabel, link: '#ultimas-pecas', desc: t.storeBanners.colUltimasPecasDesc }
                   ].map((col) => (
                     <button
                       key={col.link}
@@ -865,10 +865,10 @@ export default function AdminBannersPage() {
             {linkPickerType === 'categoria' && (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <span className="font-bold text-slate-700 block">
-                  Filtrar o Catálogo por Categoria Específica:
+                  {t.storeBanners.filterCategoryTitle}
                 </span>
                 {categories.length === 0 ? (
-                  <p className="text-slate-400">Nenhuma categoria cadastrada.</p>
+                  <p className="text-slate-400">{t.storeBanners.noCategories}</p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                     {categories.map((cat) => {
@@ -902,7 +902,7 @@ export default function AdminBannersPage() {
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-bold text-slate-700 block">
-                    Vincular a uma Peça Específica da Boutique:
+                    {t.storeBanners.linkProductTitle}
                   </span>
                   <div className="relative w-64">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -910,7 +910,7 @@ export default function AdminBannersPage() {
                       type="text"
                       value={productSearchQuery}
                       onChange={(e) => setProductSearchQuery(e.target.value)}
-                      placeholder="Buscar peça por nome..."
+                      placeholder={t.storeBanners.productSearchPlaceholder}
                       className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -945,7 +945,7 @@ export default function AdminBannersPage() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">
-                                Sem foto
+                                {t.storeBanners.noPhoto}
                               </div>
                             )}
                           </div>
@@ -966,7 +966,7 @@ export default function AdminBannersPage() {
                               isProdSelected ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            {isProdSelected ? 'Selecionado' : 'Selecionar'}
+                            {isProdSelected ? t.storeBanners.btnSelected : t.storeBanners.btnSelect}
                           </span>
                         </div>
                       </div>
@@ -980,7 +980,7 @@ export default function AdminBannersPage() {
             {linkPickerType === 'custom' && (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <label className="font-bold text-slate-700 block">
-                  Digite o Link de Destino Personalizado (Interno ou Externo):
+                  {t.storeBanners.customLinkTitle}
                 </label>
                 <div className="relative">
                   <ExternalLink className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -988,7 +988,7 @@ export default function AdminBannersPage() {
                     type="text"
                     value={ctaLink}
                     onChange={(e) => setCtaLink(e.target.value)}
-                    placeholder="Ex: /leidyboutique/cliente/ ou https://wa.me/554197347601"
+                    placeholder={t.storeBanners.customLinkPlaceholder}
                     className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -1006,10 +1006,10 @@ export default function AdminBannersPage() {
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 uppercase tracking-wider text-sm">
-                  4. Barra de Avisos Fixa no Topo da Loja
+                  4. ${t.storeBanners.announcementBarTitle}
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Defina o texto, ícone, tipografia e comportamento de cores para os modos claro e escuro.
+                  {t.storeBanners.announcementBarDesc}
                 </p>
               </div>
             </div>
@@ -1025,13 +1025,9 @@ export default function AdminBannersPage() {
                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
                 <span className="ml-2.5 text-xs font-bold text-slate-700">
                   {barraAvisoAtiva ? (
-                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      🟢 Ativa na Vitrine
-                    </span>
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">{t.storeBanners.barActiveBadge}</span>
                   ) : (
-                    <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                      ⏸️ Pausada (Oculta)
-                    </span>
+                    <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">{t.storeBanners.barPausedBadge}</span>
                   )}
                 </span>
               </label>
@@ -1040,16 +1036,16 @@ export default function AdminBannersPage() {
 
           {/* Texto de Mensagem */}
           <div>
-            <label className="block text-slate-700 mb-1 font-bold text-xs">Texto do Aviso Superior</label>
+            <label className="block text-slate-700 mb-1 font-bold text-xs">{t.storeBanners.barTextLabel}</label>
             <input
               type="text"
               value={barraAviso}
               onChange={(e) => setBarraAviso(e.target.value)}
-              placeholder="Ex: Frete Grátis para todo o Brasil em compras acima de R$ 350 | Atendimento VIP via WhatsApp"
+              placeholder={t.storeBanners.barTextPlaceholder}
               className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Recomendamos frases concisas com condições de frete grátis, cupons ou canais de atendimento VIP.
+              {t.storeBanners.barRecommendation}
             </span>
           </div>
 
@@ -1058,16 +1054,16 @@ export default function AdminBannersPage() {
             <div>
               <label className="block text-slate-700 mb-1.5 font-bold text-xs flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Ícone Decorativo</span>
+                <span>{t.storeBanners.barIconLabel}</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'sparkles', label: 'Brilho', Icon: Sparkles },
-                  { id: 'truck', label: 'Frete', Icon: Truck },
-                  { id: 'gift', label: 'Presente', Icon: Gift },
-                  { id: 'heart', label: 'Afeto', Icon: Heart },
-                  { id: 'tag', label: 'Oferta', Icon: Tag },
-                  { id: 'none', label: 'Nenhum', Icon: Eye }
+                  { id: 'sparkles', label: t.storeBanners.iconSparkles, Icon: Sparkles },
+                  { id: 'truck', label: t.storeBanners.iconTruck, Icon: Truck },
+                  { id: 'gift', label: t.storeBanners.iconGift, Icon: Gift },
+                  { id: 'heart', label: t.storeBanners.iconHeart, Icon: Heart },
+                  { id: 'tag', label: t.storeBanners.iconTag, Icon: Tag },
+                  { id: 'none', label: t.storeBanners.iconNone, Icon: Eye }
                 ].map((item) => {
                   const isSelected = barraAvisoIcone === item.id;
                   const IconComp = item.Icon;
@@ -1093,17 +1089,17 @@ export default function AdminBannersPage() {
             <div>
               <label className="block text-slate-700 mb-1.5 font-bold text-xs flex items-center gap-1.5">
                 <Type className="w-3.5 h-3.5 text-amber-600" />
-                <span>Família Tipográfica</span>
+                <span>{t.storeBanners.barFontLabel}</span>
               </label>
               <select
                 value={barraAvisoFont}
                 onChange={(e) => setBarraAvisoFont(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
               >
-                <option value="'Montserrat', sans-serif">Montserrat (Moderna & Sofisticada)</option>
-                <option value="'Inter', sans-serif">Inter (Minimalista & Ultra-Legível)</option>
-                <option value="'Playfair Display', serif">Playfair Display (Serifada Clássica de Luxo)</option>
-                <option value="'Cormorant Garamond', serif">Cormorant Garamond (Alta Costura Nobre)</option>
+                <option value="'Montserrat', sans-serif">Montserrat</option>
+                <option value="'Inter', sans-serif">Inter</option>
+                <option value="'Playfair Display', serif">Playfair Display</option>
+                <option value="'Cormorant Garamond', serif">Cormorant Garamond</option>
               </select>
             </div>
           </div>
@@ -1113,7 +1109,7 @@ export default function AdminBannersPage() {
             <div className="flex items-center justify-between mb-3">
               <label className="text-slate-700 font-bold text-xs flex items-center gap-1.5">
                 <Palette className="w-3.5 h-3.5 text-amber-600" />
-                <span>Comportamento de Cores no Modo Claro e Escuro</span>
+                <span>{t.storeBanners.barColorModeLabel}</span>
               </label>
               <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-[11px] font-bold">
                 <button
@@ -1125,7 +1121,7 @@ export default function AdminBannersPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Modo Unificado (Recomendado)
+                  {t.storeBanners.barModeUnified}
                 </button>
                 <button
                   type="button"
@@ -1136,7 +1132,7 @@ export default function AdminBannersPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Modo Independente
+                  {t.storeBanners.barModeIndependent}
                 </button>
               </div>
             </div>
@@ -1144,14 +1140,14 @@ export default function AdminBannersPage() {
             {/* Presets Rápidos */}
             <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                Paletas Rápidas de Luxo (1 Clique)
+                {t.storeBanners.barPresetsTitle}
               </span>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { name: 'Ônix & Dourado Champagne', bg: '#1A1918', text: '#DFBE76' },
-                  { name: 'Creme Nobre & Preto Puro', bg: '#FAF8F5', text: '#18181B' },
-                  { name: 'Rosé Gold & Carvão', bg: '#221C1D', text: '#E0A99A' },
-                  { name: 'Terracota & Dourado Suave', bg: '#4A1D16', text: '#FEF3C7' }
+                  { name: 'Onyx & Gold', bg: '#1A1918', text: '#DFBE76' },
+                  { name: 'Cream & Black', bg: '#FAF8F5', text: '#18181B' },
+                  { name: 'Rosé Gold & Charcoal', bg: '#221C1D', text: '#E0A99A' },
+                  { name: 'Terracotta & Gold', bg: '#4A1D16', text: '#FEF3C7' }
                 ].map((preset, idx) => (
                   <button
                     key={idx}
@@ -1185,8 +1181,8 @@ export default function AdminBannersPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Cor de Fundo da Barra</span>
-                    <span className="text-[10px] text-slate-400">Exibida em todos os temas</span>
+                    <span className="text-xs font-bold text-slate-800 block">{t.storeBanners.barColorBgLabel}</span>
+                    <span className="text-[10px] text-slate-400">{t.storeBanners.barColorBgDesc}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -1206,8 +1202,8 @@ export default function AdminBannersPage() {
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Cor do Texto e Ícone</span>
-                    <span className="text-[10px] text-slate-400">Contraste sobre o fundo</span>
+                    <span className="text-xs font-bold text-slate-800 block">{t.storeBanners.barColorTextLabel}</span>
+                    <span className="text-[10px] text-slate-400">{t.storeBanners.barColorTextDesc}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -1231,7 +1227,7 @@ export default function AdminBannersPage() {
                 <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-200/80 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                     <Sun className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Tema Claro da Vitrine</span>
+                    <span>{t.storeBanners.barThemeLight}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-600 font-medium">Cor de Fundo:</span>
@@ -1273,7 +1269,7 @@ export default function AdminBannersPage() {
                 <div className="p-3.5 bg-slate-900 text-white rounded-xl border border-slate-700 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
                     <Moon className="w-3.5 h-3.5" />
-                    <span>Tema Escuro da Vitrine</span>
+                    <span>{t.storeBanners.barThemeDark}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-300 font-medium">Cor de Fundo:</span>
@@ -1318,7 +1314,7 @@ export default function AdminBannersPage() {
           <div className="pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Prévia em Tempo Real no Topo da Loja:
+                {t.storeBanners.barLivePreviewTitle}
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -1331,7 +1327,7 @@ export default function AdminBannersPage() {
                   }`}
                 >
                   <Sun className="w-3 h-3 text-amber-600" />
-                  <span>Modo Claro</span>
+                  <span>{t.storeBanners.barModeLight}</span>
                 </button>
                 <button
                   type="button"
@@ -1343,7 +1339,7 @@ export default function AdminBannersPage() {
                   }`}
                 >
                   <Moon className="w-3 h-3" />
-                  <span>Modo Escuro</span>
+                  <span>{t.storeBanners.barModeDark}</span>
                 </button>
               </div>
             </div>
@@ -1386,14 +1382,14 @@ export default function AdminBannersPage() {
                       <Tag className="w-3.5 h-3.5 shrink-0" style={{ color: currentText }} />
                     )}
                     <span className="truncate max-w-[90vw]">
-                      {barraAviso || 'Frete Grátis para todo o Brasil | Atendimento VIP'}
+                      {barraAviso || t.storeBanners.barDefaultText}
                     </span>
                   </div>
                 );
               })()
             ) : (
               <div className="bg-slate-100 text-slate-400 text-center py-3 px-4 rounded-xl text-xs font-semibold border border-dashed border-slate-300">
-                ⏸️ Barra de avisos pausada — nenhum banner superior será exibido aos clientes no momento.
+                {t.storeBanners.barPausedNotice}
               </div>
             )}
           </div>

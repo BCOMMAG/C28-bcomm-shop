@@ -1265,6 +1265,17 @@ export interface StoreTabsTranslations {
   checkout: string;
   pagamentos: string;
   dominio: string;
+  badges: {
+    visual: string;
+    media: string;
+    links: string;
+    structure: string;
+    promo: string;
+    shipping: string;
+    checkout: string;
+    pix: string;
+    dns: string;
+  };
 }
 
 export interface StoreInfoTranslations {
@@ -1338,6 +1349,26 @@ export interface StoreInfoTranslations {
   returnPolicyLabel: string;
   privacyPolicyLabel: string;
   termsOfUseLabel: string;
+  customDomainActive: string;
+  subdomainActive: string;
+  dnsHubBannerTitle: string;
+  dnsHubBannerDesc: string;
+  subdomainDesc: string;
+  openStorefrontBtn: string;
+  clearBtn: string;
+  clearBtnTooltip: string;
+  dnsGuideTitle: string;
+  dnsGuideDesc: string;
+  dnsColType: string;
+  dnsColHost: string;
+  dnsColTarget: string;
+  dnsGuideFooter: string;
+  toastCopied: string;
+  toastCepFilled: (city: string, uf: string) => string;
+  toastCepNotFound: string;
+  complementPlaceholder: string;
+  weekdayPlaceholder: string;
+  saturdayPlaceholder: string;
 }
 
 export interface StoreCheckoutTranslations {
@@ -1394,6 +1425,25 @@ export interface StoreCheckoutTranslations {
   actionTrash: string;
   vipProtectionTitle: string;
   vipProtectionDesc: string;
+  headerTag: string;
+  col1Title: string;
+  col2Title: string;
+  giftDedicationTitle: string;
+  giftFreeBoutique: (symbol: string) => string;
+  giftSimTitle: (price: string) => string;
+  giftDisabledNotice: string;
+  minOrderColTitle: (symbol: string) => string;
+  minOrderZeroHint: string;
+  minOrderCheckoutBlock: string;
+  minOrderNoRestriction: string;
+  stockVisTransparent: string;
+  stockVisCommercialSecret: string;
+  holdWhatsappTitle: string;
+  holdWhatsappTrigger: (minutes: number) => string;
+  holdDisabledNotice: string;
+  inactiveColTitle: string;
+  vipShieldNotice: string;
+  inactiveDisabledNotice: string;
 }
 
 export interface StorePaymentsTranslations {
@@ -1431,6 +1481,15 @@ export interface StorePaymentsTranslations {
   badgeActive: string;
   installmentsTitle: string;
   installmentsHint: string;
+  instantSettlement: string;
+  pixKeyTypeRandom: string;
+  pixWhatsappDesc: string;
+  pixPreviewTitleWithKey: (key: string) => string;
+  secGatewaysTitle: string;
+  modeProduction: string;
+  badgeSecondary: string;
+  badgeAvailable: string;
+  badgeConfigurable: string;
 }
 
 export interface StoreCategoriesTranslations {
@@ -1474,6 +1533,16 @@ export interface StoreCategoriesTranslations {
   deleteConfirmTitle: string;
   deleteConfirmDesc: (name: string, count: number) => string;
   confirmDeleteBtn: string;
+  viewCatalogBtn: string;
+  subAlreadyAdded: string;
+  nameRequired: string;
+  subAlreadyExists: string;
+  toastDeleted: (name: string) => string;
+  toastReorderError: string;
+  slugHelper: string;
+  subPlaceholder: string;
+  deleteWarning: (count: number) => string;
+  deleteActionDesc: string;
 }
 
 export interface StoreCouponsTranslations {
@@ -1517,6 +1586,15 @@ export interface StoreCouponsTranslations {
   deleteConfirmTitle: string;
   deleteConfirmDesc: (code: string) => string;
   confirmDeleteBtn: string;
+  validationBadge: string;
+  emptyStateDesc: string;
+  btnCopyCode: string;
+  toastCodeCopied: (code: string) => string;
+  toastDeleted: (code: string) => string;
+  codeRequired: string;
+  valueRequired: string;
+  noMinOrder: string;
+  minOrderPlaceholder: string;
 }
 
 export interface StoreMenuTranslations {
@@ -1558,6 +1636,52 @@ export interface StoreMenuTranslations {
   subLabelField: string;
   subUrlField: string;
   addSubmenuBtn: string;
+  restoreDefaultBtn: string;
+  restoreConfirm: string;
+  restoreSuccess: string;
+  labelRequired: string;
+  subLabelRequired: string;
+  dynamicUpdate: string;
+  tabLine1Title: string;
+  tabLine2Title: string;
+  tabDrawerTitle: string;
+  tabSubtitle: string;
+  loadingItems: string;
+  emptyTabTitle: string;
+  emptyTabDesc: string;
+  specialHighlight: string;
+  destTypeCategory: string;
+  destTypeStatus: string;
+  destTypeFabric: string;
+  destTypeCustom: string;
+  destSelectCategory: string;
+  destSelectStatus: string;
+  destSelectFabric: string;
+  destUrlLabel: string;
+  statusLancamento: string;
+  statusMaisVendidos: string;
+  statusOutlet: string;
+  statusUltimasPecas: string;
+  fabricLinho: string;
+  fabricTricot: string;
+  fabricAlfaiataria: string;
+  fabricSeda: string;
+  badgeFieldDesc: string;
+  badgeTextLabel: string;
+  badgeBgColorLabel: string;
+  badgeColorChampagne: string;
+  badgeColorRose: string;
+  badgeColorEmerald: string;
+  badgeColorSlate: string;
+  dropdownTitle: string;
+  dropdownDesc: string;
+  noSubmenus: string;
+  modalSubtitle: string;
+  subModalHeading: string;
+  subModalConfirmBtn: string;
+  subTypeSubcategory: string;
+  subTextLabel: string;
+  subTextPlaceholder: string;
 }
 
 export interface StoreBannersTranslations {
@@ -1612,6 +1736,71 @@ export interface StoreBannersTranslations {
   barPresetLuxe: string;
   barPresetAlert: string;
   barPresetMinimal: string;
+  untitled: string;
+  noSubtitle: string;
+  noLink: string;
+  moveUp: string;
+  moveDown: string;
+  mediaTypeLabel: string;
+  mediaTypeVideo: string;
+  mediaTypePhoto: string;
+  formSubtitle: string;
+  uploadDesktopBtn: string;
+  uploadMobileBtn: string;
+  desktopUrlPlaceholder: string;
+  mobileUrlPlaceholder: string;
+  currentLink: string;
+  linkPickerDesc: string;
+  tabSmoothScroll: string;
+  chooseCollectionTitle: string;
+  colLancamentosLabel: string;
+  colLancamentosDesc: string;
+  colMaisVendidosLabel: string;
+  colMaisVendidosDesc: string;
+  colOutletLabel: string;
+  colOutletDesc: string;
+  colUltimasPecasLabel: string;
+  colUltimasPecasDesc: string;
+  filterCategoryTitle: string;
+  noCategories: string;
+  linkProductTitle: string;
+  noProductsFound: string;
+  noPhoto: string;
+  btnSelect: string;
+  btnSelected: string;
+  customLinkTitle: string;
+  customLinkPlaceholder: string;
+  barActiveBadge: string;
+  barPausedBadge: string;
+  barRecommendation: string;
+  barFontLabel: string;
+  barPresetsTitle: string;
+  barColorModeLabel: string;
+  barModeUnified: string;
+  barModeIndependent: string;
+  barColorBgLabel: string;
+  barColorBgDesc: string;
+  barColorTextLabel: string;
+  barColorTextDesc: string;
+  barThemeLight: string;
+  barThemeDark: string;
+  barLivePreviewTitle: string;
+  barModeLight: string;
+  barModeDark: string;
+  barDefaultText: string;
+  barPausedNotice: string;
+  toastReadyNew: string;
+  toastReorderError: string;
+  toastDesktopSuccess: string;
+  toastDesktopError: string;
+  toastMobileSuccess: string;
+  toastMobileError: string;
+  iconSparkles: string;
+  iconTruck: string;
+  iconGift: string;
+  iconHeart: string;
+  iconTag: string;
+  iconNone: string;
 }
 
 export interface StoreDomainTranslations {
@@ -1659,6 +1848,38 @@ export interface StoreDomainTranslations {
   faqA2: string;
   faqQ3: string;
   faqA3: string;
+  copiedToClipboard: string;
+  toastValidDomain: string;
+  toastAnotherServer: string;
+  toastWaitingPropagation: string;
+  toastDnsLookupError: string;
+  toastEnterDomain: string;
+  toastConnectedSuccess: (domain: string) => string;
+  toastConnectedError: (code: string) => string;
+  toastDisconnectedSuccess: string;
+  toastDisconnectedError: string;
+  loadingDomain: string;
+  disconnectModalBody: (domain: string) => string;
+  immediateReversionGuarantee: string;
+  immediateReversionDesc: (freeUrl: string) => string;
+  dataPreserved: string;
+  heroDescription: string;
+  heroBuyWhereYouWant: string;
+  activeDomainSection: string;
+  activeDomainDesc: string;
+  freeDomainDesc: string;
+  publicStoreUrl: string;
+  checkDnsNowTitle: string;
+  disconnectDomainTitle: string;
+  waitingPropagation: string;
+  testDnsPointingTitle: string;
+  providerGuideTitle: string;
+  registroBrTitle: string;
+  hostingerTitle: string;
+  hostgatorTitle: string;
+  cloudflareTitle: string;
+  thAction: string;
+  adminPanelProtectedNotice: string;
 }
 
 export interface StoreLogisticsTranslations {
@@ -1732,6 +1953,83 @@ export interface StoreLogisticsTranslations {
   enablePickupSwitch: string;
   pickupTimeLabel: string;
   pickupInstructionsLabel: string;
+  mapStoreMarkerTitle: string;
+  mapStoreMarkerDesc: string;
+  mapRecenterBtn: string;
+  mapLoading: string;
+  mapLegendStore: string;
+  mapLegendCoverage: (radius: number) => string;
+  mapTestCepLabel: string;
+  mapTestCepPlaceholder: string;
+  mapTestNumberPlaceholder: string;
+  mapTestBtn: string;
+  mapTestingBtn: string;
+  mapCepInvalid: string;
+  mapCepNotFound: string;
+  mapEligibleMsg: (street: string, dist: number, radius: number) => string;
+  mapOutsideMsg: (street: string, dist: number, radius: number) => string;
+  mapDistanceLabel: (dist: number) => string;
+  formName: string;
+  importedAddressSuccess: (info: string) => string;
+  importedAddressError: string;
+  testConnSuccess: (count: number, names: string) => string;
+  testConnSuccessToast: string;
+  testConnQuoteFail: string;
+  testConnError: string;
+  simulateCepInvalid: string;
+  allRulesSaved: string;
+  loadingLogistics: string;
+  engineMelhorEnvio: string;
+  engineManual: string;
+  envTitle: string;
+  envProduction: string;
+  melhorEnvioDesc: string;
+  importAddressBtn: string;
+  originExitPoint: string;
+  secServicesSubtitle: string;
+  codeLabel: string;
+  statusVisible: string;
+  statusHidden: string;
+  customNamePlaceholder: string;
+  whiteLabelTitle: string;
+  modeFullTransparency: string;
+  modeWhiteLabel: string;
+  modeWhiteLabelDesc: string;
+  modeCheapest: string;
+  modeCheapestDesc: string;
+  freeShippingDesc: string;
+  freeShippingCapProtection: string;
+  freeShippingDisabledNotice: string;
+  tiersEmptyDesc: string;
+  tierBenefitType: string;
+  tier100Free: string;
+  tierFreeFrom: (min: string) => string;
+  tiersDisabledNotice: string;
+  secPackagePilotTitle: string;
+  secPackagePilotDesc: string;
+  avgWeightLabel: string;
+  avgWeightHint: string;
+  handlingDaysHintText: string;
+  secLocalDeliverySubtitle: string;
+  localSmartRadius: string;
+  mapSpatialView: string;
+  mapDragPin: string;
+  localFeeModelLabel: string;
+  localFeeFixed: string;
+  localFeeFixedDesc: string;
+  localFeeTiers: string;
+  localFeeTiersDesc: string;
+  cutoffTimeLabel: string;
+  cutoffTimeHint: string;
+  minCartLabel: string;
+  minCartPlaceholder: string;
+  excludedNeighborhoodsLabel: string;
+  excludedNeighborhoodsPlaceholder: string;
+  excludedNeighborhoodsHint: string;
+  pickupFreeBadge: string;
+  pickupInstructionsPlaceholder: string;
+  liveSimTitle: string;
+  liveSimEmptyDesc: string;
 }
 
 export interface StoreAppearanceTranslations {
@@ -1790,6 +2088,133 @@ export interface StoreAppearanceTranslations {
   secFooterDesc: string;
   footerCopyrightLabel: string;
   footerSecurityBadgesLabel: string;
+  faviconDefault: string;
+  ogRecommended: string;
+  uploadIcon: string;
+  uploadOg: string;
+  uploading: string;
+  sloganDesc: string;
+  secAtmosphereBadge: string;
+  modeCurrent: (mode: string) => string;
+  modeSolid: string;
+  modeVideo: string;
+  modeImage: string;
+  modePattern: string;
+  bgGalleryTitle: string;
+  optOfficialTitle: string;
+  optOfficialDesc: string;
+  optVideoTitle: string;
+  optVideoDesc: string;
+  optVideoBtn: string;
+  optVideoToast: string;
+  optUploadTitle: string;
+  optUploadNew: string;
+  optSolidTitle: string;
+  optSolidDesc: string;
+  optSolidBtn: string;
+  optSolidToast: string;
+  overlaySliderTitle: string;
+  overlaySliderDesc: string;
+  overlayPreviewLabel: (opacity: number | string) => string;
+  baseColorsTitle: string;
+  testAnimationBtn: string;
+  testAnimationTitle: string;
+  preloaderDigitsColor: string;
+  preloaderShowCounter: string;
+  preloaderFrequencyLabel: string;
+  preloaderFreqAllPages: string;
+  preloaderFreqAllPagesDesc: string;
+  preloaderFreqFirstOnly: string;
+  preloaderFreqFirstOnlyDesc: string;
+  headerStyleTitle: string;
+  headerStyleDesc: string;
+  headerTransparent: string;
+  headerTransparentDesc: string;
+  headerSolid: string;
+  topBarNoticeTitle: string;
+  topBarNoticeDesc: string;
+  topBarNoticePreview: string;
+  topBarNoticeTip: string;
+  menuNavTitle: string;
+  menuNavDesc: string;
+  menuFontTitle: string;
+  menuFontDesc: string;
+  menuFontHint: string;
+  menuFontGoldStandard: string;
+  menuPreviewTitle: string;
+  secStylesTitle: string;
+  secStylesDesc: string;
+  styleModeShared: string;
+  styleModeIndependent: string;
+  styleDefaultLabel: (shared: boolean) => string;
+  fontTitleSelect: string;
+  colorTitleLight: string;
+  colorTitleDark: string;
+  bgSectionOptional: string;
+  customSecIndividualTitle: string;
+  secLancamentosHeader: string;
+  secMaisVendidosHeader: string;
+  secOutletHeader: string;
+  secUltimasPecasHeader: string;
+  secTodasAsPecasHeader: string;
+  secTodasAsPecasInputTitle: string;
+  secTodasAsPecasInputSubtitle: string;
+  secManagerTitle: string;
+  secManagerDesc: string;
+  newSectionBtn: string;
+  badgeLaunch: string;
+  badgeLastPieces: string;
+  badgeCatalog: string;
+  piecesCount: (count: number) => string;
+  emptyPiecesWarning: string;
+  managePiecesBtn: string;
+  managePiecesTooltip: string;
+  editSecTextsTooltip: (expanded: boolean) => string;
+  removeSecTooltip: string;
+  secTitleInputLabel: string;
+  secSubtitleInputLabel: string;
+  secInternalIdLabel: (id: string) => string;
+  closeEditBtn: string;
+  stockConsumerTitle: string;
+  stockConsumerDesc: string;
+  stockRule1: string;
+  stockRule2: string;
+  stockRule3: string;
+  stockRule4: string;
+  stockRule5: string;
+  stockRule6: string;
+  badgesOnPhotosTitle: string;
+  badgesOnPhotosDesc: string;
+  badgesUrgencyDesc: string;
+  modalNewSecTitle: string;
+  tabByCategory: string;
+  tabManual: string;
+  tabRestore: string;
+  catSelectLabel: string;
+  manualCollectionTitle: string;
+  manualCollectionSubtitle: string;
+  manualCollectionTip: string;
+  restoreSecPrompt: string;
+  allNativesPresent: string;
+  btnAddToStorefront: string;
+  defaultLancamentosTitle: string;
+  defaultLancamentosSubtitle: string;
+  defaultMaisVendidosSubtitle: string;
+  defaultOutletSubtitle: string;
+  defaultUltimasPecasTitle: string;
+  defaultTodasAsPecasTitle: string;
+  defaultTodasAsPecasSubtitle: string;
+  toastSecRemoved: (title: string) => string;
+  toastCatRequired: string;
+  toastCatExists: (name: string) => string;
+  toastCatAdded: (name: string) => string;
+  toastTitleRequired: string;
+  toastManualSecCreated: (title: string) => string;
+  toastSecAlreadyPresent: string;
+  toastSecRestored: (title: string) => string;
+  toastSecPiecesUpdated: (title: string) => string;
+  confirmRemoveNativeSec: (title: string) => string;
+  confirmDeleteCustomSec: (title: string) => string;
 }
 
 
@@ -1798,6 +2223,26 @@ export interface GlobalSearchTranslations {
   placeholder: string;
   hint: string;
   shortcut: string;
+  noResultsFound: (query: string) => string;
+  sectionProducts: (count: number) => string;
+  sectionOrders: (count: number) => string;
+  sectionCustomers: (count: number) => string;
+  sectionQuickAccess: string;
+  quickNewProduct: string;
+  quickNewProductDesc: string;
+  quickOrders: string;
+  quickOrdersDesc: string;
+  quickFinance: string;
+  quickFinanceDesc: string;
+  quickCustomers: string;
+  quickCustomersDesc: string;
+  quickCoupons: string;
+  quickCouponsDesc: string;
+  quickStoreSettings: string;
+  quickStoreSettingsDesc: string;
+  quickBanners: string;
+  quickBannersDesc: string;
+  photoPlaceholder: string;
 }
 
 export interface WhatsAppTemplates {
@@ -1850,6 +2295,29 @@ export interface AuditTranslations {
   badgeNewMember: string;
   badgePermissionsChange: string;
   badgeRevokeSessions: string;
+}
+
+
+export interface UnsavedChangesModalTranslations {
+  title: string;
+  description: (formName: string) => string;
+  hint: string;
+  saving: string;
+  saveAndProceed: string;
+  discard: string;
+  cancel: string;
+  formNames: {
+    storeInfo: string;
+    storeAppearance: string;
+    storeBanners: string;
+    storeMenu: string;
+    storeCategories: string;
+    storeCoupons: string;
+    storeLogistics: string;
+    storeCheckout: string;
+    storePayments: string;
+    storeDomain: string;
+  };
 }
 
 export interface TranslationDictionary {
@@ -1966,6 +2434,7 @@ export interface TranslationDictionary {
   storeDomain: StoreDomainTranslations;
   storeLogistics: StoreLogisticsTranslations;
   storeAppearance: StoreAppearanceTranslations;
+  unsavedChangesModal: UnsavedChangesModalTranslations;
 
   globalSearch: GlobalSearchTranslations;
   whatsappTemplates: WhatsAppTemplates;

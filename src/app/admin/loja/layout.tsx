@@ -48,63 +48,63 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
       label: t.storeTabs.aparencia,
       href: '/admin/loja/aparencia',
       icon: Palette,
-      badge: 'Visual'
+      badge: t.storeTabs.badges.visual
     },
     {
       id: 'banners',
       label: t.storeTabs.banners,
       href: '/admin/loja/banners',
       icon: Sparkles,
-      badge: 'Mídia'
+      badge: t.storeTabs.badges.media
     },
     {
       id: 'menu',
       label: t.storeTabs.menu,
       href: '/admin/loja/menu',
       icon: Sliders,
-      badge: 'Links'
+      badge: t.storeTabs.badges.links
     },
     {
       id: 'categorias',
       label: t.storeTabs.categorias,
       href: '/admin/loja/categorias',
       icon: FolderTree,
-      badge: 'Estrutura'
+      badge: t.storeTabs.badges.structure
     },
     {
       id: 'cupons',
       label: t.storeTabs.cupons,
       href: '/admin/loja/cupons',
       icon: Tag,
-      badge: 'Promo'
+      badge: t.storeTabs.badges.promo
     },
     {
       id: 'logistica',
       label: t.storeTabs.logistica,
       href: '/admin/loja/logistica',
       icon: Truck,
-      badge: 'Envio'
+      badge: t.storeTabs.badges.shipping
     },
     {
       id: 'checkout',
       label: t.storeTabs.checkout,
       href: '/admin/loja/checkout',
       icon: ShoppingBag,
-      badge: 'Checkout'
+      badge: t.storeTabs.badges.checkout
     },
     {
       id: 'pagamentos',
       label: t.storeTabs.pagamentos,
       href: '/admin/loja/pagamentos',
       icon: CreditCard,
-      badge: 'PIX'
+      badge: t.storeTabs.badges.pix
     },
     {
       id: 'dominio',
       label: t.storeTabs.dominio,
       href: '/admin/loja/dominio',
       icon: Globe,
-      badge: 'DNS'
+      badge: t.storeTabs.badges.dns
     }
   ], [t]);
 

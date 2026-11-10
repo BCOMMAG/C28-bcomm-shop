@@ -73,7 +73,7 @@ export default function CustomDomainSettingsPage() {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
     setTimeout(() => setCopiedField(null), 2500);
-    showToast('Copiado para a área de transferência!');
+    showToast(t.storeDomain.copiedToClipboard);
   };
 
   const loadData = async () => {
@@ -92,7 +92,7 @@ export default function CustomDomainSettingsPage() {
         }
       }
     } catch (err: any) {
-      showToast(err?.message || 'Erro ao carregar dados do domínio.', 'error');
+      showToast(err?.message || t.storeDomain.toastError, 'error');
     } finally {
       setLoading(false);
     }
@@ -115,7 +115,7 @@ export default function CustomDomainSettingsPage() {
     const clean = cleanDomainString(domainToCheck);
     if (!clean) {
       if (showNotification) {
-        showToast('Informe um domínio válido para testar o DNS.', 'error');
+        showToast(t.storeDomain.toastValidDomain, 'error');
       }
       return;
     }
@@ -128,15 +128,15 @@ export default function CustomDomainSettingsPage() {
         if (res.status === 'verified') {
           showToast('Excelente! Apontamento DNS verificado e ativo!', 'success');
         } else if (res.status === 'incorrect') {
-          showToast('O domínio aponta para outro servidor. Veja as orientações.', 'error');
+          showToast(t.storeDomain.toastAnotherServer, 'error');
         } else {
-          showToast('Aguardando propagação DNS ou nenhum apontamento encontrado.', 'error');
+          showToast(t.storeDomain.toastWaitingPropagation, 'error');
         }
       }
     } catch (err: any) {
       setDnsResult({
         status: 'error',
-        message: 'Não foi possível consultar os servidores DNS no momento.'
+        message: t.storeDomain.toastDnsLookupError
       });
     } finally {
       setIsCheckingDns(false);
@@ -148,7 +148,7 @@ export default function CustomDomainSettingsPage() {
     const clean = cleanDomainString(dominioInput);
 
     if (!clean) {
-      showToast('Digite o endereço do seu domínio antes de salvar.', 'error');
+      showToast(t.storeDomain.toastEnterDomain, 'error');
       return;
     }
 
@@ -180,12 +180,12 @@ export default function CustomDomainSettingsPage() {
         const text = await apiRes.text();
         apiData = text ? JSON.parse(text) : {};
       } catch {
-        apiData = { success: false, error: `Resposta inválida do servidor (HTTP ${apiRes.status})` };
+        apiData = { success: false, error: t.storeDomain.toastConnectedError(String(apiRes.status)) };
       }
 
       if (apiRes.ok && apiData.success) {
         setDominioSalvo(finalDomain);
-        showToast(`Domínio "${finalDomain}" conectado e autorizado com sucesso na Cloudflare!`, 'success');
+        showToast(t.storeDomain.toastConnectedSuccess(finalDomain), 'success');
         try {
           await refreshProducts();
           if (refreshTenant) await refreshTenant();
@@ -193,10 +193,10 @@ export default function CustomDomainSettingsPage() {
         // Dispara teste de DNS após salvar
         checkDnsStatus(finalDomain, false);
       } else {
-        showToast(apiData.error || `Erro ao conectar domínio (HTTP ${apiRes.status}).`, 'error');
+        showToast(apiData.error || t.storeDomain.toastConnectedError(String(apiRes.status)), 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Erro inesperado ao salvar domínio.', 'error');
+      showToast(err?.message || t.storeDomain.toastError, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -228,7 +228,7 @@ export default function CustomDomainSettingsPage() {
         setDominioInput('');
         setDnsResult(null);
         setIsDisconnectModalOpen(false);
-        showToast('Domínio desconectado da Cloudflare! A loja voltou ao link padrão.', 'success');
+        showToast(t.storeDomain.toastDisconnectedSuccess, 'success');
         try {
           await refreshProducts();
           if (refreshTenant) await refreshTenant();
@@ -237,7 +237,7 @@ export default function CustomDomainSettingsPage() {
         showToast(apiData.error || `Erro ao desconectar domínio (HTTP ${apiRes.status}).`, 'error');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Erro inesperado ao desconectar domínio.', 'error');
+      showToast(err?.message || t.storeDomain.toastDisconnectedError, 'error');
     } finally {
       setIsDisconnecting(false);
     }
@@ -253,7 +253,7 @@ export default function CustomDomainSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando configurações de domínio...</span>
+        <span className="text-xs font-medium">{t.storeDomain.loadingDomain}</span>
       </div>
     );
   }
@@ -289,15 +289,15 @@ export default function CustomDomainSettingsPage() {
                 {t.storeDomain.disconnectModalTitle}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Ao desconectar o domínio <strong className="text-slate-800 font-mono">{dominioSalvo}</strong>, sua vitrine deixará de responder neste endereço.
+                {t.storeDomain.disconnectModalBody(dominioSalvo)}
               </p>
             </div>
 
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800 space-y-1">
-              <span className="font-bold block">🟢 Reversão Imediata Garantida:</span>
+              <span className="font-bold block">{t.storeDomain.immediateReversionGuarantee}</span>
               <p>
-                Sua loja continuará funcionando normalmente através do link padrão gratuito: <strong className="font-mono text-amber-950">{defaultFreeUrl}</strong>.
-                Nenhum produto, pedido, cliente ou configuração será perdido.
+                {t.storeDomain.immediateReversionDesc(defaultFreeUrl)}
+                {t.storeDomain.dataPreserved}
               </p>
             </div>
 
@@ -350,8 +350,8 @@ export default function CustomDomainSettingsPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                Apresente sua boutique diretamente no seu próprio endereço web exclusivo (ex.: <code className="text-amber-800 font-semibold font-mono">www.sualoja.com.br</code>).
-                Compre seu domínio onde preferir e conecte com facilidade.
+                {t.storeDomain.heroDescription}
+                {t.storeDomain.heroBuyWhereYouWant}
               </p>
             </div>
           </div>
@@ -428,7 +428,7 @@ export default function CustomDomainSettingsPage() {
             </div>
             <div className="min-w-0">
               <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                URL Pública da Loja
+                {t.storeDomain.publicStoreUrl}
               </span>
               <span className="font-mono text-xs sm:text-sm font-bold text-slate-900 break-all select-all">
                 {activeStorefrontUrl}
@@ -443,7 +443,7 @@ export default function CustomDomainSettingsPage() {
                 disabled={isCheckingDns}
                 onClick={() => checkDnsStatus(dominioSalvo, true)}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold cursor-pointer shadow-2xs disabled:opacity-50"
-                title="Checar propagação DNS agora"
+                title={t.storeDomain.checkDnsNowTitle}
               >
                 <RefreshCw className={`w-3 h-3 ${isCheckingDns ? 'animate-spin text-amber-600' : 'text-slate-400'}`} />
                 <span>{t.storeDomain.dnsDiagnosticBtn}</span>
@@ -453,7 +453,7 @@ export default function CustomDomainSettingsPage() {
                 type="button"
                 onClick={() => setIsDisconnectModalOpen(true)}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold cursor-pointer transition-colors"
-                title="Desconectar domínio próprio e voltar ao subdomínio gratuito"
+                title={t.storeDomain.disconnectDomainTitle}
               >
                 <Unlink className="w-3 h-3" />
                 <span>{t.storeDomain.disconnectDomainBtn}</span>
@@ -486,7 +486,7 @@ export default function CustomDomainSettingsPage() {
                   ? 'DNS Propagado e Apontado com Sucesso!'
                   : dnsResult.status === 'incorrect'
                   ? 'Apontamento DNS Incorreto'
-                  : 'Aguardando Propagação DNS'}
+                  : t.storeDomain.waitingPropagation}
               </span>
               <p className="text-[11px] opacity-90 leading-relaxed">
                 {dnsResult.message}
@@ -558,7 +558,7 @@ export default function CustomDomainSettingsPage() {
                   disabled={isCheckingDns}
                   onClick={() => checkDnsStatus(dominioInput, true)}
                   className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer shadow-2xs transition-colors disabled:opacity-50"
-                  title="Testar se este domínio já está apontando para a plataforma"
+                  title={t.storeDomain.testDnsPointingTitle}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isCheckingDns ? 'animate-spin text-amber-600' : 'text-slate-500'}`} />
                   <span>Testar DNS</span>
@@ -643,7 +643,7 @@ export default function CustomDomainSettingsPage() {
             <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 space-y-1">
               <span className="font-bold flex items-center gap-1.5 text-blue-950">
                 <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                Instruções Passo a Passo para o Registro.br:
+                {t.storeDomain.registroBrTitle}
               </span>
               <p className="text-[11px] text-blue-800 leading-relaxed">
                 1. Faça login na sua conta no <a href="https://registro.br" target="_blank" rel="noreferrer" className="underline font-bold">registro.br</a> e clique sobre o seu domínio.<br />
@@ -661,7 +661,7 @@ export default function CustomDomainSettingsPage() {
                     <th className="p-3">Tipo</th>
                     <th className="p-3">Nome / Entrada</th>
                     <th className="p-3">Dados / Destino</th>
-                    <th className="p-3 text-right">Ação</th>
+                    <th className="p-3 text-right">{t.storeDomain.thAction}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
@@ -710,7 +710,7 @@ export default function CustomDomainSettingsPage() {
             <div className="p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl text-purple-950 space-y-1">
               <span className="font-bold flex items-center gap-1.5 text-purple-900">
                 <CheckCircle2 className="w-4 h-4 text-purple-700" />
-                Instruções para Hostinger (hPanel):
+                {t.storeDomain.hostingerTitle}
               </span>
               <p className="text-[11px] text-purple-800 leading-relaxed">
                 1. Entre no <strong>hPanel</strong> da Hostinger e vá em <strong>Domínios</strong> &gt; Gerenciar seu domínio.<br />
@@ -740,7 +740,7 @@ export default function CustomDomainSettingsPage() {
             <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-amber-950 space-y-1">
               <span className="font-bold flex items-center gap-1.5 text-amber-900">
                 <CheckCircle2 className="w-4 h-4 text-amber-700" />
-                Instruções para HostGator / cPanel:
+                {t.storeDomain.hostgatorTitle}
               </span>
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 1. No Portal do Cliente HostGator ou cPanel, acesse a ferramenta <strong>Zone Editor</strong> (Editor de Zona DNS).<br />
@@ -762,7 +762,7 @@ export default function CustomDomainSettingsPage() {
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 space-y-1">
               <span className="font-bold flex items-center gap-1.5 text-slate-900">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Instruções para Cloudflare / GoDaddy:
+                {t.storeDomain.cloudflareTitle}
               </span>
               <p className="text-[11px] text-slate-600 leading-relaxed">
                 1. No gerenciador de DNS da Cloudflare ou GoDaddy, crie o registro CNAME com Nome <code className="font-mono font-bold">www</code> e Destino <code className="font-mono font-bold">stores.bcomm-ag.space</code>.<br />
@@ -806,7 +806,7 @@ export default function CustomDomainSettingsPage() {
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
             <span className="font-bold text-slate-900 block">Onde acesso o meu painel administrativo?</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Seu painel administrativo de gestão continua protegido no endereço oficial do sistema (<code className="font-mono">bcomm-shop.pages.dev/admin</code>).
+              {t.storeDomain.adminPanelProtectedNotice}
             </p>
           </div>
         </div>

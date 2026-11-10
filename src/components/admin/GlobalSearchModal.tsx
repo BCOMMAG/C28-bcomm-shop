@@ -150,7 +150,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
           {!loading && hasSearchTerm && !hasResults && (
             <div className="py-12 text-center text-xs text-slate-500 space-y-2">
               <Package className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="font-bold text-slate-700">Nenhum resultado encontrado para &quot;{query}&quot;</p>
+              <p className="font-bold text-slate-700">{t.globalSearch.noResultsFound(query)}</p>
               <p className="text-[11px]">{t.globalSearch.hint}</p>
             </div>
           )}
@@ -159,7 +159,7 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
           {!loading && results.produtos.length > 0 && (
             <div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-1">
-                Catálogo de Peças ({results.produtos.length})
+                {t.globalSearch.sectionProducts(results.produtos.length)}
               </span>
               <div className="space-y-1.5">
                 {results.produtos.map((p) => (
@@ -279,55 +279,55 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
           {!hasSearchTerm && (
             <div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-1">
-                Acesso Rápido & Módulos
+                {t.globalSearch.sectionQuickAccess}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
                   {
-                    title: 'Cadastrar Nova Peça',
-                    desc: 'Subir fotos R2 e grade de cor/tamanho',
+                    title: t.globalSearch.quickNewProduct,
+                    desc: t.globalSearch.quickNewProductDesc,
                     href: '/admin/produtos/',
                     icon: Package,
                     color: 'text-amber-700 bg-amber-50 border-amber-200'
                   },
                   {
-                    title: 'Central de Pedidos',
-                    desc: 'Expedição Correios e Romaneio',
+                    title: t.globalSearch.quickOrders,
+                    desc: t.globalSearch.quickOrdersDesc,
                     href: '/admin/pedidos/',
                     icon: ShoppingBag,
                     color: 'text-sky-700 bg-sky-50 border-sky-200'
                   },
                   {
-                    title: 'DRE & Lucro Real',
-                    desc: 'Demonstrativo e CMV da boutique',
+                    title: t.globalSearch.quickFinance,
+                    desc: t.globalSearch.quickFinanceDesc,
                     href: '/admin/financas/',
                     icon: DollarSign,
                     color: 'text-emerald-700 bg-emerald-50 border-emerald-200'
                   },
                   {
-                    title: 'Clientes & Dossiê VIP',
-                    desc: 'Histórico de compras e LTV',
+                    title: t.globalSearch.quickCustomers,
+                    desc: t.globalSearch.quickCustomersDesc,
                     href: '/admin/clientes/',
                     icon: Users,
                     color: 'text-purple-700 bg-purple-50 border-purple-200'
                   },
                   {
-                    title: 'Cupons & Descontos',
-                    desc: 'Gerenciar códigos promocionais',
+                    title: t.globalSearch.quickCoupons,
+                    desc: t.globalSearch.quickCouponsDesc,
                     href: '/admin/loja/cupons',
                     icon: Tag,
                     color: 'text-rose-700 bg-rose-50 border-rose-200'
                   },
                   {
-                    title: 'Configurações da Loja',
-                    desc: 'Cupons, categorias, aparência, banners e menus',
+                    title: t.globalSearch.quickStoreSettings,
+                    desc: t.globalSearch.quickStoreSettingsDesc,
                     href: '/admin/loja/',
                     icon: Store,
                     color: 'text-indigo-700 bg-indigo-50 border-indigo-200'
                   },
                   {
-                    title: 'Banners Hero & Topbar',
-                    desc: 'Mídia 16:9 e 9:16 da vitrine',
+                    title: t.globalSearch.quickBanners,
+                    desc: t.globalSearch.quickBannersDesc,
                     href: '/admin/loja/banners',
                     icon: Sparkles,
                     color: 'text-amber-700 bg-amber-50 border-amber-200'
@@ -340,14 +340,14 @@ export function GlobalSearchModal({ isOpen, onClose, lojaSlug }: GlobalSearchMod
                     color: 'text-amber-700 bg-amber-50 border-amber-200'
                   },
                   {
-                    title: 'Configurações Gerais & PIX',
-                    desc: 'Regra de frete, dados e segurança',
+                    title: t.storeTabs.dados,
+                    desc: t.storeDomain.pageSubtitle,
                     href: '/admin/configuracoes/',
                     icon: Settings,
                     color: 'text-slate-700 bg-slate-100 border-slate-300'
                   },
                   {
-                    title: 'Abrir Vitrine Pública',
+                    title: t.storeInfo.openStorefrontBtn,
                     desc: 'Visualizar loja aberta ao vivo',
                     href: getStorefrontUrl({ slug: lojaSlug }),
                     external: true,

@@ -162,9 +162,9 @@ export default function StoreSettingsPage() {
           if (info.bairro) setBairro(info.bairro);
           if (info.localidade) setCidade(info.localidade);
           if (info.uf) setEstado(info.uf);
-          showToast(`Endereço de ${info.localidade}/${info.uf} preenchido via CEP!`);
+          showToast(t.storeInfo.toastCepFilled(info.localidade, info.uf));
         } else {
-          showToast('CEP não encontrado na base dos Correios.', 'error');
+          showToast(t.storeInfo.toastCepNotFound, 'error');
         }
       } catch {
         // Falha silenciosa no ViaCEP
@@ -472,7 +472,7 @@ export default function StoreSettingsPage() {
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
               : 'bg-amber-50 text-amber-800 border-amber-200'
           }`}>
-            {dominioProprio.trim() ? '🌐 Domínio Próprio Ativo' : '🟢 Subdomínio BCOMM Ativo'}
+            {dominioProprio.trim() ? t.storeInfo.customDomainActive : t.storeInfo.subdomainActive}
           </span>
         </div>
 
@@ -481,10 +481,10 @@ export default function StoreSettingsPage() {
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Central Especializada de Domínios & Teste de DNS</span>
+              <span>{t.storeInfo.dnsHubBannerTitle}</span>
             </div>
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              Consulte se seu CNAME já propagou em tempo real, veja instruções para Registro.br, Hostinger e HostGator, ou desconecte seu domínio com reversão imediata.
+              {t.storeInfo.dnsHubBannerDesc}
             </p>
           </div>
           <Link
@@ -504,7 +504,7 @@ export default function StoreSettingsPage() {
                 {t.storeInfo.systemAddressLabel}
               </span>
               <span className="text-[11px] text-slate-500">
-                Funciona imediatamente para compartilhar catálogos, pedidos no WhatsApp e campanhas.
+                {t.storeInfo.subdomainDesc}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -515,7 +515,7 @@ export default function StoreSettingsPage() {
                   navigator.clipboard.writeText(url);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2500);
-                  showToast('Link da vitrine copiado para a área de transferência!');
+                  showToast(t.storeInfo.toastCopied);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
                 title="Copiar link da vitrine"
@@ -532,7 +532,7 @@ export default function StoreSettingsPage() {
                 title="Abrir vitrine em nova aba"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Abrir Vitrine ↗</span>
+                <span>{t.storeInfo.openStorefrontBtn}</span>
               </a>
             </div>
           </div>
@@ -567,7 +567,7 @@ export default function StoreSettingsPage() {
                   type="button"
                   onClick={() => setDominioProprio('')}
                   className="px-2.5 py-2.5 text-xs text-slate-400 hover:text-rose-600 border border-slate-200 rounded-lg bg-white shrink-0 cursor-pointer"
-                  title="Limpar domínio próprio e voltar ao subdomínio oficial"
+                  title={t.storeInfo.clearBtnTooltip}
                 >
                   Limpar
                 </button>
@@ -579,18 +579,18 @@ export default function StoreSettingsPage() {
           <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 text-xs space-y-2">
             <span className="font-bold text-amber-900 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-amber-700" />
-              Como apontar seu domínio no Registro.br, Hostinger ou Cloudflare:
+              {t.storeInfo.dnsGuideTitle}
             </span>
             <p className="text-amber-800 text-[11px] leading-relaxed">
-              Acesse a zona de DNS do seu provedor de domínio e crie a seguinte entrada CNAME:
+              {t.storeInfo.dnsGuideDesc}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white/80 p-2.5 rounded-lg border border-amber-200 font-mono text-[11px]">
-              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Tipo:</strong> CNAME</div>
-              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Nome / Host:</strong> www</div>
-              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">Destino / Valor:</strong> lojas.bcomm-ag.space</div>
+              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">{t.storeInfo.dnsColType}</strong> CNAME</div>
+              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">{t.storeInfo.dnsColHost}</strong> www</div>
+              <div><strong className="text-slate-500 block text-[9px] uppercase font-sans">{t.storeInfo.dnsColTarget}</strong> lojas.bcomm-ag.space</div>
             </div>
             <p className="text-slate-500 text-[10px] italic">
-              * Para testar se o DNS já propagou ou ver instruções detalhadas para seu provedor, acesse a <Link href="/admin/configuracoes/dominio" className="text-amber-700 underline font-bold">Central de Domínio Personalizado</Link>.
+              {t.storeInfo.dnsGuideFooter}
             </p>
           </div>
         </div>
@@ -662,7 +662,7 @@ export default function StoreSettingsPage() {
               type="text"
               value={complemento}
               onChange={(e) => setComplemento(e.target.value)}
-              placeholder="Ex: Loja 02 - Térreo"
+              placeholder={t.storeInfo.complementPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
             />
           </div>
@@ -726,7 +726,7 @@ export default function StoreSettingsPage() {
               type="text"
               value={horarioSemana}
               onChange={(e) => setHorarioSemana(e.target.value)}
-              placeholder="09:00 às 19:00"
+              placeholder={t.storeInfo.weekdayPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white"
             />
           </div>
@@ -737,7 +737,7 @@ export default function StoreSettingsPage() {
               type="text"
               value={horarioSabado}
               onChange={(e) => setHorarioSabado(e.target.value)}
-              placeholder="09:00 às 17:00"
+              placeholder={t.storeInfo.saturdayPlaceholder}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white"
             />
           </div>

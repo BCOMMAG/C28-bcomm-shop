@@ -66,7 +66,7 @@ export default function ShippingSettingsPage() {
 
   // Registra nome do formulário para o modal de proteção
   useEffect(() => {
-    setFormName('Logística & Frete');
+    setFormName(t.storeLogistics.formName);
   }, [setFormName]);
 
   // Simulador de Frete ao Vivo no Admin
@@ -206,10 +206,10 @@ export default function ShippingSettingsPage() {
         const streetInfo = newCoords.logradouro
           ? `${newCoords.logradouro}${newCoords.numero ? `, Nº ${newCoords.numero}` : ''}`
           : cleanCep;
-        showToast(`Endereço importado com sucesso: ${streetInfo}`);
+        showToast(t.storeLogistics.importedAddressSuccess(streetInfo));
       }
     } catch (err) {
-      showToast('Erro ao importar endereço da loja.', 'error');
+      showToast(t.storeLogistics.importedAddressError, 'error');
     } finally {
       setIsImportingAddress(false);
     }
@@ -383,14 +383,14 @@ export default function ShippingSettingsPage() {
       if (data.options?.length > 0) {
         setTestResult({
           success: true,
-          message: `Conexão bem-sucedida! ${data.options.length} modalidades calculadas em tempo real com sucesso (${data.options.map(o => o.name).join(', ')}).`,
+          message: t.storeLogistics.testConnSuccess(data.options.length, data.options.map((o: any) => o.name).join(', ')),
           rates: data.options
         });
-        showToast('Conexão com Melhor Envio validada com sucesso!');
+        showToast(t.storeLogistics.testConnSuccessToast);
       } else {
         setTestResult({
           success: false,
-          message: 'Não foi possível cotar frete no momento. Verifique o CEP de origem cadastrado.'
+          message: t.storeLogistics.testConnQuoteFail
         });
         showToast('Falha na resposta das transportadoras.', 'error');
       }
@@ -399,7 +399,7 @@ export default function ShippingSettingsPage() {
         success: false,
         message: err?.message || 'Erro inesperado ao conectar à API do Melhor Envio.'
       });
-      showToast('Erro de conexão.', 'error');
+      showToast(t.storeLogistics.testConnError, 'error');
     } finally {
       setIsTestingToken(false);
     }
@@ -464,7 +464,7 @@ export default function ShippingSettingsPage() {
   const handleRunSimulation = async () => {
     const cleanCep = simuladorCep.replace(/\D/g, '');
     if (cleanCep.length !== 8) {
-      showToast('Digite um CEP válido com 8 dígitos para simular.', 'error');
+      showToast(t.storeLogistics.simulateCepInvalid, 'error');
       return;
     }
 
@@ -514,10 +514,10 @@ export default function ShippingSettingsPage() {
         } catch {}
         initialConfigRef.current = JSON.stringify(config);
         setIsDirty(false);
-        showToast('Todas as configurações de frete e regras comerciais foram salvas!');
+        showToast(t.storeLogistics.allRulesSaved);
         return true;
       } else {
-        showToast(res.error || 'Erro ao salvar configurações.', 'error');
+        showToast(res.error || t.storeLogistics.toastError, 'error');
         return false;
       }
     } catch (err: any) {
@@ -542,7 +542,7 @@ export default function ShippingSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">Carregando parâmetros logísticos...</span>
+        <span className="text-xs font-medium">{t.storeLogistics.loadingLogistics}</span>
       </div>
     );
   }
@@ -570,14 +570,14 @@ export default function ShippingSettingsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-serif-luxury">
-              Logística, Frete & Descontos Comerciais
+              {t.storeLogistics.pageTitle}
             </h1>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-emerald-600" /> Autonomia Total
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Configure o cálculo automático de frete, selecione quais transportadoras exibir, crie regras de frete grátis por região e subsídios progressivos.
+            {t.storeLogistics.pageSubtitle}
           </p>
         </div>
 
@@ -587,7 +587,7 @@ export default function ShippingSettingsPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50 self-start sm:self-auto shrink-0"
         >
           {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          <span>{isSaving ? 'Salvando...' : 'Salvar Configurações'}</span>
+          <span>{isSaving ? t.storeLogistics.savingBtn : t.storeLogistics.saveBtn}</span>
         </button>
       </div>
 
@@ -624,14 +624,14 @@ export default function ShippingSettingsPage() {
                 onChange={(e) => setConfig((prev) => ({ ...prev, provedor: e.target.value as any }))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white cursor-pointer"
               >
-                <option value="melhor_envio">Melhor Envio (Cálculo Automático Correios & Jadlog)</option>
-                <option value="manual">Tabela Regional Própria (Cálculo Fixo)</option>
+                <option value="melhor_envio">{t.storeLogistics.engineMelhorEnvio}</option>
+                <option value="manual">{t.storeLogistics.engineManual}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-slate-700 mb-1 font-bold">
-                Ambiente de Conexão
+                {t.storeLogistics.envTitle}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -654,7 +654,7 @@ export default function ShippingSettingsPage() {
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  🚀 Produção Oficial
+                  {t.storeLogistics.envProduction}
                 </button>
               </div>
             </div>
@@ -671,7 +671,7 @@ export default function ShippingSettingsPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                A integração do Melhor Envio é gerenciada nativamente pela plataforma. Suas clientes contam com cotação instantânea nos Correios (SEDEX, PAC) e Jadlog (.Package, .Com) com desconto comercial aplicado.
+                {t.storeLogistics.melhorEnvioDesc}
               </p>
 
               <button
@@ -722,7 +722,7 @@ export default function ShippingSettingsPage() {
                 onClick={handleImportStoreAddress}
                 disabled={isImportingAddress}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200/80 px-2.5 py-1 rounded-lg border border-amber-300 transition-colors cursor-pointer disabled:opacity-50"
-                title="Importa o endereço cadastrado em Dados da Loja com 1 clique"
+                title={t.storeLogistics.importAddressBtn}
               >
                 <Copy className="w-3 h-3" />
                 <span>{isImportingAddress ? 'Importando...' : 'Copiar de Dados da Loja'}</span>
@@ -774,7 +774,7 @@ export default function ShippingSettingsPage() {
                 required
                 value={config.origem_coordenadas?.logradouro || ''}
                 onChange={(e) => handleAddressFieldChange('logradouro', e.target.value)}
-                placeholder="Ex: Rua João Batista Trentin"
+                placeholder={t.storeLogistics.originStreet}
                 className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -789,7 +789,7 @@ export default function ShippingSettingsPage() {
                   type="text"
                   value={config.origem_coordenadas?.complemento || ''}
                   onChange={(e) => handleAddressFieldChange('complemento', e.target.value)}
-                  placeholder="Ex: Loja 02, Térreo"
+                  placeholder={t.storeLogistics.originComplement}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
@@ -844,7 +844,7 @@ export default function ShippingSettingsPage() {
                 <div className="flex items-center gap-1.5 font-bold text-slate-900">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                   <span>
-                    Ponto de Saída: {config.origem_coordenadas.logradouro}{config.origem_coordenadas.numero ? `, Nº ${config.origem_coordenadas.numero}` : ''} • {config.origem_coordenadas.bairro ? `${config.origem_coordenadas.bairro}, ` : ''}{config.origem_coordenadas.cidade}/{config.origem_coordenadas.uf}
+                    {t.storeLogistics.originExitPoint} {config.origem_coordenadas.logradouro}{config.origem_coordenadas.numero ? `, Nº ${config.origem_coordenadas.numero}` : ''} • {config.origem_coordenadas.bairro ? `${config.origem_coordenadas.bairro}, ` : ''}{config.origem_coordenadas.cidade}/{config.origem_coordenadas.uf}
                   </span>
                 </div>
                 {config.origem_coordenadas?.latitude && (
@@ -867,14 +867,14 @@ export default function ShippingSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                2. Autonomia de Modalidades (Quais Transportadoras Você Quer Exibir?)
+                {t.storeLogistics.secServicesTitle}
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
                 Controle Total
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Você não é obrigado a mostrar todas as opções da API. Desmarque as que não quiser e personalize o nome exibido na loja.
+              {t.storeLogistics.secServicesSubtitle}
             </p>
           </div>
         </div>
@@ -907,7 +907,7 @@ export default function ShippingSettingsPage() {
                       {servico.transportadora} {servico.nome}
                     </label>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      Código: <code className="font-mono text-slate-600">{servico.codigo}</code>
+                      {t.storeLogistics.codeLabel} <code className="font-mono text-slate-600">{servico.codigo}</code>
                     </span>
                   </div>
                 </div>
@@ -919,7 +919,7 @@ export default function ShippingSettingsPage() {
                       : 'bg-slate-200 text-slate-600'
                   }`}
                 >
-                  {servico.ativo ? 'Visível na Loja' : 'Oculto'}
+                  {servico.ativo ? t.storeLogistics.statusVisible : t.storeLogistics.statusHidden}
                 </span>
               </div>
 
@@ -932,7 +932,7 @@ export default function ShippingSettingsPage() {
                     type="text"
                     value={servico.nome_personalizado || servico.nome}
                     onChange={(e) => handleNomePersonalizadoChange(servico.codigo, e.target.value)}
-                    placeholder="Ex: Entrega Expressa Prioritária"
+                    placeholder={t.storeLogistics.customNamePlaceholder}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white text-xs"
                   />
                 </div>
@@ -944,7 +944,7 @@ export default function ShippingSettingsPage() {
         {/* MODO DE APRESENTAÇÃO */}
         <div className="pt-4 border-t border-slate-100">
           <label className="block text-slate-800 font-bold mb-2 text-xs">
-            Modo de Apresentação ao Consumidor (White-Label):
+            {t.storeLogistics.whiteLabelTitle}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div
@@ -956,7 +956,7 @@ export default function ShippingSettingsPage() {
               }`}
             >
               <div className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
-                <span>Transparência Total</span>
+                <span>{t.storeLogistics.modeFullTransparency}</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
                 Exibe o nome real das transportadoras (ex: <em>&quot;SEDEX (Correios)&quot;</em> e <em>&quot;Jadlog&quot;</em>).
@@ -972,10 +972,10 @@ export default function ShippingSettingsPage() {
               }`}
             >
               <div className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
-                <span>White-Label / Marca Própria</span>
+                <span>{t.storeLogistics.modeWhiteLabel}</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Oculta as empresas e mostra apenas termos da boutique: <em>&quot;Entrega Expressa&quot;</em> e <em>&quot;Econômica&quot;</em>.
+                {t.storeLogistics.modeWhiteLabelDesc}
               </p>
             </div>
 
@@ -988,10 +988,10 @@ export default function ShippingSettingsPage() {
               }`}
             >
               <div className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
-                <span>Tarifa Única Mais Barata</span>
+                <span>{t.storeLogistics.modeCheapest}</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Calcula tudo nos bastidores e exibe apenas a menor tarifa. Você decide no balcão por onde despachar.
+                {t.storeLogistics.modeCheapestDesc}
               </p>
             </div>
           </div>
@@ -1027,7 +1027,7 @@ export default function ShippingSettingsPage() {
                 {t.storeLogistics.enableFreeShippingGlobal}
               </span>
               <span className="text-[11px] text-slate-500 block">
-                Concede isenção de frete para compras acima da meta. Quando desativado, a régua de frete grátis na sacola e no checkout é ocultada imediatamente.
+                {t.storeLogistics.freeShippingDesc}
               </span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1054,7 +1054,7 @@ export default function ShippingSettingsPage() {
               {/* Meta Padrão de Frete Grátis */}
               <div>
                 <label className="block text-slate-700 mb-1 font-bold">
-                  {locale === 'en' ? `Free Shipping Minimum Order (${currencySymbol})` : locale === 'es' ? `Pedido Mínimo Envío Gratis (${currencySymbol})` : `Valor Mínimo para Frete Grátis (${currencySymbol})`}
+                  `${t.storeLogistics.freeShippingMinOrderLabel} (${currencySymbol})`
                 </label>
                 <div className="relative">
                   <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
@@ -1076,14 +1076,14 @@ export default function ShippingSettingsPage() {
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  {locale === 'en' ? `Shown in cart progress bar ("Add ${currencySymbol} X for Free Shipping").` : locale === 'es' ? `Mostrado en barra de carrito ("Faltan ${currencySymbol} X para Envío Gratis").` : `Refletido na régua de progresso da sacola ("Faltam ${currencySymbol} X para Frete Grátis").`}
+                  {t.storeLogistics.freeShippingCapHint}
                 </span>
               </div>
 
               {/* Teto de Isenção (Proteção contra frete muito caro) */}
               <div>
                 <label className="block text-slate-700 mb-1 font-bold">
-                  {locale === 'en' ? `Maximum Shipping Subsidy (${currencySymbol})` : locale === 'es' ? `Subsidio Máximo de Envío (${currencySymbol})` : `Teto Máximo de Isenção (${currencySymbol})`}
+                  `${t.storeLogistics.freeShippingCapLabel} (${currencySymbol})`
                 </label>
                 <div className="relative">
                   <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">{currencySymbol}</span>
@@ -1105,14 +1105,14 @@ export default function ShippingSettingsPage() {
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Proteção de margem: se o frete der R$ 65 e o teto for R$ 50, a loja cobre R$ 50 e o cliente paga só R$ 15.
+                  {t.storeLogistics.freeShippingCapProtection}
                 </span>
               </div>
             </div>
           ) : (
             <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/70 text-xs text-amber-900 flex items-center gap-2">
               <Info className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>O Frete Grátis da loja está <b>desativado</b>. Nenhuma régua de progresso será exibida na sacola ou no checkout, e todas as entregas serão cobradas integralmente.</span>
+              <span>{t.storeLogistics.freeShippingDisabledNotice}</span>
             </div>
           )}
         </div>
@@ -1153,10 +1153,10 @@ export default function ShippingSettingsPage() {
                 <div>
                   <span className="font-bold text-slate-900 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-emerald-600" />
-                    Gerenciador de Faixas Dinâmicas de Desconto
+                    {t.storeLogistics.progressiveDiscountTitle}
                   </span>
                   <p className="text-[11px] text-slate-500">
-                    Defina livremente os valores mínimos de compras e quanto a cliente ganha de desconto no frete.
+                    {t.storeLogistics.progressiveDiscountDesc}
                   </p>
                 </div>
 
@@ -1174,7 +1174,7 @@ export default function ShippingSettingsPage() {
               {(!config.desconto_progressivo?.faixas || config.desconto_progressivo.faixas.length === 0) ? (
                 <div className="py-8 text-center bg-white rounded-lg border border-dashed border-slate-300 text-slate-500">
                   <p className="font-medium text-xs">Nenhuma faixa de desconto configurada.</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Clique em &quot;Adicionar Faixa&quot; para criar o primeiro nível de subsídio.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t.storeLogistics.tiersEmptyDesc}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
@@ -1225,7 +1225,7 @@ export default function ShippingSettingsPage() {
                         {/* Tipo de Benefício */}
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                            Tipo de Benefício no Frete:
+                            {t.storeLogistics.tierBenefitType}
                           </label>
                           <div className="grid grid-cols-2 gap-1.5">
                             <button
@@ -1258,7 +1258,7 @@ export default function ShippingSettingsPage() {
                                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                               }`}
                             >
-                              100% Grátis
+                              {t.storeLogistics.tier100Free}
                             </button>
                           </div>
                         </div>
@@ -1289,7 +1289,7 @@ export default function ShippingSettingsPage() {
 
                         <div className="pt-1 border-t border-slate-100 text-[10px] text-emerald-700 font-medium">
                           {isTotal
-                            ? `✓ Frete 100% Grátis em compras a partir de R$ ${faixa.a_partir_de}`
+                            ? t.storeLogistics.tierFreeFrom(String(faixa.a_partir_de))
                             : `✓ R$ ${(faixa.desconto_reais || 0).toFixed(2).replace('.', ',')} de desconto em compras acima de R$ ${faixa.a_partir_de}`}
                         </div>
                       </div>
@@ -1301,7 +1301,7 @@ export default function ShippingSettingsPage() {
           ) : (
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-100/60 text-xs text-slate-600 flex items-center gap-2">
               <Info className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>Descontos progressivos de frete <b>desativados</b>. Nenhuma faixa de subsídio será aplicada na cotação das transportadoras.</span>
+              <span>{t.storeLogistics.tiersDisabledNotice}</span>
             </div>
           )}
         </div>
@@ -1315,10 +1315,10 @@ export default function ShippingSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              4. Pacote Padrão de Moda, Custos de Embalagem & Manuseio
+              {t.storeLogistics.secPackagePilotTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Piloto automático: você não precisa pesar nem medir cada vestido na balança. O sistema faz o cálculo multiplicando pela quantidade de peças.
+              {t.storeLogistics.secPackagePilotDesc}
             </p>
           </div>
         </div>
@@ -1326,7 +1326,7 @@ export default function ShippingSettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
             <label className="block text-slate-700 mb-1 font-bold">
-              Peso Médio por Peça (Gramas)
+              {t.storeLogistics.avgWeightLabel}
             </label>
             <div className="relative">
               <input
@@ -1341,7 +1341,7 @@ export default function ShippingSettingsPage() {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">g</span>
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              3 peças no carrinho = 900g enviadas aos Correios.
+              {t.storeLogistics.avgWeightHint}
             </span>
           </div>
 
@@ -1383,7 +1383,7 @@ export default function ShippingSettingsPage() {
               />
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Dias úteis somados ao prazo para passar e embalar.
+              {t.storeLogistics.handlingDaysHintText}
             </span>
           </div>
         </div>
@@ -1397,10 +1397,10 @@ export default function ShippingSettingsPage() {
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              5. Modalidades Locais (Boutique Física)
+              5. ${t.storeLogistics.secLocalDeliveryTitle}
             </h2>
             <p className="text-[11px] text-slate-500">
-              Opções exibidas automaticamente apenas para clientes que moram na cidade e região da loja.
+              {t.storeLogistics.secLocalDeliverySubtitle}
             </p>
           </div>
         </div>
@@ -1415,7 +1415,7 @@ export default function ShippingSettingsPage() {
               <div>
                 <span className="font-bold text-slate-900 text-sm block">Entrega Expressa via Motoboy</span>
                 <span className="text-[11px] text-slate-500">
-                  Delimitação inteligente por raio geográfico em quilômetros com base no endereço da loja física
+                  {t.storeLogistics.localSmartRadius}
                 </span>
               </div>
             </div>
@@ -1481,7 +1481,7 @@ export default function ShippingSettingsPage() {
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="text-slate-700 font-bold">Raio Máximo de Atendimento (Km)</label>
+                    <label className="text-slate-700 font-bold">{t.storeLogistics.localRadiusKmLabel}</label>
                     <span className="text-emerald-700 font-mono font-bold text-sm bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       {config.entrega_motoboy?.raio_maximo_km || 15} km
                     </span>
@@ -1548,9 +1548,9 @@ export default function ShippingSettingsPage() {
               {/* MAPA INTERATIVO AO VIVO */}
               <div className="pt-2">
                 <label className="block text-slate-700 mb-2 font-bold flex items-center justify-between">
-                  <span>Visualização Espacial no Mapa da Região:</span>
+                  <span>{t.storeLogistics.mapSpatialView}</span>
                   <span className="text-[11px] text-slate-500 font-normal">
-                    Arraste o pino para fixar o ponto exato da loja física
+                    {t.storeLogistics.mapDragPin}
                   </span>
                 </label>
                 <LogisticsRadiusMap
@@ -1607,7 +1607,7 @@ export default function ShippingSettingsPage() {
 
               {/* Modelo de Cobrança: Taxa Fixa vs Faixas por Distância */}
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <label className="block text-slate-800 font-bold">Modelo de Cobrança da Taxa de Entrega:</label>
+                <label className="block text-slate-800 font-bold">{t.storeLogistics.localFeeModelLabel}</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label
                     className={`p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer transition-all ${
@@ -1639,8 +1639,8 @@ export default function ShippingSettingsPage() {
                       className="accent-emerald-600 mt-0.5"
                     />
                     <div>
-                      <span className="font-bold text-slate-900 block text-xs">Taxa Única Fixa</span>
-                      <span className="text-[11px] text-slate-500">Valor igual para qualquer endereço dentro do raio</span>
+                      <span className="font-bold text-slate-900 block text-xs">{t.storeLogistics.localFeeFixed}</span>
+                      <span className="text-[11px] text-slate-500">{t.storeLogistics.localFeeFixedDesc}</span>
                     </div>
                   </label>
 
@@ -1679,8 +1679,8 @@ export default function ShippingSettingsPage() {
                       className="accent-emerald-600 mt-0.5"
                     />
                     <div>
-                      <span className="font-bold text-slate-900 block text-xs">Tabela por Faixas de Distância</span>
-                      <span className="text-[11px] text-slate-500">Valor aumenta conforme a distância em quilômetros</span>
+                      <span className="font-bold text-slate-900 block text-xs">{t.storeLogistics.localFeeTiers}</span>
+                      <span className="text-[11px] text-slate-500">{t.storeLogistics.localFeeTiersDesc}</span>
                     </div>
                   </label>
                 </div>
@@ -1729,7 +1729,7 @@ export default function ShippingSettingsPage() {
                         { ate_km: 25, valor_reais: 28.00 }
                       ]).map((faixa, idx) => (
                         <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
-                          <span className="text-slate-500 text-[11px]">Até:</span>
+                          <span className="text-slate-500 text-[11px]">{t.storeLogistics.tierMinLabel}</span>
                           <input
                             type="number"
                             min="1"
@@ -1777,7 +1777,7 @@ export default function ShippingSettingsPage() {
               {/* Horário de Corte e Valor Mínimo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-700 mb-1 font-bold">Horário Limite para Pedidos no Dia (Corte)</label>
+                  <label className="block text-slate-700 mb-1 font-bold">{t.storeLogistics.cutoffTimeLabel}</label>
                   <input
                     type="time"
                     value={config.entrega_motoboy?.horario_limite_mesmo_dia || '14:00'}
@@ -1801,12 +1801,12 @@ export default function ShippingSettingsPage() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                   />
                   <span className="text-[10px] text-slate-500 mt-1 block">
-                    Pedidos aprovados após este horário serão agendados para o próximo dia útil.
+                    {t.storeLogistics.cutoffTimeHint}
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 mb-1 font-bold">Valor Mínimo da Sacola (Opcional)</label>
+                  <label className="block text-slate-700 mb-1 font-bold">{t.storeLogistics.minCartLabel}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-slate-400 font-bold">R$</span>
                     <input
@@ -1831,7 +1831,7 @@ export default function ShippingSettingsPage() {
                           }
                         }));
                       }}
-                      placeholder="0.00 (Sem valor mínimo)"
+                      placeholder={t.storeLogistics.minCartPlaceholder}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                     />
                   </div>
@@ -1843,7 +1843,7 @@ export default function ShippingSettingsPage() {
 
               {/* Exceções: Bairros Excluídos */}
               <div>
-                <label className="block text-slate-700 mb-1 font-bold">Bairros ou Regiões Excluídas (Opcional)</label>
+                <label className="block text-slate-700 mb-1 font-bold">{t.storeLogistics.excludedNeighborhoodsLabel}</label>
                 <input
                   type="text"
                   value={(config.entrega_motoboy?.bairros_excluidos || []).join(', ')}
@@ -1864,11 +1864,11 @@ export default function ShippingSettingsPage() {
                       }
                     }));
                   }}
-                  placeholder="Ex: Bairro Perigoso, Ilha dos Valadares (separe por vírgula)"
+                  placeholder={t.storeLogistics.excludedNeighborhoodsPlaceholder}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
-                  Bairros dentro do raio que o motoboy NÃO atende por restrições operacionais ou de segurança.
+                  {t.storeLogistics.excludedNeighborhoodsHint}
                 </span>
               </div>
             </div>
@@ -1884,7 +1884,7 @@ export default function ShippingSettingsPage() {
               </div>
               <div>
                 <span className="font-bold text-slate-900 block">{t.storeLogistics.secStorePickupTitle}</span>
-                <span className="text-[11px] text-slate-500">A cliente compra online e retira no balcão sem pagar frete</span>
+                <span className="text-[11px] text-slate-500">{t.storeLogistics.pickupFreeBadge}</span>
               </div>
             </div>
 
@@ -1906,7 +1906,7 @@ export default function ShippingSettingsPage() {
                 rows={2}
                 value={config.instrucoes_retirada || ''}
                 onChange={(e) => setConfig((prev) => ({ ...prev, instrucoes_retirada: e.target.value }))}
-                placeholder="Ex: Disponível para retirada em até 2 horas úteis..."
+                placeholder={t.storeLogistics.pickupInstructionsPlaceholder}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white text-xs"
               />
             </div>
@@ -1920,7 +1920,7 @@ export default function ShippingSettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-amber-400" />
-              <h3 className="font-bold text-sm text-white">Simulador de Frete ao Vivo (Visão da Cliente)</h3>
+              <h3 className="font-bold text-sm text-white">{t.storeLogistics.liveSimTitle}</h3>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
               Digite um CEP de teste para ver na hora como as suas regras e os descontos aparecem na vitrine.
@@ -1977,7 +1977,7 @@ export default function ShippingSettingsPage() {
           </div>
         ) : (
           <p className="text-xs text-slate-500 text-center py-4">
-            Clique em &quot;Simular&quot; para rodar a cotação em tempo real com as regras configuradas acima.
+            {t.storeLogistics.liveSimEmptyDesc}
           </p>
         )}
       </div>

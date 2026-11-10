@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Search, CheckCircle, XCircle, Loader2, Compass } from 'lucide-react';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 import { CoordenadasGeograficas, calculateGeodesicDistanceKm, fetchCepCoordinates } from '@/lib/shipping-engine';
 
 interface LogisticsRadiusMapProps {
@@ -14,13 +15,15 @@ interface LogisticsRadiusMapProps {
 }
 
 export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
+
   center,
   radiusKm,
   storeName = 'Boutique Física',
   onCoordinatesChange,
   onRadiusChange,
-  color = '#10B981' // Esmeralda elegante
+  color = '#10B981'
 }) => {
+  const { t } = useAdminI18n();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -109,7 +112,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         draggable: true
       }).addTo(map);
 
-      marker.bindPopup(`<b>${storeName}</b><br/>${center.logradouro ? `${center.logradouro}, ` : ''}${center.numero ? `Nº ${center.numero} • ` : ''}${center.bairro ? `${center.bairro} • ` : ''}${center.cidade || 'Origem'}/${center.uf || 'UF'}<br/><span style="color:#C5A059; font-size:11px;">Arraste para ajustar o ponto exato da loja.</span>`);
+      marker.bindPopup(`<b>${storeName}</b><br/>${center.logradouro ? `${center.logradouro}, ` : ''}${center.numero ? `Nº ${center.numero} • ` : ''}${center.bairro ? `${center.bairro} • ` : ''}${center.cidade || 'Origem'}/${center.uf || 'UF'}<br/><span style="color:#C5A059; font-size:11px;">" + t.storeLogistics.mapStoreMarkerDesc + "</span>`);
 
       marker.on('dragend', () => {
         const position = marker.getLatLng();
@@ -168,7 +171,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
   const handleTestCep = async () => {
     const clean = testCep.replace(/\D/g, '');
     if (clean.length !== 8) {
-      setTestResult({ status: 'error', message: 'Digite um CEP válido com 8 dígitos.' });
+      setTestResult({ status: 'error', message: t.storeLogistics.mapCepInvalid });
       return;
     }
 
@@ -180,7 +183,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
       if (!coords || !coords.latitude || !coords.longitude) {
         setTestResult({
           status: 'error',
-          message: 'Não foi possível localizar as coordenadas geográficas deste CEP.'
+          message: t.storeLogistics.mapCepNotFound
         });
         return;
       }
@@ -203,8 +206,8 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         distanceKm: dist,
         destination: coords,
         message: isInside
-          ? `✓ Elegível: ${streetDesc} • ${dist} km da loja (Dentro do raio de ${radiusKm} km)`
-          : `✗ Fora de Cobertura: ${streetDesc} • ${dist} km da loja (Excede o raio de ${radiusKm} km)`
+          ? t.storeLogistics.mapEligibleMsg(streetDesc, dist, radiusKm)
+          : t.storeLogistics.mapOutsideMsg(streetDesc, dist, radiusKm)
       });
 
       // Plota no mapa
@@ -293,7 +296,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         {!isLeafletLoaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 dark:bg-stone-900 text-slate-500 text-xs gap-2 z-10">
             <Loader2 className="w-6 h-6 animate-spin text-[#C5A059]" />
-            <span>Carregando mapa interativo de cobertura...</span>
+            <span>{t.storeLogistics.mapLoading}</span>
           </div>
         )}
         <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 1 }} />
@@ -302,11 +305,11 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-stone-900/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-200 dark:border-stone-800 shadow-md text-[11px] space-y-1" style={{ zIndex: 1000 }}>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-[#C5A059]" />
-            <span className="font-semibold text-slate-800 dark:text-stone-200">Sua Loja Física (Pino arrastável)</span>
+            <span className="font-semibold text-slate-800 dark:text-stone-200">{t.storeLogistics.mapLegendStore}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-emerald-500/40 border border-emerald-500" />
-            <span className="text-slate-600 dark:text-stone-400">Área de Atuação ({radiusKm} km)</span>
+            <span className="text-slate-600 dark:text-stone-400">{t.storeLogistics.mapLegendCoverage(radiusKm)}</span>
           </div>
         </div>
       </div>
@@ -316,7 +319,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
         <div className="flex items-center justify-between">
           <label className="font-bold text-slate-800 dark:text-stone-200 flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5 text-[#C5A059]" />
-            <span>Testar CEP no Mapa:</span>
+            <span>{t.storeLogistics.mapTestCepLabel}</span>
           </label>
           <span className="text-[11px] text-slate-500 dark:text-stone-400">
             Verifique se a casa da sua cliente está dentro do raio
@@ -336,7 +339,7 @@ export const LogisticsRadiusMap: React.FC<LogisticsRadiusMapProps> = ({
             type="text"
             value={testNumero}
             onChange={(e) => setTestNumero(e.target.value)}
-            placeholder="Nº (Opcional)"
+            placeholder={t.storeLogistics.mapTestNumberPlaceholder}
             className="w-24 bg-slate-50 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 rounded-lg px-3 py-2 text-slate-900 dark:text-stone-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button

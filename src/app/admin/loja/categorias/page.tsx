@@ -152,7 +152,7 @@ export default function AdminCategoriasPage() {
     const clean = newSubInput.trim();
     if (!clean) return;
     if (formSubcategorias.includes(clean)) {
-      showToast('Esta subcategoria já foi adicionada.', 'error');
+      showToast(t.storeCategories.subAlreadyAdded, 'error');
       return;
     }
     setFormSubcategorias((prev) => [...prev, clean]);
@@ -168,7 +168,7 @@ export default function AdminCategoriasPage() {
   const handleSaveModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formNome.trim()) {
-      showToast('O nome da categoria é obrigatório.', 'error');
+      showToast(t.storeCategories.nameRequired, 'error');
       return;
     }
 
@@ -207,7 +207,7 @@ export default function AdminCategoriasPage() {
 
     const currentSubs = cat.subcategorias || [];
     if (currentSubs.includes(clean)) {
-      showToast('Esta subcategoria já existe nesta categoria.', 'error');
+      showToast(t.storeCategories.subAlreadyExists, 'error');
       return;
     }
 
@@ -262,7 +262,7 @@ export default function AdminCategoriasPage() {
     try {
       const res = await deleteAdminCategory(catToDelete.id, tenantId);
       if (res.success) {
-        showToast(`Categoria "${catToDelete.nome}" excluída.`);
+        showToast(t.storeCategories.toastDeleted(catToDelete.nome));
         setCatToDelete(null);
         await loadData();
         try {
@@ -294,7 +294,7 @@ export default function AdminCategoriasPage() {
     const orderedIds = newCats.map((c) => c.id);
     const res = await reorderAdminCategories(tenantId, orderedIds);
     if (!res.success) {
-      showToast('Erro ao salvar nova ordenação.', 'error');
+      showToast(t.storeCategories.toastReorderError, 'error');
       loadData();
     } else {
       showToast('Ordem atualizada com sucesso!');
@@ -344,7 +344,7 @@ export default function AdminCategoriasPage() {
             className="admin-btn-secondary px-3 py-2 text-xs font-semibold"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>Ver Catálogo</span>
+            <span>{t.storeCategories.viewCatalogBtn}</span>
           </Link>
           <button
             type="button"
@@ -666,7 +666,7 @@ export default function AdminCategoriasPage() {
                   <div className="relative inline-flex items-center group cursor-help">
                     <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
                     <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none lowercase">
-                      <span className="normal-case">É o código do link que os clientes acessam para filtrar todas as peças desta categoria no catálogo (ex: <strong>/catalogo?categoria={formSlug || 'alfaiataria'}</strong>).</span>
+                      <span className="normal-case">{t.storeCategories.slugHelper} (<strong>/catalogo?categoria={formSlug || 'alfaiataria'}</strong>).</span>
                       <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
                     </div>
                   </div>
@@ -698,7 +698,7 @@ export default function AdminCategoriasPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <input
                     type="text"
-                    placeholder="Ex: Blazers, Calças Cenoura..."
+                    placeholder={t.storeCategories.subPlaceholder}
                     value={newSubInput}
                     onChange={(e) => setNewSubInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -782,10 +782,10 @@ export default function AdminCategoriasPage() {
               Excluir a categoria &quot;{catToDelete.nome}&quot;?
             </h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Esta ação removerá a categoria e suas subcategorias da vitrine e dos filtros do catálogo.
+              {t.storeCategories.deleteActionDesc}
               {catToDelete.total_produtos > 0 && (
                 <span className="block mt-2 font-bold text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                  Atenção: Existem {catToDelete.total_produtos} produto(s) vinculados a esta categoria!
+                  {t.storeCategories.deleteWarning(catToDelete.total_produtos)}
                 </span>
               )}
             </p>

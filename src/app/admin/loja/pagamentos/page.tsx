@@ -107,7 +107,7 @@ export default function PaymentSettingsPage() {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-500 shadow-xs">
         <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
-        <span className="text-xs font-medium">{t.common?.loading || 'Carregando parâmetros de pagamento...'}</span>
+        <span className="text-xs font-medium">{t.common?.loading}</span>
       </div>
     );
   }
@@ -142,7 +142,7 @@ export default function PaymentSettingsPage() {
                 {t.storePayments.pixTitle}
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                Liquidação Instantânea
+                {t.storePayments.instantSettlement}
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
@@ -162,7 +162,7 @@ export default function PaymentSettingsPage() {
               <option value="telefone">Celular / Telefone</option>
               <option value="cnpj">CNPJ / CPF</option>
               <option value="email">E-mail</option>
-              <option value="aleatoria">Chave Aleatória (EVP)</option>
+              <option value="aleatoria">{t.storePayments.pixKeyTypeRandom}</option>
             </select>
           </div>
 
@@ -259,7 +259,7 @@ export default function PaymentSettingsPage() {
               />
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Número onde o botão &quot;Enviar Comprovante&quot; do checkout direciona.
+              {t.storePayments.pixWhatsappDesc}
             </span>
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function PaymentSettingsPage() {
             </div>
             <div>
               <span className="font-bold text-emerald-950 block">
-                Prévia do Checkout: Chave {chavePix}
+                {t.storePayments.pixPreviewTitleWithKey(chavePix)}
               </span>
               <span className="text-[11px] text-emerald-800">
                 Favorecido: {pixTitular} • Banco: {pixBanco}
@@ -318,7 +318,7 @@ export default function PaymentSettingsPage() {
               </p>
             </div>
             <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600 font-medium">
-              <span>Modo: Produção</span>
+              <span>{t.storePayments.modeProduction}</span>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
                 <Check className="w-3 h-3" /> Ativo
               </span>
@@ -331,7 +331,7 @@ export default function PaymentSettingsPage() {
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800 text-sm">Asaas</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                  Secundário
+                  {t.storePayments.badgeSecondary}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
@@ -358,8 +358,8 @@ export default function PaymentSettingsPage() {
               </p>
             </div>
             <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-              <span>Disponível</span>
-              <span className="text-slate-400 font-semibold">Configurável</span>
+              <span>{t.storePayments.badgeAvailable}</span>
+              <span className="text-slate-400 font-semibold">{t.storePayments.badgeConfigurable}</span>
             </div>
           </div>
         </div>
