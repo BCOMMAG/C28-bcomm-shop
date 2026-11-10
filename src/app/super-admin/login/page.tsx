@@ -4,8 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles, Server } from 'lucide-react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { isMasterUser } from '@/lib/team';
+import { verifySuperAdminLogin } from '@/lib/super-admin-users';
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
@@ -20,48 +19,17 @@ export default function SuperAdminLoginPage() {
     setLoading(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
-
-      // 1. Tenta autenticação via Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password
-      });
-
-      if (!error && data?.session) {
-        if (!isMasterUser(data.session.user)) {
-          await supabase.auth.signOut();
-          setErrorMsg('Acesso negado. Esta conta não possui privilégios de Super Administrador.');
-          return;
-        }
+      const res = await verifySuperAdminLogin(email, password);
+      if (res.success && res.user) {
         localStorage.setItem('bcomm_super_admin_auth', 'true');
-        localStorage.setItem('bcomm_super_admin_user', email);
+        localStorage.setItem('bcomm_master_active', 'true');
+        localStorage.setItem('bcomm_super_admin_user', JSON.stringify(res.user));
         router.push('/super-admin/');
         return;
       }
 
-      // 2. Fallback de autoridade Master do Dono da Plataforma
-      if (
-        email.trim().toLowerCase() === 'superadmin@bcomm.com.br' &&
-        password === 'SuperAdmin@2026!'
-      ) {
-        localStorage.setItem('bcomm_super_admin_auth', 'true');
-        localStorage.setItem('bcomm_super_admin_user', email);
-        router.push('/super-admin/');
-        return;
-      }
-
-      setErrorMsg('Credenciais de Super Administrador incorretas.');
+      setErrorMsg(res.error || 'Credenciais de Super Administrador incorretas.');
     } catch (err: any) {
-      if (
-        email.trim().toLowerCase() === 'superadmin@bcomm.com.br' &&
-        password === 'SuperAdmin@2026!'
-      ) {
-        localStorage.setItem('bcomm_super_admin_auth', 'true');
-        localStorage.setItem('bcomm_super_admin_user', email);
-        router.push('/super-admin/');
-        return;
-      }
       setErrorMsg(err?.message || 'Falha ao autenticar.');
     } finally {
       setLoading(false);

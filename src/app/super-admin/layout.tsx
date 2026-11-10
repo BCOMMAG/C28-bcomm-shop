@@ -128,6 +128,12 @@ export default function SuperAdminLayout({
       title: 'Domínios Customizados',
       href: '/super-admin/dominios/',
       icon: Link2
+    },
+    {
+      title: 'Acessos Super Admin',
+      href: '/super-admin/acessos/',
+      icon: ShieldCheck,
+      badge: 'Master'
     }
   ];
 

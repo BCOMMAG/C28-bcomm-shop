@@ -45,20 +45,15 @@ export function isMasterUser(emailOrMetadata?: any): boolean {
 
   if (typeof emailOrMetadata === 'string') {
     const clean = emailOrMetadata.trim().toLowerCase();
-    const masterEmails = [
-      'admin@bcomm.shop',
-      'master@bcomm.shop',
-      'suporte@bcomm.shop',
-      'leonardo@bcomm.shop',
-      'superadmin@bcomm.com.br'
-    ];
-    return masterEmails.includes(clean) || clean.endsWith('@bcomm.shop');
+    return clean === 'superadmin@bcomm.com.br';
   }
 
   if (typeof emailOrMetadata === 'object') {
     if (
+      emailOrMetadata.is_root ||
       emailOrMetadata.is_master ||
       emailOrMetadata.role === 'super_admin' ||
+      emailOrMetadata.cargo === 'super_admin' ||
       emailOrMetadata.app_metadata?.role === 'super_admin' ||
       emailOrMetadata.user_metadata?.is_master
     ) {
