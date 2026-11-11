@@ -105,6 +105,7 @@ export interface MembroEquipe {
   modo_plantao_liberado: boolean;
   permissoes: PermissoesColaborador;
   ultimo_acesso?: string | null;
+  senha_acesso?: string | null;
   created_at: string;
   updated_at: string;
   
@@ -246,10 +247,17 @@ export async function getTeamMembers(lojaId: string = DEFAULT_TENANT_ID): Promis
       });
     }
 
+    // Blindagem de Visualização de Senhas RBAC:
+    // Apenas Master SaaS ou a Proprietária da loja (cargo dono) têm permissão de visualizar senhas de acesso.
+    const activeOperator = getStoredActiveMember();
+    const isMaster = isMasterUser();
+    const canViewPasswords = isMaster || (activeOperator ? activeOperator.cargo === 'dono' : true);
+
     return visibleMembers.map((m: any) => {
       const metrics = metricsByMember[m.id] || { total: 0, comissao: 0, count: 0 };
       return {
         ...m,
+        senha_acesso: canViewPasswords ? m.senha_acesso || null : undefined,
         alcada_desconto_percentual: Number(m.alcada_desconto_percentual || 0),
         comissao_percentual: Number(m.comissao_percentual || 0),
         meta_vendas_mensal: Number(m.meta_vendas_mensal || 0),
@@ -370,6 +378,7 @@ export async function createTeamMember(
       cargo: input.cargo,
       ativo: true,
       pin_hash: pin, // No contexto do balcão o PIN é de 4 dígitos
+      senha_acesso: input.senha_inicial ? input.senha_inicial.trim() : null,
       token_version: 1,
       convite_token: conviteToken,
       convite_expira_em: conviteExpira,

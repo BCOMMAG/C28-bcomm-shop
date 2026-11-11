@@ -347,7 +347,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "id": 1,
           "nome": "SEDEX",
-          "ativo": true,
+          "ativo": false,
           "codigo": "correios_sedex",
           "transportadora": "Correios",
           "nome_personalizado": "SEDEX Express Prioritário",
@@ -357,7 +357,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "id": 2,
           "nome": "PAC",
-          "ativo": false,
+          "ativo": true,
           "codigo": "correios_pac",
           "transportadora": "Correios",
           "nome_personalizado": "PAC Econômico Segurado",
@@ -415,7 +415,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-10T15:13:33.392+00:00",
+  "updated_at": "2026-11-11T13:57:10.146+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

@@ -28,7 +28,9 @@ import {
   ChevronRight,
   LogOut,
   Ban,
-  KeyRound
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   MembroEquipe,
@@ -71,8 +73,16 @@ export default function AdminEquipePage() {
   const [activeOperator, setActiveOperator] = useState<MembroEquipe | null>(null);
   const [isMaster, setIsMaster] = useState(false);
 
-  // Feedbacks
+  // Feedbacks & Visibilidade de Senhas
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+
+  const toggleRevealPassword = (memberId: string) => {
+    setRevealedPasswords((prev) => ({
+      ...prev,
+      [memberId]: !prev[memberId]
+    }));
+  };
 
   useEffect(() => {
     setIsMaster(isMasterUser());
@@ -403,6 +413,14 @@ export default function AdminEquipePage() {
                       ? Math.min(100, Math.round(((member.total_vendas_mes || 0) / member.meta_vendas_mensal) * 100))
                       : 0;
 
+                  const isMemberOwner = member.cargo === 'dono';
+                  const isOperatorMaster = isMaster;
+                  const isOperatorOwner = isOperatorMaster || (!activeOperator || activeOperator.cargo === 'dono');
+                  const isOperatorManager = !isOperatorOwner && activeOperator?.cargo === 'gerente';
+                  const isSelf = activeOperator
+                    ? activeOperator.id === member.id || activeOperator.email?.toLowerCase() === member.email?.toLowerCase()
+                    : false;
+
                   return (
                     <tr key={member.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* 1. Colaborador */}
@@ -498,11 +516,44 @@ export default function AdminEquipePage() {
                         )}
                       </td>
 
-                      {/* 5. PIN Balcão */}
+                      {/* 5. Credenciais: PIN Balcão & Senha de Acesso */}
                       <td className="py-4 px-4">
-                        <span className="font-mono font-bold text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-lg text-xs tracking-widest border border-amber-200">
-                          {member.pin_hash || '••••'}
-                        </span>
+                        <div className="space-y-1.5 min-w-[130px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">PIN:</span>
+                            <span className="font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md text-xs tracking-widest border border-amber-200">
+                              {member.pin_hash || '••••'}
+                            </span>
+                          </div>
+
+                          {/* Senha de Acesso visível EXCLUSIVAMENTE para Proprietário e Master */}
+                          {isOperatorOwner && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Senha:</span>
+                              <div className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 text-xs">
+                                <span className="font-mono text-[11px] font-bold text-slate-800">
+                                  {revealedPasswords[member.id]
+                                    ? member.senha_acesso || 'Sem senha'
+                                    : '••••••••'}
+                                </span>
+                                {member.senha_acesso && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRevealPassword(member.id)}
+                                    className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer transition-colors"
+                                    title={revealedPasswords[member.id] ? 'Ocultar senha' : 'Ver senha de acesso'}
+                                  >
+                                    {revealedPasswords[member.id] ? (
+                                      <EyeOff className="w-3 h-3" />
+                                    ) : (
+                                      <Eye className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* 6. Status */}
@@ -523,14 +574,6 @@ export default function AdminEquipePage() {
                       {/* 7. Ações */}
                       <td className="py-4 px-4 text-right">
                         {(() => {
-                          const isMemberOwner = member.cargo === 'dono';
-                          const isOperatorMaster = isMaster;
-                          const isOperatorOwner = isOperatorMaster || (!activeOperator || activeOperator.cargo === 'dono');
-                          const isOperatorManager = !isOperatorOwner && activeOperator?.cargo === 'gerente';
-                          const isSelf = activeOperator
-                            ? activeOperator.id === member.id || activeOperator.email?.toLowerCase() === member.email?.toLowerCase()
-                            : false;
-
                           // 1. Imunidade Absoluta da Proprietária
                           const isBlockedByOwnerImmunity = isMemberOwner && !isOperatorOwner;
 
@@ -561,7 +604,8 @@ export default function AdminEquipePage() {
                                 type="button"
                                 onClick={() => {
                                   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
-                                  const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
+                                  const senhaInfo = isOperatorOwner && member.senha_acesso ? `\nSenha de Acesso: ${member.senha_acesso}` : '';
+                                  const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}${senhaInfo}\nPIN Balcão: ${member.pin_hash || '1234'}\nPainel: ${origin}/admin/login/`;
                                   navigator.clipboard.writeText(text);
                                   showFeedback('success', `Credenciais de ${member.nome} copiadas para a área de transferência.`);
                                 }}
@@ -668,6 +712,8 @@ export default function AdminEquipePage() {
           }}
           lojaId={lojaId}
           member={selectedMember}
+          operadorNome={getAdminOperator()}
+          canViewPassword={isMaster || (activeOperator ? activeOperator.cargo === 'dono' : true)}
           onMemberUpdated={(updated) => {
             setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
             showFeedback('success', `Permissões de ${updated.nome} atualizadas.`);

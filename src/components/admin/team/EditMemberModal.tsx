@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Shield, Clock, Key, Check, AlertCircle, Save } from 'lucide-react';
+import { X, Shield, Clock, Key, Check, AlertCircle, Save, Eye, EyeOff, Copy, Lock, KeyRound } from 'lucide-react';
 import { CargoColaborador, MembroEquipe, PermissoesColaborador, updateTeamMember } from '@/lib/team';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -11,9 +11,19 @@ interface EditMemberModalProps {
   member: MembroEquipe;
   onMemberUpdated: (updated: MembroEquipe) => void;
   lojaId: string;
+  operadorNome?: string;
+  canViewPassword?: boolean;
 }
 
-export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, lojaId }: EditMemberModalProps) {
+export function EditMemberModal({
+  isOpen,
+  onClose,
+  member,
+  onMemberUpdated,
+  lojaId,
+  operadorNome = 'Administrador',
+  canViewPassword = false
+}: EditMemberModalProps) {
   const { t, formatCurrency } = useAdminI18n();
   const [cargo, setCargo] = useState<CargoColaborador>(member.cargo);
   const [alcadaDesconto, setAlcadaDesconto] = useState(member.alcada_desconto_percentual.toString());
@@ -29,6 +39,8 @@ export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, loja
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   if (!isOpen) return null;
 
@@ -37,6 +49,13 @@ export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, loja
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleCopyPassword = () => {
+    if (!member.senha_acesso) return;
+    navigator.clipboard.writeText(member.senha_acesso);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2500);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -60,7 +79,7 @@ export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, loja
         permissoes
       };
 
-      const res = await updateTeamMember(lojaId, member.id, updates, 'Leidyane Cristina');
+      const res = await updateTeamMember(lojaId, member.id, updates, operadorNome);
       if (res.success && res.member) {
         setSuccessMsg('Alterações salvas com sucesso!');
         onMemberUpdated(res.member);
@@ -88,7 +107,7 @@ export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, loja
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -108,205 +127,284 @@ export function EditMemberModal({ isOpen, onClose, member, onMemberUpdated, loja
             </div>
           )}
 
+          {/* Bloco de Credenciais (Apenas para Dono e Master) */}
+          {canViewPassword && (
+            <div className="p-4 bg-indigo-50/70 border border-indigo-200/80 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-indigo-700" />
+                  <span>Credenciais de Acesso ao Painel</span>
+                </span>
+                <span className="text-[10px] font-semibold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                  Acesso Restrito
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-[11px] text-slate-500 block">E-mail de Login</span>
+                  <strong className="text-slate-900 font-mono text-[11px] block truncate">{member.email}</strong>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 block">Senha de Acesso</span>
+                    {member.senha_acesso && (
+                      <button
+                        type="button"
+                        onClick={handleCopyPassword}
+                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedPassword ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedPassword ? 'Copiada!' : 'Copiar'}</span>
+                      </button>
+                    )}
+                  </div>
+                  {member.senha_acesso ? (
+                    <div className="flex items-center justify-between bg-white px-2.5 py-1 rounded border border-indigo-200/80 mt-0.5">
+                      <span className="font-mono text-xs font-bold text-slate-900">
+                        {showPassword ? member.senha_acesso : '••••••••••••'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 italic block mt-0.5">Nenhuma senha cadastrada</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Cargo */}
           <div>
             <label className="block text-xs font-bold text-slate-800 mb-1.5">Cargo na Loja</label>
             <select
               value={cargo}
               onChange={(e) => setCargo(e.target.value as CargoColaborador)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-semibold"
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-semibold cursor-pointer"
             >
               <option value="dono">👑 Proprietário (Acesso Total)</option>
               <option value="gerente">👔 Gerente (Operação Geral & Alçada 15%)</option>
-              <option value="atendente">💬 Atendente / Vendedora (Vendas & WhatsApp)</option>
-              <option value="estoquista">📦 Estoque & Expedição (Físico & Romaneio)</option>
+              <option value="atendente">👗 Atendente / Vendedora (Foco em Vendas & Alçada 5%)</option>
+              <option value="estoquista">📦 Estoquista / Expedição (Foco em Inventário & Alçada 0%)</option>
             </select>
           </div>
 
-          {/* Alçadas e Metas */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-            <span className="text-xs font-bold text-slate-800 block">Alçadas & Metas de Vendas</span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Alçada Máx. Desconto</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={alcadaDesconto}
-                    onChange={(e) => setAlcadaDesconto(e.target.value)}
-                    className="w-full pr-7 pl-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 font-bold"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Comissão %</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={comissao}
-                    onChange={(e) => setComissao(e.target.value)}
-                    className="w-full pr-7 pl-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 font-bold"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Meta Mensal (R$)</label>
-                <input
-                  type="number"
-                  step="500"
-                  value={metaVendas}
-                  onChange={(e) => setMetaVendas(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 font-bold"
-                />
-              </div>
+          {/* Alçadas & Metas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Desconto Máximo (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={alcadaDesconto}
+                onChange={(e) => setAlcadaDesconto(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-semibold"
+              />
             </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Código de Vendedora (Link/Cupom)</label>
-                <input
-                  type="text"
-                  value={codigoVendedora}
-                  onChange={(e) => setCodigoVendedora(e.target.value)}
-                  placeholder="ex: carla"
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">PIN Balcão (4 dígitos)</label>
-                <input
-                  type="text"
-                  maxLength={4}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 font-mono font-bold tracking-widest text-center"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Comissão (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="50"
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Meta Mensal (R$)</label>
+              <input
+                type="number"
+                step="100"
+                min="0"
+                value={metaVendas}
+                onChange={(e) => setMetaVendas(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-semibold"
+              />
             </div>
           </div>
 
-          {/* Governança CLT */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          {/* Código de Vendedora & PIN de Balcão */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Código de Vendedora</label>
+              <input
+                type="text"
+                value={codigoVendedora}
+                onChange={(e) => setCodigoVendedora(e.target.value)}
+                placeholder="Ex: mariana"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">PIN de Balcão (4 Dígitos)</label>
+              <input
+                type="text"
+                maxLength={4}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="Ex: 4321"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 font-mono tracking-widest font-bold"
+              />
+            </div>
+          </div>
+
+          {/* Controle de Horário CLT */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                <span>Horário de Atendimento & CLT</span>
-              </span>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span className="text-xs font-bold text-slate-800">Restrição de Horário (Art. 244 CLT)</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   checked={horarioRestrito}
                   onChange={(e) => setHorarioRestrito(e.target.checked)}
-                  className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 h-3.5 w-3.5"
+                  className="sr-only peer"
                 />
-                <span className="text-xs font-semibold text-slate-700">Bloquear fora do horário</span>
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
               </label>
             </div>
 
             {horarioRestrito && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">Início do Turno</label>
                   <input
                     type="time"
                     value={horarioInicio}
                     onChange={(e) => setHorarioInicio(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Término do Turno</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Fim do Turno</label>
                   <input
                     type="time"
                     value={horarioFim}
                     onChange={(e) => setHorarioFim(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg font-mono"
                   />
                 </div>
               </div>
             )}
+          </div>
 
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-800 block">Modo Plantão / Live Shop</span>
-                <span className="text-[10px] text-slate-500">Libera acesso temporário fora do horário para eventos especiais</span>
-              </div>
-              <label className="inline-flex items-center cursor-pointer">
+          {/* Matriz de Permissões Granulares */}
+          <div className="space-y-2 pt-2 border-t border-slate-200/60">
+            <label className="block text-xs font-bold text-slate-800">Permissões de Módulos</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
                 <input
                   type="checkbox"
-                  checked={modoPlantao}
-                  onChange={(e) => setModoPlantao(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  checked={permissoes.ver_financeiro}
+                  onChange={() => togglePermission('ver_financeiro')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
                 />
+                <span className="font-semibold text-slate-700">Ver Módulo Financeiro</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.ver_cmv}
+                  onChange={() => togglePermission('ver_cmv')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Ver Preço de Custo (CMV)</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.editar_catalogo}
+                  onChange={() => togglePermission('editar_catalogo')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Editar Catálogo & Fotos</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.ajustar_estoque}
+                  onChange={() => togglePermission('ajustar_estoque')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Ajustar Estoque Físico</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.acessar_crm}
+                  onChange={() => togglePermission('acessar_crm')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Acessar CRM de Clientes</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.gerenciar_cupons}
+                  onChange={() => togglePermission('gerenciar_cupons')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Criar & Editar Cupons</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.configuracoes_loja}
+                  onChange={() => togglePermission('configuracoes_loja')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Configurações da Loja</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={permissoes.gerenciar_equipe}
+                  onChange={() => togglePermission('gerenciar_equipe')}
+                  className="rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-semibold text-slate-700">Gerenciar Equipe & Acessos</span>
               </label>
             </div>
           </div>
 
-          {/* Switches Individuais de Permissão */}
-          <div>
-            <label className="block text-xs font-bold text-slate-800 mb-2">
-              Permissões Modulares Individuais
-            </label>
-            <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-              {[
-                { key: 'ver_financeiro', label: 'Ver Financeiro & DRE Consolidada', desc: 'Faturamento real da boutique e balanço' },
-                { key: 'ver_cmv', label: 'Ver Preço de Custo (CMV) e Margem', desc: 'Preço que o lojista pagou na fábrica' },
-                { key: 'editar_catalogo', label: 'Cadastrar & Editar Peças', desc: 'Fotos, descrições, preços e tecidos' },
-                { key: 'excluir_catalogo', label: 'Excluir ou Arquivar Peças', desc: 'Remoção de produtos do catálogo' },
-                { key: 'ajustar_estoque', label: 'Ajustar Estoque de Peças', desc: 'Alterar saldo na arara física' },
-                { key: 'gerenciar_pedidos', label: 'Gerenciar Pedidos & WhatsApp', desc: 'Ver pedidos e alterar status' },
-                { key: 'acessar_crm', label: 'Acessar CRM de Clientes', desc: 'Ver histórico de compras das clientes' },
-                { key: 'exportar_clientes', label: 'Exportar Base de Clientes (LGPD)', desc: 'Download de relatórios CSV' },
-                { key: 'gerenciar_cupons', label: 'Criar & Editar Cupons', desc: 'Gerenciar códigos de desconto' },
-                { key: 'configuracoes_loja', label: 'Configurações & Chave PIX', desc: 'Dados bancários e visual da loja' },
-                { key: 'gerenciar_equipe', label: 'Gerenciar Membros da Equipe', desc: 'Criar e editar outros acessos' }
-              ].map((p) => {
-                const k = p.key as keyof PermissoesColaborador;
-                return (
-                  <div
-                    key={p.key}
-                    onClick={() => togglePermission(k)}
-                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="text-xs font-semibold text-slate-800 block">{p.label}</span>
-                      <span className="text-[10px] text-slate-400">{p.desc}</span>
-                    </div>
-                    <div
-                      className={`w-9 h-5 flex items-center rounded-full p-1 transition-colors ${
-                        permissoes[k] ? 'bg-amber-600 justify-end' : 'bg-slate-300 justify-start'
-                      }`}
-                    >
-                      <div className="w-3.5 h-3.5 rounded-full bg-white shadow-xs" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Botões de Ação */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          {/* Botões */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 sticky bottom-0 bg-white/95 backdrop-blur-xs">
             <button
               type="button"
               onClick={onClose}
-              className="py-2.5 px-4 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+              disabled={loading}
+              className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="py-2.5 px-5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{loading ? 'Salvando...' : 'Salvar Permissões'}</span>
+              <span>{loading ? 'Salvando...' : 'Salvar Alterações'}</span>
             </button>
           </div>
         </form>
