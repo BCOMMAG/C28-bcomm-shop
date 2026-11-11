@@ -317,52 +317,61 @@ export function BoutiqueStorefront() {
                 onToggleWishlist={toggleWishlist}
               />
 
-              {/* Botões de Ação da Seção */}
+              {/* Botões de Ação da Seção (Auto-adaptáveis no mobile, sem sobreposição nem duplicação) */}
               <div className="mt-3.5 sm:mt-10 lg:mt-6 flex flex-row items-center justify-center gap-2 sm:gap-4 w-full px-0.5 sm:px-0">
-                <Link
-                  href={sec.catalogHref}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer truncate"
-                  title={`Ver ${sec.titulo} no Catálogo`}
-                >
-                  <span className="hidden sm:inline">Ver no Catálogo</span>
-                  <span className="sm:hidden">Catálogo</span>
-                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                </Link>
+                {isLast ? (
+                  <>
+                    <Link
+                      href="/catalogo"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-tight sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer min-w-0 overflow-hidden"
+                      title="Explorar Todo o Catálogo"
+                    >
+                      <span className="hidden sm:inline">Explorar Catálogo Completo</span>
+                      <span className="sm:hidden truncate">Catálogo Completo</span>
+                      <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                    </Link>
 
-                {nextSec ? (
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(nextSec.id)}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title={`Ir para ${nextSec.titulo}`}
-                  >
-                    <span className="hidden sm:inline">Próxima Seção: {nextSec.titulo}</span>
-                    <span className="sm:hidden">{nextSec.titulo}</span>
-                    <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-tight sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group min-w-0 overflow-hidden"
+                      title="Voltar ao Topo da Página"
+                    >
+                      <span className="truncate">Voltar ao Topo</span>
+                      <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform shrink-0" />
+                    </button>
+                  </>
                 ) : (
-                  <Link
-                    href="/catalogo"
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title="Explorar Todo o Catálogo"
-                  >
-                    <span className="hidden sm:inline">Explorar Catálogo Completo</span>
-                    <span className="sm:hidden">Catálogo</span>
-                    <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </Link>
-                )}
+                  <>
+                    <Link
+                      href={sec.catalogHref}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white dark:bg-[#1C1A18] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-tight sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer min-w-0 overflow-hidden"
+                      title={`Ver ${sec.titulo} no Catálogo`}
+                    >
+                      <span className="hidden sm:inline">Ver no Catálogo</span>
+                      <span className="sm:hidden truncate">Catálogo</span>
+                      <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                    </Link>
 
-                {isLast && (
-                  <button
-                    type="button"
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group truncate"
-                    title="Voltar ao Topo da Página"
-                  >
-                    <span className="hidden sm:inline">Voltar ao Topo</span>
-                    <span className="sm:hidden">Voltar ao Topo</span>
-                    <ArrowUp className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current group-hover:-translate-y-0.5 transition-transform shrink-0" />
-                  </button>
+                    {nextSec && (
+                      <button
+                        type="button"
+                        onClick={() => scrollToSection(nextSec.id)}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-8 py-2.5 sm:py-3 rounded-none border border-[#C5A059] bg-white/95 dark:bg-[#201D1B] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-tight sm:tracking-widest font-semibold transition-all duration-300 shadow-xs cursor-pointer group min-w-0 overflow-hidden"
+                        title={`Ir para ${nextSec.titulo}`}
+                      >
+                        <span className="hidden sm:inline">Próxima Seção: {nextSec.titulo}</span>
+                        <span className="sm:hidden truncate">
+                          {nextSec.titulo.includes('&')
+                            ? nextSec.titulo.split('&')[0].trim()
+                            : nextSec.titulo.length > 16
+                            ? nextSec.titulo.slice(0, 15).trim() + '...'
+                            : nextSec.titulo}
+                        </span>
+                        <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A059] group-hover:text-current group-hover:translate-y-0.5 transition-transform shrink-0" />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </section>

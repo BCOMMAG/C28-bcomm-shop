@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
@@ -15,7 +15,7 @@ interface ProductLoopCarouselProps {
   isNewReleasesSection?: boolean;
   isBestSellerSection?: boolean;
   isLastPiecesSection?: boolean;
-  autoPlayInterval?: number; // Milissegundos entre cada avanço (padrão 3500ms)
+  autoPlayInterval?: number; // Milissegundos entre cada avanço (padrão 3600ms)
 }
 
 export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
@@ -30,18 +30,33 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
   isLastPiecesSection = false,
   autoPlayInterval = 3600
 }) => {
-  // Quantidade de itens visíveis por breakpoint
+  // Quantidade de itens visíveis por breakpoint (2 no mobile, 3 no tablet, 4 no desktop)
   const [visibleCount, setVisibleCount] = useState<number>(4);
   const [isPaused, setIsPaused] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(true);
 
-  // Se houver poucos produtos, duplicamos para garantir o looping contínuo suave apenas quando houver 5 ou mais peças
   const items = products.length > 0 ? products : [];
   const baseCount = items.length;
 
-  // Criamos uma lista estendida para suportar looping infinito perfeito quando houver peças suficientes (>= 5)
-  const loopList = baseCount >= 5 ? [...items, ...items, ...items] : items;
-  const [currentIndex, setCurrentIndex] = useState<number>(baseCount);
+  // Criamos uma lista estendida para suportar looping infinito perfeito em qualquer seção (>= 2 peças)
+  const { loopList, unitLength } = useMemo(() => {
+    if (baseCount < 2) {
+      return { loopList: items, unitLength: baseCount };
+    }
+    let unit: Product[] = [...items];
+    while (unit.length < 6) {
+      unit = [...unit, ...items];
+    }
+    // 3 buffers: [Buffer 1 (prev), Buffer 2 (active), Buffer 3 (next)]
+    const fullLoop = [...unit, ...unit, ...unit];
+    return { loopList: fullLoop, unitLength: unit.length };
+  }, [items, baseCount]);
+
+  const [currentIndex, setCurrentIndex] = useState<number>(unitLength);
+
+  useEffect(() => {
+    setCurrentIndex(unitLength);
+  }, [unitLength]);
 
   // Manipuladores de deslize por toque (Swipe no Mobile)
   const touchStartX = useRef<number | null>(null);
@@ -74,7 +89,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
     const handleResize = () => {
       const width = window.innerWidth;
       if (width < 640) {
-        setVisibleCount(2); // 2 cards no mobile
+        setVisibleCount(2); // Exatamente 2 cards por tela no mobile
       } else if (width < 1024) {
         setVisibleCount(3); // 3 cards no tablet
       } else {
@@ -88,81 +103,80 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
   }, []);
 
   const handleNext = useCallback(() => {
-    if (baseCount === 0) return;
+    if (unitLength < 2) return;
     setIsTransitioning(true);
     setCurrentIndex((prev) => {
-      if (prev >= baseCount * 2) {
-        return baseCount + 1;
+      if (prev >= unitLength * 2) {
+        return unitLength + 1;
       }
       return prev + 1;
     });
-  }, [baseCount]);
+  }, [unitLength]);
 
   const handlePrev = useCallback(() => {
-    if (baseCount === 0) return;
+    if (unitLength < 2) return;
     setIsTransitioning(true);
     setCurrentIndex((prev) => {
-      if (prev <= baseCount - 1) {
-        return baseCount * 2 - 1;
+      if (prev <= unitLength - 1) {
+        return unitLength * 2 - 1;
       }
       return prev - 1;
     });
-  }, [baseCount]);
+  }, [unitLength]);
 
   // Autoplay contínuo: avança a cada intervalo se não estiver pausado
   useEffect(() => {
-    if (isPaused || baseCount === 0) return;
+    if (isPaused || unitLength < 2) return;
 
     const interval = setInterval(() => {
       handleNext();
     }, autoPlayInterval);
 
     return () => clearInterval(interval);
-  }, [isPaused, baseCount, autoPlayInterval, handleNext]);
+  }, [isPaused, unitLength, autoPlayInterval, handleNext]);
 
   // Ao terminar a transição CSS, normaliza o índice para o bloco central sem transição perceptível
   const handleTransitionEnd = (e?: React.TransitionEvent<HTMLDivElement>) => {
-    if (baseCount === 0) return;
+    if (unitLength < 2) return;
     // Ignorar eventos borbulhados de elementos filhos (como transição de cor de cards ao mudar de tema)
     if (e && (e.target !== e.currentTarget || e.propertyName !== 'transform')) return;
 
-    if (currentIndex >= baseCount * 2) {
+    if (currentIndex >= unitLength * 2) {
       setIsTransitioning(false);
-      setCurrentIndex((prev) => prev - baseCount);
-    } else if (currentIndex < baseCount) {
+      setCurrentIndex((prev) => prev - unitLength);
+    } else if (currentIndex < unitLength) {
       setIsTransitioning(false);
-      setCurrentIndex((prev) => prev + baseCount);
+      setCurrentIndex((prev) => prev + unitLength);
     }
   };
 
   // Trava de segurança 1: Fallback com timeout caso a transição CSS seja interrompida
-  // (por exemplo, cliques rápidos e repetidos no botão de tema claro/escuro no mobile)
   useEffect(() => {
-    if (baseCount === 0) return;
+    if (unitLength < 2) return;
 
-    if (currentIndex >= baseCount * 2) {
+    if (currentIndex >= unitLength * 2) {
       const timer = setTimeout(() => {
         setIsTransitioning(false);
-        setCurrentIndex((prev) => (prev >= baseCount * 2 ? prev - baseCount : prev));
+        setCurrentIndex((prev) => (prev >= unitLength * 2 ? prev - unitLength : prev));
       }, 700);
       return () => clearTimeout(timer);
-    } else if (currentIndex < baseCount) {
+    } else if (currentIndex < unitLength) {
       const timer = setTimeout(() => {
         setIsTransitioning(false);
-        setCurrentIndex((prev) => (prev < baseCount ? prev + baseCount : prev));
+        setCurrentIndex((prev) => (prev < unitLength ? prev + unitLength : prev));
       }, 700);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, baseCount]);
+  }, [currentIndex, unitLength]);
 
   // Trava de segurança 2: Impede categoricamente que o índice escape do limite de dados
   useEffect(() => {
-    if (baseCount === 0) return;
-    if (currentIndex >= baseCount * 3 || currentIndex < 0) {
+    if (unitLength < 2) return;
+    if (currentIndex >= unitLength * 3 || currentIndex < 0) {
       setIsTransitioning(false);
-      setCurrentIndex(baseCount);
+      setCurrentIndex(unitLength);
     }
-  }, [currentIndex, baseCount]);
+  }, [currentIndex, unitLength]);
 
   // Reativa a transição caso tenha sido desligada no snap
   useEffect(() => {
@@ -178,109 +192,30 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
     return null;
   }
 
-  // MODO HÍBRIDO INTELIGENTE: Se houver de 1 a 4 produtos, renderiza como Grade Estática Nobre
-  // Elimina categoricamente qualquer repetição de cards na tela, setas desnecessárias ou giros artificiais
-  if (baseCount < 5) {
-    if (baseCount === 1) {
-      return (
-        <div className="w-full flex justify-center py-2 animate-fadeIn">
-          <div className="w-full max-w-xs sm:max-w-sm">
-            <ProductCard
-              product={items[0]}
-              columnsCount={1}
-              isOutletSection={isOutletSection}
-              isNewReleasesSection={isNewReleasesSection}
-              isBestSellerSection={isBestSellerSection}
-              isLastPiecesSection={isLastPiecesSection}
-              onOpenDetails={onOpenDetails}
-              onQuickAdd={onQuickAdd}
-              isWishlisted={isWishlisted(items[0].id)}
-              onToggleWishlist={onToggleWishlist}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    if (baseCount === 2) {
-      return (
-        <div className="w-full flex justify-center py-2 animate-fadeIn">
-          {/* No mobile: linha única com rolagem horizontal contínua; no desktop: grid 2 colunas */}
-          <div className="w-full max-w-2xl flex sm:grid sm:grid-cols-2 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0">
-            {items.map((product) => (
-              <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
-                <ProductCard
-                  product={product}
-                  columnsCount={2}
-                  isOutletSection={isOutletSection}
-                  isNewReleasesSection={isNewReleasesSection}
-                  isBestSellerSection={isBestSellerSection}
-                  isLastPiecesSection={isLastPiecesSection}
-                  onOpenDetails={onOpenDetails}
-                  onQuickAdd={onQuickAdd}
-                  isWishlisted={isWishlisted(product.id)}
-                  onToggleWishlist={onToggleWishlist}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (baseCount === 3) {
-      return (
-        <div className="w-full flex justify-center py-2 animate-fadeIn">
-          {/* No mobile: linha única com rolagem horizontal contínua (nunca quebra em 2 linhas); no desktop: grid 3 colunas */}
-          <div className="w-full max-w-4xl flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0">
-            {items.map((product) => (
-              <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
-                <ProductCard
-                  product={product}
-                  columnsCount={3}
-                  isOutletSection={isOutletSection}
-                  isNewReleasesSection={isNewReleasesSection}
-                  isBestSellerSection={isBestSellerSection}
-                  isLastPiecesSection={isLastPiecesSection}
-                  onOpenDetails={onOpenDetails}
-                  onQuickAdd={onQuickAdd}
-                  isWishlisted={isWishlisted(product.id)}
-                  onToggleWishlist={onToggleWishlist}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // Se houver exatamente 4 produtos:
-    // No mobile: linha única com rolagem horizontal contínua (nunca quebra em 2 linhas); no desktop: grid completo de 4 colunas
+  // Se houver apenas 1 produto, renderiza centralizado sem repetições
+  if (baseCount === 1) {
     return (
-      <div className="w-full flex sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0 py-2 animate-fadeIn">
-        {items.map((product) => (
-          <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
-            <ProductCard
-              key={product.id}
-              product={product}
-              columnsCount={4}
-              isOutletSection={isOutletSection}
-              isNewReleasesSection={isNewReleasesSection}
-              isBestSellerSection={isBestSellerSection}
-              isLastPiecesSection={isLastPiecesSection}
-              onOpenDetails={onOpenDetails}
-              onQuickAdd={onQuickAdd}
-              isWishlisted={isWishlisted(product.id)}
-              onToggleWishlist={onToggleWishlist}
-            />
-          </div>
-        ))}
+      <div className="w-full flex justify-center py-2 animate-fadeIn">
+        <div className="w-full max-w-xs sm:max-w-sm">
+          <ProductCard
+            product={items[0]}
+            columnsCount={1}
+            isOutletSection={isOutletSection}
+            isNewReleasesSection={isNewReleasesSection}
+            isBestSellerSection={isBestSellerSection}
+            isLastPiecesSection={isLastPiecesSection}
+            onOpenDetails={onOpenDetails}
+            onQuickAdd={onQuickAdd}
+            isWishlisted={isWishlisted(items[0].id)}
+            onToggleWishlist={onToggleWishlist}
+          />
+        </div>
       </div>
     );
   }
 
-  // MODO CARROSSEL INFINITO (Ativado automaticamente a partir de 5 produtos)
-  // Deslocamento em porcentagem de acordo com o número de itens visíveis
+  // MODO CARROSSEL INFINITO (Ativado para qualquer seção com 2 ou mais produtos)
+  // Deslocamento em porcentagem de acordo com o número de itens visíveis (2 no mobile = 50% por card)
   const stepPercentage = 100 / visibleCount;
   // Garantia matemática: o índice visual nunca pode ultrapassar o último produto da lista
   const maxSafeIndex = Math.max(0, loopList.length - visibleCount);
