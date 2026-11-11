@@ -26,6 +26,7 @@ import {
 import { useStore } from '@/context/StoreContext';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 import { cn } from '@/lib/chart-utils';
+import { isMasterUser, getStoredActiveMember, MembroEquipe } from '@/lib/team';
 
 interface NavItem {
   label: string;
@@ -54,68 +55,122 @@ export default function SettingsLayout({
 
   const cleanPath = (pathname || '').replace(/\/$/, '');
 
-  const settingsSections: NavSection[] = React.useMemo(() => [
-    {
-      title: t.generalSettings.accountAccess,
-      items: [
+  const [operator, setOperator] = React.useState<MembroEquipe | null>(null);
+  const [isMaster, setIsMaster] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMaster(isMasterUser());
+    const member = getStoredActiveMember();
+    setOperator(member);
+  }, []);
+
+  const settingsSections: NavSection[] = React.useMemo(() => {
+    const isOwner = isMaster || (!operator || operator.cargo === 'dono');
+    const isManager = !isOwner && operator?.cargo === 'gerente';
+    const isAttendantOrStock = !isOwner && !isManager; // atendente ou estoquista
+
+    // 1. Para Atendente e Estoquista: ACESSO EXCLUSIVO AO SEU PERFIL
+    if (isAttendantOrStock) {
+      return [
         {
-          label: t.generalSettings.userProfile,
-          href: '/admin/configuracoes/perfil',
-          icon: User,
-          description: t.generalSettings.userProfileDesc,
-          badge: t.generalSettings.badgeYou,
-          badgeColor: 'bg-slate-100 text-slate-700'
-        },
-        {
-          label: t.generalSettings.saasPlan,
-          href: '/admin/configuracoes/assinatura',
-          icon: Sparkles,
-          description: t.generalSettings.saasPlanDesc,
-          badge: t.generalSettings.badgePro,
-          badgeColor: 'bg-sky-100 text-sky-800'
-        },
-        {
-          label: t.generalSettings.security,
-          href: '/admin/configuracoes/seguranca',
-          icon: ShieldCheck,
-          description: t.generalSettings.securityDesc,
-          badge: t.generalSettings.badgeCritical,
-          badgeColor: 'bg-amber-100 text-amber-800'
+          title: t.generalSettings.accountAccess,
+          items: [
+            {
+              label: t.generalSettings.userProfile,
+              href: '/admin/configuracoes/perfil',
+              icon: User,
+              description: t.generalSettings.userProfileDesc,
+              badge: t.generalSettings.badgeYou,
+              badgeColor: 'bg-slate-100 text-slate-700'
+            }
+          ]
         }
-      ]
-    },
-    {
-      title: t.generalSettings.systemPanel,
-      items: [
-        {
-          label: t.generalSettings.adminTheme,
-          href: '/admin/configuracoes/tema-admin',
-          icon: Sliders,
-          description: t.generalSettings.adminThemeDesc,
-          badge: t.generalSettings.badgeTeam,
-          badgeColor: 'bg-amber-100 text-amber-800'
-        },
-        {
-          label: t.generalSettings.integrations,
-          href: '/admin/configuracoes/integracoes',
-          icon: Layers,
-          description: t.generalSettings.integrationsDesc
-        },
-        {
-          label: t.generalSettings.notifications,
-          href: '/admin/configuracoes/notificacoes',
-          icon: Bell,
-          description: t.generalSettings.notificationsDesc
-        },
-        {
-          label: t.generalSettings.dataExport,
-          href: '/admin/configuracoes/dados',
-          icon: FileSpreadsheet,
-          description: t.generalSettings.dataExportDesc
-        }
-      ]
+      ];
     }
-  ], [t]);
+
+    // 2. Para Gerente: Perfil individual
+    if (isManager) {
+      return [
+        {
+          title: t.generalSettings.accountAccess,
+          items: [
+            {
+              label: t.generalSettings.userProfile,
+              href: '/admin/configuracoes/perfil',
+              icon: User,
+              description: t.generalSettings.userProfileDesc,
+              badge: t.generalSettings.badgeYou,
+              badgeColor: 'bg-slate-100 text-slate-700'
+            }
+          ]
+        }
+      ];
+    }
+
+    // 3. Para Dono da Loja e Master God Mode: Acesso Completo
+    return [
+      {
+        title: t.generalSettings.accountAccess,
+        items: [
+          {
+            label: t.generalSettings.userProfile,
+            href: '/admin/configuracoes/perfil',
+            icon: User,
+            description: t.generalSettings.userProfileDesc,
+            badge: t.generalSettings.badgeYou,
+            badgeColor: 'bg-slate-100 text-slate-700'
+          },
+          {
+            label: t.generalSettings.saasPlan,
+            href: '/admin/configuracoes/assinatura',
+            icon: Sparkles,
+            description: t.generalSettings.saasPlanDesc,
+            badge: t.generalSettings.badgePro,
+            badgeColor: 'bg-sky-100 text-sky-800'
+          },
+          {
+            label: t.generalSettings.security,
+            href: '/admin/configuracoes/seguranca',
+            icon: ShieldCheck,
+            description: t.generalSettings.securityDesc,
+            badge: t.generalSettings.badgeCritical,
+            badgeColor: 'bg-amber-100 text-amber-800'
+          }
+        ]
+      },
+      {
+        title: t.generalSettings.systemPanel,
+        items: [
+          {
+            label: t.generalSettings.adminTheme,
+            href: '/admin/configuracoes/tema-admin',
+            icon: Sliders,
+            description: t.generalSettings.adminThemeDesc,
+            badge: t.generalSettings.badgeTeam,
+            badgeColor: 'bg-amber-100 text-amber-800'
+          },
+          {
+            label: t.generalSettings.integrations,
+            href: '/admin/configuracoes/integracoes',
+            icon: Layers,
+            description: t.generalSettings.integrationsDesc
+          },
+          {
+            label: t.generalSettings.notifications,
+            href: '/admin/configuracoes/notificacoes',
+            icon: Bell,
+            description: t.generalSettings.notificationsDesc
+          },
+          {
+            label: t.generalSettings.dataExport,
+            href: '/admin/configuracoes/dados',
+            icon: FileSpreadsheet,
+            description: t.generalSettings.dataExportDesc
+          }
+        ]
+      }
+    ];
+  }, [t, isMaster, operator]);
 
   return (
     <div className="space-y-6 pb-16">

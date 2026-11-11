@@ -205,21 +205,23 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
     if (baseCount === 2) {
       return (
         <div className="w-full flex justify-center py-2 animate-fadeIn">
-          <div className="w-full max-w-2xl grid grid-cols-2 gap-3 sm:gap-6">
+          {/* No mobile: linha única com rolagem horizontal contínua; no desktop: grid 2 colunas */}
+          <div className="w-full max-w-2xl flex sm:grid sm:grid-cols-2 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0">
             {items.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                columnsCount={2}
-                isOutletSection={isOutletSection}
-                isNewReleasesSection={isNewReleasesSection}
-                isBestSellerSection={isBestSellerSection}
-                isLastPiecesSection={isLastPiecesSection}
-                onOpenDetails={onOpenDetails}
-                onQuickAdd={onQuickAdd}
-                isWishlisted={isWishlisted(product.id)}
-                onToggleWishlist={onToggleWishlist}
-              />
+              <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
+                <ProductCard
+                  product={product}
+                  columnsCount={2}
+                  isOutletSection={isOutletSection}
+                  isNewReleasesSection={isNewReleasesSection}
+                  isBestSellerSection={isBestSellerSection}
+                  isLastPiecesSection={isLastPiecesSection}
+                  onOpenDetails={onOpenDetails}
+                  onQuickAdd={onQuickAdd}
+                  isWishlisted={isWishlisted(product.id)}
+                  onToggleWishlist={onToggleWishlist}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -229,44 +231,49 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
     if (baseCount === 3) {
       return (
         <div className="w-full flex justify-center py-2 animate-fadeIn">
-          <div className="w-full max-w-4xl grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+          {/* No mobile: linha única com rolagem horizontal contínua (nunca quebra em 2 linhas); no desktop: grid 3 colunas */}
+          <div className="w-full max-w-4xl flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0">
             {items.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                columnsCount={3}
-                isOutletSection={isOutletSection}
-                isNewReleasesSection={isNewReleasesSection}
-                isBestSellerSection={isBestSellerSection}
-                isLastPiecesSection={isLastPiecesSection}
-                onOpenDetails={onOpenDetails}
-                onQuickAdd={onQuickAdd}
-                isWishlisted={isWishlisted(product.id)}
-                onToggleWishlist={onToggleWishlist}
-              />
+              <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
+                <ProductCard
+                  product={product}
+                  columnsCount={3}
+                  isOutletSection={isOutletSection}
+                  isNewReleasesSection={isNewReleasesSection}
+                  isBestSellerSection={isBestSellerSection}
+                  isLastPiecesSection={isLastPiecesSection}
+                  onOpenDetails={onOpenDetails}
+                  onQuickAdd={onQuickAdd}
+                  isWishlisted={isWishlisted(product.id)}
+                  onToggleWishlist={onToggleWishlist}
+                />
+              </div>
             ))}
           </div>
         </div>
       );
     }
 
-    // Se houver exatamente 4 produtos, exibe em grade completa e alinhada
+    // Se houver exatamente 4 produtos:
+    // No mobile: linha única com rolagem horizontal contínua (nunca quebra em 2 linhas); no desktop: grid completo de 4 colunas
     return (
-      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 py-2 animate-fadeIn">
+      <div className="w-full flex sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0 sm:px-0 py-2 animate-fadeIn">
         {items.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            columnsCount={4}
-            isOutletSection={isOutletSection}
-            isNewReleasesSection={isNewReleasesSection}
-            isBestSellerSection={isBestSellerSection}
-            isLastPiecesSection={isLastPiecesSection}
-            onOpenDetails={onOpenDetails}
-            onQuickAdd={onQuickAdd}
-            isWishlisted={isWishlisted(product.id)}
-            onToggleWishlist={onToggleWishlist}
-          />
+          <div key={product.id} className="min-w-[70vw] sm:min-w-0 sm:w-auto shrink-0 sm:shrink snap-start">
+            <ProductCard
+              key={product.id}
+              product={product}
+              columnsCount={4}
+              isOutletSection={isOutletSection}
+              isNewReleasesSection={isNewReleasesSection}
+              isBestSellerSection={isBestSellerSection}
+              isLastPiecesSection={isLastPiecesSection}
+              onOpenDetails={onOpenDetails}
+              onQuickAdd={onQuickAdd}
+              isWishlisted={isWishlisted(product.id)}
+              onToggleWishlist={onToggleWishlist}
+            />
+          </div>
         ))}
       </div>
     );
@@ -332,7 +339,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
         </div>
       </div>
 
-      {/* Botões de Navegação Lateral (Sempre visíveis no Mobile, surgem no hover no Desktop) */}
+      {/* Botões de Navegação Lateral (SEMPRE APARENTES E VISÍVEIS no Mobile e Desktop) */}
       <button
         type="button"
         onClick={(e) => {
@@ -340,7 +347,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
           setIsPaused(true);
           handlePrev();
         }}
-        className="absolute left-1 sm:left-0 top-[38%] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-none bg-white/95 dark:bg-[#1A1918]/95 border border-[#C5A059]/50 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] flex items-center justify-center shadow-lg transition-all opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 hover:scale-105 active:scale-90 cursor-pointer sm:-translate-x-4"
+        className="absolute left-1 sm:-left-3 top-[38%] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-none bg-white/95 dark:bg-[#1A1918]/95 border border-[#C5A059]/50 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] flex items-center justify-center shadow-lg transition-all opacity-100 hover:scale-105 active:scale-90 cursor-pointer"
         aria-label="Voltar peça anterior"
         title="Voltar peça anterior"
       >
@@ -354,7 +361,7 @@ export const ProductLoopCarousel: React.FC<ProductLoopCarouselProps> = ({
           setIsPaused(true);
           handleNext();
         }}
-        className="absolute right-1 sm:right-0 top-[38%] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-none bg-white/95 dark:bg-[#1A1918]/95 border border-[#C5A059]/50 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] flex items-center justify-center shadow-lg transition-all opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 hover:scale-105 active:scale-90 cursor-pointer sm:translate-x-4"
+        className="absolute right-1 sm:-right-3 top-[38%] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-none bg-white/95 dark:bg-[#1A1918]/95 border border-[#C5A059]/50 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] flex items-center justify-center shadow-lg transition-all opacity-100 hover:scale-105 active:scale-90 cursor-pointer"
         aria-label="Avançar próxima peça"
         title="Avançar próxima peça"
       >

@@ -488,29 +488,75 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const allowedNavItems = navItems.filter((item) => {
     if (isMaster) return true;
     if (!activeMember || activeMember.cargo === 'dono') return true;
+
+    // 1. Financeiro
     if (item.href === '/admin/financas/' && !activeMember.permissoes?.ver_financeiro) return false;
+
+    // 2. CRM de Clientes
     if (item.href === '/admin/clientes/' && !activeMember.permissoes?.acessar_crm) return false;
-    if (item.href === '/admin/loja/' && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return false;
+
+    // 3. Configurações da Loja: Atendentes e Estoquistas NÃO têm acesso
+    if (item.href === '/admin/loja/') {
+      if (activeMember.cargo === 'atendente' || activeMember.cargo === 'estoquista') return false;
+      if (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo !== 'gerente') return false;
+    }
+
+    // 4. Módulos Adicionais: Exclusivo Gerente / Dono
     if (item.href === '/admin/modulos/' && activeMember.cargo !== 'gerente') return false;
-    if (item.href === '/admin/configuracoes/' && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return false;
-    if (item.href === '/admin/equipe/' && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return false;
+
+    // 5. Configurações Gerais: Oculto para Atendente e Estoquista na sidebar (acessam apenas seu perfil pelo avatar)
+    if (item.href === '/admin/configuracoes/') {
+      if (activeMember.cargo === 'atendente' || activeMember.cargo === 'estoquista') return false;
+      if (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo !== 'gerente') return false;
+    }
+
+    // 6. Equipe & Acessos: Apenas Dono ou Gerente com permissão de gerenciar_equipe
+    if (item.href === '/admin/equipe/' && (!activeMember.permissoes?.gerenciar_equipe || activeMember.cargo !== 'gerente')) return false;
+
     return true;
   });
 
   const isRouteBlocked = (() => {
     if (isMaster) return false;
     if (!activeMember || activeMember.cargo === 'dono') return false;
+    const cargo = activeMember.cargo;
+
+    // Financeiro
     if (cleanPath.startsWith('/admin/financas') && !activeMember.permissoes?.ver_financeiro) return true;
-    if (cleanPath.startsWith('/admin/configuracoes/assinatura') && activeMember.cargo !== 'gerente') return true;
-    if (cleanPath.startsWith('/admin/configuracoes/seguranca') && activeMember.cargo !== 'gerente') return true;
-    if (cleanPath.startsWith('/admin/modulos') && activeMember.cargo !== 'gerente') return true;
-    if (cleanPath.startsWith('/admin/loja/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
-    if (cleanPath.startsWith('/admin/loja') && (!activeMember.permissoes?.configuracoes_loja && activeMember.cargo === 'estoquista')) return true;
-    if (cleanPath.startsWith('/admin/cupons') && !activeMember.permissoes?.gerenciar_cupons && activeMember.cargo === 'estoquista') return true;
-    if (cleanPath.startsWith('/admin/banners') && activeMember.cargo !== 'gerente') return true;
-    if (cleanPath.startsWith('/admin/menu') && activeMember.cargo !== 'gerente') return true;
-    if (cleanPath.startsWith('/admin/categorias') && activeMember.cargo === 'estoquista') return true;
-    if (cleanPath.startsWith('/admin/equipe') && !activeMember.permissoes?.gerenciar_equipe && activeMember.cargo !== 'gerente') return true;
+
+    // Configurações Gerais e Módulos Críticos:
+    // 1. Assinatura SaaS e Segurança Crítica: Exclusivo Dono e Master
+    if (cleanPath.startsWith('/admin/configuracoes/assinatura')) return true;
+    if (cleanPath.startsWith('/admin/configuracoes/seguranca')) return true;
+
+    // 2. Tema do Painel: Exclusivo Dono da Loja e Master (nem gerente nem atendente têm acesso)
+    if (cleanPath.startsWith('/admin/configuracoes/tema-admin')) return true;
+
+    // 3. Integrações & SEO: Exclusivo Dono e Master
+    if (cleanPath.startsWith('/admin/configuracoes/integracoes')) return true;
+
+    // 4. Notificações, Alertas & Sons: Exclusivo Dono e Master
+    if (cleanPath.startsWith('/admin/configuracoes/notificacoes')) return true;
+
+    // 5. Exportação de Dados: Exclusivo Dono e Master
+    if (cleanPath.startsWith('/admin/configuracoes/dados')) return true;
+
+    // 6. Configurações Gerais raiz (/admin/configuracoes): Atendente e Estoquista bloqueados (exceto perfil)
+    if (cleanPath === '/admin/configuracoes' && (cargo === 'atendente' || cargo === 'estoquista')) return true;
+
+    // 7. Configurações da Loja (/admin/loja): Atendente e Estoquista bloqueados totalmente
+    if (cleanPath.startsWith('/admin/loja') && (cargo === 'atendente' || cargo === 'estoquista')) return true;
+
+    // 8. Equipe: Atendente e Estoquista bloqueados
+    if (cleanPath.startsWith('/admin/equipe') && (cargo === 'atendente' || cargo === 'estoquista' || !activeMember.permissoes?.gerenciar_equipe)) return true;
+
+    // 9. Banners, Menus, Cupons e Categorias
+    if (cleanPath.startsWith('/admin/modulos') && cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/banners') && cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/menu') && cargo !== 'gerente') return true;
+    if (cleanPath.startsWith('/admin/cupons') && (cargo === 'estoquista' || (cargo === 'atendente' && !activeMember.permissoes?.gerenciar_cupons))) return true;
+    if (cleanPath.startsWith('/admin/categorias') && (cargo === 'estoquista' || cargo === 'atendente')) return true;
+
     return false;
   })();
 

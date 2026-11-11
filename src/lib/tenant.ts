@@ -360,7 +360,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "ativo": true,
           "codigo": "correios_pac",
           "transportadora": "Correios",
-          "nome_personalizado": "PAC Econômico Segurado",
+          "nome_personalizado": "Correios PAC",
           "permite_frete_gratis": true,
           "prazo_adicional_dias": 0
         },
@@ -415,7 +415,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-11T13:57:10.146+00:00",
+  "updated_at": "2026-11-11T14:46:09.04+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",

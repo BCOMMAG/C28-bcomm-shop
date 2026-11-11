@@ -666,6 +666,41 @@ export async function calculateStoreShippingRates(params: {
     }
   }
 
+  // 5.5. Contingência Inteligente para PAC Municipal / Intra-cidade:
+  // Os Correios não operam PAC entre o mesmo município (ex: Curitiba -> Curitiba),
+  // retornando "Transportadora não atende este trecho."
+  // Se o lojista ATIVOU o PAC, recuperamos a cotação econômica municipal para que o cliente não fique desatendido.
+  const configPac = habilitadosMap.get('correios_pac');
+  const isPacHabilitado = configPac ? configPac.ativo : true;
+  const pacRateIndex = rawRates.findIndex(
+    (r) => (r.name || '').toLowerCase() === 'pac' || r.id === 1 || r.id === 2
+  );
+  const sedexRate = rawRates.find(
+    (r) => (r.name || '').toLowerCase().includes('sedex') && !r.error
+  );
+
+  if (isPacHabilitado && pacRateIndex !== -1 && rawRates[pacRateIndex]?.error) {
+    const ufUpper = (ufDestino || '').toUpperCase().trim();
+    const isSulRegiao = ['PR', 'SC', 'RS'].includes(ufUpper);
+    const municipalPrice = sedexRate?.price
+      ? Number(sedexRate.price)
+      : (isSulRegiao ? 14.90 : 18.40);
+    const municipalDays = sedexRate?.delivery_time
+      ? Math.max(2, Number(sedexRate.delivery_time) + 1)
+      : 3;
+
+    rawRates[pacRateIndex] = {
+      id: 2,
+      name: 'PAC',
+      price: municipalPrice,
+      custom_price: municipalPrice,
+      delivery_time: String(municipalDays),
+      custom_delivery_time: String(municipalDays),
+      company: { id: 1, name: 'Correios' },
+      is_contingencia_municipal: true
+    };
+  }
+
   // 6. Formata e filtra as opções para a vitrine
   const options: ShippingOption[] = [];
   const sobretaxaEmbalagem = Number(config.sobretaxa_embalagem_reais || 0);
