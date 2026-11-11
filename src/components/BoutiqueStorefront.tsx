@@ -283,13 +283,13 @@ export function BoutiqueStorefront() {
               key={sec.id}
               id={sec.id}
               style={sec.style.containerStyle}
-              className="pt-6 pb-14 sm:pt-10 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-[96px] transition-colors"
+              className="pt-4 pb-8 sm:pt-6 sm:pb-12 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 border-b border-[#C5A059]/20 scroll-mt-20 sm:scroll-mt-24 lg:scroll-mt-[80px] transition-colors"
             >
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2.5 sm:mb-8 lg:mb-6 gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-2 sm:mb-4 lg:mb-5 gap-1.5 sm:gap-3">
                 <div>
                   <h2
                     style={sec.style.tituloStyle}
-                    className="text-xl sm:text-3xl lg:text-4xl font-medium drop-shadow-sm"
+                    className="text-xl sm:text-2xl lg:text-3xl font-medium drop-shadow-sm"
                   >
                     {sec.titulo}
                   </h2>

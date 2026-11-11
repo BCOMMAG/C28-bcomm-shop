@@ -498,14 +498,14 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
-            {/* 2. LOGO NO DESKTOP: Posicionada um pouco mais para a direita (entre a opção Menu e as opções do centro) */}
-            <div className="hidden lg:flex items-center shrink-0 ml-4 xl:ml-8 2xl:ml-12 mr-6 xl:mr-10 2xl:mr-14 z-20">
+            {/* 2. LOGO NO DESKTOP: Posicionada entre a opção Menu e as opções do centro */}
+            <div className="hidden lg:flex items-center shrink-0 ml-2 xl:ml-6 2xl:ml-10 mr-2 xl:mr-6 2xl:mr-10 z-20">
               <Link
                 href={getStoreHomeUrl(currentTenant?.slug)}
                 className="flex items-center cursor-pointer transition-transform duration-300 hover:scale-105 shrink-0"
                 title={`${currentTenant?.nome || 'Início'} - Início`}
               >
-                <div className="relative w-36 sm:w-44 lg:w-48 xl:w-52 h-10 sm:h-12 lg:h-14 flex items-center shrink-0">
+                <div className="relative w-32 sm:w-40 lg:w-44 xl:w-52 h-9 sm:h-11 lg:h-12 flex items-center shrink-0">
                   <Image
                     src={currentLogoSrc}
                     alt={currentTenant?.nome || 'Leidy Boutique'}
@@ -537,191 +537,197 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* 4. CENTRO (DESKTOP): Links de Navegação em 2 Linhas com Dropdown de Subopções */}
-            <nav
-              style={menuNavStyle}
-              className="hidden lg:flex flex-col justify-center items-center gap-1 px-2 xl:px-4 flex-1 min-w-0"
-            >
-              {/* Linha 1 com z-30 para sobrepor perfeitamente a Linha 2 */}
-              <div
-                className={`relative z-30 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
-                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
-                }`}
+            {!desktopSearchOpen && (
+              <nav
+                style={menuNavStyle}
+                className="hidden lg:flex flex-col justify-center items-center gap-1 px-1 xl:px-4 flex-1 min-w-0"
               >
-                {menuRow1.map((item: NavItem) => {
-                  const hasSub = Boolean(item.subOptions && item.subOptions.length > 0);
-                  const isDropdownActive = activeDesktopDropdown === item.label;
+                {/* Linha 1 com z-30 para sobrepor perfeitamente a Linha 2 */}
+                <div
+                  className={`relative z-30 flex items-center justify-center gap-x-2.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
+                    isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
+                  }`}
+                >
+                  {menuRow1.map((item: NavItem) => {
+                    const hasSub = Boolean(item.subOptions && item.subOptions.length > 0);
+                    const isDropdownActive = activeDesktopDropdown === item.label;
 
-                  return (
-                    <div
-                      key={item.id || item.label}
-                      className={`relative ${isDropdownActive ? 'z-50' : 'z-20'}`}
-                      onMouseEnter={() => hasSub && handleDropdownMouseEnter(item.label)}
-                      onMouseLeave={() => hasSub && handleDropdownMouseLeave()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleNavClick(item)}
-                        className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
-                          isTransparent
-                            ? 'hover:text-[#DFBE76]'
-                            : 'hover:text-[color:var(--menu-hover-color)]'
-                        }`}
+                    return (
+                      <div
+                        key={item.id || item.label}
+                        className={`relative ${isDropdownActive ? 'z-50' : 'z-20'}`}
+                        onMouseEnter={() => hasSub && handleDropdownMouseEnter(item.label)}
+                        onMouseLeave={() => hasSub && handleDropdownMouseLeave()}
                       >
-                        <span>{item.label}</span>
-                        {item.badge && (
-                          <span
-                            className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
-                              item.badge.colorBg || 'bg-[#C5A059]'
-                            } ${item.badge.colorText || 'text-white'}`}
-                          >
-                            {item.badge.text}
-                          </span>
-                        )}
-                        {hasSub && <ChevronDown className="w-3 h-3 opacity-70 ml-0.5" />}
-                      </button>
-
-                      {/* Dropdown flutuante desktop com ponte invisível e tolerância de hover para não sumir ao mover o mouse */}
-                      {hasSub && isDropdownActive && (
-                        <div
-                          className="absolute top-full left-1/2 -translate-x-1/2 pt-1.5 z-50 animate-fadeIn"
-                          onMouseEnter={() => handleDropdownMouseEnter(item.label)}
-                          onMouseLeave={handleDropdownMouseLeave}
+                        <button
+                          type="button"
+                          onClick={() => handleNavClick(item)}
+                          className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
+                            isTransparent
+                              ? 'hover:text-[#DFBE76]'
+                              : 'hover:text-[color:var(--menu-hover-color)]'
+                          }`}
                         >
-                          {/* Ponte invisível que impede que o mouse saia da área ativa durante o deslocamento */}
-                          <div className="absolute -top-3 inset-x-0 h-3 bg-transparent pointer-events-auto" />
-                          <div className="relative bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 shadow-2xl p-2 min-w-[220px] space-y-1">
-                            <span className="text-[10px] uppercase tracking-widest text-[#C5A059] font-bold block px-2 py-1 border-b border-[#C5A059]/15">
-                              {item.label}
+                          <span>{item.label}</span>
+                          {item.badge && (
+                            <span
+                              className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
+                                item.badge.colorBg || 'bg-[#C5A059]'
+                              } ${item.badge.colorText || 'text-white'}`}
+                            >
+                              {item.badge.text}
                             </span>
-                            {item.subOptions!.map((sub: SubOption) => (
-                              <button
-                                key={sub.id || sub.label}
-                                type="button"
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   handleNavClick(sub);
-                                }}
-                                className="w-full text-left text-xs py-1.5 px-2.5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] hover:text-[color:var(--menu-hover-color)] transition-colors rounded-none truncate cursor-pointer"
-                              >
-                                {sub.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                          )}
+                          {hasSub && <ChevronDown className="w-3 h-3 opacity-70 ml-0.5" />}
+                        </button>
 
-              {/* Linha 2 com z-10 */}
-              <div
-                className={`relative z-10 flex items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
-                  isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
-                }`}
-              >
-                {menuRow2.map((item: NavItem) => (
+                        {/* Dropdown flutuante desktop com ponte invisível e tolerância de hover para não sumir ao mover o mouse */}
+                        {hasSub && isDropdownActive && (
+                          <div
+                            className="absolute top-full left-1/2 -translate-x-1/2 pt-1.5 z-50 animate-fadeIn"
+                            onMouseEnter={() => handleDropdownMouseEnter(item.label)}
+                            onMouseLeave={handleDropdownMouseLeave}
+                          >
+                            {/* Ponte invisível que impede que o mouse saia da área ativa durante o deslocamento */}
+                            <div className="absolute -top-3 inset-x-0 h-3 bg-transparent pointer-events-auto" />
+                            <div className="relative bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 shadow-2xl p-2 min-w-[220px] space-y-1">
+                              <span className="text-[10px] uppercase tracking-widest text-[#C5A059] font-bold block px-2 py-1 border-b border-[#C5A059]/15">
+                                {item.label}
+                              </span>
+                              {item.subOptions!.map((sub: SubOption) => (
+                                <button
+                                  key={sub.id || sub.label}
+                                  type="button"
+                                  onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleNavClick(sub);
+                                  }}
+                                  className="w-full text-left text-xs py-1.5 px-2.5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] hover:text-[color:var(--menu-hover-color)] transition-colors rounded-none truncate cursor-pointer"
+                                >
+                                  {sub.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Linha 2 com z-10 */}
+                <div
+                  className={`relative z-10 flex items-center justify-center gap-x-2.5 xl:gap-x-5 2xl:gap-x-6 text-[length:var(--menu-font-size)] font-medium tracking-normal ${
+                    isTransparent ? 'text-white/95 drop-shadow-sm' : 'text-[color:var(--menu-text-color)]'
+                  }`}
+                >
+                  {menuRow2.map((item: NavItem) => (
+                    <button
+                      key={item.id || item.label}
+                      type="button"
+                      onClick={() => handleNavClick(item)}
+                      className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
+                        item.isSpecial
+                          ? item.label === 'BAZAR'
+                            ? 'font-bold text-[#C5A059] dark:text-[#DFBE76] hover:text-[#1A1918] dark:hover:text-white'
+                            : 'font-semibold text-rose-500 dark:text-rose-400 hover:text-rose-600'
+                          : isTransparent
+                          ? 'hover:text-[#DFBE76]'
+                          : 'hover:text-[color:var(--menu-hover-color)]'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      {item.badge && (
+                        <span
+                          className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
+                            item.badge.colorBg || 'bg-[#C5A059]'
+                          } ${item.badge.colorText || 'text-white'}`}
+                        >
+                          {item.badge.text}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </nav>
+            )}
+
+            {/* 4.1 CENTRO (DESKTOP) QUANDO BUSCA ATIVA: Campo de Busca Centralizado Elegante sem Sobrepor Menus */}
+            {desktopSearchOpen && (
+              <div className="hidden lg:flex items-center justify-center flex-1 min-w-0 mx-2 xl:mx-6 max-w-xl animate-fadeIn z-30">
+                <div className="flex items-center w-full bg-white dark:bg-[#201D1B] border border-[#C5A059] px-3 py-1.5 shadow-md">
+                  <Search className="w-4 h-4 text-[#C5A059] shrink-0 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Pesquisar por peça, categoria ou cor..."
+                    value={headerSearchInput}
+                    autoFocus
+                    onChange={(e) => setHeaderSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        executeHeaderSearch();
+                      }
+                      if (e.key === 'Escape') {
+                        setDesktopSearchOpen(false);
+                      }
+                    }}
+                    className="flex-1 min-w-0 text-xs bg-transparent text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none placeholder:text-[#A8A29E]"
+                  />
+                  {headerSearchInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderSearchInput('');
+                        setSearchQuery('');
+                      }}
+                      className="p-1 text-[#78716C] hover:text-[#1A1918] dark:hover:text-white cursor-pointer mr-1"
+                      title="Limpar pesquisa"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
-                    key={item.id || item.label}
                     type="button"
-                    onClick={() => handleNavClick(item)}
-                    className={`whitespace-nowrap transition-colors cursor-pointer py-1 flex items-center gap-1 ${
-                      item.isSpecial
-                        ? item.label === 'BAZAR'
-                          ? 'font-bold text-[#C5A059] dark:text-[#DFBE76] hover:text-[#1A1918] dark:hover:text-white'
-                          : 'font-semibold text-rose-500 dark:text-rose-400 hover:text-rose-600'
-                        : isTransparent
-                        ? 'hover:text-[#DFBE76]'
-                        : 'hover:text-[color:var(--menu-hover-color)]'
-                    }`}
+                    onClick={() => executeHeaderSearch()}
+                    className="flex items-center gap-1 px-3 py-1 bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-2xs mr-2"
+                    title="Pesquisar no catálogo"
                   >
-                    <span>{item.label}</span>
-                    {item.badge && (
-                      <span
-                        className={`text-[8px] xl:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase leading-none shadow-2xs ${
-                          item.badge.colorBg || 'bg-[#C5A059]'
-                        } ${item.badge.colorText || 'text-white'}`}
-                      >
-                        {item.badge.text}
-                      </span>
-                    )}
+                    <span>Buscar</span>
+                    <ArrowRight className="w-3 h-3 stroke-[3]" />
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setDesktopSearchOpen(false)}
+                    className="p-1 text-[#78716C] hover:text-[#1A1918] dark:hover:text-white cursor-pointer transition-colors"
+                    title="Fechar pesquisa (Esc)"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </nav>
+            )}
 
             {/* 5. LADO DIREITO: Ações do Header */}
             {/* Desktop: Busca Expansível, Modo Noturno, Favoritos e Sacola */}
             {/* Mobile: EXCLUSIVAMENTE Pesquisar, Favoritos e Sacola (Regra 4) */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0 z-20">
               
-              {/* DESKTOP: Busca Expansível */}
-              <div className="relative hidden lg:flex items-center">
-                {desktopSearchOpen ? (
-                  <div className="flex items-center gap-1 bg-white dark:bg-[#201D1B] border border-[#C5A059]/40 px-2 py-1 shadow-md animate-fadeIn">
-                    <Search className="w-3.5 h-3.5 text-[#C5A059]" />
-                    <input
-                      type="text"
-                      placeholder="Pesquisar..."
-                      value={headerSearchInput}
-                      autoFocus
-                      onChange={(e) => setHeaderSearchInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          executeHeaderSearch();
-                        }
-                        if (e.key === 'Escape') {
-                          setDesktopSearchOpen(false);
-                        }
-                      }}
-                      className="w-32 lg:w-44 px-1.5 py-0.5 text-xs bg-transparent text-[#1A1918] dark:text-[#FAF8F5] focus:outline-none"
-                    />
-                    {headerSearchInput && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHeaderSearchInput('');
-                          setSearchQuery('');
-                        }}
-                        className="p-0.5 text-[#78716C] hover:text-[#1A1918] dark:hover:text-white cursor-pointer"
-                        title="Limpar"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => executeHeaderSearch()}
-                      className="p-1 rounded-none bg-[#22C55E] hover:bg-[#16A34A] text-white cursor-pointer transition-transform hover:scale-105"
-                      title="Pesquisar no catálogo"
-                    >
-                      <ArrowRight className="w-3 h-3 stroke-[3]" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDesktopSearchOpen(false)}
-                      className="p-1 text-[#78716C] hover:text-[#1A1918] dark:hover:text-white cursor-pointer"
-                      title="Fechar busca"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setDesktopSearchOpen(true)}
-                    className={`p-1.5 sm:p-2 transition-colors cursor-pointer ${
-                      isTransparent
-                        ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
-                        : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
-                    }`}
-                    title="Pesquisar no site"
-                    aria-label="Pesquisar"
-                  >
-                    <Search className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                  </button>
-                )}
-              </div>
+              {/* DESKTOP: Botão Gatilho de Busca */}
+              <button
+                type="button"
+                onClick={() => setDesktopSearchOpen(!desktopSearchOpen)}
+                className={`hidden lg:flex p-1.5 sm:p-2 transition-colors cursor-pointer ${
+                  desktopSearchOpen
+                    ? 'text-[#C5A059]'
+                    : isTransparent
+                    ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
+                    : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
+                }`}
+                title={desktopSearchOpen ? 'Fechar busca' : 'Pesquisar no site'}
+                aria-label="Pesquisar"
+              >
+                {desktopSearchOpen ? <X className="w-4.5 h-4.5" /> : <Search className="w-4.5 h-4.5 sm:w-5 sm:h-5" />}
+              </button>
 
               {/* DESKTOP: Alternador de Modo Escuro / Claro */}
               <button

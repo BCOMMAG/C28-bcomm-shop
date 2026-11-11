@@ -240,9 +240,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onOpenDetails(product)}
     >
-      {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) e altura máxima proporcional */}
+      {/* Moldura da Imagem / Vídeo com proporção de alta moda (3:4) e altura máxima proporcional para notebooks e telas menores */}
       <div
-        className="relative aspect-[3/4] catalog-card-image w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
+        className="relative aspect-[3/4] max-h-[250px] sm:max-h-[280px] md:max-h-[300px] lg:max-h-[320px] xl:max-h-[360px] catalog-card-image w-full bg-[#F4F2EE] dark:bg-[#22201E] overflow-hidden cursor-pointer"
         onClick={() => onOpenDetails(product)}
       >
         {/* Imagem Principal do Produto (Fixa na base z-0: nunca desaparece nem cria buraco cinza) */}

@@ -505,10 +505,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       }}
     >
       {/* Container Principal do Modal Centralizado */}
-      <div className="relative w-full max-w-5xl bg-[#FAF8F5] dark:bg-[#1A1918] rounded-none shadow-2xl overflow-hidden border border-[#C5A059]/40 text-[#1A1918] dark:text-[#FAF8F5] my-auto flex flex-col h-[100dvh] sm:h-[92vh] max-h-[100dvh] sm:max-h-[92vh]">
+      <div className="relative w-full max-w-5xl bg-[#FAF8F5] dark:bg-[#1A1918] rounded-none shadow-2xl overflow-hidden border border-[#C5A059]/40 text-[#1A1918] dark:text-[#FAF8F5] my-auto flex flex-col h-[100dvh] sm:h-[88vh] max-h-[100dvh] sm:max-h-[88vh]">
         
         {/* Barra Superior Fina Fixa: Voltar e Adicionar à Sacola (Nunca some durante o scroll) */}
-        <div className="w-full bg-[#FAF8F5] dark:bg-[#1A1918] border-b border-[#C5A059]/25 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between z-30 shrink-0 shadow-2xs">
+        <div className="w-full bg-[#FAF8F5] dark:bg-[#1A1918] border-b border-[#C5A059]/25 px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between z-30 shrink-0 shadow-2xs">
           <button
             onClick={onClose}
             className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] transition-colors cursor-pointer select-none py-1"
@@ -526,7 +526,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   : isCurrentSelectionOutOfStock
                   ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed'
                   : 'bg-[#1A1918] dark:bg-white text-white dark:text-[#1A1918] hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] cursor-pointer'
-              } text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-2 transition-all duration-300 shadow-sm flex items-center gap-1.5`}
+              } text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3.5 sm:px-5 py-1.5 sm:py-2 transition-all duration-300 shadow-sm flex items-center gap-1.5`}
             >
               {isCombinationInReservation ? (
                 <>
@@ -556,15 +556,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
           <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full">
             
-            {/* COLUNA ESQUERDA: GALERIA E VÍDEO (Miniaturas coladas logo abaixo do visualizador) */}
-            <div className="lg:col-span-5 p-2.5 sm:p-5 lg:p-6 bg-[#F4EFE6]/60 dark:bg-[#141312]/60 flex flex-col items-center justify-start lg:sticky lg:top-0 self-start border-b lg:border-b-0 lg:border-r border-[#C5A059]/20">
+            {/* COLUNA ESQUERDA: GALERIA E VÍDEO (Miniaturas sempre visíveis na dobra sem rolagem) */}
+            <div className="lg:col-span-5 p-2 sm:p-3.5 lg:p-4 bg-[#F4EFE6]/60 dark:bg-[#141312]/60 flex flex-col items-center justify-start lg:sticky lg:top-0 self-start border-b lg:border-b-0 lg:border-r border-[#C5A059]/20">
             
             {/* Visualizador Principal com Navegação por Setas e Swipe */}
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-full aspect-[3/4] sm:aspect-auto sm:h-[380px] lg:h-[500px] rounded-none overflow-hidden bg-black shadow-lg mx-auto select-none touch-pan-y"
+              className="relative w-full aspect-[3/4] sm:aspect-auto sm:h-[280px] lg:h-[360px] xl:h-[400px] max-h-[44vh] rounded-none overflow-hidden bg-black shadow-lg mx-auto select-none touch-pan-y"
             >
               {currentMedia && (currentMedia.type === 'video' || isVideoUrl(currentMedia.src)) ? (
                 <div className="relative w-full h-full">
@@ -689,14 +689,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </div>
 
             {/* Carrossel de Miniaturas */}
-            <div className="w-full mt-3 flex items-center justify-center gap-2.5 overflow-x-auto py-1">
+            <div className="w-full mt-2 sm:mt-2.5 flex items-center justify-center gap-2 overflow-x-auto py-1">
               {product.media.map((item, index) => {
                 const isSelected = activeMediaIndex === index;
                 return (
                   <button
                     key={index}
                     onClick={() => handleSelectMedia(index)}
-                    className={`relative w-14 h-16 sm:w-16 sm:h-20 rounded-none overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                    className={`relative w-12 h-14 sm:w-14 sm:h-16 rounded-none overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
                       isSelected
                         ? 'border-[#C5A059] shadow-md ring-2 ring-[#C5A059]/40 scale-105'
                         : 'border-white/80 dark:border-white/20 opacity-70 hover:opacity-100 hover:border-[#C5A059]/50'
@@ -704,10 +704,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   >
                     {item.type === 'video' || isVideoUrl(item.src) ? (
                       <div className="w-full h-full bg-[#1A1918] flex flex-col items-center justify-center text-white p-1">
-                        <div className="w-6 h-6 rounded-none bg-[#C5A059] flex items-center justify-center mb-0.5">
-                          <Play className="w-3 h-3 fill-white ml-0.5" />
+                        <div className="w-5 h-5 rounded-none bg-[#C5A059] flex items-center justify-center mb-0.5">
+                          <Play className="w-2.5 h-2.5 fill-white ml-0.5" />
                         </div>
-                        <span className="text-[8px] uppercase font-bold tracking-tight text-[#DFBE76]">
+                        <span className="text-[7.5px] uppercase font-bold tracking-tight text-[#DFBE76]">
                           Vídeo
                         </span>
                       </div>
@@ -724,14 +724,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               })}
             </div>
 
-            <p className="text-[11px] text-[#78716C] dark:text-[#A8A29E] text-center mt-1 flex items-center justify-center gap-1.5">
+            <p className="text-[10px] sm:text-[11px] text-[#78716C] dark:text-[#A8A29E] text-center mt-1 flex items-center justify-center gap-1.5">
               <span>Deslize para o lado para ver fotos e detalhes da peça.</span>
             </p>
 
           </div>
 
           {/* COLUNA DIREITA: INFORMAÇÕES & PEDIDO */}
-          <div className="lg:col-span-7 p-4 sm:p-6 lg:p-8 flex flex-col justify-between">
+          <div className="lg:col-span-7 p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
             <div>
               {/* Header de Categoria e Atalho */}
               <div className="flex items-center justify-between pr-4 sm:pr-8">
