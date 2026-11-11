@@ -33,6 +33,7 @@ import { KpiCard } from '@/components/admin/ui/kpi-card';
 import { DeltaBadge } from '@/components/admin/ui/delta-badge';
 import { BarChart } from '@/components/admin/ui/bar-chart';
 import { useStore } from '@/context/StoreContext';
+import { isMasterUser } from '@/lib/team';
 
 export type FilterPeriodKey = 'hoje' | 'ontem' | '7d' | '30d' | 'mes_atual' | '90d';
 
@@ -111,6 +112,19 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
+    const isMaster = isMasterUser();
+    const isAuth =
+      typeof window !== 'undefined' &&
+      (localStorage.getItem('bcomm_admin_auth') === 'true' ||
+       localStorage.getItem('leidy_admin_auth') === 'true');
+
+    if (!isMaster && !isAuth) {
+      if (typeof window !== 'undefined') {
+        window.location.replace('/admin/login/');
+      }
+      return;
+    }
+
     fetchDashboardData();
   }, [lojaId]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RotateCw, Home, ShoppingBag, AlertCircle } from 'lucide-react';
 
@@ -11,9 +11,30 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [isAdminRoute, setIsAdminRoute] = useState(false);
+
   useEffect(() => {
     console.error('Captured by Next.js App Error Boundary:', error);
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname || '';
+      if (p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin')) {
+        setIsAdminRoute(true);
+        const target = p.startsWith('/super-admin') ? '/super-admin/login/' : '/admin/login/';
+        window.location.replace(target);
+      }
+    }
   }, [error]);
+
+  if (isAdminRoute) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl max-w-sm text-center">
+          <div className="w-8 h-8 border-3 border-amber-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-slate-800">Redirecionando para o login administrativo...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#121110] text-[#1A1918] dark:text-[#FAF8F5] flex items-center justify-center p-4">

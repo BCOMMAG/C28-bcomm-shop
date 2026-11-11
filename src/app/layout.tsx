@@ -80,6 +80,20 @@ export default function RootLayout({
                   // =========================================================================
                   var p = window.location.pathname || '';
                   var h = (window.location.hostname || '').toLowerCase();
+                  var cleanP = p.replace(/\/+$/, '') || '/';
+
+                  // Redirecionamento instantâneo em 0ms: /admin sem autenticação vai direto para /admin/login/
+                  if (cleanP === '/admin') {
+                    var isMaster = localStorage.getItem('bcomm_master_session') === 'true' ||
+                                   localStorage.getItem('bcomm_super_admin_auth') === 'true' ||
+                                   localStorage.getItem('bcomm_master_active') === 'true';
+                    var isAuth = localStorage.getItem('bcomm_admin_auth') === 'true' ||
+                                 localStorage.getItem('leidy_admin_auth') === 'true';
+                    if (!isMaster && !isAuth) {
+                      window.location.replace('/admin/login/');
+                      return;
+                    }
+                  }
 
                   var isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.indexOf('/admin') !== -1 || p.indexOf('/super-admin') !== -1;
                   if (isAdmin) {

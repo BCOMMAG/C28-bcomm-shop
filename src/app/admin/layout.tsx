@@ -160,15 +160,27 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           if (isMasterUser(data.session.user)) setIsMaster(true);
         } else {
           setIsAuthenticated(false);
-          router.push('/admin/login/');
+          if (typeof window !== 'undefined') {
+            window.location.replace('/admin/login/');
+          } else {
+            router.push('/admin/login/');
+          }
         }
       }).catch(() => {
         setIsAuthenticated(false);
-        router.push('/admin/login/');
+        if (typeof window !== 'undefined') {
+          window.location.replace('/admin/login/');
+        } else {
+          router.push('/admin/login/');
+        }
       });
     } catch {
       setIsAuthenticated(false);
-      router.push('/admin/login/');
+      if (typeof window !== 'undefined') {
+        window.location.replace('/admin/login/');
+      } else {
+        router.push('/admin/login/');
+      }
     }
   }, [cleanPath, isLoginPage, router]);
 
@@ -322,7 +334,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('bcomm_token_version');
 
     const encodedReason = encodeURIComponent(reason);
-    router.push(`/admin/login/?revoked=true&reason=${encodedReason}`);
+    if (typeof window !== 'undefined') {
+      window.location.replace(`/admin/login/?revoked=true&reason=${encodedReason}`);
+    } else {
+      router.push(`/admin/login/?revoked=true&reason=${encodedReason}`);
+    }
   };
 
   // TRIPLA CAMADA DE KILL-SWITCH EM TEMPO REAL:
@@ -1112,7 +1128,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 Módulo Exclusivo da Administração
               </h2>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Seu perfil atual ({activeMember?.cargo.toUpperCase()}) não possui permissão para acessar esta seção restrita da boutique.
+                Seu perfil atual ({activeMember?.cargo?.toUpperCase() || 'COLABORADOR'}) não possui permissão para acessar esta seção restrita da boutique.
               </p>
               <div className="mt-6 flex flex-wrap gap-3 justify-center">
                 <Link
