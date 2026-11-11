@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { RotateCw, Home, ShoppingBag, AlertCircle } from 'lucide-react';
+import { RotateCw, Home, ShoppingBag, AlertCircle, LogIn, ShieldAlert } from 'lucide-react';
 
 export default function ErrorPage({
   error,
@@ -11,7 +11,13 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [isAdminRoute, setIsAdminRoute] = useState(false);
+  const [isAdminRoute, setIsAdminRoute] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname || '';
+      return p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin');
+    }
+    return false;
+  });
 
   useEffect(() => {
     console.error('Captured by Next.js App Error Boundary:', error);
@@ -19,18 +25,55 @@ export default function ErrorPage({
       const p = window.location.pathname || '';
       if (p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin')) {
         setIsAdminRoute(true);
-        const target = p.startsWith('/super-admin') ? '/super-admin/login/' : '/admin/login/';
-        window.location.replace(target);
       }
     }
   }, [error]);
 
   if (isAdminRoute) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl max-w-sm text-center">
-          <div className="w-8 h-8 border-3 border-amber-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-bold text-slate-800">Redirecionando para o login administrativo...</p>
+      <div className="min-h-screen bg-[#07060A] text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="w-full max-w-md bg-[#100E17] border border-purple-500/20 p-8 shadow-2xl relative rounded-2xl text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-purple-400">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-purple-400 block">
+              BCOMM Stores • Console Administrativo
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+              Painel Administrativo
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Ocorreu uma oscilação na renderização. Clique abaixo para retornar ao login ou recarregar.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof reset === 'function') reset();
+                else window.location.reload();
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>Tentar Novamente</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = window.location.pathname.startsWith('/super-admin') ? '/super-admin/login/' : '/admin/login/';
+                window.location.href = target;
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <LogIn className="w-3.5 h-3.5 text-purple-400" />
+              <span>Ir para Login</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -87,4 +130,3 @@ export default function ErrorPage({
     </div>
   );
 }
-

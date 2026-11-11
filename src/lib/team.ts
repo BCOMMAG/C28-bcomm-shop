@@ -581,7 +581,6 @@ export async function checkSessionValidity(
       .from('equipe_loja')
       .select('id, ativo, token_version')
       .eq('id', memberId)
-      .eq('loja_id', lojaId)
       .maybeSingle();
 
     if (error || !data) {

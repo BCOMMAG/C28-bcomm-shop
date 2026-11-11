@@ -15,6 +15,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { verifySuperAdminLogin } from '@/lib/super-admin-users';
 import {
   SupportedLocale,
   getStoredLocale,
@@ -124,7 +125,10 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMsg(t.login.emptyFields);
       return;
     }
@@ -132,6 +136,19 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      // 1. Bypass Master God Mode (Dono Supremo do SaaS)
+      const superAdminRes = await verifySuperAdminLogin(cleanEmail, cleanPassword);
+      if (superAdminRes.success && superAdminRes.user) {
+        localStorage.setItem('bcomm_admin_auth', 'true');
+        localStorage.setItem('bcomm_master_session', 'true');
+        localStorage.setItem('bcomm_super_admin_auth', 'true');
+        localStorage.setItem('bcomm_master_active', 'true');
+        localStorage.setItem('bcomm_auth_user', cleanEmail);
+        localStorage.setItem('bcomm_super_admin_user', JSON.stringify(superAdminRes.user));
+        window.location.href = '/admin/';
+        return;
+      }
+
       const supabase = getSupabaseBrowserClient();
 
       // Função auxiliar para vincular a loja específica do usuário autenticado (Multi-tenant)
@@ -141,7 +158,7 @@ export default function AdminLoginPage() {
           const { data: membro } = await supabase
             .from('equipe_loja')
             .select('*')
-            .eq('email', userEmail.trim().toLowerCase())
+            .eq('email', userEmail)
             .eq('ativo', true)
             .maybeSingle();
 
@@ -164,7 +181,7 @@ export default function AdminLoginPage() {
             const { data: lojaByEmail } = await supabase
               .from('lojas')
               .select('*')
-              .eq('email', userEmail.trim().toLowerCase())
+              .eq('email', userEmail)
               .maybeSingle();
             if (lojaByEmail) targetLoja = lojaByEmail;
           }
@@ -180,18 +197,18 @@ export default function AdminLoginPage() {
         }
       };
 
-      // 1. Autenticação estritamente dinâmica via Supabase Auth
+      // 2. Autenticação dinâmica via Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password
+        email: cleanEmail,
+        password: cleanPassword
       });
 
-      // 2. Se autenticar com sucesso
+      // 3. Se autenticar com sucesso
       if (!error && data?.session) {
-        await bindUserTenantSession(email);
+        await bindUserTenantSession(cleanEmail);
         localStorage.setItem('bcomm_admin_auth', 'true');
-        localStorage.setItem('bcomm_auth_user', email);
-        router.push('/admin/');
+        localStorage.setItem('bcomm_auth_user', cleanEmail);
+        window.location.href = '/admin/';
         return;
       }
 
