@@ -14,7 +14,10 @@ import {
   Sparkles,
   Clock,
   Crown,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   CargoColaborador,
@@ -49,6 +52,8 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
   const [horarioInicio, setHorarioInicio] = useState('08:00');
   const [horarioFim, setHorarioFim] = useState('19:00');
   const [pin, setPin] = useState('');
+  const [senhaInicial, setSenhaInicial] = useState('');
+  const [showSenhaInicial, setShowSenhaInicial] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [createdSuccess, setCreatedSuccess] = useState<MembroEquipe | null>(null);
@@ -106,7 +111,8 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
         horario_restrito: horarioRestrito,
         horario_inicio: `${horarioInicio}:00`,
         horario_fim: `${horarioFim}:00`,
-        pin: pin.trim() || undefined
+        pin: pin.trim() || undefined,
+        senha_inicial: senhaInicial.trim() || undefined
       };
 
       const operadorAtual = (typeof window !== 'undefined' ? localStorage.getItem('bcomm_auth_user') : null) || lojaNome;
@@ -126,7 +132,11 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
 
   const handleCopyCredentials = (member: MembroEquipe) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
-    const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
+    let text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}`;
+    if (senhaInicial) {
+      text += `\nSenha Inicial: ${senhaInicial}`;
+    }
+    text += `\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
     navigator.clipboard.writeText(text);
     setCopiedCredentials(true);
     setTimeout(() => setCopiedCredentials(false), 3000);
@@ -178,6 +188,14 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
                   {createdSuccess.pin_hash}
                 </span>
               </div>
+              {senhaInicial && (
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Senha de Acesso:</span>
+                  <span className="font-mono font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded text-sm">
+                    {senhaInicial}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-slate-600">
                 <span>Alçada de Desconto:</span>
                 <strong className="text-emerald-700">Até {createdSuccess.alcada_desconto_percentual}%</strong>
@@ -453,19 +471,73 @@ export function InviteMemberModal({ isOpen, onClose, onMemberCreated, lojaId }: 
               )}
             </div>
 
-            {/* PIN Rápido Balcão */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                PIN de 4 dígitos para Balcão / Tablet (Opcional - Gerado automaticamente se vazio)
-              </label>
-              <input
-                type="text"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="Ex: 2580"
-                className="w-32 px-3 py-2 text-center font-mono font-bold tracking-widest text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600"
-              />
+            {/* Credenciais de Acesso (Senha Inicial e PIN) */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Credenciais Iniciais de Acesso</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Senha Inicial */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      Senha de Acesso ao Painel (Opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$!';
+                        let pwd = '';
+                        for (let i = 0; i < 10; i++) {
+                          pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        setSenhaInicial(pwd);
+                        setShowSenhaInicial(true);
+                      }}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      Gerar
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showSenhaInicial ? 'text' : 'password'}
+                      value={senhaInicial}
+                      onChange={(e) => setSenhaInicial(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      minLength={6}
+                      className="w-full px-3 py-2 pr-8 text-xs font-mono bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSenhaInicial(!showSenhaInicial)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showSenhaInicial ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Criada diretamente sem depender de e-mail</span>
+                </div>
+
+                {/* PIN Balcão */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    PIN 4 dígitos (Balcão / PDV)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Ex: 2580 (Auto se vazio)"
+                    className="w-full px-3 py-2 text-center font-mono font-bold tracking-widest text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Troca rápida de atendente</span>
+                </div>
+              </div>
             </div>
 
             {/* Botões de Ação */}

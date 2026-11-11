@@ -46,7 +46,7 @@ import { GlobalSearchModal } from '@/components/admin/GlobalSearchModal';
 import { getAdminPendingNotifications } from '@/lib/admin';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { getStorefrontUrl } from '@/lib/routes';
-import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser } from '@/lib/team';
+import { MembroEquipe, getTeamMembers, checkWorkingHoursAccess, isMasterUser, checkSessionValidity } from '@/lib/team';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
 import { MasterImpersonationBar } from '@/components/admin/MasterImpersonationBar';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
@@ -234,18 +234,26 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         const list = await getTeamMembers(activeLojaId);
         setTeamMembers(list);
         const savedColab = typeof window !== 'undefined' ? localStorage.getItem('leidy_admin_colaborador') : null;
+        let chosenMember: MembroEquipe | null = null;
         if (savedColab) {
           try {
             const parsed = JSON.parse(savedColab);
-            const fresh = list.find((m) => m.id === parsed.id) || parsed;
-            setActiveMember(fresh);
+            chosenMember = list.find((m) => m.id === parsed.id) || parsed;
           } catch {
-            const dono = list.find((m) => m.cargo === 'dono') || null;
-            setActiveMember(dono);
+            chosenMember = list.find((m) => m.cargo === 'dono') || null;
           }
         } else {
-          const dono = list.find((m) => m.cargo === 'dono') || null;
-          setActiveMember(dono);
+          chosenMember = list.find((m) => m.cargo === 'dono') || null;
+        }
+
+        setActiveMember(chosenMember);
+
+        // Inicializa a versão local do token de sessão se ainda não estiver definida
+        if (typeof window !== 'undefined' && chosenMember?.token_version) {
+          const localVer = localStorage.getItem('bcomm_token_version');
+          if (!localVer) {
+            localStorage.setItem('bcomm_token_version', String(chosenMember.token_version));
+          }
         }
       } catch (err) {
         console.error('Erro ao carregar equipe no layout:', err);
@@ -291,8 +299,100 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('bcomm_admin_loja_id');
     localStorage.removeItem('bcomm_admin_loja_slug');
     localStorage.removeItem('bcomm_auth_user');
+    localStorage.removeItem('bcomm_token_version');
     router.push('/admin/login/');
   };
+
+  /**
+   * Encerramento forçado de sessão acionado pelo Kill-Switch
+   */
+  const handleForcedLogout = async (reason: string) => {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+    } catch {}
+    localStorage.removeItem('bcomm_admin_auth');
+    localStorage.removeItem('leidy_admin_auth');
+    localStorage.removeItem('leidy_admin_user');
+    localStorage.removeItem('leidy_admin_colaborador');
+    localStorage.removeItem('bcomm_admin_colaborador');
+    localStorage.removeItem('bcomm_admin_loja_id');
+    localStorage.removeItem('bcomm_admin_loja_slug');
+    localStorage.removeItem('bcomm_auth_user');
+    localStorage.removeItem('bcomm_token_version');
+
+    const encodedReason = encodeURIComponent(reason);
+    router.push(`/admin/login/?revoked=true&reason=${encodedReason}`);
+  };
+
+  // TRIPLA CAMADA DE KILL-SWITCH EM TEMPO REAL:
+  // 1. Supabase Realtime (WebSocket instantâneo ao suspender ou trocar senha)
+  // 2. Heartbeat periódico a cada 15s (Fallback)
+  useEffect(() => {
+    if (!isAuthenticated || isMaster || !activeMember?.id) return;
+
+    const activeLojaId = currentTenant?.id || DEFAULT_TENANT_ID;
+    const memberId = activeMember.id;
+    const localVersion = Number(localStorage.getItem('bcomm_token_version') || activeMember.token_version || 1);
+
+    // Camada 1: Supabase Realtime
+    const supabase = getSupabaseBrowserClient();
+    const killSwitchChannel = supabase
+      .channel(`kill-switch-${memberId}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'equipe_loja',
+          filter: `id=eq.${memberId}`
+        },
+        (payload: any) => {
+          const newRecord = payload.new;
+          if (!newRecord) return;
+
+          // Se o colaborador foi inativado / suspenso
+          if (newRecord.ativo === false) {
+            handleForcedLogout('Seu acesso ao painel foi desativado pela administração da loja.');
+            return;
+          }
+
+          // Se a senha foi alterada ou o kill-switch acionado (token_version incrementado)
+          const dbVersion = Number(newRecord.token_version || 1);
+          if (dbVersion > localVersion) {
+            handleForcedLogout('Sua sessão foi encerrada porque sua senha ou permissões foram alteradas.');
+          }
+        }
+      )
+      .subscribe();
+
+    // Camada 2: Heartbeat periódico (a cada 15 segundos)
+    const heartbeatInterval = setInterval(async () => {
+      const check = await checkSessionValidity(activeLojaId, memberId, localVersion);
+      if (!check.valid) {
+        handleForcedLogout(check.reason || 'Sua sessão foi encerrada pela administração da loja.');
+      }
+    }, 15000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      supabase.removeChannel(killSwitchChannel);
+    };
+  }, [isAuthenticated, isMaster, activeMember?.id, activeMember?.token_version, currentTenant?.id]);
+
+  // Camada 3: Route Guard (Validação a cada navegação de rota no painel)
+  useEffect(() => {
+    if (!isAuthenticated || isMaster || !activeMember?.id || isLoginPage) return;
+
+    const activeLojaId = currentTenant?.id || DEFAULT_TENANT_ID;
+    const localVersion = Number(localStorage.getItem('bcomm_token_version') || activeMember.token_version || 1);
+
+    checkSessionValidity(activeLojaId, activeMember.id, localVersion).then((check) => {
+      if (!check.valid) {
+        handleForcedLogout(check.reason || 'Sua sessão foi encerrada pela administração da loja.');
+      }
+    });
+  }, [pathname]);
 
   const navItems = [
     {

@@ -143,6 +143,7 @@ export interface CreateTeamMemberInput {
   horario_inicio?: string;
   horario_fim?: string;
   pin?: string;
+  senha_inicial?: string;
 }
 
 /**
@@ -395,6 +396,20 @@ export async function createTeamMember(
       return { success: false, error: error.message };
     }
 
+    // Se informou senha inicial, cria/atualiza credenciais no auth.users imediatamente
+    if (input.senha_inicial && input.senha_inicial.trim().length >= 6) {
+      try {
+        await adminResetMemberPassword(
+          lojaId,
+          data.id,
+          input.senha_inicial.trim(),
+          autorNome
+        );
+      } catch (pwdErr) {
+        console.warn('⚠️ [team.ts] Não foi possível definir senha inicial via RPC:', pwdErr);
+      }
+    }
+
     // Registra auditoria
     await logStoreAuditAction(lojaId, {
       colaborador_nome: autorNome,
@@ -476,13 +491,19 @@ export async function toggleTeamMemberActive(
 ): Promise<boolean> {
   try {
     const supabase = getSupabaseBrowserClient();
+    const updatePayload: Record<string, any> = {
+      ativo,
+      updated_at: new Date().toISOString()
+    };
+
+    // Kill-Switch: Ao inativar/suspender, invalida instantaneamente as sessões ativas
+    if (!ativo) {
+      updatePayload.token_version = Math.floor(Date.now() / 1000);
+    }
+
     const { error } = await supabase
       .from('equipe_loja')
-      .update({
-        ativo,
-        token_version: ativo ? undefined : Math.floor(Date.now() / 1000), // Invalida sessões ativas se suspender
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', memberId)
       .eq('loja_id', lojaId);
 
@@ -495,12 +516,91 @@ export async function toggleTeamMemberActive(
       entidade: 'equipe',
       entidade_id: memberId,
       dados_novos: { ativo },
-      motivo: ativo ? 'Acesso ao painel reativado' : 'Acesso ao painel suspenso pelo lojista'
+      motivo: ativo ? 'Acesso ao painel reativado' : 'Acesso ao painel suspenso pelo lojista (Kill-Switch acionado)'
     });
 
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Redefine diretamente a senha de acesso de um colaborador via RPC segura com verificação RBAC
+ * e dispara o Kill-Switch (invalidação instantânea de sessões ativas).
+ */
+export async function adminResetMemberPassword(
+  lojaId: string = DEFAULT_TENANT_ID,
+  alvoMemberId: string,
+  novaSenha: string,
+  operadorEmail: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.rpc('admin_alterar_senha_colaborador', {
+      p_loja_id: lojaId,
+      p_alvo_member_id: alvoMemberId,
+      p_nova_senha: novaSenha,
+      p_operador_email: operadorEmail
+    });
+
+    if (error) {
+      console.error('❌ [team.ts] Erro ao redefinir senha do colaborador:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (data && typeof data === 'object') {
+      if (data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.error || 'Falha ao redefinir senha' };
+      }
+    }
+
+    return { success: true, message: 'Senha alterada com sucesso!' };
+  } catch (err: any) {
+    console.error('❌ [team.ts] Falha de conexão ao redefinir senha:', err);
+    return { success: false, error: err.message || 'Erro inesperado' };
+  }
+}
+
+/**
+ * Verifica a validade da sessão local em tempo real (Kill-Switch heartbeat / route guard).
+ * Retorna se a sessão ainda é válida ou se foi revogada/suspensa.
+ */
+export async function checkSessionValidity(
+  lojaId: string = DEFAULT_TENANT_ID,
+  memberId: string,
+  localTokenVersion: number
+): Promise<{ valid: boolean; reason?: string }> {
+  try {
+    if (isMasterUser()) return { valid: true };
+
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from('equipe_loja')
+      .select('id, ativo, token_version')
+      .eq('id', memberId)
+      .eq('loja_id', lojaId)
+      .maybeSingle();
+
+    if (error || !data) {
+      // Se não encontrou o colaborador ou deu erro, não derrubamos imediatamente por falha de rede temporária
+      return { valid: true };
+    }
+
+    if (!data.ativo) {
+      return { valid: false, reason: 'Seu acesso foi desativado pela administração da loja.' };
+    }
+
+    const dbTokenVersion = Number(data.token_version || 1);
+    if (dbTokenVersion > localTokenVersion) {
+      return { valid: false, reason: 'Sua sessão foi encerrada porque sua senha ou permissões foram alteradas.' };
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: true };
   }
 }
 

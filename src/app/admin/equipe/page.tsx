@@ -27,7 +27,8 @@ import {
   ExternalLink,
   ChevronRight,
   LogOut,
-  Ban
+  Ban,
+  KeyRound
 } from 'lucide-react';
 import {
   MembroEquipe,
@@ -35,7 +36,9 @@ import {
   getTeamMembers,
   toggleTeamMemberActive,
   revokeAllSessions,
-  checkWorkingHoursAccess
+  checkWorkingHoursAccess,
+  getStoredActiveMember,
+  isMasterUser
 } from '@/lib/team';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
 import { useStore } from '@/context/StoreContext';
@@ -43,6 +46,7 @@ import { useAdminI18n } from '@/context/AdminI18nContext';
 import { InviteMemberModal } from '@/components/admin/team/InviteMemberModal';
 import { EditMemberModal } from '@/components/admin/team/EditMemberModal';
 import { LockScreenModal } from '@/components/admin/team/LockScreenModal';
+import { ResetMemberPasswordModal } from '@/components/admin/team/ResetMemberPasswordModal';
 
 export default function AdminEquipePage() {
   const { currentTenant } = useStore();
@@ -59,10 +63,21 @@ export default function AdminEquipePage() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLockScreenOpen, setIsLockScreenOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MembroEquipe | null>(null);
+  const [memberToResetPassword, setMemberToResetPassword] = useState<MembroEquipe | null>(null);
+
+  // Operador da Sessão Atual
+  const [activeOperator, setActiveOperator] = useState<MembroEquipe | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
 
   // Feedbacks
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    setIsMaster(isMasterUser());
+    setActiveOperator(getStoredActiveMember());
+  }, []);
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -87,6 +102,19 @@ export default function AdminEquipePage() {
 
   const getAdminOperator = () => {
     return (typeof window !== 'undefined' ? localStorage.getItem('bcomm_auth_user') : null) || lojaNome || 'Administrador';
+  };
+
+  const getAdminOperatorEmail = () => {
+    if (isMaster) return 'superadmin@bcomm.com.br';
+    if (activeOperator?.email) return activeOperator.email;
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('bcomm_auth_user') : null;
+    return stored || 'contato@agent-bcomm.space';
+  };
+
+  const getAdminOperatorCargo = () => {
+    if (isMaster) return 'super_admin';
+    if (activeOperator?.cargo) return activeOperator.cargo;
+    return 'dono';
   };
 
   const handleToggleActive = async (member: MembroEquipe) => {
@@ -494,61 +522,122 @@ export default function AdminEquipePage() {
 
                       {/* 7. Ações */}
                       <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Copiar Credenciais */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
-                              const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
-                              navigator.clipboard.writeText(text);
-                              showFeedback('success', `Credenciais de ${member.nome} copiadas para a área de transferência.`);
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
-                            title="Copiar credenciais de acesso"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
+                        {(() => {
+                          const isMemberOwner = member.cargo === 'dono';
+                          const isOperatorMaster = isMaster;
+                          const isOperatorOwner = isOperatorMaster || (!activeOperator || activeOperator.cargo === 'dono');
+                          const isOperatorManager = !isOperatorOwner && activeOperator?.cargo === 'gerente';
+                          const isSelf = activeOperator
+                            ? activeOperator.id === member.id || activeOperator.email?.toLowerCase() === member.email?.toLowerCase()
+                            : false;
 
-                          {/* Editar Permissões */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMember(member);
-                              setIsEditOpen(true);
-                            }}
-                            className="p-1.5 text-slate-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                            title="Editar permissões e alçada"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          // 1. Imunidade Absoluta da Proprietária
+                          const isBlockedByOwnerImmunity = isMemberOwner && !isOperatorOwner;
 
-                          {/* Kill Switch (Desconectar Sessões) */}
-                          <button
-                            type="button"
-                            onClick={() => handleRevokeSessions(member)}
-                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
-                            title="Desconectar todas as sessões ativas (Kill-Switch)"
-                          >
-                            <PowerOff className="w-4 h-4" />
-                          </button>
+                          if (isBlockedByOwnerImmunity) {
+                            return (
+                              <div className="flex items-center justify-end">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200/80 text-[10px] font-bold rounded-lg shadow-2xs select-none">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Imunidade da Proprietária</span>
+                                </span>
+                              </div>
+                            );
+                          }
 
-                          {/* Suspender / Reativar */}
-                          {member.cargo !== 'dono' && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleActive(member)}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                member.ativo
-                                  ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                                  : 'text-emerald-600 hover:bg-emerald-50'
-                              }`}
-                              title={member.ativo ? 'Suspender acesso' : 'Reativar acesso'}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+                          // 2. Gerente alterando própria senha diretamente (bloqueado com tooltip)
+                          const isSelfManagerPasswordBlocked = member.cargo === 'gerente' && isSelf && !isOperatorMaster;
+
+                          // 3. Suspensão permitida
+                          const canSuspend = !isMemberOwner && (isOperatorOwner || (isOperatorManager && member.cargo !== 'gerente'));
+
+                          // 4. Edição permitida
+                          const canEdit = !isBlockedByOwnerImmunity && (isOperatorOwner || (isOperatorManager && member.cargo !== 'gerente') || isSelf);
+
+                          return (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Copiar Credenciais */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bcomm-ag.space';
+                                  const text = `Credenciais de Acesso ao Painel da Loja:\nNome: ${member.nome}\nCargo: ${member.cargo.toUpperCase()}\nE-mail: ${member.email}\nPIN Balcão: ${member.pin_hash}\nPainel: ${origin}/admin/login`;
+                                  navigator.clipboard.writeText(text);
+                                  showFeedback('success', `Credenciais de ${member.nome} copiadas para a área de transferência.`);
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                                title="Copiar credenciais de acesso"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+
+                              {/* Alterar Senha (KeyRound) */}
+                              {isSelfManagerPasswordBlocked ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="p-1.5 text-slate-300 cursor-not-allowed rounded-lg"
+                                  title="Gerentes só podem alterar a própria senha via recuperação de senha no e-mail"
+                                >
+                                  <KeyRound className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMemberToResetPassword(member);
+                                    setIsResetPasswordOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Alterar senha do colaborador (Kill-Switch ativado)"
+                                >
+                                  <KeyRound className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Editar Permissões */}
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setIsEditOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Editar permissões e alçada"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Kill Switch (Desconectar Sessões) */}
+                              <button
+                                type="button"
+                                onClick={() => handleRevokeSessions(member)}
+                                className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
+                                title="Desconectar todas as sessões ativas (Kill-Switch)"
+                              >
+                                <PowerOff className="w-4 h-4" />
+                              </button>
+
+                              {/* Suspender / Reativar */}
+                              {canSuspend && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleActive(member)}
+                                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                    member.ativo
+                                      ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                                      : 'text-emerald-600 hover:bg-emerald-50'
+                                  }`}
+                                  title={member.ativo ? 'Suspender acesso e encerrar sessões' : 'Reativar acesso'}
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -582,6 +671,28 @@ export default function AdminEquipePage() {
           onMemberUpdated={(updated) => {
             setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
             showFeedback('success', `Permissões de ${updated.nome} atualizadas.`);
+          }}
+        />
+      )}
+
+      {memberToResetPassword && (
+        <ResetMemberPasswordModal
+          isOpen={isResetPasswordOpen}
+          onClose={() => {
+            setIsResetPasswordOpen(false);
+            setMemberToResetPassword(null);
+          }}
+          member={memberToResetPassword}
+          lojaId={lojaId}
+          operadorEmail={getAdminOperatorEmail()}
+          operadorCargo={getAdminOperatorCargo()}
+          isMaster={isMaster}
+          onSuccess={() => {
+            fetchMembers();
+            showFeedback(
+              'success',
+              `Senha de ${memberToResetPassword.nome} alterada com sucesso! Todas as sessões foram encerradas.`
+            );
           }}
         />
       )}

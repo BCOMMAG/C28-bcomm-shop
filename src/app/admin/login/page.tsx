@@ -34,6 +34,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
 
   // Estados de Recuperação de Senha por E-mail
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -47,6 +48,15 @@ export default function AdminLoginPage() {
   // Inicializa o locale e garante o título da aba e o favicon oficial BCOMM sem cache antigo
   useEffect(() => {
     setLocale(getStoredLocale());
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('revoked') === 'true') {
+        setRevokedMessage(
+          params.get('reason') || 'Sua sessão foi encerrada pela administração da loja ou sua senha foi alterada.'
+        );
+      }
+    }
 
     if (typeof document !== 'undefined') {
       document.title = 'BCOMM • Painel Administrativo';
@@ -138,6 +148,8 @@ export default function AdminLoginPage() {
           let targetLoja = null;
           if (membro?.loja_id) {
             localStorage.setItem('bcomm_admin_colaborador', JSON.stringify(membro));
+            localStorage.setItem('leidy_admin_colaborador', JSON.stringify(membro));
+            localStorage.setItem('bcomm_token_version', String(membro.token_version || 1));
 
             const { data: loja } = await supabase
               .from('lojas')
@@ -230,6 +242,17 @@ export default function AdminLoginPage() {
                 {t.login.panelSubtitle}
               </p>
             </div>
+
+            {/* Alerta de Kill-Switch / Sessão Revogada */}
+            {revokedMessage && (
+              <div className="mb-6 p-4 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-amber-100">Acesso Encerrado</p>
+                  <p className="text-amber-200/90 leading-relaxed">{revokedMessage}</p>
+                </div>
+              </div>
+            )}
 
             {/* Feedback de Erro */}
             {errorMsg && (
