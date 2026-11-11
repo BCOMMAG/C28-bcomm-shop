@@ -66,18 +66,47 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       e.preventDefault();
     }
   };
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  const cleanPath = (pathname || '').replace(/\/$/, '');
+  const isLoginPage = cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login');
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    if (typeof window !== 'undefined') {
+      if (cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login')) return true;
+      if (isMasterUser()) return true;
+      const localAuth = localStorage.getItem('bcomm_admin_auth') || localStorage.getItem('leidy_admin_auth');
+      if (localAuth === 'true') return true;
+    }
+    return null;
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [teamMembers, setTeamMembers] = useState<MembroEquipe[]>([]);
-  const [activeMember, setActiveMember] = useState<MembroEquipe | null>(null);
+  const [activeMember, setActiveMember] = useState<MembroEquipe | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedColab = localStorage.getItem('leidy_admin_colaborador') || localStorage.getItem('bcomm_admin_colaborador');
+        if (savedColab) {
+          const parsed = JSON.parse(savedColab);
+          if (parsed && parsed.id) return parsed;
+        }
+      } catch {}
+    }
+    return null;
+  });
   const [isLockScreenOpen, setIsLockScreenOpen] = useState(false);
   const [pendingNotifs, setPendingNotifs] = useState<{
     count: number;
     pedidos: Array<{ id: string; numero_pedido: string; cliente_nome: string; total: number; created_at: string }>;
   }>({ count: 0, pedidos: [] });
-  const [isMaster, setIsMaster] = useState(false);
+  const [isMaster, setIsMaster] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return isMasterUser();
+    }
+    return false;
+  });
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { locale, setLocale, t, formatCurrency } = useAdminI18n();
@@ -125,9 +154,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const lojaNome = currentTenant?.nome || 'Painel da Loja';
   const lojaSlug = currentTenant?.slug || '';
-
-  const cleanPath = (pathname || '').replace(/\/$/, '');
-  const isLoginPage = cleanPath === '/admin/login' || cleanPath.startsWith('/admin/login');
 
   useEffect(() => {
     if (isLoginPage) {

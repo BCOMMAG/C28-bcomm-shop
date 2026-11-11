@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { RotateCw, Home, ShoppingBag, AlertCircle, LogIn, ShieldAlert } from 'lucide-react';
+import { RotateCw, Home, ShoppingBag, AlertCircle, LogIn, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ErrorPage({
   error,
@@ -11,20 +11,34 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [isAdminRoute, setIsAdminRoute] = useState(() => {
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname || '';
       return p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin');
     }
-    return false;
+    return true; // Default seguro para evitar exibir mensagem de sacola de e-commerce se estiver no admin
   });
+
+  const [showTechDetails, setShowTechDetails] = useState(false);
 
   useEffect(() => {
     console.error('Captured by Next.js App Error Boundary:', error);
+
     if (typeof window !== 'undefined') {
       const p = window.location.pathname || '';
-      if (p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin')) {
-        setIsAdminRoute(true);
+      const isAdmin = p.startsWith('/admin') || p.startsWith('/super-admin') || p.includes('/admin');
+      setIsAdminRoute(isAdmin);
+
+      // Se for rota administrativa e o usuário NÃO estiver autenticado, redireciona em 0ms para o login
+      if (isAdmin && !p.startsWith('/admin/login') && !p.startsWith('/super-admin/login')) {
+        const isMaster = localStorage.getItem('bcomm_master_session') === 'true' ||
+                         localStorage.getItem('bcomm_super_admin_auth') === 'true';
+        const isAuth = localStorage.getItem('bcomm_admin_auth') === 'true' ||
+                     localStorage.getItem('leidy_admin_auth') === 'true';
+        if (!isMaster && !isAuth) {
+          window.location.replace('/admin/login/');
+          return;
+        }
       }
     }
   }, [error]);
@@ -65,7 +79,9 @@ export default function ErrorPage({
             <button
               type="button"
               onClick={() => {
-                const target = window.location.pathname.startsWith('/super-admin') ? '/super-admin/login/' : '/admin/login/';
+                const target = typeof window !== 'undefined' && window.location.pathname.startsWith('/super-admin')
+                  ? '/super-admin/login/'
+                  : '/admin/login/';
                 window.location.href = target;
               }}
               className="w-full sm:w-auto px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all"
@@ -74,6 +90,27 @@ export default function ErrorPage({
               <span>Ir para Login</span>
             </button>
           </div>
+
+          {/* Diagnóstico técnico colapsável */}
+          {error && (
+            <div className="pt-2 text-left">
+              <button
+                type="button"
+                onClick={() => setShowTechDetails((prev) => !prev)}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 mx-auto transition-colors cursor-pointer"
+              >
+                <span>Diagnóstico Técnico</span>
+                {showTechDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {showTechDetails && (
+                <div className="mt-2 p-3 bg-black/60 border border-zinc-800 rounded-lg text-[10px] font-mono text-zinc-400 max-h-40 overflow-y-auto space-y-1">
+                  <p className="text-rose-400 font-bold">{error.name || 'Error'}: {error.message || 'Desconhecido'}</p>
+                  {error.digest && <p className="text-zinc-500">Digest: {error.digest}</p>}
+                  {error.stack && <pre className="text-zinc-500 text-[9px] whitespace-pre-wrap">{error.stack}</pre>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -88,7 +125,7 @@ export default function ErrorPage({
 
         <div className="space-y-2">
           <span className="text-[11px] font-bold uppercase tracking-widest text-[#C5A059] block">
-            Leidy Boutique
+            BCOMM Stores
           </span>
           <h1 className="text-xl sm:text-2xl font-serif-luxury font-medium text-[#1A1918] dark:text-[#FAF8F5]">
             Instabilidade Temporária
@@ -109,7 +146,7 @@ export default function ErrorPage({
           </button>
 
           <Link
-            href="/leidy-boutique"
+            href="/"
             className="w-full sm:w-auto px-5 py-2.5 bg-transparent border border-[#C5A059]/40 hover:border-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] transition-all text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
           >
             <Home className="w-3.5 h-3.5 text-[#C5A059]" />
@@ -119,7 +156,7 @@ export default function ErrorPage({
 
         <div className="pt-4 border-t border-[#C5A059]/15">
           <Link
-            href="/leidy-boutique/catalogo"
+            href="/catalogo"
             className="text-[11px] text-[#C5A059] hover:underline font-medium inline-flex items-center gap-1.5"
           >
             <ShoppingBag className="w-3 h-3" />

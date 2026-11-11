@@ -154,6 +154,27 @@ export default function AdminLoginPage() {
       // Função auxiliar para vincular a loja específica do usuário autenticado (Multi-tenant)
       const bindUserTenantSession = async (userEmail: string) => {
         try {
+          // Pré-população inteligente para a loja oficial (Leidy Boutique) caso seja a proprietária
+          if (userEmail === 'contato@agent-bcomm.space') {
+            const fallbackLeidyMember = {
+              id: 'ecf40589-7049-4f73-893e-8e9f58921e1a',
+              loja_id: 'e8b7f890-4e3a-4a89-9c56-8e1234567890',
+              nome: 'LEIDI MARA PIMENTEL GROHS',
+              email: 'contato@agent-bcomm.space',
+              cargo: 'dono',
+              ativo: true,
+              token_version: 1,
+              pin: '1234',
+              tipo_expediente: 'livre',
+              desconto_maximo: 100
+            };
+            localStorage.setItem('bcomm_admin_colaborador', JSON.stringify(fallbackLeidyMember));
+            localStorage.setItem('leidy_admin_colaborador', JSON.stringify(fallbackLeidyMember));
+            localStorage.setItem('bcomm_token_version', '1');
+            localStorage.setItem('bcomm_admin_loja_id', 'e8b7f890-4e3a-4a89-9c56-8e1234567890');
+            localStorage.setItem('bcomm_admin_loja_slug', 'leidy-boutique');
+          }
+
           // 1. Busca em equipe_loja
           const { data: membro } = await supabase
             .from('equipe_loja')
@@ -207,6 +228,7 @@ export default function AdminLoginPage() {
       if (!error && data?.session) {
         await bindUserTenantSession(cleanEmail);
         localStorage.setItem('bcomm_admin_auth', 'true');
+        localStorage.setItem('leidy_admin_auth', 'true');
         localStorage.setItem('bcomm_auth_user', cleanEmail);
         window.location.href = '/admin/';
         return;

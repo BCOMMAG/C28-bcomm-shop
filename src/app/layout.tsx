@@ -80,7 +80,7 @@ export default function RootLayout({
                   // =========================================================================
                   var p = window.location.pathname || '';
                   var h = (window.location.hostname || '').toLowerCase();
-                  var cleanP = p.replace(/\/+$/, '') || '/';
+                  var cleanP = (p && p.length > 1 && p.endsWith('/')) ? p.slice(0, -1) : (p || '/');
 
                   // Redirecionamento instantâneo em 0ms: /admin sem autenticação vai direto para /admin/login/
                   if (cleanP === '/admin') {
@@ -118,7 +118,7 @@ export default function RootLayout({
                           localStorage.getItem('bcomm_tenant_' + firstSegment);
                   }
                   if (!raw && h && h !== 'localhost' && h !== '127.0.0.1') {
-                    var domainClean = h.replace(/^www\\./, '');
+                    var domainClean = (h && h.indexOf('www.') === 0) ? h.slice(4) : h;
                     raw = localStorage.getItem('bcomm_tenant_host_' + h) ||
                           localStorage.getItem('bcomm_tenant_' + domainClean) ||
                           localStorage.getItem('bcomm_tenant_last');
