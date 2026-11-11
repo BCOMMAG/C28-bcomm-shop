@@ -5,22 +5,24 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { ShoppingBag, ArrowRight, Check, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
-import { getStoreCheckoutUrl } from '@/lib/routes';
+import { getStoreCheckoutUrl, isPlatformHostname } from '@/lib/routes';
 
 export const BottomCartBar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { cartItems, cartCount, isCartOpen, openCart, isSideDrawerOpen, clearCart, currentTenant } = useStore();
 
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
 
   // Regra: A barra inferior não pode aparecer no checkout, admin, super-admin,
-  // na página inicial da plataforma BCOMM, quando a sacola estiver vazia,
+  // na página inicial raiz da plataforma BCOMM SaaS (sem tenant), quando a sacola estiver vazia,
   // quando o drawer da sacola estiver aberto, ou quando o menu lateral esquerdo estiver aberto
   const isCheckoutPage = pathname?.includes('/checkout');
   const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/super-admin');
-  const isPlatformHome = pathname === '/' && typeof window !== 'undefined' && !new URLSearchParams(window.location.search).get('loja');
+  const isPlatform = typeof window !== 'undefined' && isPlatformHostname(window.location.hostname.toLowerCase());
+  const hasLojaParam = typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('loja'));
+  const isPlatformHome = pathname === '/' && isPlatform && !hasLojaParam;
 
   if (cartCount === 0 || isCartOpen || isCheckoutPage || isAdminPage || isPlatformHome || isSideDrawerOpen) {
     return null;
@@ -40,17 +42,17 @@ export const BottomCartBar: React.FC = () => {
 
   return (
     <>
-      {/* 1. VERSÃO MINIMIZADA NO DESKTOP (Pílula compacta e elegante no canto inferior direito) */}
+      {/* 1. VERSÃO MINIMIZADA (Pílula compacta e elegante no canto inferior direito) */}
       {isMinimized && (
         <aside
           aria-label="Sacola de compras minimizada"
-          className="fixed bottom-5 right-5 z-40 hidden lg:flex items-center gap-3 bg-white/98 dark:bg-[#1A1918]/98 backdrop-blur-md border border-[#C5A059]/40 shadow-2xl px-4 py-2.5 animate-fadeIn"
+          className="fixed bottom-4 sm:bottom-5 right-3 sm:right-5 z-[60] flex items-center gap-2 sm:gap-3 bg-white/98 dark:bg-[#1A1918]/98 backdrop-blur-md border border-[#C5A059] shadow-2xl px-3 sm:px-4 py-2 sm:py-2.5 animate-fadeIn"
         >
           {/* Clicar abre a sacola */}
           <button
             type="button"
             onClick={openCart}
-            className="flex items-center gap-2 text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76] transition-colors cursor-pointer group"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76] transition-colors cursor-pointer group"
             title="Ver sacola de compras"
           >
             <div className="relative">
@@ -59,7 +61,7 @@ export const BottomCartBar: React.FC = () => {
                 {cartCount}
               </span>
             </div>
-            <span className="text-[#78716C] dark:text-[#A8A29E]">Sacola:</span>
+            <span className="hidden xs:inline text-[#78716C] dark:text-[#A8A29E]">Sacola:</span>
             <span className="font-bold text-[#1A1918] dark:text-[#FAF8F5]">{formattedTotal}</span>
           </button>
 
@@ -77,14 +79,14 @@ export const BottomCartBar: React.FC = () => {
 
           <span className="h-4 w-px bg-[#C5A059]/30" />
 
-          {/* Botão Expandir Barra Completa */}
+          {/* Botão Maximizar Barra Completa */}
           <button
             type="button"
             onClick={() => setIsMinimized(false)}
             className="flex items-center gap-1 text-[11px] uppercase tracking-wider font-bold text-[#C5A059] hover:text-[#1A1918] dark:hover:text-white transition-colors cursor-pointer"
-            title="Expandir barra de finalização"
+            title="Maximizar barra de finalização"
           >
-            <span>Expandir</span>
+            <span>Maximizar</span>
             <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
           </button>
 
@@ -92,7 +94,7 @@ export const BottomCartBar: React.FC = () => {
           <button
             type="button"
             onClick={() => router.push(getStoreCheckoutUrl(currentTenant?.slug))}
-            className="ml-1 px-3 py-1.5 bg-[#1A1918] dark:bg-[#C5A059] text-white text-[11px] uppercase tracking-wider font-bold hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+            className="ml-0.5 sm:ml-1 px-2.5 sm:px-3 py-1.5 bg-[#1A1918] dark:bg-[#C5A059] text-white text-[11px] uppercase tracking-wider font-bold hover:bg-[#C5A059] dark:hover:bg-[#DFBE76] dark:hover:text-[#1A1918] transition-all flex items-center gap-1 cursor-pointer shadow-sm"
             title="Ir para o checkout"
           >
             <span>Finalizar</span>
@@ -101,22 +103,21 @@ export const BottomCartBar: React.FC = () => {
         </aside>
       )}
 
-      {/* 2. BARRA FLUTUANTE DA SACOLA (RESPONSIVA) */}
+      {/* 2. BARRA FLUTUANTE DA SACOLA EXPANDIDA (RESPONSIVA) */}
       <aside
         aria-label="Barra de finalização de compras"
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-[#1A1918]/98 backdrop-blur-md border-t border-[#C5A059]/35 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] transition-all duration-300 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:pb-3 ${
-          isMinimized ? 'lg:hidden' : 'block'
+        className={`fixed bottom-0 left-0 right-0 z-[60] bg-white/98 dark:bg-[#1A1918]/98 backdrop-blur-md border-t border-[#C5A059]/35 shadow-[0_-8px_30px_rgba(0,0,0,0.2)] transition-all duration-300 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:pb-3 ${
+          isMinimized ? 'hidden' : 'block'
         }`}
       >
         <div className="w-full max-w-[1920px] mx-auto">
           
           {/* ========================================================================= */}
           {/* A. LAYOUT MOBILE (< lg): ESTRUTURA ELEGANTE E ESPAÇOSA EM 2 NÍVEIS        */}
-          {/* Resolve o problema de texto truncado e ícone da lixeira espremido          */}
           {/* ========================================================================= */}
           <div className="lg:hidden flex flex-col">
             
-            {/* Nível Superior: Contador de peças, Frete e Botão Esvaziar Sacola */}
+            {/* Nível Superior: Contador de peças, Frete e Botão Esvaziar / Minimizar */}
             <div className="flex items-center justify-between px-3.5 pt-1.5 pb-1 border-b border-[#C5A059]/15 text-[11px]">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-semibold text-[#1A1918] dark:text-[#FAF8F5]">
@@ -129,16 +130,31 @@ export const BottomCartBar: React.FC = () => {
                 )}
               </div>
 
-              {/* Botão Esvaziar Sacola Mobile (perfeito para toque, sem espremer o botão preto) */}
-              <button
-                type="button"
-                onClick={() => setShowClearConfirmModal(true)}
-                className="flex items-center gap-1 text-[11px] font-medium text-[#78716C] dark:text-[#A8A29E] hover:text-rose-600 dark:hover:text-rose-400 active:text-rose-600 transition-colors py-0.5 px-1.5 cursor-pointer group"
-                title="Esvaziar todas as peças da sacola"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-[#A8A29E] group-hover:text-rose-500 transition-colors" />
-                <span className="underline decoration-[#A8A29E]/50 group-hover:decoration-rose-500">Esvaziar sacola</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Botão Esvaziar Sacola Mobile */}
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirmModal(true)}
+                  className="flex items-center gap-1 text-[11px] font-medium text-[#78716C] dark:text-[#A8A29E] hover:text-rose-600 dark:hover:text-rose-400 active:text-rose-600 transition-colors py-0.5 px-1 cursor-pointer group"
+                  title="Esvaziar todas as peças da sacola"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-[#A8A29E] group-hover:text-rose-500 transition-colors" />
+                  <span className="underline decoration-[#A8A29E]/50 group-hover:decoration-rose-500">Esvaziar</span>
+                </button>
+
+                <span className="h-3 w-px bg-[#C5A059]/30" />
+
+                {/* Botão Minimizar Mobile */}
+                <button
+                  type="button"
+                  onClick={() => setIsMinimized(true)}
+                  className="flex items-center gap-0.5 text-[11px] font-medium text-[#C5A059] dark:text-[#DFBE76] hover:text-[#1A1918] dark:hover:text-white transition-colors py-0.5 px-1 cursor-pointer"
+                  title="Minimizar barra da sacola"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span>Minimizar</span>
+                </button>
+              </div>
             </div>
 
             {/* Nível Inferior: Miniatura, Valor Total e Botão de Finalizar */}
@@ -288,7 +304,7 @@ export const BottomCartBar: React.FC = () => {
 
       {/* 3. POP-UP MODAL DE CONFIRMAÇÃO: Realmente deseja esvaziar a sacola? */}
       {showClearConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div
             className="w-full max-w-sm bg-white dark:bg-[#1A1918] border border-[#C5A059]/40 p-6 shadow-2xl animate-scale text-center relative"
             role="dialog"

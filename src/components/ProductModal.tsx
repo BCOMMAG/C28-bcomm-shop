@@ -559,15 +559,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             {/* COLUNA ESQUERDA: GALERIA E VÍDEO (Miniaturas sempre visíveis na dobra sem rolagem) */}
             <div className="lg:col-span-5 p-2 sm:p-3.5 lg:p-4 bg-[#F4EFE6]/60 dark:bg-[#141312]/60 flex flex-col items-center justify-start lg:sticky lg:top-0 self-start border-b lg:border-b-0 lg:border-r border-[#C5A059]/20">
             
-            {/* Visualizador Principal com Navegação por Setas e Swipe */}
+            {/* Visualizador Principal com Navegação por Setas e Swipe - Proporção Integral Sem Cortes */}
             <div
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-full aspect-[3/4] sm:aspect-auto sm:h-[280px] lg:h-[360px] xl:h-[400px] max-h-[44vh] rounded-none overflow-hidden bg-black shadow-lg mx-auto select-none touch-pan-y"
+              className="relative w-full aspect-[3/4] max-h-[48vh] sm:max-h-[50vh] max-w-[320px] sm:max-w-[340px] lg:max-w-[360px] rounded-none overflow-hidden bg-[#FAF8F5] dark:bg-[#141312] shadow-lg mx-auto select-none touch-pan-y flex items-center justify-center"
             >
               {currentMedia && (currentMedia.type === 'video' || isVideoUrl(currentMedia.src)) ? (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full flex items-center justify-center">
                   {videoError ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 text-white p-6 text-center">
                       <Play className="w-8 h-8 text-[#DFBE76] mb-2 opacity-60" />
@@ -600,7 +600,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       }}
                       onWaiting={() => setIsVideoBuffering(true)}
                       onCanPlay={() => setIsVideoBuffering(false)}
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-contain"
                     />
                   )}
 
@@ -640,12 +640,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full flex items-center justify-center">
                   <Image
                     src={currentMedia?.src || product.thumbnail || ''}
                     alt={product.name}
                     fill
-                    className="object-cover object-top"
+                    className="object-contain object-center"
                     priority
                   />
                 </div>
