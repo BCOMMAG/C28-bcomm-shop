@@ -217,8 +217,8 @@ export default function SettingsLayout({
         </div>
       </div>
 
-      {/* NAVEGAÇÃO MOBILE (Scroll Horizontal de Pílulas) */}
-      <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-none pb-2">
+      {/* NAVEGAÇÃO COMPACTA / NOTEBOOK (Scroll Horizontal de Pílulas) */}
+      <div className="xl:hidden -mx-4 px-4 overflow-x-auto scrollbar-none pb-2">
         <div className="flex items-center gap-2 min-w-max">
           {settingsSections.flatMap((s) => s.items).map((item) => {
             const Icon = item.icon;
@@ -254,9 +254,9 @@ export default function SettingsLayout({
       </div>
 
       {/* CORPO DO LAYOUT: SIDEBAR DESKTOP + CONTEÚDO */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
         {/* SIDEBAR DE NAVEGAÇÃO DESKTOP */}
-        <aside className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-6 sticky top-20">
+        <aside className="hidden xl:block xl:col-span-3 space-y-6 sticky top-20">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-6">
             {settingsSections.map((section, idx) => (
               <div key={section.title} className={idx > 0 ? 'pt-4 border-t border-slate-100' : ''}>
@@ -362,7 +362,7 @@ export default function SettingsLayout({
         </aside>
 
         {/* ÁREA CENTRAL DE CONTEÚDO */}
-        <main className="lg:col-span-8 xl:col-span-9 min-w-0">
+        <main className="xl:col-span-9 min-w-0">
           {children}
         </main>
       </div>

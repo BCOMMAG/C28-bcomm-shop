@@ -2733,9 +2733,10 @@ export default function AdminProdutosPage() {
                 key={product.id}
                 className={`border rounded-xl overflow-hidden transition-all ${cardBgClass}`}
               >
-                {/* Linha Principal da Peça */}
-                <div className="p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 max-w-md xl:max-w-xl">
+                {/* Linha Principal da Peça (Estrutura em 2 Níveis Harmoniosos) */}
+                <div className="p-4 sm:p-5 space-y-3.5">
+                  {/* Nível 1: Identificação da Peça em Largura Total (Zero Colisão) */}
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
                     {/* Checkbox de Seleção em Massa */}
                     <button
                       type="button"
@@ -2883,8 +2884,8 @@ export default function AdminProdutosPage() {
                     </div>
                   </div>
 
-                  {/* Preço, Custo, Estoque e Ações */}
-                  <div className="flex flex-col xl:flex-row xl:items-center justify-between xl:justify-end gap-3 sm:gap-4 lg:gap-6 w-full xl:w-auto shrink-0 pt-3 xl:pt-0 border-t border-slate-100 xl:border-0">
+                  {/* Nível 2: Régua Operacional (Métricas Financeiras + Botões de Ação) */}
+                  <div className="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
                     {/* Bloco de Métricas Financeiras e Estoque */}
                     <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 sm:border-0 sm:bg-transparent sm:p-0 sm:flex sm:items-center sm:gap-4 md:gap-6 shrink-0">
                       <div className="w-auto sm:w-28 shrink-0 text-left">
@@ -2933,7 +2934,7 @@ export default function AdminProdutosPage() {
 
                     {/* Botões de Ação */}
                     {isLixeira ? (
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start lg:justify-end">
                         <button
                           onClick={() => handleRestoreProduct(product)}
                           title={t.products.card.restoreTooltip}
@@ -2955,7 +2956,7 @@ export default function AdminProdutosPage() {
                         )}
                       </div>
                     ) : isArquivada ? (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-start lg:justify-end">
                         <button
                           onClick={() => handleUnarchiveProduct(product)}
                           title={t.products.card.unarchiveTooltip}
@@ -2983,7 +2984,7 @@ export default function AdminProdutosPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-start lg:justify-end">
                         {/* Ver na Vitrine Pública (se ativa) */}
                         <Link
                           href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
@@ -3127,7 +3128,7 @@ export default function AdminProdutosPage() {
                     </div>
 
                     {product.variacoes && product.variacoes.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                         {product.variacoes.map((v) => (
                           <div
                             key={v.id}

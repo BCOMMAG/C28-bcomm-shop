@@ -474,9 +474,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* =========================================================================
-          PRIMEIRA LINHA: 5 CARDS NO DESKTOP COM ALTURA E LARGURA PADRONIZADAS
+          PRIMEIRA LINHA: 5 CARDS COM ALTURA E LARGURA PADRONIZADAS E RESPONSIVAS
       ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 items-stretch">
         {/* Card 1: Faturamento */}
         <KpiCard
           title={t.dashboard.totalRevenue}

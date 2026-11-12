@@ -118,7 +118,7 @@ export function ResetMemberPasswordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-3">
@@ -224,7 +224,7 @@ export function ResetMemberPasswordModal({
           </div>
         ) : (
           /* Formulário de Alteração */
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
             {/* Alerta de Imunidade Absoluta da Proprietária */}
             {isBlockedByOwnerImmunity && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-900">

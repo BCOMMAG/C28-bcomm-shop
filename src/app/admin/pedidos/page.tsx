@@ -3009,11 +3009,8 @@ export default function AdminPedidosPage() {
                       });
                       const columnTotal = columnOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
-                      // Se houver mais de 5 colunas, cada coluna ocupa exatamente 1/5 da viewport (cabendo 5 por tela)
-                      // Se houver 5 ou menos, distribuem-se igualmente ocupando 100% da largura
-                      const colWidthStyle = visibleKanbanColumns.length > 5
-                        ? 'w-[calc((100%-56px)/5)] min-w-[180px] shrink-0'
-                        : 'flex-1 min-w-[180px] shrink-0';
+                      // Largura consistente e profissional das colunas para navegação fluida sem encavalamento de cards
+                      const colWidthStyle = 'w-[280px] sm:w-[300px] shrink-0';
 
                       return (
                         <div
@@ -3332,7 +3329,7 @@ export default function AdminPedidosPage() {
 
                           {/* Ações do Mini Card (Cliques não abrem o modal duplicado) */}
                           <div
-                            className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]"
+                            className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {cleanPhone ? (
@@ -3340,7 +3337,7 @@ export default function AdminPedidosPage() {
                                 href={formatWhatsAppUrl(cleanPhone)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1"
+                                className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 shrink-0"
                               >
                                 <MessageCircle className="w-3 h-3" />
                                 <span>WhatsApp</span>
@@ -3358,7 +3355,7 @@ export default function AdminPedidosPage() {
                                     column.next as CustomerOrder['status']
                                   )
                                 }
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] cursor-pointer transition-colors"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] cursor-pointer transition-colors shrink-0 shadow-2xs"
                                 title={`Avançar pedido para ${column.next}`}
                               >
                                 <span>{t.orders.kanban.advanceBtn}</span>
