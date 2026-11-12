@@ -100,8 +100,19 @@ export default function CheckoutPage() {
     getProductById,
     formatStorePrice,
     storeCurrency,
+    refreshTenant,
     st
   } = useStore();
+
+  // Ouvinte em tempo real para sincronização de logística/regras do lojista
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleTenantUpdated = () => {
+      if (refreshTenant) refreshTenant();
+    };
+    window.addEventListener('bcomm_tenant_updated', handleTenantUpdated);
+    return () => window.removeEventListener('bcomm_tenant_updated', handleTenantUpdated);
+  }, [refreshTenant]);
 
   // Etapa ativa na trilha de finalização
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('sacola');
@@ -1483,7 +1494,7 @@ export default function CheckoutPage() {
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#78716C] dark:text-[#A8A29E] block">
                             Modalidades Disponíveis para Seu Endereço:
                           </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className={shippingOptions.length === 1 ? "grid grid-cols-1 gap-2" : "grid grid-cols-1 sm:grid-cols-2 gap-2"}>
                             {shippingOptions.map((opt) => {
                               const finalPrice = getOptionPrice(opt);
                               const isSelected = selectedShippingId === opt.id;
@@ -1815,7 +1826,7 @@ export default function CheckoutPage() {
                             <span>Você ganhou <strong>{formatStorePrice(shippingDiscount)} de desconto</strong> no frete nesta compra!</span>
                           </div>
                         )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className={shippingOptions.length === 1 ? "grid grid-cols-1 gap-2.5" : "grid grid-cols-1 sm:grid-cols-2 gap-2.5"}>
                           {shippingOptions.map((opt) => {
                             const optFinalPrice = getOptionPrice(opt);
                             return (

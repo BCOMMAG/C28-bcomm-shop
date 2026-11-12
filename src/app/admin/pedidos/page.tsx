@@ -1547,7 +1547,7 @@ export default function AdminPedidosPage() {
       )}
 
       {/* 1. CARDS DE REFERÊNCIA OPERACIONAL NO TOPO (KPIS INTERATIVOS COM SIGILO RBAC) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:gap-2.5">
         {[
           {
             id: 'pendente',
@@ -1641,7 +1641,7 @@ export default function AdminPedidosPage() {
             <button
               key={kpi.id}
               onClick={() => handleKpiCardClick(kpi.id)}
-              className={`p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs relative ${
+              className={`min-w-[135px] sm:min-w-0 shrink-0 sm:shrink p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs relative ${
                 kpi.bgLight
               } ${isSelected ? kpi.activeBorder : `${kpi.border} hover:border-slate-400`}`}
               title={`Filtrar apenas ${kpi.label}`}
@@ -1656,8 +1656,8 @@ export default function AdminPedidosPage() {
                 <Icon className={`w-3.5 h-3.5 shrink-0 ${kpi.iconColor}`} />
               </div>
 
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-lg font-black text-slate-900 font-mono">
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-1">
+                <span className="text-base sm:text-lg font-black text-slate-900 font-mono">
                   {kpi.count}
                 </span>
                 <span className="text-[11px] font-bold text-slate-600 truncate">
@@ -2448,7 +2448,7 @@ export default function AdminPedidosPage() {
 
                         {/* Dropdown de Snippets */}
                         {snippetMenuOrderId === order.id && (
-                          <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 z-30 space-y-1 animate-fade-in text-left">
+                          <div className="absolute right-0 top-full mt-1.5 w-72 max-w-[calc(100vw-32px)] bg-white rounded-xl shadow-2xl border border-slate-200 p-2 z-30 space-y-1 animate-fade-in text-left">
                             <span className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 block">
                               Mensagens Rápidas no WhatsApp
                             </span>

@@ -512,6 +512,9 @@ export default function ShippingSettingsPage() {
         try {
           await refreshProducts();
         } catch {}
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('bcomm_tenant_updated', { detail: { tenantId } }));
+        }
         initialConfigRef.current = JSON.stringify(config);
         setIsDirty(false);
         showToast(t.storeLogistics.allRulesSaved);

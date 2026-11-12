@@ -400,8 +400,8 @@ export default function AdminCuponsPage() {
       {/* MODAL NOVO CUPOM */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <h3 className="text-base font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
                 <Tag className="w-4 h-4 text-amber-600" />
                 {t.storeCoupons.modalTitleCreate}
@@ -414,7 +414,7 @@ export default function AdminCuponsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateCoupon} className="space-y-3.5 text-xs">
+            <form onSubmit={handleCreateCoupon} className="space-y-3.5 text-xs overflow-y-auto flex-1 pr-1">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
                   {t.storeCoupons.codeLabel}

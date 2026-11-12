@@ -517,14 +517,14 @@ export const Header: React.FC<HeaderProps> = ({
               </Link>
             </div>
 
-            {/* 3. LOGO NO MOBILE: Exatamente no meio da tela (Regra 3) */}
+            {/* 3. LOGO NO MOBILE: Exatamente no meio da tela com respiro seguro */}
             <div className="lg:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-auto">
               <Link
                 href={getStoreHomeUrl(currentTenant?.slug)}
                 className="flex items-center justify-center"
                 title={currentTenant?.nome || 'Leidy Boutique'}
               >
-                <div className="relative w-28 sm:w-36 h-8 sm:h-10 flex items-center justify-center">
+                <div className="relative w-24 sm:w-32 md:w-36 h-7 sm:h-9 md:h-10 flex items-center justify-center">
                   <Image
                     src={currentLogoSrc}
                     alt={currentTenant?.nome || 'Leidy Boutique'}
@@ -710,7 +710,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 5. LADO DIREITO: Ações do Header */}
             {/* Desktop: Busca Expansível, Modo Noturno, Favoritos e Sacola */}
             {/* Mobile: EXCLUSIVAMENTE Pesquisar, Favoritos e Sacola (Regra 4) */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0 z-20">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 shrink-0 z-20">
               
               {/* DESKTOP: Botão Gatilho de Busca */}
               <button
@@ -751,7 +751,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-                className={`lg:hidden p-1.5 sm:p-2 transition-colors cursor-pointer ${
+                className={`lg:hidden p-1 sm:p-2 transition-colors cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
                     : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
@@ -765,7 +765,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Minha Conta & Rastreamento (Exibido em Mobile e Desktop) */}
               <Link
                 href={getStoreCustomerUrl(currentTenant?.slug)}
-                className={`relative p-1.5 sm:p-2 transition-colors cursor-pointer ${
+                className={`relative p-1 sm:p-2 transition-colors cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
                     : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
@@ -779,7 +779,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Favoritos (Exibido em Mobile e Desktop) */}
               <Link
                 href={getStoreWishlistUrl(currentTenant?.slug)}
-                className={`relative p-1.5 sm:p-2 transition-colors cursor-pointer ${
+                className={`relative p-1 sm:p-2 transition-colors cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
                     : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'
@@ -798,7 +798,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Sacola de Compras com Contador (Exibido em Mobile e Desktop) */}
               <button
                 onClick={onOpenCart}
-                className={`relative p-1.5 sm:p-2 transition-transform active:scale-95 cursor-pointer ${
+                className={`relative p-1 sm:p-2 transition-transform active:scale-95 cursor-pointer ${
                   isTransparent
                     ? 'text-white hover:text-[#DFBE76] drop-shadow-sm'
                     : 'text-[#1A1918] dark:text-[#FAF8F5] hover:text-[#C5A059] dark:hover:text-[#DFBE76]'

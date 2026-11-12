@@ -2113,8 +2113,8 @@ export default function AdminProdutosPage() {
                 <Icon className={`w-3.5 h-3.5 shrink-0 ${kpi.iconColor}`} />
               </div>
 
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-lg font-black text-slate-900 font-mono">
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-1">
+                <span className="text-base sm:text-lg font-black text-slate-900 font-mono">
                   {kpi.value} <span className="text-[10px] font-semibold text-slate-500 lowercase">{kpi.unit}</span>
                 </span>
                 <span className="text-[11px] font-bold text-slate-600 truncate">
@@ -2361,11 +2361,12 @@ export default function AdminProdutosPage() {
           {/* Botão de Destaque: Gestor de Vitrines & Coleções */}
           <button
             onClick={() => setIsCollectionsModalOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer shadow-2xs shrink-0"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer shadow-2xs shrink-0"
             title={t.products.toolbar.collectionsTooltip}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>{t.products.toolbar.collectionsAndFeaturesBtn}</span>
+            <span className="hidden sm:inline">{t.products.toolbar.collectionsAndFeaturesBtn}</span>
+            <span className="sm:hidden text-[11px]">Vitrines</span>
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
@@ -2389,6 +2390,23 @@ export default function AdminProdutosPage() {
                     {t.products.toolbar.catalogToolsHeader}
                   </span>
                 </div>
+
+                {/* 0. Vitrines & Destaques (Acesso rápido mobile) */}
+                <button
+                  onClick={() => {
+                    setIsActionsDropdownOpen(false);
+                    setIsCollectionsModalOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-amber-900 bg-amber-50/60 hover:bg-amber-100 border-b border-amber-100/80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-md bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                  </div>
+                  <div>
+                    <span className="font-bold block">{t.products.toolbar.collectionsAndFeaturesBtn}</span>
+                    <span className="text-[10px] text-amber-700/80 block">{t.products.toolbar.collectionsTooltip}</span>
+                  </div>
+                </button>
 
                 {/* 1. Cadastrar Peça */}
                 <button
@@ -2865,54 +2883,57 @@ export default function AdminProdutosPage() {
                     </div>
                   </div>
 
-                  {/* Preço, Custo e Estoque */}
-                  <div className="flex items-center justify-between xl:justify-end gap-3 sm:gap-6 shrink-0 flex-nowrap">
-                    <div className="w-24 sm:w-28 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.salePrice}</span>
-                      {hasPromo ? (
-                        <div>
-                          <span className="text-xs line-through text-slate-400 block">
+                  {/* Preço, Custo, Estoque e Ações */}
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between xl:justify-end gap-3 sm:gap-4 lg:gap-6 w-full xl:w-auto shrink-0 pt-3 xl:pt-0 border-t border-slate-100 xl:border-0">
+                    {/* Bloco de Métricas Financeiras e Estoque */}
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 sm:border-0 sm:bg-transparent sm:p-0 sm:flex sm:items-center sm:gap-4 md:gap-6 shrink-0">
+                      <div className="w-auto sm:w-28 shrink-0 text-left">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.salePrice}</span>
+                        {hasPromo ? (
+                          <div>
+                            <span className="text-xs line-through text-slate-400 block">
+                              {formatCurrency(product.preco)}
+                            </span>
+                            <span className="text-sm font-extrabold text-amber-800 font-serif-luxury block">
+                              {formatCurrency(product.preco_promocional!)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-extrabold text-slate-900 font-serif-luxury block">
                             {formatCurrency(product.preco)}
                           </span>
-                          <span className="text-sm font-extrabold text-amber-800 font-serif-luxury block">
-                            {formatCurrency(product.preco_promocional!)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-sm font-extrabold text-slate-900 font-serif-luxury block">
-                          {formatCurrency(product.preco)}
+                        )}
+                      </div>
+
+                      <div className="w-auto sm:w-28 shrink-0 text-left">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.costCmv}</span>
+                        <span className="text-xs font-semibold text-slate-700 block truncate">
+                          {product.preco_custo ? formatCurrency(product.preco_custo) : formatCurrency(custo)}
                         </span>
-                      )}
-                    </div>
+                        <span className="text-[10px] font-bold text-emerald-700 font-mono block">
+                          {t.products.card.marginPct(margemBruta.toFixed(0))}
+                        </span>
+                      </div>
 
-                    <div className="w-24 sm:w-28 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.costCmv}</span>
-                      <span className="text-xs font-semibold text-slate-700 block">
-                        {product.preco_custo ? formatCurrency(product.preco_custo) : formatCurrency(custo)}
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-700 font-mono block">
-                        {t.products.card.marginPct(margemBruta.toFixed(0))}
-                      </span>
-                    </div>
-
-                    <div className="w-16 sm:w-20 shrink-0 text-left">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.stock}</span>
-                      <span
-                        className={`text-xs font-extrabold block ${
-                          product.estoque_total > 5
-                            ? 'text-emerald-700'
-                            : product.estoque_total > 0
-                            ? 'text-amber-700'
-                            : 'text-rose-700'
-                        }`}
-                      >
-                        {product.estoque_total > 0 ? t.products.card.stockUnits(product.estoque_total) : t.products.card.outOfStockBadge}
-                      </span>
+                      <div className="w-auto sm:w-20 shrink-0 text-left">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.stock}</span>
+                        <span
+                          className={`text-xs font-extrabold block truncate ${
+                            product.estoque_total > 5
+                              ? 'text-emerald-700'
+                              : product.estoque_total > 0
+                              ? 'text-amber-700'
+                              : 'text-rose-700'
+                          }`}
+                        >
+                          {product.estoque_total > 0 ? t.products.card.stockUnits(product.estoque_total) : t.products.card.outOfStockBadge}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Botões de Ação */}
                     {isLixeira ? (
-                      <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <button
                           onClick={() => handleRestoreProduct(product)}
                           title={t.products.card.restoreTooltip}
@@ -2934,7 +2955,7 @@ export default function AdminProdutosPage() {
                         )}
                       </div>
                     ) : isArquivada ? (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
                         <button
                           onClick={() => handleUnarchiveProduct(product)}
                           title={t.products.card.unarchiveTooltip}
@@ -2962,13 +2983,13 @@ export default function AdminProdutosPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
                         {/* Ver na Vitrine Pública (se ativa) */}
                         <Link
                           href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
                           target="_blank"
                           title={t.products.card.viewStorefrontTooltip}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer shrink-0"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </Link>
@@ -2977,7 +2998,7 @@ export default function AdminProdutosPage() {
                         <button
                           onClick={() => handleRequestEdit(product)}
                           title={isPausada ? t.products.card.editPausedTooltip : t.products.card.editFullTooltip}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           <span>{t.products.card.btnEdit}</span>
@@ -2988,7 +3009,7 @@ export default function AdminProdutosPage() {
                           onClick={() => !isPausada && handleOpenEdit(product)}
                           disabled={isPausada}
                           title={isPausada ? t.products.card.editPricesDisabledTooltip : t.products.card.editPricesTooltip}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border shrink-0 ${
                             isPausada
                               ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
                               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 cursor-pointer'
@@ -3007,7 +3028,7 @@ export default function AdminProdutosPage() {
                           }}
                           disabled={isPausada}
                           title={isPausada ? t.products.card.fittingDisabledTooltip : t.products.card.fittingTooltip}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors border shrink-0 ${
                             isPausada
                               ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200'
                               : (reservedStockMap[product.id] || 0) > 0
@@ -3031,7 +3052,7 @@ export default function AdminProdutosPage() {
                               setIsWaitlistModalOpen(true);
                             }}
                             title={t.products.card.btnWaitlist(aviseMeSummary[product.id])}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300 shadow-2xs shrink-0"
                           >
                             <Bell className="w-3.5 h-3.5 text-purple-600" />
                             <span className="hidden sm:inline">{t.products.card.btnWaitlist(aviseMeSummary[product.id])}</span>
@@ -3042,7 +3063,7 @@ export default function AdminProdutosPage() {
                         <button
                           onClick={() => handleToggleActive(product)}
                           title={product.ativo ? t.products.card.pauseTooltip : t.products.card.activateTooltip}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border shrink-0 ${
                             product.ativo
                               ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-800 border-slate-300'
                               : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-2xs'
@@ -3057,7 +3078,7 @@ export default function AdminProdutosPage() {
                           onClick={() => handleDuplicateProduct(product)}
                           disabled={duplicatingId === product.id}
                           title={t.products.card.duplicateTooltip}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                         >
                           <Copy className={`w-3.5 h-3.5 ${duplicatingId === product.id ? 'animate-spin' : ''}`} />
                           <span className="hidden sm:inline">{t.products.card.btnDuplicate}</span>
@@ -3067,7 +3088,7 @@ export default function AdminProdutosPage() {
                         <button
                           onClick={() => handleArchiveProduct(product)}
                           title={t.products.card.unarchiveTooltip}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer shrink-0"
                         >
                           <Archive className="w-4 h-4" />
                         </button>
@@ -3076,7 +3097,7 @@ export default function AdminProdutosPage() {
                         <button
                           onClick={() => handleOpenDeleteModal(product)}
                           title={t.products.card.trashTooltip}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -3085,7 +3106,7 @@ export default function AdminProdutosPage() {
                         <button
                           data-testid="btn-expand-product-grid"
                           onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
                           title={isExpanded ? t.products.card.hideGridBtn : t.products.card.expandGridBtn(product.variacoes?.length || 0)}
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

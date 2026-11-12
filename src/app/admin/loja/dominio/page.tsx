@@ -654,7 +654,7 @@ export default function CustomDomainSettingsPage() {
             </div>
 
             {/* TABELA DE CNAME */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[10px] uppercase tracking-wider">
                   <tr>

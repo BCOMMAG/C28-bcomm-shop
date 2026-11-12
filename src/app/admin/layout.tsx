@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -109,7 +109,23 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   });
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
+  const mobileUserMenuRef = useRef<HTMLDivElement>(null);
   const { locale, setLocale, t, formatCurrency } = useAdminI18n();
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (mobileUserMenuRef.current && !mobileUserMenuRef.current.contains(e.target as Node)) {
+        setIsMobileUserMenuOpen(false);
+      }
+    };
+    if (isMobileUserMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isMobileUserMenuOpen]);
 
   useEffect(() => {
     try {
@@ -937,13 +953,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="w-full max-w-md hidden sm:flex items-center justify-between pl-3.5 pr-3 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl text-xs text-slate-400 border border-slate-200 transition-all text-left shadow-2xs group cursor-pointer"
+              className="w-full max-w-xs xl:max-w-md hidden sm:flex items-center justify-between pl-3.5 pr-3 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl text-xs text-slate-400 border border-slate-200 transition-all text-left shadow-2xs group cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                <span className="text-slate-500 group-hover:text-slate-700">{t.adminHeader.searchPlaceholder}</span>
+                <span className="text-slate-500 group-hover:text-slate-700 truncate">{t.adminHeader.searchPlaceholder}</span>
               </div>
-              <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs">
+              <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs shrink-0">
                 Ctrl K
               </kbd>
             </button>
@@ -960,17 +976,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* LADO DIREITO: AÇÕES GLOBAIS, NOTIFICAÇÕES & PERFIL */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Botão Abrir Vitrine */}
             <Link
               href={getStorefrontUrl(currentTenant)}
               target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all shadow-2xs shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all shadow-2xs shrink-0"
               title="Abre a vitrine pública da loja em nova aba"
             >
               <Store className="w-3.5 h-3.5 text-amber-700" />
               <span className="hidden sm:inline">{t.adminHeader.openStore}</span>
-              <span className="sm:hidden">{t.adminHeader.storefront}</span>
               <ExternalLink className="w-3 h-3 text-amber-700/70" />
             </Link>
 
@@ -1034,18 +1049,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            {/* Seletor de Idioma Global */}
-            <div className="shrink-0">
+            {/* Seletor de Idioma Global (Desktop/Tablet) */}
+            <div className="shrink-0 hidden sm:block">
               <LanguageSelector />
             </div>
 
             <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
-            {/* Link Rápido de Configurações */}
+            {/* Link Rápido de Configurações (Desktop/Tablet) */}
             <Link
               href="/admin/configuracoes/"
               onClick={(e) => handleProtectedNav(e, '/admin/configuracoes/')}
-              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative hidden sm:flex"
               title="Configurações & Paleta de Cores"
             >
               <Settings className="w-4 h-4" />
@@ -1071,83 +1086,170 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : (
               <>
-                {/* Botão Balcão / PIN Rápido */}
+                {/* Botão Balcão / PIN Rápido (Desktop/Tablet) */}
                 <button
                   type="button"
                   onClick={() => setIsLockScreenOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
                   title="Bloquear painel e alternar colaboradora via PIN"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t.adminHeader.posPin}</span>
+                  <span className="hidden lg:inline">{t.adminHeader.posPin}</span>
                 </button>
 
-                <div className="h-5 w-[1px] bg-slate-200" />
+                <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
-                {/* Perfil Administrador com Avatar */}
-                <div
-                  onClick={() => setIsLockScreenOpen(true)}
-                  className="flex items-center gap-2.5 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
-                  title="Clique para alternar colaboradora com PIN"
-                >
+                {/* Perfil Administrador com Avatar e Dropdown Unificado no Mobile */}
+                <div className="relative" ref={mobileUserMenuRef}>
                   <div
-                    className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs"
-                    style={{ backgroundColor: c.sidebarBg }}
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                        setIsMobileUserMenuOpen((prev) => !prev);
+                      } else {
+                        setIsLockScreenOpen(true);
+                      }
+                    }}
+                    className="flex items-center gap-2.5 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
+                    title="Menu do operador e troca de colaboradora com PIN"
                   >
-                    {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
+                    <div
+                      className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0"
+                      style={{ backgroundColor: c.sidebarBg }}
+                    >
+                      {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="hidden lg:block text-left text-xs leading-tight">
+                      <span className="font-bold text-slate-900 block truncate max-w-[130px]">
+                        {activeMember?.nome || 'Administrador'}
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
+                        {(() => {
+                          const cargo = (activeMember?.cargo || 'dono').toLowerCase();
+                          if (cargo === 'dono') return t.team.roleOwner;
+                          if (cargo === 'gerente') return t.team.roleManager;
+                          if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
+                          if (cargo === 'estoquista') return t.team.roleStockist;
+                          return activeMember?.cargo || t.team.roleOwner;
+                        })()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="hidden lg:block text-left text-xs leading-tight">
-                    <span className="font-bold text-slate-900 block truncate max-w-[130px]">
-                      {activeMember?.nome || 'Administrador'}
-                    </span>
-                    <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wide">
-                      {(() => {
-                        const cargo = (activeMember?.cargo || 'dono').toLowerCase();
-                        if (cargo === 'dono') return t.team.roleOwner;
-                        if (cargo === 'gerente') return t.team.roleManager;
-                        if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
-                        if (cargo === 'estoquista') return t.team.roleStockist;
-                        return activeMember?.cargo || t.team.roleOwner;
-                      })()}
-                    </span>
-                  </div>
+
+                  {/* Dropdown de Ações Rápidas do Usuário no Mobile (100% Responsivo) */}
+                  {isMobileUserMenuOpen && (
+                    <div className="sm:hidden absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+                      {/* Dados do Operador Logado */}
+                      <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                        <div
+                          className="w-9 h-9 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs"
+                          style={{ backgroundColor: c.sidebarBg }}
+                        >
+                          {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-slate-900 text-xs block truncate">
+                            {activeMember?.nome || 'Administrador'}
+                          </span>
+                          <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider block">
+                            {(() => {
+                              const cargo = (activeMember?.cargo || 'dono').toLowerCase();
+                              if (cargo === 'dono') return t.team.roleOwner;
+                              if (cargo === 'gerente') return t.team.roleManager;
+                              if (cargo === 'vendedora' || cargo === 'vendedor') return t.team.roleSeller;
+                              if (cargo === 'estoquista') return t.team.roleStockist;
+                              return activeMember?.cargo || t.team.roleOwner;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Botão Balcão PIN no Mobile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileUserMenuOpen(false);
+                          setIsLockScreenOpen(true);
+                        }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-900 text-amber-400 hover:bg-slate-800 text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>{t.adminHeader.posPin}</span>
+                        </div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Trocar</span>
+                      </button>
+
+                      {/* Seletor de Idioma no Mobile */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <span className="text-xs font-bold text-slate-700">Idioma:</span>
+                        <LanguageSelector />
+                      </div>
+
+                      {/* Configurações da Loja no Mobile */}
+                      <Link
+                        href="/admin/configuracoes/"
+                        onClick={(e) => {
+                          setIsMobileUserMenuOpen(false);
+                          handleProtectedNav(e, '/admin/configuracoes/');
+                        }}
+                        className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-slate-500" />
+                        <span>Configurações & Aparência</span>
+                      </Link>
+
+                      {/* Botão Sair no Mobile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileUserMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>{t.adminHeader.logout}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
 
-            {/* Botão Sair */}
+            {/* Botão Sair (Desktop/Tablet) */}
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs ml-1"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs ml-1"
               title="Encerrar sessão no painel"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.adminHeader.logout}</span>
+              <span className="hidden lg:inline">{t.adminHeader.logout}</span>
             </button>
           </div>
         </header>
 
-        {/* BREADCRUMB COMPACTO (Para páginas internas) */}
+        {/* BREADCRUMB COMPACTO (Para páginas internas - 100% Responsivo) */}
         {!isRootAdmin && (
           <div className="bg-white border-b border-slate-200/80 py-2 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-[1700px] mx-auto flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="max-w-[1700px] mx-auto flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Link
                   href="/admin/"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
                 >
                   <ArrowLeft className="w-3 h-3" />
-                  <span>{t.adminNav.backToOverview}</span>
+                  <span>{t.common.back}</span>
+                  <span className="hidden sm:inline"> {locale === 'en' ? 'to Overview' : locale === 'es' ? 'a la Vista General' : 'à Visão Geral'}</span>
                 </Link>
 
-                <div className="h-4 w-[1px] bg-slate-200" />
+                <div className="h-4 w-[1px] bg-slate-200 shrink-0" />
 
-                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight font-serif-luxury">
+                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight font-serif-luxury truncate">
                   {cleanPath === '/admin/pedidos' ? t.orders.title : currentNav?.title || t.common.panel}
                 </h1>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
                 <Link href="/admin/" className="hover:text-slate-900">
                   {t.adminNav.overview}
                 </Link>
