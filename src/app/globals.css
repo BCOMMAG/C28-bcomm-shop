@@ -170,6 +170,33 @@ body {
   font-family: var(--font-montserrat), Montserrat, sans-serif !important;
 }
 
+/* Barra de rolagem ergonômica e visível para tabelas com overflow horizontal */
+.table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 9999px;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f8fafc;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
 
 
 

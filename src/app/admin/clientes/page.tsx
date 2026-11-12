@@ -375,7 +375,7 @@ export default function AdminClientesPage() {
   const ltvMedio = totalCompradoras > 0 ? totalGastoGeral / totalCompradoras : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* TOAST */}
       {toast && (
         <div
@@ -565,7 +565,7 @@ export default function AdminClientesPage() {
       )}
 
       {/* TABELA DE CLIENTES CRM */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
         <div className="p-5 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 font-serif-luxury">
@@ -589,8 +589,8 @@ export default function AdminClientesPage() {
             <p className="text-xs">Tente ajustar o termo de busca ou a segmentação selecionada.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto table-scrollbar w-full">
+            <table className="w-full min-w-[880px] text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
                 <tr>
                   <th className="py-3 px-3 w-10 text-center">
@@ -602,12 +602,12 @@ export default function AdminClientesPage() {
                       title="Selecionar todas as clientes da lista"
                     />
                   </th>
-                  <th className="py-3 px-4">{t.customers.colName} / {t.customers.colPhone}</th>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Location' : locale === 'es' ? 'Ubicación' : 'Localização'}</th>
-                  <th className="py-3 px-4 text-center">{t.customers.colOrders}</th>
-                  <th className="py-3 px-4 text-right">LTV ({t.customers.colTotalSpent})</th>
-                  <th className="py-3 px-4">{locale === 'en' ? 'Profile & Badge' : locale === 'es' ? 'Perfil y Sello' : 'Perfil & Selo'}</th>
-                  <th className="py-3 px-4 text-right">{t.common.actions} & WhatsApp</th>
+                  <th className="py-3 px-4 min-w-[200px]">{t.customers.colName} / {t.customers.colPhone}</th>
+                  <th className="py-3 px-4 min-w-[130px]">{locale === 'en' ? 'Location' : locale === 'es' ? 'Ubicación' : 'Localização'}</th>
+                  <th className="py-3 px-4 text-center min-w-[90px]">{t.customers.colOrders}</th>
+                  <th className="py-3 px-4 text-right min-w-[120px]">LTV ({t.customers.colTotalSpent})</th>
+                  <th className="py-3 px-4 min-w-[140px]">{locale === 'en' ? 'Profile & Badge' : locale === 'es' ? 'Perfil y Sello' : 'Perfil & Selo'}</th>
+                  <th className="py-3 px-4 text-right min-w-[160px]">{t.common.actions} & WhatsApp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">

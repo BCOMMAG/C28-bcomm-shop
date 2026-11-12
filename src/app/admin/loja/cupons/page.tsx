@@ -169,7 +169,7 @@ export default function AdminCuponsPage() {
   const totalUsos = coupons.reduce((acc, c) => acc + (c.usos_atuais || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* TOAST */}
       {toast && (
         <div
@@ -287,7 +287,7 @@ export default function AdminCuponsPage() {
       </div>
 
       {/* TABELA DE CUPONS */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
         {loading ? (
           <div className="p-16 text-center text-xs text-slate-500">
             <RefreshCw className="w-6 h-6 animate-spin text-amber-600 mx-auto mb-2" />
@@ -300,16 +300,16 @@ export default function AdminCuponsPage() {
             <p className="text-xs">{t.storeCoupons.emptyStateDesc}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto table-scrollbar w-full">
+            <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
                 <tr>
-                  <th className="py-3 px-4">{t.storeCoupons.thCode}</th>
-                  <th className="py-3 px-4">{t.storeCoupons.thDiscount}</th>
-                  <th className="py-3 px-4">{t.storeCoupons.thMinOrder}</th>
-                  <th className="py-3 px-4 text-center">{t.storeCoupons.thUses}</th>
-                  <th className="py-3 px-4">{t.storeCoupons.thStatus}</th>
-                  <th className="py-3 px-4 text-right">{t.storeCoupons.thActions}</th>
+                  <th className="py-3 px-4 min-w-[150px]">{t.storeCoupons.thCode}</th>
+                  <th className="py-3 px-4 min-w-[120px]">{t.storeCoupons.thDiscount}</th>
+                  <th className="py-3 px-4 min-w-[110px]">{t.storeCoupons.thMinOrder}</th>
+                  <th className="py-3 px-4 text-center min-w-[80px]">{t.storeCoupons.thUses}</th>
+                  <th className="py-3 px-4 min-w-[100px]">{t.storeCoupons.thStatus}</th>
+                  <th className="py-3 px-4 text-right min-w-[120px]">{t.storeCoupons.thActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">

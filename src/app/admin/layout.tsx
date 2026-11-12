@@ -930,7 +930,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       ========================================================================= */}
       <div
         className={cn(
-          "flex-1 flex flex-col print:pl-0 min-w-0 transition-all duration-300",
+          "flex-1 flex flex-col print:pl-0 min-w-0 max-w-full overflow-x-hidden transition-all duration-300",
           isSidebarCollapsed ? "md:pl-20" : "md:pl-64"
         )}
       >
@@ -938,12 +938,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <MasterImpersonationBar />
 
         {/* TOPBAR FIXO DO APLICATIVO */}
-        <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shadow-2xs print:hidden">
+        <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-3 sm:px-4 lg:px-6 xl:px-8 flex items-center justify-between gap-2 sm:gap-4 shadow-2xs print:hidden w-full min-w-0 max-w-full">
           {/* LADO ESQUERDO: HAMBÚRGUER MOBILE + BARRA DE BUSCA UNIVERSAL */}
-          <div className="flex items-center gap-3 flex-1 max-w-xl">
+          <div className="flex items-center gap-3 flex-1 max-w-xl min-w-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+              className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 shrink-0"
               aria-label="Abrir Menu"
             >
               <Menu className="w-5 h-5" />
@@ -953,13 +953,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="w-full max-w-xs xl:max-w-md hidden sm:flex items-center justify-between pl-3.5 pr-3 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl text-xs text-slate-400 border border-slate-200 transition-all text-left shadow-2xs group cursor-pointer"
+              className="flex-1 min-w-[120px] max-w-xs xl:max-w-md hidden sm:flex items-center justify-between pl-3.5 pr-3 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl text-xs text-slate-400 border border-slate-200 transition-all text-left shadow-2xs group cursor-pointer"
             >
-              <div className="flex items-center gap-2.5">
-                <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors shrink-0" />
                 <span className="text-slate-500 group-hover:text-slate-700 truncate">{t.adminHeader.searchPlaceholder}</span>
               </div>
-              <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs shrink-0">
+              <kbd className="hidden md:inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-500 border border-slate-200 shadow-2xs shrink-0 ml-1">
                 Ctrl K
               </kbd>
             </button>
@@ -968,7 +968,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="sm:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+              className="sm:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 shrink-0"
               title="Buscar no Painel"
             >
               <Search className="w-5 h-5" />
@@ -984,9 +984,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all shadow-2xs shrink-0"
               title="Abre a vitrine pública da loja em nova aba"
             >
-              <Store className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden sm:inline">{t.adminHeader.openStore}</span>
-              <ExternalLink className="w-3 h-3 text-amber-700/70" />
+              <Store className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span className="hidden xl:inline">{t.adminHeader.openStore}</span>
+              <ExternalLink className="w-3 h-3 text-amber-700/70 hidden sm:inline shrink-0" />
             </Link>
 
             <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
@@ -995,7 +995,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <div className="relative">
               <button
                 onClick={() => setIsNotifOpen((prev) => !prev)}
-                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative cursor-pointer"
+                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative cursor-pointer shrink-0"
                 title="Pedidos pendentes no WhatsApp"
               >
                 <Bell className="w-4 h-4" />
@@ -1060,7 +1060,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/admin/configuracoes/"
               onClick={(e) => handleProtectedNav(e, '/admin/configuracoes/')}
-              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative hidden sm:flex"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative hidden sm:flex shrink-0"
               title="Configurações & Paleta de Cores"
             >
               <Settings className="w-4 h-4" />
@@ -1069,13 +1069,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Perfil do Operador / Master God Mode */}
             {isMaster ? (
               <div
-                className="flex items-center gap-2 pl-1 select-none"
+                className="flex items-center gap-2 pl-1 select-none shrink-0"
                 title="Acesso Supremo Master God Mode (Invisível na Equipe)"
               >
                 <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shadow-xs">
                   ⚡
                 </div>
-                <div className="hidden lg:block text-left text-xs leading-tight">
+                <div className="hidden 2xl:block text-left text-xs leading-tight">
                   <span className="font-bold text-amber-900 block truncate max-w-[130px]">
                     Master Admin
                   </span>
@@ -1090,17 +1090,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setIsLockScreenOpen(true)}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 transition-all shadow-2xs shrink-0 cursor-pointer"
                   title="Bloquear painel e alternar colaboradora via PIN"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">{t.adminHeader.posPin}</span>
+                  <span className="hidden 2xl:inline">{t.adminHeader.posPin}</span>
                 </button>
 
                 <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
                 {/* Perfil Administrador com Avatar e Dropdown Unificado no Mobile */}
-                <div className="relative" ref={mobileUserMenuRef}>
+                <div className="relative shrink-0" ref={mobileUserMenuRef}>
                   <div
                     onClick={() => {
                       if (typeof window !== 'undefined' && window.innerWidth < 640) {
@@ -1118,7 +1118,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     >
                       {(activeMember?.nome || lojaNome).charAt(0).toUpperCase()}
                     </div>
-                    <div className="hidden lg:block text-left text-xs leading-tight">
+                    <div className="hidden 2xl:block text-left text-xs leading-tight">
                       <span className="font-bold text-slate-900 block truncate max-w-[130px]">
                         {activeMember?.nome || 'Administrador'}
                       </span>
@@ -1219,18 +1219,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Botão Sair (Desktop/Tablet) */}
             <button
               onClick={handleLogout}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs ml-1"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs ml-1 shrink-0"
               title="Encerrar sessão no painel"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">{t.adminHeader.logout}</span>
+              <span className="hidden 2xl:inline">{t.adminHeader.logout}</span>
             </button>
           </div>
         </header>
 
         {/* BREADCRUMB COMPACTO (Para páginas internas - 100% Responsivo) */}
         {!isRootAdmin && (
-          <div className="bg-white border-b border-slate-200/80 py-2 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white border-b border-slate-200/80 py-2 px-3 sm:px-4 lg:px-6 xl:px-8 w-full min-w-0 max-w-full overflow-hidden">
             <div className="max-w-[1700px] mx-auto flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <Link
@@ -1263,7 +1263,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* CANVAS PRINCIPAL (Aproveitamento total da tela sem bordas mortas) */}
-        <main className="flex-1 w-full max-w-[1700px] mx-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 w-full max-w-[1700px] mx-auto p-3 sm:p-4 md:p-6 lg:p-8 min-w-0 max-w-full">
           {!isMaster && activeMember && activeMember.horario_restrito && !checkWorkingHoursAccess(activeMember).permitido ? (
             <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-xl mx-auto my-8">
               <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">

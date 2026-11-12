@@ -28,6 +28,7 @@ import {
   Send,
   Sparkles,
   ArrowRight,
+  ArrowRightLeft,
   ArrowLeft,
   Printer,
   FileText,
@@ -1519,7 +1520,7 @@ export default function AdminPedidosPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full min-w-0 max-w-full">
       {/* TOAST DE NOTIFICAÇÃO FLUTUANTE */}
       {feedbackToast && (
         <div
@@ -2692,9 +2693,18 @@ export default function AdminPedidosPage() {
         /* ======================================================== */
         /* MODO 2: LISTA / TABELA COMPACTA (ALTA DENSIDADE)          */
         /* ======================================================== */
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs w-full min-w-0 max-w-full">
+          {/* Indicador de rolagem lateral para telas menores / zoom */}
+          <div className="xl:hidden flex items-center justify-between px-3.5 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>{locale === 'en' ? 'Scroll horizontally to view status & actions' : locale === 'es' ? 'Deslice horizontalmente para ver estado y acciones' : 'Deslize horizontalmente para ver status e ações'}</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono tracking-widest shrink-0">← →</span>
+          </div>
+
+          <div className="overflow-x-auto table-scrollbar w-full">
+            <table className="w-full min-w-[960px] text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                   <th className="p-3 w-10 text-center">
@@ -2705,14 +2715,14 @@ export default function AdminPedidosPage() {
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
                   </th>
-                  <th className="p-3">{t.orders.tableHeaders.order}</th>
-                  <th className="p-3">{t.orders.tableHeaders.dateTime}</th>
-                  <th className="p-3">{t.orders.tableHeaders.customer}</th>
-                  <th className="p-3">{t.orders.tableHeaders.items}</th>
-                  <th className="p-3">{t.orders.tableHeaders.total}</th>
-                  <th className="p-3">{t.orders.tableHeaders.status}</th>
-                  <th className="p-3">{t.orders.tableHeaders.tracking}</th>
-                  <th className="p-3 text-right">{t.orders.tableHeaders.actions}</th>
+                  <th className="p-3 min-w-[120px]">{t.orders.tableHeaders.order}</th>
+                  <th className="p-3 min-w-[110px]">{t.orders.tableHeaders.dateTime}</th>
+                  <th className="p-3 min-w-[160px]">{t.orders.tableHeaders.customer}</th>
+                  <th className="p-3 min-w-[140px]">{t.orders.tableHeaders.items}</th>
+                  <th className="p-3 min-w-[100px]">{t.orders.tableHeaders.total}</th>
+                  <th className="p-3 min-w-[110px]">{t.orders.tableHeaders.status}</th>
+                  <th className="p-3 min-w-[110px]">{t.orders.tableHeaders.tracking}</th>
+                  <th className="p-3 min-w-[110px] text-right">{t.orders.tableHeaders.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -4270,43 +4280,45 @@ export default function AdminPedidosPage() {
                   {/* DISCRIMINAÇÃO DOS ITENS */}
                   <div className="space-y-2">
                     <strong className="block text-[11px] uppercase">{t.orders.contentDeclaration.contentDetails}</strong>
-                    <table className="w-full border-collapse border border-slate-300 text-[10px]">
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-slate-300 text-left">
-                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thItem}</th>
-                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thContent}</th>
-                          <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thSizeColor}</th>
-                          <th className="p-1.5 border-r border-slate-300 text-center">{t.orders.contentDeclaration.thQty}</th>
-                          <th className="p-1.5 text-right">{t.orders.contentDeclaration.thValue}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(printModalOrder.itens_pedido || []).map((it, idx) => (
-                          <tr key={idx} className="border-b border-slate-200">
-                            <td className="p-1.5 border-r border-slate-300 font-bold">{idx + 1}</td>
-                            <td className="p-1.5 border-r border-slate-300">{it.nome_produto}</td>
-                            <td className="p-1.5 border-r border-slate-300">{it.tamanho} / {it.cor}</td>
-                            <td className="p-1.5 border-r border-slate-300 text-center">{it.quantidade}</td>
-                            <td className="p-1.5 text-right font-bold">
-                              {formatCurrency(it.preco_unitario * it.quantidade)}
+                    <div className="overflow-x-auto table-scrollbar w-full">
+                      <table className="w-full min-w-[480px] border-collapse border border-slate-300 text-[10px]">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-300 text-left">
+                            <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thItem}</th>
+                            <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thContent}</th>
+                            <th className="p-1.5 border-r border-slate-300">{t.orders.contentDeclaration.thSizeColor}</th>
+                            <th className="p-1.5 border-r border-slate-300 text-center">{t.orders.contentDeclaration.thQty}</th>
+                            <th className="p-1.5 text-right">{t.orders.contentDeclaration.thValue}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(printModalOrder.itens_pedido || []).map((it, idx) => (
+                            <tr key={idx} className="border-b border-slate-200">
+                              <td className="p-1.5 border-r border-slate-300 font-bold">{idx + 1}</td>
+                              <td className="p-1.5 border-r border-slate-300">{it.nome_produto}</td>
+                              <td className="p-1.5 border-r border-slate-300">{it.tamanho} / {it.cor}</td>
+                              <td className="p-1.5 border-r border-slate-300 text-center">{it.quantidade}</td>
+                              <td className="p-1.5 text-right font-bold">
+                                {formatCurrency(it.preco_unitario * it.quantidade)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-slate-50 font-bold">
+                            <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">
+                              {t.orders.contentDeclaration.totalMerchandise}
+                            </td>
+                            <td className="p-1.5 text-center border-r border-slate-300">
+                              {(printModalOrder.itens_pedido || []).reduce((acc, i) => acc + (i.quantidade || 1), 0)}
+                            </td>
+                            <td className="p-1.5 text-right">
+                              {formatCurrency(Number(printModalOrder.total || 0))}
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-slate-50 font-bold">
-                          <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">
-                            {t.orders.contentDeclaration.totalMerchandise}
-                          </td>
-                          <td className="p-1.5 text-center border-r border-slate-300">
-                            {(printModalOrder.itens_pedido || []).reduce((acc, i) => acc + (i.quantidade || 1), 0)}
-                          </td>
-                          <td className="p-1.5 text-right">
-                            {formatCurrency(Number(printModalOrder.total || 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </tfoot>
+                      </table>
+                    </div>
                   </div>
 
                   {/* DECLARAÇÃO LEGAL */}

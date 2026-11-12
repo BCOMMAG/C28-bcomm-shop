@@ -199,7 +199,7 @@ export default function AdminEquipePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-12 w-full min-w-0 max-w-full">
       {/* Alerta de Feedback Flutuante */}
       {actionFeedback && (
         <div
@@ -381,7 +381,7 @@ export default function AdminEquipePage() {
       </div>
 
       {/* Tabela de Membros da Equipe */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden w-full min-w-0 max-w-full">
         {loading ? (
           <div className="p-12 text-center">
             <div className="w-8 h-8 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -392,17 +392,17 @@ export default function AdminEquipePage() {
             Nenhum colaborador encontrado para os filtros selecionados.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+          <div className="overflow-x-auto table-scrollbar w-full">
+            <table className="w-full min-w-[840px] text-left text-xs text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4">{t.team.colName}</th>
-                  <th className="py-3.5 px-4">{t.team.colRole}</th>
-                  <th className="py-3.5 px-4">{t.team.colSalesGoals}</th>
-                  <th className="py-3.5 px-4">{t.team.colWorkingHours}</th>
-                  <th className="py-3.5 px-4">{t.team.colPosPin}</th>
-                  <th className="py-3.5 px-4">{t.team.colStatus}</th>
-                  <th className="py-3.5 px-4 text-right">{t.common.actions}</th>
+                  <th className="py-3.5 px-4 min-w-[180px]">{t.team.colName}</th>
+                  <th className="py-3.5 px-4 min-w-[100px]">{t.team.colRole}</th>
+                  <th className="py-3.5 px-4 min-w-[130px]">{t.team.colSalesGoals}</th>
+                  <th className="py-3.5 px-4 min-w-[140px]">{t.team.colWorkingHours}</th>
+                  <th className="py-3.5 px-4 min-w-[90px]">{t.team.colPosPin}</th>
+                  <th className="py-3.5 px-4 min-w-[90px]">{t.team.colStatus}</th>
+                  <th className="py-3.5 px-4 text-right min-w-[110px]">{t.common.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">

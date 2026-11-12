@@ -432,7 +432,7 @@ export default function AdminDashboardPage() {
   const temExatamenteUmItemDistinto = itensAgrupadosNoPeriodo.length === 1;
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-6 w-full min-w-0 max-w-full">
       {/* =========================================================================
           CABEÇALHO DA VISÃO GERAL (Título + Seletor de Período + Atualizar)
       ========================================================================= */}
@@ -820,16 +820,16 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Visualização em Tabela para Desktop / Tablet */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="hidden sm:block overflow-x-auto table-scrollbar w-full">
+          <table className="w-full min-w-[780px] text-left text-xs">
             <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
               <tr>
-                <th className="py-3 px-4">{t.dashboard.tableHeaders.order}</th>
-                <th className="py-3 px-4">{t.dashboard.tableHeaders.product}</th>
-                <th className="py-3 px-4">{t.dashboard.tableHeaders.customer}</th>
-                <th className="py-3 px-4">{t.dashboard.tableHeaders.total}</th>
-                <th className="py-3 px-4">{t.dashboard.tableHeaders.status}</th>
-                <th className="py-3 px-4 text-right">{t.dashboard.tableHeaders.action}</th>
+                <th className="py-3 px-4 min-w-[120px]">{t.dashboard.tableHeaders.order}</th>
+                <th className="py-3 px-4 min-w-[180px]">{t.dashboard.tableHeaders.product}</th>
+                <th className="py-3 px-4 min-w-[160px]">{t.dashboard.tableHeaders.customer}</th>
+                <th className="py-3 px-4 min-w-[110px]">{t.dashboard.tableHeaders.total}</th>
+                <th className="py-3 px-4 min-w-[110px]">{t.dashboard.tableHeaders.status}</th>
+                <th className="py-3 px-4 text-right min-w-[100px]">{t.dashboard.tableHeaders.action}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

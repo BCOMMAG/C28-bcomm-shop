@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  ArrowRightLeft,
   Layers,
   Sparkles,
   ChevronDown,
@@ -2001,7 +2002,7 @@ export default function AdminProdutosPage() {
   }, [filteredProducts, sortOrder]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* TOAST */}
       {toast && (
         <div
@@ -3215,9 +3216,18 @@ export default function AdminProdutosPage() {
         /* ======================================================== */
         /* MODO 2: LISTA / TABELA COMPACTA (ALTA DENSIDADE)          */
         /* ======================================================== */
-        <div className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs transition-all duration-200 ${selectedProductIds.size > 0 ? 'mb-32' : 'mb-6'}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+        <div className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs transition-all duration-200 ${selectedProductIds.size > 0 ? 'mb-32' : 'mb-6'} w-full min-w-0 max-w-full`}>
+          {/* Indicador de rolagem lateral para telas menores / zoom */}
+          <div className="xl:hidden flex items-center justify-between px-3.5 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>{locale === 'en' ? 'Scroll horizontally to view visibility & actions' : locale === 'es' ? 'Deslice horizontalmente para ver visibilidad y acciones' : 'Deslize horizontalmente para ver visibilidade e ações'}</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono tracking-widest shrink-0">← →</span>
+          </div>
+
+          <div className="overflow-x-auto table-scrollbar w-full">
+            <table className="w-full min-w-[980px] text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                   <th className="p-3 w-10 text-center">
@@ -3229,12 +3239,12 @@ export default function AdminProdutosPage() {
                     />
                   </th>
                   <th className="p-3 w-14">{t.products.table.thPhoto}</th>
-                  <th className="p-3">{t.products.table.thProductSku}</th>
-                  <th className="p-3">{t.products.table.thSalePrice}</th>
-                  <th className="p-3">{t.products.table.thCostCmv} / {t.products.table.thMargin}</th>
-                  <th className="p-3">{t.products.table.thStock}</th>
-                  <th className="p-3 text-center">{t.products.table.thVisibility}</th>
-                  <th className="p-3 text-right">{t.products.table.thActions}</th>
+                  <th className="p-3 min-w-[200px]">{t.products.table.thProductSku}</th>
+                  <th className="p-3 min-w-[100px]">{t.products.table.thSalePrice}</th>
+                  <th className="p-3 min-w-[120px]">{t.products.table.thCostCmv} / {t.products.table.thMargin}</th>
+                  <th className="p-3 min-w-[110px]">{t.products.table.thStock}</th>
+                  <th className="p-3 min-w-[110px] text-center">{t.products.table.thVisibility}</th>
+                  <th className="p-3 min-w-[160px] text-right">{t.products.table.thActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

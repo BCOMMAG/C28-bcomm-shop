@@ -259,7 +259,7 @@ export default function CustomDomainSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* Toast flutuante */}
       {toast && (
         <div
@@ -654,8 +654,8 @@ export default function CustomDomainSettingsPage() {
             </div>
 
             {/* TABELA DE CNAME */}
-            <div className="border border-slate-200 rounded-xl overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto table-scrollbar w-full">
+              <table className="w-full min-w-[500px] text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[10px] uppercase tracking-wider">
                   <tr>
                     <th className="p-3">Tipo</th>

@@ -98,7 +98,7 @@ export default function AdminFinancasPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* CABEÇALHO OFICIAL DE IMPRESSÃO (Visível apenas ao imprimir ou salvar em PDF) */}
       <div className="hidden print:block pb-6 mb-4 border-b-2 border-slate-900">
         <div className="flex items-center justify-between">
@@ -355,7 +355,7 @@ export default function AdminFinancasPage() {
       </div>
 
       {/* CURVA ABC: TOP PEÇAS MAIS LUCRATIVAS */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs space-y-4 w-full min-w-0 max-w-full">
         <div>
           <h2 className="text-base font-bold text-slate-900 font-serif-luxury">
             Curva de Lucratividade: Peças que Mais Geram Caixa
@@ -365,15 +365,15 @@ export default function AdminFinancasPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto table-scrollbar w-full">
+          <table className="w-full min-w-[650px] text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold text-[10px]">
               <tr>
-                <th className="py-3 px-4">Peça de Luxo</th>
-                <th className="py-3 px-4 text-center">Qtd Vendida</th>
-                <th className="py-3 px-4 text-right">Faturamento</th>
-                <th className="py-3 px-4 text-right">Lucro Estimado</th>
-                <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 min-w-[200px]">Peça de Luxo</th>
+                <th className="py-3 px-4 text-center min-w-[90px]">Qtd Vendida</th>
+                <th className="py-3 px-4 text-right min-w-[120px]">Faturamento</th>
+                <th className="py-3 px-4 text-right min-w-[120px]">Lucro Estimado</th>
+                <th className="py-3 px-4 text-center min-w-[100px]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">
