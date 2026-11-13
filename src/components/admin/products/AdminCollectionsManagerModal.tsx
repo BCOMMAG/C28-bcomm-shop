@@ -25,7 +25,9 @@ import {
   AdminCategoryFull,
   toggleProductPromotionalFlag,
   bulkUpdatePromotionalFlags,
-  bulkUpdateProductCategory
+  bulkUpdateProductCategory,
+  ColecaoLojaItem,
+  getColecoesLoja
 } from '@/lib/admin';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -129,33 +131,54 @@ export function AdminCollectionsManagerModal({
   // Seleção de peças na aba 'add_catalog' (para inclusão em lote)
   const [selectedAddProductIds, setSelectedAddProductIds] = useState<Set<string>>(new Set());
 
+  // Coleções configuradas pelo lojista
+  const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
+
+  React.useEffect(() => {
+    if (!isOpen || !tenantId) return;
+    let isMounted = true;
+    getColecoesLoja(tenantId)
+      .then((cols) => {
+        if (isMounted) setColecoesLoja(cols);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, tenantId]);
+
+  const colLancamentos = useMemo(() => colecoesLoja.find((c) => c.id === 'base-lancamentos' || c.slug === 'lancamentos-2026'), [colecoesLoja]);
+  const colMaisVendidos = useMemo(() => colecoesLoja.find((c) => c.id === 'base-mais-vendidos' || c.slug === 'mais-vendidos'), [colecoesLoja]);
+  const colOutlet = useMemo(() => colecoesLoja.find((c) => c.id === 'base-outlet' || c.slug === 'outlet-bazar'), [colecoesLoja]);
+  const colUltimasPecas = useMemo(() => colecoesLoja.find((c) => c.id === 'base-ultimas-pecas' || c.slug === 'ultimas-pecas'), [colecoesLoja]);
+
   const tabTitles: Record<CollectionTab, { title: string; subtitle: string; label: string }> = useMemo(() => ({
     destaque: {
-      title: t.products.collectionsModal.tabFeatured,
-      subtitle: t.products.collectionsModal.featuredDesc,
-      label: t.products.collectionsModal.tabFeatured.replace(/^🌟\s*/, '')
+      title: colLancamentos?.nome ? `🌟 ${colLancamentos.nome}` : t.products.collectionsModal.tabFeatured,
+      subtitle: colLancamentos?.descricao || t.products.collectionsModal.featuredDesc,
+      label: colLancamentos?.nome || t.products.collectionsModal.tabFeatured.replace(/^🌟\s*/, '')
     },
     mais_vendido: {
-      title: t.products.collectionsModal.tabBestSellers,
-      subtitle: t.products.collectionsModal.bestSellersDesc,
-      label: t.products.collectionsModal.tabBestSellers.replace(/^🔥\s*/, '')
+      title: colMaisVendidos?.nome ? `🔥 ${colMaisVendidos.nome}` : t.products.collectionsModal.tabBestSellers,
+      subtitle: colMaisVendidos?.descricao || t.products.collectionsModal.bestSellersDesc,
+      label: colMaisVendidos?.nome || t.products.collectionsModal.tabBestSellers.replace(/^🔥\s*/, '')
     },
     outlet: {
-      title: t.products.collectionsModal.tabOutlet,
-      subtitle: t.products.collectionsModal.outletDesc,
-      label: t.products.collectionsModal.tabOutlet.replace(/^🏷️\s*/, '')
+      title: colOutlet?.nome ? `🏷️ ${colOutlet.nome}` : t.products.collectionsModal.tabOutlet,
+      subtitle: colOutlet?.descricao || t.products.collectionsModal.outletDesc,
+      label: colOutlet?.nome || t.products.collectionsModal.tabOutlet.replace(/^🏷️\s*/, '')
     },
     ultimas_pecas: {
-      title: t.products.collectionsModal.tabLastPieces,
-      subtitle: t.products.collectionsModal.lastPiecesDesc,
-      label: t.products.collectionsModal.tabLastPieces.replace(/^⏳\s*/, '')
+      title: colUltimasPecas?.nome ? `⏳ ${colUltimasPecas.nome}` : t.products.collectionsModal.tabLastPieces,
+      subtitle: colUltimasPecas?.descricao || t.products.collectionsModal.lastPiecesDesc,
+      label: colUltimasPecas?.nome || t.products.collectionsModal.tabLastPieces.replace(/^⏳\s*/, '')
     },
     categorias: {
       title: t.products.collectionsModal.tabCategories,
       subtitle: t.products.collectionsModal.categoriesDesc,
       label: t.products.collectionsModal.tabCategories.replace(/^📁\s*/, '')
     }
-  }), [t]);
+  }), [t, colLancamentos, colMaisVendidos, colOutlet, colUltimasPecas]);
 
   if (!isOpen) return null;
 
@@ -477,14 +500,27 @@ export function AdminCollectionsManagerModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            title={t.products.collectionsModal.closeBtn}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/loja/colecoes/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors"
+              title="Gerenciar e criar novas coleções personalizadas"
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <span>Coleções & Curadoria ↗</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title={t.products.collectionsModal.closeBtn}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Abas Superiores de Vitrine / Coleção */}

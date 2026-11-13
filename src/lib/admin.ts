@@ -1,7 +1,8 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig } from '@/types/database';
+import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem } from '@/types/database';
+export type { ColecaoLojaItem };
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -33,6 +34,8 @@ export interface AdminProductItem {
   mais_vendido?: boolean;
   outlet?: boolean;
   ultimas_pecas?: boolean;
+  status_badges?: string[];
+  colecoes?: string[];
   estoque_total: number;
   ativo: boolean;
   foto_principal?: string | null;
@@ -132,6 +135,8 @@ export interface CreateProductInput {
   mais_vendido?: boolean;
   outlet?: boolean;
   ultimas_pecas?: boolean;
+  status_badges?: string[];
+  colecoes?: string[];
   estoque_total: number;
   ativo?: boolean;
   paired_with_slug?: string | null;
@@ -1277,6 +1282,12 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       const isArquivado = Boolean(detalhesObj.arquivado);
       const isLixeira = Boolean(detalhesObj.lixeira);
 
+      const colecoesSet = new Set<string>(Array.isArray(detalhesObj.colecoes) ? detalhesObj.colecoes : []);
+      if (p.destaque) colecoesSet.add('col_lancamentos');
+      if (p.mais_vendido) colecoesSet.add('col_mais_vendidos');
+      if (p.outlet) colecoesSet.add('col_outlet');
+      if (p.ultimas_pecas) colecoesSet.add('col_ultimas_pecas');
+
       return {
         id: p.id,
         nome: p.nome,
@@ -1292,6 +1303,8 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
         mais_vendido: Boolean(p.mais_vendido),
         outlet: Boolean(p.outlet),
         ultimas_pecas: Boolean(p.ultimas_pecas),
+        status_badges: Array.isArray(p.status_badges) ? p.status_badges : Array.isArray(detalhesObj.status_badges) ? detalhesObj.status_badges : [],
+        colecoes: Array.from(colecoesSet),
         estoque_total: (p.variacoes_produto || []).length > 0
           ? (p.variacoes_produto || []).reduce((acc: number, v: any) => acc + Number(v.estoque || 0), 0)
           : Number(p.estoque_total || 0),
@@ -4806,6 +4819,510 @@ export async function bulkUpdateProductCategory(
   } catch (err: any) {
     console.error('Erro ao mover produtos de categoria em massa:', err);
     return { success: false, error: err?.message || 'Erro ao mover produtos de categoria.' };
+  }
+}
+
+/* ==============================================================================
+ * SISTEMA DINÂMICO DE COLEÇÕES & CURADORIA (AUTONOMIA TOTAL DO LOJISTA)
+ * ============================================================================== */
+
+export function slugifyColecao(text: string): string {
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'colecao';
+}
+
+export const DEFAULT_COLECOES_BASE: ColecaoLojaItem[] = [
+  {
+    id: 'col_lancamentos',
+    nome: 'Lançamentos Exclusivos',
+    slug: 'lancamentos',
+    descricao: 'As últimas novidades que acabaram de chegar na boutique, com tecidos nobres e acabamento impecável.',
+    badge_texto: 'NOVO',
+    badge_cor: '#C5A059',
+    ativo: true,
+    exibir_na_home: true,
+    ordem: 0,
+    produto_ids: [],
+    is_sistema: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'col_mais_vendidos',
+    nome: 'Mais Vendidos & Queridinhos',
+    slug: 'mais-vendidos',
+    descricao: 'As criações favoritas e mais desejadas pelas nossas clientes.',
+    badge_texto: 'HOT',
+    badge_cor: '#7C3AED',
+    ativo: true,
+    exibir_na_home: true,
+    ordem: 1,
+    produto_ids: [],
+    is_sistema: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'col_outlet',
+    nome: 'Bazar & Oportunidades',
+    slug: 'outlet',
+    descricao: 'Peças selecionadas com condições especiais para renovar seu closet.',
+    badge_texto: 'OFF',
+    badge_cor: '#E11D48',
+    ativo: true,
+    exibir_na_home: true,
+    ordem: 2,
+    produto_ids: [],
+    is_sistema: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'col_ultimas_pecas',
+    nome: 'Últimas Peças & Escassez',
+    slug: 'ultimas-pecas',
+    descricao: 'Raridades em grade final. Garanta sua numeração antes que esgote definitivamente.',
+    badge_texto: 'ÚLTIMAS',
+    badge_cor: '#EA580C',
+    ativo: true,
+    exibir_na_home: true,
+    ordem: 3,
+    produto_ids: [],
+    is_sistema: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z'
+  }
+];
+
+/**
+ * Consulta a lista completa de coleções da loja, com inicialização inteligente e migração automática dos produtos legados.
+ */
+export async function getColecoesLoja(lojaId: string = DEFAULT_TENANT_ID): Promise<ColecaoLojaItem[]> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    let colecoes: ColecaoLojaItem[] = Array.isArray(visuais.colecoes_personalizadas)
+      ? [...visuais.colecoes_personalizadas]
+      : [];
+
+    // Se ainda não houver coleções configuradas, inicializa com as 4 coleções base
+    if (colecoes.length === 0) {
+      // Busca produtos para mapear os IDs das 4 flags nativas
+      const { data: prods } = await supabase
+        .from('produtos')
+        .select('id, destaque, mais_vendido, outlet, ultimas_pecas')
+        .eq('loja_id', lojaId);
+
+      const prodsList = prods || [];
+      const lancamentoIds = prodsList.filter((p: any) => p.destaque).map((p: any) => p.id);
+      const maisVendidosIds = prodsList.filter((p: any) => p.mais_vendido).map((p: any) => p.id);
+      const outletIds = prodsList.filter((p: any) => p.outlet).map((p: any) => p.id);
+      const ultimasPecasIds = prodsList.filter((p: any) => p.ultimas_pecas).map((p: any) => p.id);
+
+      colecoes = DEFAULT_COLECOES_BASE.map((col) => {
+        if (col.id === 'col_lancamentos') return { ...col, produto_ids: lancamentoIds };
+        if (col.id === 'col_mais_vendidos') return { ...col, produto_ids: maisVendidosIds };
+        if (col.id === 'col_outlet') return { ...col, produto_ids: outletIds };
+        if (col.id === 'col_ultimas_pecas') return { ...col, produto_ids: ultimasPecasIds };
+        return col;
+      });
+
+      // Persiste a inicialização no banco para consultas subsequentes rápidas
+      await supabase
+        .from('lojas')
+        .update({
+          configuracoes_visuais: {
+            ...visuais,
+            colecoes_personalizadas: colecoes
+          }
+        })
+        .eq('id', lojaId);
+    } else {
+      // Garante que coleções base existentes possuam flags e ordenação consistentes
+      colecoes = colecoes.map((col, idx) => ({
+        ...col,
+        ordem: typeof col.ordem === 'number' ? col.ordem : idx,
+        produto_ids: Array.isArray(col.produto_ids) ? col.produto_ids : [],
+        is_sistema: Boolean(col.is_sistema || DEFAULT_COLECOES_BASE.some((b) => b.id === col.id))
+      }));
+    }
+
+    return colecoes.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  } catch (err) {
+    console.error('Erro ao buscar coleções da loja:', err);
+    return DEFAULT_COLECOES_BASE;
+  }
+}
+
+/**
+ * Cria ou atualiza uma coleção da boutique.
+ */
+export async function saveColecaoLoja(
+  lojaId: string = DEFAULT_TENANT_ID,
+  payload: Partial<ColecaoLojaItem> & { nome: string }
+): Promise<{ success: boolean; colecao?: ColecaoLojaItem; error?: string }> {
+  if (!payload.nome || !payload.nome.trim()) {
+    return { success: false, error: 'O nome da coleção é obrigatório.' };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const currentList: ColecaoLojaItem[] = Array.isArray(visuais.colecoes_personalizadas)
+      ? [...visuais.colecoes_personalizadas]
+      : [...DEFAULT_COLECOES_BASE];
+
+    const slugGerado = payload.slug?.trim() ? slugifyColecao(payload.slug) : slugifyColecao(payload.nome);
+    const nowIso = new Date().toISOString();
+
+    let savedItem: ColecaoLojaItem;
+
+    if (payload.id && currentList.some((c) => c.id === payload.id)) {
+      // Atualização de coleção existente
+      currentList.forEach((item, idx) => {
+        if (item.id === payload.id) {
+          savedItem = {
+            ...item,
+            ...payload,
+            nome: payload.nome.trim(),
+            slug: slugGerado,
+            descricao: payload.descricao !== undefined ? payload.descricao : item.descricao,
+            badge_texto: payload.badge_texto !== undefined ? payload.badge_texto : item.badge_texto,
+            badge_cor: payload.badge_cor !== undefined ? payload.badge_cor : item.badge_cor,
+            banner_url: payload.banner_url !== undefined ? payload.banner_url : item.banner_url,
+            ativo: payload.ativo !== undefined ? Boolean(payload.ativo) : item.ativo,
+            exibir_na_home: payload.exibir_na_home !== undefined ? Boolean(payload.exibir_na_home) : item.exibir_na_home,
+            ordem: payload.ordem !== undefined ? Number(payload.ordem) : item.ordem,
+            produto_ids: Array.isArray(payload.produto_ids) ? payload.produto_ids : item.produto_ids || [],
+            updated_at: nowIso
+          };
+          currentList[idx] = savedItem;
+        }
+      });
+    } else {
+      // Criação de nova coleção
+      const newId = payload.id || `col_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      savedItem = {
+        id: newId,
+        nome: payload.nome.trim(),
+        slug: slugGerado,
+        descricao: payload.descricao || '',
+        badge_texto: payload.badge_texto || '',
+        badge_cor: payload.badge_cor || '#C5A059',
+        banner_url: payload.banner_url || '',
+        ativo: payload.ativo !== false,
+        exibir_na_home: Boolean(payload.exibir_na_home),
+        ordem: typeof payload.ordem === 'number' ? payload.ordem : currentList.length,
+        produto_ids: Array.isArray(payload.produto_ids) ? payload.produto_ids : [],
+        is_sistema: false,
+        created_at: nowIso,
+        updated_at: nowIso
+      };
+      currentList.push(savedItem);
+    }
+
+    // Sincroniza com as seções da vitrine Home se a coleção foi renomeada ou deve aparecer na home
+    let secoesVitrine = visuais.secoes_vitrine ? { ...visuais.secoes_vitrine } : undefined;
+    if (secoesVitrine && Array.isArray(secoesVitrine.secoesLista)) {
+      const secoesList = [...secoesVitrine.secoesLista];
+      const matchIndex = secoesList.findIndex((s) => s.id === savedItem!.id || (savedItem!.is_sistema && (
+        (savedItem!.id === 'col_lancamentos' && s.tipo === 'nativa_lancamentos') ||
+        (savedItem!.id === 'col_mais_vendidos' && s.tipo === 'nativa_mais_vendidos') ||
+        (savedItem!.id === 'col_outlet' && s.tipo === 'nativa_outlet') ||
+        (savedItem!.id === 'col_ultimas_pecas' && s.tipo === 'nativa_ultimas_pecas')
+      )));
+
+      if (matchIndex !== -1) {
+        secoesList[matchIndex] = {
+          ...secoesList[matchIndex],
+          titulo: savedItem!.nome,
+          subtitulo: savedItem!.descricao || secoesList[matchIndex].subtitulo,
+          ativo: savedItem!.ativo && savedItem!.exibir_na_home,
+          produtoIds: savedItem!.produto_ids
+        };
+      } else if (savedItem!.exibir_na_home && savedItem!.ativo) {
+        secoesList.push({
+          id: savedItem!.id,
+          tipo: 'custom_curadoria',
+          titulo: savedItem!.nome,
+          subtitulo: savedItem!.descricao || '',
+          ativo: true,
+          ordem: secoesList.length,
+          produtoIds: savedItem!.produto_ids
+        });
+      }
+      secoesVitrine.secoesLista = secoesList;
+    }
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          colecoes_personalizadas: currentList,
+          ...(secoesVitrine ? { secoes_vitrine: secoesVitrine } : {})
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:colecoes_updated', { detail: { lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, colecao: savedItem! };
+  } catch (err: any) {
+    console.error('Erro ao salvar coleção da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar coleção.' };
+  }
+}
+
+/**
+ * Exclui uma coleção personalizada da boutique. Coleções nativas do sistema não podem ser destruídas (apenas pausadas).
+ */
+export async function deleteColecaoLoja(
+  lojaId: string = DEFAULT_TENANT_ID,
+  colecaoId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const currentList: ColecaoLojaItem[] = Array.isArray(visuais.colecoes_personalizadas)
+      ? [...visuais.colecoes_personalizadas]
+      : [];
+
+    const target = currentList.find((c) => c.id === colecaoId);
+    if (!target) {
+      return { success: false, error: 'Coleção não encontrada.' };
+    }
+
+    if (target.is_sistema) {
+      return {
+        success: false,
+        error: 'Esta é uma coleção base da loja. Você pode renomeá-la ou pausá-la, mas ela não pode ser excluída para preservar o histórico do catálogo.'
+      };
+    }
+
+    const filtered = currentList.filter((c) => c.id !== colecaoId);
+
+    // Remove também da lista de seções da Home se existir
+    let secoesVitrine = visuais.secoes_vitrine ? { ...visuais.secoes_vitrine } : undefined;
+    if (secoesVitrine && Array.isArray(secoesVitrine.secoesLista)) {
+      secoesVitrine.secoesLista = secoesVitrine.secoesLista.filter((s: any) => s.id !== colecaoId);
+    }
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          colecoes_personalizadas: filtered,
+          ...(secoesVitrine ? { secoes_vitrine: secoesVitrine } : {})
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:colecoes_updated', { detail: { lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir coleção:', err);
+    return { success: false, error: err?.message || 'Falha ao excluir coleção.' };
+  }
+}
+
+/**
+ * Reordena as coleções da loja na vitrine.
+ */
+export async function reorderColecoesLoja(
+  lojaId: string = DEFAULT_TENANT_ID,
+  orderedIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const currentList: ColecaoLojaItem[] = Array.isArray(visuais.colecoes_personalizadas)
+      ? [...visuais.colecoes_personalizadas]
+      : [];
+
+    const map = new Map<string, ColecaoLojaItem>();
+    currentList.forEach((c) => map.set(c.id, c));
+
+    const reordered: ColecaoLojaItem[] = [];
+    orderedIds.forEach((id, idx) => {
+      const item = map.get(id);
+      if (item) {
+        reordered.push({ ...item, ordem: idx });
+        map.delete(id);
+      }
+    });
+
+    // Anexa as restantes que não foram listadas
+    map.forEach((item) => {
+      reordered.push({ ...item, ordem: reordered.length });
+    });
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          colecoes_personalizadas: reordered
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:colecoes_updated', { detail: { lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao reordenar coleções:', err);
+    return { success: false, error: err?.message || 'Falha ao reordenar coleções.' };
+  }
+}
+
+/**
+ * Atualiza o vínculo de produtos a uma coleção (adicionar, remover ou substituir curadoria completa).
+ */
+export async function bulkUpdateProdutosColecao(
+  lojaId: string = DEFAULT_TENANT_ID,
+  colecaoId: string,
+  produtoIds: string[],
+  acao: 'adicionar' | 'remover' | 'substituir' = 'adicionar'
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const currentList: ColecaoLojaItem[] = Array.isArray(visuais.colecoes_personalizadas)
+      ? [...visuais.colecoes_personalizadas]
+      : [...DEFAULT_COLECOES_BASE];
+
+    const idx = currentList.findIndex((c) => c.id === colecaoId);
+    if (idx === -1) {
+      return { success: false, error: 'Coleção não encontrada.' };
+    }
+
+    const col = currentList[idx];
+    let currentSet = new Set<string>(col.produto_ids || []);
+
+    if (acao === 'substituir') {
+      currentSet = new Set<string>(produtoIds);
+    } else if (acao === 'adicionar') {
+      produtoIds.forEach((id) => currentSet.add(id));
+    } else if (acao === 'remover') {
+      produtoIds.forEach((id) => currentSet.delete(id));
+    }
+
+    const finalProductIds = Array.from(currentSet);
+    currentList[idx] = {
+      ...col,
+      produto_ids: finalProductIds,
+      updated_at: new Date().toISOString()
+    };
+
+    // Sincroniza também nas seções da Home se a coleção estiver na vitrine
+    let secoesVitrine = visuais.secoes_vitrine ? { ...visuais.secoes_vitrine } : undefined;
+    if (secoesVitrine && Array.isArray(secoesVitrine.secoesLista)) {
+      secoesVitrine.secoesLista = secoesVitrine.secoesLista.map((sec: any) =>
+        sec.id === colecaoId ? { ...sec, produtoIds: finalProductIds } : sec
+      );
+    }
+
+    // Se for uma das 4 flags nativas, sincroniza também o booleano na tabela produtos para retrocompatibilidade
+    if (col.id === 'col_lancamentos' || col.id === 'col_mais_vendidos' || col.id === 'col_outlet' || col.id === 'col_ultimas_pecas') {
+      const flagMap: Record<string, 'destaque' | 'mais_vendido' | 'outlet' | 'ultimas_pecas'> = {
+        col_lancamentos: 'destaque',
+        col_mais_vendidos: 'mais_vendido',
+        col_outlet: 'outlet',
+        col_ultimas_pecas: 'ultimas_pecas'
+      };
+      const flagName = flagMap[col.id];
+      if (flagName && acao === 'adicionar') {
+        await supabase.from('produtos').update({ [flagName]: true }).in('id', produtoIds);
+      } else if (flagName && acao === 'remover') {
+        await supabase.from('produtos').update({ [flagName]: false }).in('id', produtoIds);
+      }
+    }
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          colecoes_personalizadas: currentList,
+          ...(secoesVitrine ? { secoes_vitrine: secoesVitrine } : {})
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:colecoes_updated', { detail: { lojaId, colecaoId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, count: finalProductIds.length };
+  } catch (err: any) {
+    console.error('Erro ao atualizar produtos da coleção:', err);
+    return { success: false, error: err?.message || 'Falha ao atualizar produtos da coleção.' };
   }
 }
 

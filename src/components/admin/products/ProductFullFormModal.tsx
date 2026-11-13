@@ -37,7 +37,10 @@ import {
   saveAdminCategory,
   saveStoreCustomAttribute,
   CreateProductInput,
-  UpdateProductInput
+  UpdateProductInput,
+  ColecaoLojaItem,
+  getColecoesLoja,
+  bulkUpdateProdutosColecao
 } from '@/lib/admin';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatableSelect';
@@ -153,6 +156,10 @@ export function ProductFullFormModal({
   const [newCustomBadgeName, setNewCustomBadgeName] = useState('');
   const [newCustomBadgeColor, setNewCustomBadgeColor] = useState('#d97706');
   const [newCustomBadgeIcon, setNewCustomBadgeIcon] = useState('✨');
+
+  // Coleções e Cápsulas da Loja
+  const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
+  const [selectedColecaoIds, setSelectedColecaoIds] = useState<string[]>([]);
 
   // Sinalizadores Globais
   const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
@@ -340,6 +347,41 @@ export function ProductFullFormModal({
       ]);
     }
   }, [isEdit, product, isOpen]);
+
+  // Carrega coleções disponíveis na loja e identifica quais contêm esta peça
+  useEffect(() => {
+    let isMounted = true;
+    getColecoesLoja(tenantId).then((cols) => {
+      if (!isMounted) return;
+      setColecoesLoja(cols);
+      if (product) {
+        const matchingIds: string[] = [];
+        cols.forEach((c) => {
+          const inCol = Array.isArray(c.produto_ids) && (c.produto_ids.includes(product.id) || (product.slug && c.produto_ids.includes(product.slug)));
+          const inLegacy =
+            (c.id === 'base-lancamentos' && product.destaque) ||
+            (c.id === 'base-mais-vendidos' && product.mais_vendido) ||
+            (c.id === 'base-outlet' && product.outlet) ||
+            (c.id === 'base-ultimas-pecas' && product.ultimas_pecas);
+          if (inCol || inLegacy) {
+            matchingIds.push(c.id);
+          }
+        });
+        setSelectedColecaoIds(matchingIds);
+      } else {
+        // No modo criação, marca Lançamento por padrão se existir
+        const lancamentoCol = cols.find((c) => c.id === 'base-lancamentos' || c.slug === 'lancamentos-2026');
+        if (lancamentoCol) {
+          setSelectedColecaoIds([lancamentoCol.id]);
+        }
+      }
+    }).catch((err) => {
+      console.error('Erro ao carregar coleções no modal de produto:', err);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [tenantId, product, isOpen]);
 
   // Auto-geração de slug ao digitar nome no modo criação
   const handleNameChange = (val: string) => {
@@ -660,6 +702,22 @@ export function ProductFullFormModal({
 
         const res = await updateAdminProductFull(updatePayload);
         if (res.success) {
+          // Sincroniza vínculos de coleções
+          try {
+            const savedId = product.id;
+            for (const col of colecoesLoja) {
+              const isSelected = selectedColecaoIds.includes(col.id);
+              const wasIn = Array.isArray(col.produto_ids) && (col.produto_ids.includes(savedId) || (product.slug && col.produto_ids.includes(product.slug)));
+              if (isSelected && !wasIn) {
+                await bulkUpdateProdutosColecao(tenantId, col.id, [savedId], 'adicionar');
+              } else if (!isSelected && wasIn) {
+                await bulkUpdateProdutosColecao(tenantId, col.id, [savedId], 'remover');
+              }
+            }
+          } catch (syncErr) {
+            console.error('Erro ao sincronizar coleções da peça:', syncErr);
+          }
+
           const catObj = categoriesList.find((c) => c.id === categoriaId);
           const updatedItem: AdminProductItem = {
             ...product,
@@ -751,6 +809,18 @@ export function ProductFullFormModal({
 
         const res = await createAdminProduct(createPayload, tenantId);
         if (res.success && res.product) {
+          // Sincroniza vínculos de coleções
+          try {
+            const savedId = res.product.id;
+            for (const col of colecoesLoja) {
+              if (selectedColecaoIds.includes(col.id)) {
+                await bulkUpdateProdutosColecao(tenantId, col.id, [savedId], 'adicionar');
+              }
+            }
+          } catch (syncErr) {
+            console.error('Erro ao vincular nova peça às coleções:', syncErr);
+          }
+
           const catObj = categoriesList.find((c) => c.id === categoriaId);
           const newItem: AdminProductItem = {
             id: res.product.id,
@@ -1762,6 +1832,73 @@ export function ProductFullFormModal({
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Coleções & Cápsulas Temáticas da Boutique */}
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 gap-2">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        Coleções & Cápsulas Temáticas
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        Marque as coleções e editoriais onde esta peça deve ser exibida no catálogo e vitrines.
+                      </p>
+                    </div>
+
+                    <a
+                      href="/admin/loja/colecoes/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs self-start sm:self-auto"
+                      title="Gerenciar coleções na área de Loja"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Gerenciar Coleções ↗</span>
+                    </a>
+                  </div>
+
+                  {colecoesLoja.length === 0 ? (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
+                      Nenhuma coleção criada ainda. Você pode gerenciar coleções no menu Configurações da Loja &gt; Coleções.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {colecoesLoja.map((col) => {
+                        const isChecked = selectedColecaoIds.includes(col.id);
+                        return (
+                          <label
+                            key={col.id}
+                            className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all ${
+                              isChecked
+                                ? 'border-amber-500 bg-amber-50/70 shadow-2xs font-bold text-slate-900'
+                                : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedColecaoIds((prev) => [...prev, col.id]);
+                                } else {
+                                  setSelectedColecaoIds((prev) => prev.filter((id) => id !== col.id));
+                                }
+                              }}
+                              className="accent-amber-600 rounded"
+                            />
+                            <div className="min-w-0">
+                              <span className="text-xs truncate block">{col.nome}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                {col.exibir_na_home ? '⭐ Na Home' : 'Vitrine/Menu'}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Cross-Sell: Monte o Look */}

@@ -40,7 +40,9 @@ import {
   getAdminCategoriesFull,
   AdminCategoryFull,
   AdminProductItem,
-  getAdminProducts
+  getAdminProducts,
+  ColecaoLojaItem,
+  getColecoesLoja
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -54,6 +56,7 @@ export default function AdminMenuPage() {
   const [menuConfig, setMenuConfig] = useState<StoreNavMenuConfig | null>(null);
   const [categories, setCategories] = useState<AdminCategoryFull[]>([]);
   const [products, setProducts] = useState<AdminProductItem[]>([]);
+  const [colecoes, setColecoes] = useState<ColecaoLojaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'linha_1' | 'linha_2' | 'gaveta_mobile'>('linha_1');
@@ -98,14 +101,16 @@ export default function AdminMenuPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [menuRes, catsRes, prodsRes] = await Promise.all([
+      const [menuRes, catsRes, prodsRes, colecoesRes] = await Promise.all([
         getStoreNavMenuConfig(tenantId),
         getAdminCategoriesFull(tenantId),
-        getAdminProducts(tenantId).catch(() => [])
+        getAdminProducts(tenantId).catch(() => []),
+        getColecoesLoja(tenantId).catch(() => [])
       ]);
       setMenuConfig(menuRes);
       setCategories(catsRes);
       setProducts(prodsRes);
+      setColecoes(colecoesRes);
     } catch {
       showToast(t.storeMenu.toastError, 'error');
     } finally {
@@ -783,13 +788,29 @@ export default function AdminMenuPage() {
                     </label>
                     <select
                       value={itemValue}
-                      onChange={(e) => setItemValue(e.target.value)}
+                      onChange={(e) => {
+                        setItemValue(e.target.value);
+                        const selectedCol = colecoes.find((c) => c.nome === e.target.value);
+                        if (selectedCol && (!itemLabel.trim() || colecoes.some((c) => c.nome === itemLabel.trim()))) {
+                          setItemLabel(selectedCol.nome);
+                        }
+                      }}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800"
                     >
-                      <option value="Lançamento">{t.storeMenu.statusLancamento}</option>
-                      <option value="Mais Vendidos">{t.storeMenu.statusMaisVendidos}</option>
-                      <option value="OUTLET">{t.storeMenu.statusOutlet}</option>
-                      <option value="Últimas Peças">{t.storeMenu.statusUltimasPecas}</option>
+                      {colecoes.length > 0 ? (
+                        colecoes.map((col) => (
+                          <option key={col.id} value={col.nome}>
+                            {col.nome} {col.badge_texto ? `(${col.badge_texto})` : ''}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Lançamento">{t.storeMenu.statusLancamento}</option>
+                          <option value="Mais Vendidos">{t.storeMenu.statusMaisVendidos}</option>
+                          <option value="OUTLET">{t.storeMenu.statusOutlet}</option>
+                          <option value="Últimas Peças">{t.storeMenu.statusUltimasPecas}</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 )}
@@ -1044,20 +1065,50 @@ export default function AdminMenuPage() {
               )}
 
               {subType === 'status' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    {t.storeMenu.destTypeStatus}
-                  </label>
-                  <select
-                    value={subValue}
-                    onChange={(e) => setSubValue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
-                  >
-                    <option value="Lançamento">{t.storeMenu.statusLancamento}</option>
-                    <option value="Mais Vendidos">{t.storeMenu.statusMaisVendidos}</option>
-                    <option value="OUTLET">{t.storeMenu.statusOutlet}</option>
-                    <option value="Últimas Peças">{t.storeMenu.statusUltimasPecas}</option>
-                  </select>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      {t.storeMenu.destTypeStatus}
+                    </label>
+                    <select
+                      value={subValue}
+                      onChange={(e) => setSubValue(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                    >
+                      {colecoes.length > 0 ? (
+                        colecoes.map((col) => (
+                          <option key={col.id} value={col.nome}>
+                            {col.nome} {col.badge_texto ? `(${col.badge_texto})` : ''}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Lançamento">{t.storeMenu.statusLancamento}</option>
+                          <option value="Mais Vendidos">{t.storeMenu.statusMaisVendidos}</option>
+                          <option value="OUTLET">{t.storeMenu.statusOutlet}</option>
+                          <option value="Últimas Peças">{t.storeMenu.statusUltimasPecas}</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Filtrar Categoria na Coleção (Opcional)
+                    </label>
+                    <select
+                      value={subExtraCategory}
+                      onChange={(e) => setSubExtraCategory(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                    >
+                      <option value="">Todas as Peças da Coleção</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.nome}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 

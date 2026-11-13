@@ -103,8 +103,18 @@ export function BoutiqueStorefront() {
     const isDark = theme === 'dark';
     const isIndependente = Boolean(secoesConfig.modoIndependente);
     const globalCfg = secoesConfig.global;
+    const colecoesPersonalizadas: any[] = Array.isArray(currentTenant?.configuracoes_visuais?.colecoes_personalizadas)
+      ? currentTenant.configuracoes_visuais.colecoes_personalizadas
+      : [];
 
     const resolveSectionProducts = (sec: SecaoHomeItem): Product[] => {
+      // Se tiver produtoIds explícitos (curadoria ou coleção), usa prioritariamente
+      if (sec.produtoIds && sec.produtoIds.length > 0) {
+        const idSet = new Set(sec.produtoIds);
+        const curados = products.filter((p) => idSet.has(p.id));
+        if (curados.length > 0) return curados;
+      }
+
       if (sec.tipo === 'nativa_lancamentos') return newReleasesProducts;
       if (sec.tipo === 'nativa_mais_vendidos') return bestSellerProducts;
       if (sec.tipo === 'nativa_outlet') return outletProducts;
@@ -122,18 +132,30 @@ export function BoutiqueStorefront() {
         const idSet = new Set(sec.produtoIds);
         return products.filter((p) => idSet.has(p.id));
       }
+
+      // Procura por ID de coleção personalizada correspondente
+      const colMatch = colecoesPersonalizadas.find((c) => c.id === sec.id);
+      if (colMatch && colMatch.produto_ids && colMatch.produto_ids.length > 0) {
+        const idSet = new Set(colMatch.produto_ids);
+        return products.filter((p) => idSet.has(p.id));
+      }
+
       return [];
     };
 
     const resolveCatalogHref = (sec: SecaoHomeItem): string => {
-      if (sec.tipo === 'nativa_lancamentos') return '/catalogo?status=Lançamento';
-      if (sec.tipo === 'nativa_mais_vendidos') return '/catalogo?categoria=Mais%20Vendidos';
-      if (sec.tipo === 'nativa_outlet') return '/catalogo?categoria=OUTLET';
-      if (sec.tipo === 'nativa_ultimas_pecas') return '/catalogo?categoria=Últimas%20Peças';
+      if (sec.tipo === 'nativa_lancamentos') return '/catalogo?colecao=lancamentos';
+      if (sec.tipo === 'nativa_mais_vendidos') return '/catalogo?colecao=mais-vendidos';
+      if (sec.tipo === 'nativa_outlet') return '/catalogo?colecao=outlet';
+      if (sec.tipo === 'nativa_ultimas_pecas') return '/catalogo?colecao=ultimas-pecas';
       if (sec.tipo === 'categoria' && sec.categoriaNome) {
         return `/catalogo?categoria=${encodeURIComponent(sec.categoriaNome)}`;
       }
-      return '/catalogo';
+      const colMatch = colecoesPersonalizadas.find((c) => c.id === sec.id);
+      if (colMatch?.slug) {
+        return `/catalogo?colecao=${encodeURIComponent(colMatch.slug)}`;
+      }
+      return `/catalogo?colecao=${encodeURIComponent(sec.id.replace(/^sec_custom_/, ''))}`;
     };
 
     const list: Array<{
@@ -150,7 +172,34 @@ export function BoutiqueStorefront() {
       };
     }> = [];
 
-    const secoes = secoesConfig.secoesLista || [];
+    // Mescla seções configuradas e novas coleções que tenham exibir_na_home = true
+    const baseSecoes = [...(secoesConfig.secoesLista || [])];
+    const existingIds = new Set(baseSecoes.map((s) => s.id));
+
+    colecoesPersonalizadas.forEach((col, idx) => {
+      if (col.ativo && col.exibir_na_home && !existingIds.has(col.id)) {
+        // Se for nativa, checa se o tipo nativo já está presente
+        const isNativeAlreadyPresent =
+          (col.id === 'col_lancamentos' && existingIds.has('lancamentos')) ||
+          (col.id === 'col_mais_vendidos' && existingIds.has('mais-vendidos')) ||
+          (col.id === 'col_outlet' && existingIds.has('outlet')) ||
+          (col.id === 'col_ultimas_pecas' && existingIds.has('ultimas-pecas'));
+
+        if (!isNativeAlreadyPresent) {
+          baseSecoes.push({
+            id: col.id,
+            tipo: 'custom_curadoria',
+            titulo: col.nome,
+            subtitulo: col.descricao,
+            ativo: true,
+            ordem: baseSecoes.length + idx,
+            produtoIds: col.produto_ids
+          });
+        }
+      }
+    });
+
+    const secoes = baseSecoes;
     for (const sec of secoes) {
       if (!sec.ativo) continue;
       const secProducts = resolveSectionProducts(sec);

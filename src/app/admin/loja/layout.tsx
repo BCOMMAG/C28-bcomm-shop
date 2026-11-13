@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   CreditCard,
   Globe,
+  Layers,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -63,6 +64,13 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
       href: '/admin/loja/menu',
       icon: Sliders,
       badge: t.storeTabs.badges.links
+    },
+    {
+      id: 'colecoes',
+      label: 'Coleções & Curadoria',
+      href: '/admin/loja/colecoes',
+      icon: Layers,
+      badge: 'CURADORIA'
     },
     {
       id: 'categorias',

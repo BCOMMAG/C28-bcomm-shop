@@ -69,6 +69,421 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "logo_dark_url": "",
     "taxa_presente": 12,
     "cor_secundaria": "#1A1918",
+    "menu_navegacao": {
+      "linha_1": [
+        {
+          "id": "nav-l1-1",
+          "type": "status",
+          "label": "Lançamento 2026",
+          "value": "Lançamento",
+          "isSpecial": false,
+          "subOptions": [
+            {
+              "id": "sub-l1-1-1",
+              "type": "status",
+              "label": "Ver Todos os Lançamentos",
+              "value": "Lançamento"
+            },
+            {
+              "id": "sub-l1-1-2",
+              "type": "status",
+              "label": "Calças",
+              "value": "Lançamento",
+              "extraCategory": "Calças"
+            },
+            {
+              "id": "sub-l1-1-3",
+              "type": "status",
+              "label": "Vestidos & Macacões",
+              "value": "Lançamento",
+              "extraCategory": "Vestidos & Macacões"
+            },
+            {
+              "id": "sub-l1-1-4",
+              "type": "status",
+              "label": "Casacos & Jaquetas",
+              "value": "Lançamento",
+              "extraCategory": "Casacos & Jaquetas"
+            },
+            {
+              "id": "sub-l1-1-5",
+              "type": "status",
+              "label": "Blazers & Alfaiataria",
+              "value": "Lançamento",
+              "extraCategory": "Blazers & Alfaiataria"
+            },
+            {
+              "id": "sub-l1-1-6",
+              "type": "status",
+              "label": "Conjuntos Exclusivos",
+              "value": "Lançamento",
+              "extraCategory": "Conjuntos Exclusivos"
+            }
+          ]
+        },
+        {
+          "id": "nav-l1-2",
+          "type": "category",
+          "label": "Acessórios",
+          "value": "Acessórios",
+          "subOptions": [
+            {
+              "id": "sub-l1-2-1",
+              "type": "category",
+              "label": "Ver Todos os Acessórios",
+              "value": "Acessórios"
+            },
+            {
+              "id": "sub-l1-2-2",
+              "type": "category",
+              "label": "Bolsas & Carteiras",
+              "value": "Bolsas & Carteiras"
+            },
+            {
+              "id": "sub-l1-2-3",
+              "type": "category",
+              "label": "Cintos",
+              "value": "Cintos"
+            },
+            {
+              "id": "sub-l1-2-4",
+              "type": "category",
+              "label": "Colares & Joias",
+              "value": "Colares & Joias"
+            },
+            {
+              "id": "sub-l1-2-5",
+              "type": "category",
+              "label": "Lenços",
+              "value": "Lenços"
+            },
+            {
+              "id": "sub-l1-2-6",
+              "type": "category",
+              "label": "Óculos de Sol",
+              "value": "Óculos de Sol"
+            }
+          ]
+        },
+        {
+          "id": "nav-l1-3",
+          "type": "category",
+          "label": "Tricots",
+          "value": "Tricots",
+          "subOptions": [
+            {
+              "id": "sub-l1-3-1",
+              "type": "category",
+              "label": "Ver Todos os Tricots",
+              "value": "Tricots"
+            },
+            {
+              "id": "sub-l1-3-2",
+              "type": "category",
+              "label": "Casacos em Tricot Biamar",
+              "value": "Casacos & Jaquetas",
+              "extraFabric": "Tricot Biamar"
+            },
+            {
+              "id": "sub-l1-3-3",
+              "type": "category",
+              "label": "Blusas em Tricot Especial",
+              "value": "Blusas & Tops",
+              "extraFabric": "Tricot Biamar"
+            }
+          ]
+        },
+        {
+          "id": "nav-l1-4",
+          "type": "fabric",
+          "label": "Linho Nobre",
+          "value": "Linho Puro",
+          "subOptions": [
+            {
+              "id": "sub-l1-4-1",
+              "type": "fabric",
+              "label": "Ver Todas as Peças em Linho",
+              "value": "Linho Puro"
+            },
+            {
+              "id": "sub-l1-4-2",
+              "type": "category",
+              "label": "Conjuntos em Linho",
+              "value": "Conjuntos Exclusivos",
+              "extraFabric": "Linho Puro"
+            },
+            {
+              "id": "sub-l1-4-3",
+              "type": "category",
+              "label": "Alfaiataria em Linho",
+              "value": "Blazers & Alfaiataria",
+              "extraFabric": "Linho Puro"
+            }
+          ]
+        },
+        {
+          "id": "nav-l1-5",
+          "type": "category",
+          "label": "Blusas",
+          "value": "Blusas"
+        },
+        {
+          "id": "nav-l1-6",
+          "type": "category",
+          "label": "Calças",
+          "value": "Calças"
+        }
+      ],
+      "linha_2": [
+        {
+          "id": "nav-l2-1",
+          "type": "category",
+          "label": "Alfaiataria",
+          "value": "Alfaiataria"
+        },
+        {
+          "id": "nav-l2-2",
+          "type": "category",
+          "label": "Vestidos",
+          "value": "Vestidos"
+        },
+        {
+          "id": "nav-l2-3",
+          "type": "category",
+          "label": "Jaquetas E Casacos",
+          "value": "Jaquetas E Casacos"
+        },
+        {
+          "id": "nav-l2-4",
+          "type": "category",
+          "label": "Shorts E Saias",
+          "value": "Shorts E Saias"
+        },
+        {
+          "id": "nav-l2-5",
+          "type": "category",
+          "label": "Vestidos E Macacões",
+          "value": "Vestidos E Macacões"
+        }
+      ],
+      "gaveta_mobile": [
+        {
+          "id": "drw-1",
+          "type": "status",
+          "badge": {
+            "text": "NOVO",
+            "colorBg": "bg-[#C5A059]",
+            "colorText": "text-white"
+          },
+          "label": "Lançamento 2026",
+          "value": "Lançamento",
+          "subOptions": [
+            {
+              "id": "sub-drw-1-1",
+              "type": "status",
+              "label": "Ver Todos os Lançamentos",
+              "value": "Lançamento"
+            },
+            {
+              "id": "sub-drw-1-2",
+              "type": "status",
+              "label": "Calças",
+              "value": "Lançamento",
+              "extraCategory": "Calças"
+            },
+            {
+              "id": "sub-drw-1-3",
+              "type": "status",
+              "label": "Vestidos & Macacões",
+              "value": "Lançamento",
+              "extraCategory": "Vestidos & Macacões"
+            },
+            {
+              "id": "sub-drw-1-4",
+              "type": "status",
+              "label": "Casacos & Jaquetas",
+              "value": "Lançamento",
+              "extraCategory": "Casacos & Jaquetas"
+            },
+            {
+              "id": "sub-drw-1-5",
+              "type": "status",
+              "label": "Blazers & Alfaiataria",
+              "value": "Lançamento",
+              "extraCategory": "Blazers & Alfaiataria"
+            },
+            {
+              "id": "sub-drw-1-6",
+              "type": "status",
+              "label": "Conjuntos Exclusivos",
+              "value": "Lançamento",
+              "extraCategory": "Conjuntos Exclusivos"
+            }
+          ]
+        },
+        {
+          "id": "drw-2",
+          "type": "category",
+          "label": "Acessórios",
+          "value": "Acessórios",
+          "subOptions": [
+            {
+              "id": "sub-drw-2-1",
+              "type": "category",
+              "label": "Ver Todos os Acessórios",
+              "value": "Acessórios"
+            },
+            {
+              "id": "sub-drw-2-2",
+              "type": "category",
+              "label": "Bolsas & Carteiras",
+              "value": "Bolsas & Carteiras"
+            },
+            {
+              "id": "sub-drw-2-3",
+              "type": "category",
+              "label": "Cintos",
+              "value": "Cintos"
+            },
+            {
+              "id": "sub-drw-2-4",
+              "type": "category",
+              "label": "Colares & Joias",
+              "value": "Colares & Joias"
+            },
+            {
+              "id": "sub-drw-2-5",
+              "type": "category",
+              "label": "Lenços",
+              "value": "Lenços"
+            },
+            {
+              "id": "sub-drw-2-6",
+              "type": "category",
+              "label": "Óculos de Sol",
+              "value": "Óculos de Sol"
+            }
+          ]
+        },
+        {
+          "id": "drw-3",
+          "type": "category",
+          "label": "Tricots",
+          "value": "Tricots",
+          "subOptions": [
+            {
+              "id": "sub-drw-3-1",
+              "type": "category",
+              "label": "Ver Todos os Tricots",
+              "value": "Tricots"
+            },
+            {
+              "id": "sub-drw-3-2",
+              "type": "category",
+              "label": "Casacos em Tricot Biamar",
+              "value": "Casacos & Jaquetas",
+              "extraFabric": "Tricot Biamar"
+            },
+            {
+              "id": "sub-drw-3-3",
+              "type": "category",
+              "label": "Blusas em Tricot Especial",
+              "value": "Blusas & Tops",
+              "extraFabric": "Tricot Biamar"
+            }
+          ]
+        },
+        {
+          "id": "drw-4",
+          "type": "fabric",
+          "label": "Linho Nobre",
+          "value": "Linho Puro",
+          "subOptions": [
+            {
+              "id": "sub-drw-4-1",
+              "type": "fabric",
+              "label": "Ver Todas as Peças em Linho",
+              "value": "Linho Puro"
+            },
+            {
+              "id": "sub-drw-4-2",
+              "type": "category",
+              "label": "Conjuntos em Linho",
+              "value": "Conjuntos Exclusivos",
+              "extraFabric": "Linho Puro"
+            },
+            {
+              "id": "sub-drw-4-3",
+              "type": "category",
+              "label": "Alfaiataria em Linho",
+              "value": "Blazers & Alfaiataria",
+              "extraFabric": "Linho Puro"
+            }
+          ]
+        },
+        {
+          "id": "drw-5",
+          "type": "category",
+          "label": "Blusas",
+          "value": "Blusas"
+        },
+        {
+          "id": "drw-6",
+          "type": "category",
+          "label": "Calças",
+          "value": "Calças"
+        },
+        {
+          "id": "drw-7",
+          "type": "category",
+          "label": "Alfaiataria",
+          "value": "Alfaiataria"
+        },
+        {
+          "id": "drw-8",
+          "type": "category",
+          "label": "Vestidos",
+          "value": "Vestidos"
+        },
+        {
+          "id": "drw-9",
+          "type": "category",
+          "label": "Jaquetas E Casacos",
+          "value": "Jaquetas E Casacos"
+        },
+        {
+          "id": "drw-10",
+          "type": "category",
+          "label": "Shorts E Saias",
+          "value": "Shorts E Saias"
+        },
+        {
+          "id": "drw-11",
+          "type": "category",
+          "label": "Vestidos E Macacões",
+          "value": "Vestidos E Macacões"
+        },
+        {
+          "id": "drw-12",
+          "type": "status",
+          "badge": {
+            "text": "OFF",
+            "colorBg": "bg-rose-500",
+            "colorText": "text-white"
+          },
+          "label": "BAZAR",
+          "value": "OUTLET",
+          "isSpecial": true
+        },
+        {
+          "id": "drw-13",
+          "type": "status",
+          "label": "Últimas Peças",
+          "value": "Últimas Peças",
+          "isSpecial": true
+        }
+      ]
+    },
     "presente_ativo": false,
     "secoes_vitrine": {
       "global": {

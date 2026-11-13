@@ -408,8 +408,9 @@ export const Header: React.FC<HeaderProps> = ({
 
     const params = new URLSearchParams();
 
-    if (item.type === 'status') {
+    if (item.type === 'status' || item.type === 'colecao') {
       params.set('status', item.value || '');
+      params.set('colecao', item.value || '');
       if (item.extraCategory) {
         params.set('categoria', item.extraCategory);
       }

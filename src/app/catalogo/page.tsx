@@ -36,6 +36,7 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { Product } from '@/types';
+import { ColecaoLojaItem, DEFAULT_COLECOES_BASE } from '@/lib/admin';
 
 function CatalogoContent() {
   const router = useRouter();
@@ -43,6 +44,7 @@ function CatalogoContent() {
 
   // Contexto Global
   const {
+    currentTenant,
     wishlistIds,
     toggleWishlist,
     addToCart,
@@ -86,18 +88,29 @@ function CatalogoContent() {
     });
   };
 
+  // Coleções disponíveis na loja
+  const storeCollections = useMemo<ColecaoLojaItem[]>(() => {
+    const raw = currentTenant?.configuracoes_visuais?.colecoes_personalizadas;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.filter((c) => c.ativo);
+    }
+    return DEFAULT_COLECOES_BASE;
+  }, [currentTenant]);
+
   // Parâmetros de URL iniciais
   const urlCategory = searchParams.get('categoria') || '';
   const urlStatus = searchParams.get('status') || '';
+  const urlColecao = searchParams.get('colecao') || '';
   const urlFabric = searchParams.get('tecido') || '';
   const urlMinPrice = searchParams.get('precoMin') ? Number(searchParams.get('precoMin')) : null;
   const urlMaxPrice = searchParams.get('precoMax') ? Number(searchParams.get('precoMax')) : null;
   const urlSearch = searchParams.get('q') || '';
 
   // Função para criar o estado padrão dos filtros com seleção múltipla
-  const createDefaultFilters = (cat?: string, st?: string, minP?: number | null, maxP?: number | null, tec?: string) => {
+  const createDefaultFilters = (cat?: string, st?: string, col?: string, minP?: number | null, maxP?: number | null, tec?: string) => {
     const categories: string[] = cat && cat !== 'Todas as Peças' ? [cat] : [];
     const statuses: string[] = st && st !== 'Todos' ? [st] : [];
+    const collections: string[] = col ? [col] : [];
     const fabrics: string[] = tec ? [tec] : [];
     let priceRangeIndices: number[] = [];
 
@@ -116,19 +129,32 @@ function CatalogoContent() {
       fabrics,
       fits: [] as string[],
       lines: [] as string[],
-      statuses
+      statuses,
+      collections
     };
   };
 
   // 1. Filtros Efetivamente Aplicados na Listagem de Produtos
   const [appliedFilters, setAppliedFilters] = useState(() =>
-    createDefaultFilters(urlCategory, urlStatus, urlMinPrice, urlMaxPrice, urlFabric)
+    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric)
   );
 
   // 2. Filtros em Edição / Rascunho (o usuário pode mexer à vontade e depois clicar em APLICAR FILTROS)
   const [draftFilters, setDraftFilters] = useState(() =>
-    createDefaultFilters(urlCategory, urlStatus, urlMinPrice, urlMaxPrice, urlFabric)
+    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric)
   );
+
+  // Coleção ativa em destaque editorial
+  const activeCollection = useMemo(() => {
+    if (!appliedFilters.collections || appliedFilters.collections.length === 0) return null;
+    const colTerm = appliedFilters.collections[0].toLowerCase();
+    return storeCollections.find(
+      (c) =>
+        c.id.toLowerCase() === colTerm ||
+        c.slug.toLowerCase() === colTerm ||
+        c.nome.toLowerCase() === colTerm
+    ) || null;
+  }, [appliedFilters.collections, storeCollections]);
 
   // Estados da Barra Superior
   const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'newest'>('relevance');
@@ -166,11 +192,12 @@ function CatalogoContent() {
 
     const cat = searchParams.get('categoria');
     const st = searchParams.get('status');
+    const col = searchParams.get('colecao');
     const tec = searchParams.get('tecido');
     const min = searchParams.get('precoMin') ? Number(searchParams.get('precoMin')) : null;
     const max = searchParams.get('precoMax') ? Number(searchParams.get('precoMax')) : null;
 
-    const updated = createDefaultFilters(cat || undefined, st || undefined, min, max, tec || undefined);
+    const updated = createDefaultFilters(cat || undefined, st || undefined, col || undefined, min, max, tec || undefined);
     setAppliedFilters(updated);
     setDraftFilters(updated);
   }, [searchParams, setSearchQuery]);
@@ -272,6 +299,15 @@ function CatalogoContent() {
     }));
   };
 
+  const toggleDraftCollection = (colSlug: string) => {
+    setDraftFilters((prev) => ({
+      ...prev,
+      collections: prev.collections?.includes(colSlug)
+        ? prev.collections.filter((c) => c !== colSlug)
+        : [...(prev.collections || []), colSlug]
+    }));
+  };
+
   // AÇÃO 1: APLICAR FILTROS (Efetiva os filtros selecionados)
   const applyFilters = () => {
     setAppliedFilters({ ...draftFilters });
@@ -311,6 +347,12 @@ function CatalogoContent() {
     const updated = appliedFilters.statuses.filter((s) => s !== st);
     setAppliedFilters((prev) => ({ ...prev, statuses: updated }));
     setDraftFilters((prev) => ({ ...prev, statuses: updated }));
+  };
+
+  const removeAppliedCollection = (colSlug: string) => {
+    const updated = (appliedFilters.collections || []).filter((c) => c !== colSlug);
+    setAppliedFilters((prev) => ({ ...prev, collections: updated }));
+    setDraftFilters((prev) => ({ ...prev, collections: updated }));
   };
 
   const removeAppliedPriceRange = (idx: number) => {
@@ -454,6 +496,48 @@ function CatalogoContent() {
             p.status?.some((s) => s.toLowerCase() === st.toLowerCase()) ||
             p.customBadges?.some((b) => b.toLowerCase() === st.toLowerCase())
           );
+        })
+      );
+    }
+
+    // 3.1. Coleções da Boutique (Seleção Múltipla)
+    if (appliedFilters.collections && appliedFilters.collections.length > 0) {
+      result = result.filter((p) =>
+        appliedFilters.collections.some((colTerm) => {
+          const colTermLower = (colTerm || '').toLowerCase();
+          const targetCol = storeCollections.find(
+            (c) =>
+              c.id.toLowerCase() === colTermLower ||
+              c.slug.toLowerCase() === colTermLower ||
+              c.nome.toLowerCase() === colTermLower
+          );
+
+          if (targetCol) {
+            if (targetCol.produto_ids && targetCol.produto_ids.length > 0) {
+              if (targetCol.produto_ids.includes(p.id)) return true;
+            }
+            if (targetCol.id === 'col_lancamentos' || targetCol.slug === 'lancamentos') {
+              return Boolean(p.isNewArrival || p.status?.includes('Lançamento') || p.status?.includes('Novidade'));
+            }
+            if (targetCol.id === 'col_mais_vendidos' || targetCol.slug === 'mais-vendidos') {
+              return Boolean(p.isBestSeller);
+            }
+            if (targetCol.id === 'col_outlet' || targetCol.slug === 'outlet') {
+              return Boolean(p.isOutlet);
+            }
+            if (targetCol.id === 'col_ultimas_pecas' || targetCol.slug === 'ultimas-pecas') {
+              return Boolean(p.isLastPieces || (p.remainingPieces !== undefined && p.remainingPieces <= 5));
+            }
+          }
+
+          if (colTermLower === 'lancamentos' || colTermLower === 'lancamento') {
+            return Boolean(p.isNewArrival || p.status?.includes('Lançamento') || p.status?.includes('Novidade'));
+          }
+          if (colTermLower === 'mais-vendidos') return Boolean(p.isBestSeller);
+          if (colTermLower === 'outlet') return Boolean(p.isOutlet);
+          if (colTermLower === 'ultimas-pecas') return Boolean(p.isLastPieces || (p.remainingPieces !== undefined && p.remainingPieces <= 5));
+
+          return false;
         })
       );
     }
@@ -617,6 +701,7 @@ function CatalogoContent() {
   const activeFiltersCount = useMemo(() => {
     return (
       (searchQuery.trim() !== '' ? 1 : 0) +
+      (appliedFilters.collections?.length || 0) +
       appliedFilters.categories.length +
       appliedFilters.statuses.length +
       appliedFilters.priceRangeIndices.length +
@@ -632,6 +717,7 @@ function CatalogoContent() {
   // Contagem de filtros marcados no rascunho
   const draftFiltersCount = useMemo(() => {
     return (
+      (draftFilters.collections?.length || 0) +
       draftFilters.categories.length +
       draftFilters.statuses.length +
       draftFilters.priceRangeIndices.length +
@@ -646,6 +732,7 @@ function CatalogoContent() {
 
   // Controle de Acordeão dos Filtros Laterais
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    colecoes: true,
     categorias: true,
     preco: false,
     tamanho: false,
@@ -681,6 +768,87 @@ function CatalogoContent() {
           )}
         </div>
       )}
+
+      {/* 0. Coleções da Boutique (Multi-select) */}
+      <div className="border-b border-[#C5A059]/15 pb-2.5">
+        <button
+          type="button"
+          onClick={() => toggleSection('colecoes')}
+          className="w-full flex items-center justify-between py-1.5 text-left group cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-widest font-bold text-[#C5A059] dark:text-[#DFBE76] group-hover:text-[#1A1918] dark:group-hover:text-white transition-colors">
+              Coleções
+            </span>
+            {(draftFilters.collections?.length || 0) > 0 && (
+              <span className="text-[10px] bg-[#C5A059] text-white px-1.5 py-0.2 rounded-none font-bold">
+                {draftFilters.collections?.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(draftFilters.collections?.length || 0) > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftFilters((p) => ({ ...p, collections: [] }));
+                }}
+                className="text-[10px] text-[#C5A059] hover:text-red-500 font-semibold"
+                title="Limpar coleções"
+              >
+                Limpar
+              </button>
+            )}
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-[#C5A059] transition-transform duration-200 ${
+                openSections.colecoes ? 'rotate-180' : ''
+              }`}
+            />
+          </div>
+        </button>
+
+        {openSections.colecoes && (
+          <div className="pt-2 max-h-56 overflow-y-auto pr-1 space-y-1 text-xs custom-scrollbar">
+            <button
+              type="button"
+              onClick={() => setDraftFilters((p) => ({ ...p, collections: [] }))}
+              className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                (!draftFilters.collections || draftFilters.collections.length === 0)
+                  ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white font-bold'
+                  : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+              }`}
+            >
+              <span>Todas as Peças</span>
+              {(!draftFilters.collections || draftFilters.collections.length === 0) && (
+                <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-white" />
+              )}
+            </button>
+
+            {storeCollections.map((col) => {
+              const isSelected = draftFilters.collections?.includes(col.slug) || draftFilters.collections?.includes(col.id);
+              const count = (col.produto_ids || []).length;
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  onClick={() => toggleDraftCollection(col.slug)}
+                  className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white font-bold'
+                      : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                  }`}
+                >
+                  <span className="truncate pr-1">{col.nome}</span>
+                  <span className="text-[10px] opacity-70 shrink-0">
+                    {isSelected ? <Check className="w-3.5 h-3.5 inline text-emerald-400 dark:text-white" /> : count > 0 ? `(${count})` : ''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 1. Categorias (Multi-select) */}
       <div className="border-b border-[#C5A059]/15 pb-2.5">
@@ -1598,12 +1766,64 @@ function CatalogoContent() {
             {/* ============================================================ */}
             <div className="flex-1 min-w-0 space-y-4">
 
+              {/* BANNER EDITORIAL DE COLEÇÃO EM DESTAQUE */}
+              {activeCollection && (
+                <div className="p-5 sm:p-7 bg-gradient-to-r from-[#1A1918] to-[#2B2724] border border-[#C5A059]/40 text-white rounded-none shadow-sm relative overflow-hidden">
+                  <div className="relative z-10 space-y-1.5 max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-[#C5A059]">
+                        Coleção da Boutique
+                      </span>
+                      {activeCollection.badge_texto && (
+                        <span
+                          style={{ backgroundColor: activeCollection.badge_cor || '#C5A059' }}
+                          className="text-[9px] font-extrabold text-white px-2 py-0.5 uppercase tracking-wider"
+                        >
+                          {activeCollection.badge_texto}
+                        </span>
+                      )}
+                    </div>
+                    <h1 className="font-serif-luxury text-2xl sm:text-3xl font-medium tracking-tight text-[#FAF8F5]">
+                      {activeCollection.nome}
+                    </h1>
+                    {activeCollection.descricao && (
+                      <p className="text-xs sm:text-sm text-stone-300 italic leading-relaxed">
+                        {activeCollection.descricao}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* CHIPS DE FILTROS ATIVOS (Remoção Rápida com 'X') */}
               {activeFiltersCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <span className="text-xs text-white font-semibold mr-1 drop-shadow-xs">
                     Filtros ativos:
                   </span>
+
+                  {appliedFilters.collections?.map((colSlug) => {
+                    const colObj = storeCollections.find(
+                      (c) => c.slug === colSlug || c.id === colSlug || c.nome.toLowerCase() === colSlug.toLowerCase()
+                    );
+                    const label = colObj ? colObj.nome : colSlug;
+                    return (
+                      <span
+                        key={colSlug}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none bg-black/60 dark:bg-[#1A1918]/90 border border-[#C5A059]/50 text-xs text-white font-medium shadow-sm backdrop-blur-xs"
+                      >
+                        <span className="text-[#DFBE76]">Coleção:</span>
+                        <span>{label}</span>
+                        <button
+                          onClick={() => removeAppliedCollection(colSlug)}
+                          className="hover:text-red-400 cursor-pointer text-[#DFBE76]"
+                          title={`Remover filtro de coleção ${label}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
 
                   {searchQuery && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none bg-black/60 dark:bg-[#1A1918]/90 border border-[#C5A059]/50 text-xs text-white font-medium shadow-sm backdrop-blur-xs">

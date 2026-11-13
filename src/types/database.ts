@@ -47,6 +47,23 @@ export interface StorePreloaderConfig {
   timeout_seguranca_ms?: number;
 }
 
+export interface ColecaoLojaItem {
+  id: string;
+  nome: string;
+  slug: string;
+  descricao?: string;
+  badge_texto?: string;
+  badge_cor?: string;
+  banner_url?: string;
+  ativo: boolean;
+  exibir_na_home: boolean;
+  ordem: number;
+  produto_ids: string[];
+  is_sistema?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
@@ -63,6 +80,7 @@ export interface LojaConfiguracoesVisuais {
   exibir_quantidade_estoque_consumidor?: boolean;
   programa_vip?: ProgramaVIPConfig;
   preloader?: StorePreloaderConfig;
+  colecoes_personalizadas?: ColecaoLojaItem[];
   [key: string]: any;
 }
 

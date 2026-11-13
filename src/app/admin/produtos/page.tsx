@@ -101,7 +101,10 @@ import {
   updateAdminVariationStockDirect,
   StoreCustomAttributes,
   CustomSinalizador,
-  DEFAULT_STORE_ATTRIBUTES
+  DEFAULT_STORE_ATTRIBUTES,
+  ColecaoLojaItem,
+  getColecoesLoja,
+  bulkUpdateProdutosColecao
 } from '@/lib/admin';
 import {
   getStoredActiveMember,
@@ -275,6 +278,10 @@ export default function AdminProdutosPage() {
   const [bulkDiscountValue, setBulkDiscountValue] = useState('10');
   const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState('');
+  const [showBulkColecaoModal, setShowBulkColecaoModal] = useState(false);
+  const [bulkColecaoTarget, setBulkColecaoTarget] = useState('');
+  const [bulkColecaoAction, setBulkColecaoAction] = useState<'adicionar' | 'remover'>('adicionar');
+  const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
 
   // Modal Visual de Exclusão / Arquivamento
   const [deleteModalProduct, setDeleteModalProduct] = useState<AdminProductItem | null>(null);
@@ -351,18 +358,20 @@ export default function AdminProdutosPage() {
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData, reservasMap, aviseMeMap, customAttrs] = await Promise.all([
+      const [prodsData, catsData, reservasMap, aviseMeMap, customAttrs, colecoesData] = await Promise.all([
         getAdminProducts(tenantId),
         getAdminCategoriesFull(tenantId),
         getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} })),
         getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 })),
-        getStoreCustomAttributes(tenantId).catch(() => DEFAULT_STORE_ATTRIBUTES)
+        getStoreCustomAttributes(tenantId).catch(() => DEFAULT_STORE_ATTRIBUTES),
+        getColecoesLoja(tenantId).catch(() => [])
       ]);
 
       setCategoriesList(catsData || []);
       setReservedStockMap(reservasMap?.byProduct || {});
       setAviseMeSummary(aviseMeMap?.byProduct || {});
       setStoreAttributes(customAttrs || DEFAULT_STORE_ATTRIBUTES);
+      setColecoesLoja(colecoesData || []);
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
@@ -1193,6 +1202,29 @@ export default function AdminProdutosPage() {
       } else {
         showToast(res.error || 'Erro ao mover categoria em lote.', 'error');
       }
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkUpdateColecaoAction = async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0 || !bulkColecaoTarget) return;
+
+    setIsBulkActionRunning(true);
+    try {
+      const res = await bulkUpdateProdutosColecao(tenantId, bulkColecaoTarget, ids, bulkColecaoAction);
+      if (res.success) {
+        await fetchProductsData();
+        const nomeColecao = colecoesLoja.find(c => c.id === bulkColecaoTarget || c.slug === bulkColecaoTarget)?.nome || 'Coleção';
+        showToast(`${ids.length} peças ${bulkColecaoAction === 'adicionar' ? 'vinculadas à' : 'removidas da'} coleção "${nomeColecao}"!`);
+        setShowBulkColecaoModal(false);
+        setSelectedProductIds(new Set());
+      } else {
+        showToast(res.error || 'Erro ao atualizar coleção em lote.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro inesperado ao atualizar coleção.', 'error');
     } finally {
       setIsBulkActionRunning(false);
     }
@@ -2886,9 +2918,9 @@ export default function AdminProdutosPage() {
                   </div>
 
                   {/* Nível 2: Régua Operacional (Métricas Financeiras + Botões de Ação) */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+                  <div className="pt-3 border-t border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3 w-full min-w-0">
                     {/* Bloco de Métricas Financeiras e Estoque */}
-                    <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 sm:border-0 sm:bg-transparent sm:p-0 sm:flex sm:items-center sm:gap-4 md:gap-6 shrink-0">
+                    <div className="w-full xl:w-auto grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 sm:border-0 sm:bg-transparent sm:p-0 sm:flex sm:items-center sm:gap-4 md:gap-6 shrink-0 min-w-0">
                       <div className="w-auto sm:w-28 shrink-0 text-left">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">{t.products.card.salePrice}</span>
                         {hasPromo ? (
@@ -2935,7 +2967,7 @@ export default function AdminProdutosPage() {
 
                     {/* Botões de Ação */}
                     {isLixeira ? (
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start lg:justify-end">
+                      <div className="w-full xl:w-auto flex items-center gap-2 flex-wrap justify-start xl:justify-end min-w-0">
                         <button
                           onClick={() => handleRestoreProduct(product)}
                           title={t.products.card.restoreTooltip}
@@ -2957,7 +2989,7 @@ export default function AdminProdutosPage() {
                         )}
                       </div>
                     ) : isArquivada ? (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-start lg:justify-end">
+                      <div className="w-full xl:w-auto flex items-center gap-1.5 flex-wrap justify-start xl:justify-end min-w-0">
                         <button
                           onClick={() => handleUnarchiveProduct(product)}
                           title={t.products.card.unarchiveTooltip}
@@ -2985,7 +3017,7 @@ export default function AdminProdutosPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-start lg:justify-end">
+                      <div className="w-full xl:w-auto flex items-center gap-1.5 flex-wrap justify-start xl:justify-end min-w-0">
                         {/* Ver na Vitrine Pública (se ativa) */}
                         <Link
                           href={`/catalogo?categoria=${encodeURIComponent(product.categoria_nome || 'all')}`}
@@ -3925,6 +3957,20 @@ export default function AdminProdutosPage() {
               </button>
 
               <button
+                onClick={() => {
+                  if (colecoesLoja.length > 0 && !bulkColecaoTarget) {
+                    setBulkColecaoTarget(colecoesLoja[0].id);
+                  }
+                  setShowBulkColecaoModal(true);
+                }}
+                disabled={isBulkActionRunning}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Vincular à Coleção...</span>
+              </button>
+
+              <button
                 onClick={handleBulkArchiveAction}
                 disabled={isBulkActionRunning}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
@@ -4240,6 +4286,87 @@ export default function AdminProdutosPage() {
         </div>
       )}
 
+      {/* MINI MODAL: VINCULAR COLEÇÃO EM MASSA */}
+      {showBulkColecaoModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm font-serif-luxury flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>Vincular Coleção ({selectedProductIds.size} peças)</span>
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Adicione ou remova as peças selecionadas das coleções e cápsulas da boutique.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 text-xs mb-1 font-semibold">
+                Ação Desejada
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkColecaoAction('adicionar')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                    bulkColecaoAction === 'adicionar'
+                      ? 'bg-amber-500/10 border-amber-500 text-amber-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  + Adicionar à Coleção
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkColecaoAction('remover')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                    bulkColecaoAction === 'remover'
+                      ? 'bg-rose-500/10 border-rose-500 text-rose-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  - Remover da Coleção
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 text-xs mb-1 font-semibold">
+                Selecione a Coleção da Boutique
+              </label>
+              <select
+                value={bulkColecaoTarget}
+                onChange={(e) => setBulkColecaoTarget(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs"
+              >
+                <option value="">Selecione uma coleção...</option>
+                {colecoesLoja.map((col) => (
+                  <option key={col.id} value={col.id}>
+                    {col.nome} ({col.produto_ids?.length || 0} peças)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowBulkColecaoModal(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkUpdateColecaoAction}
+                disabled={isBulkActionRunning || !bulkColecaoTarget}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 cursor-pointer disabled:opacity-50"
+              >
+                {isBulkActionRunning ? 'Processando...' : 'Aplicar Coleção'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE RESERVA DE PROVADOR (30 MINUTOS) */}
       {selectedFittingProduct && (
         <ProductFittingRoomModal
@@ -4305,6 +4432,7 @@ export default function AdminProdutosPage() {
           onClose={() => setIsCollectionsModalOpen(false)}
           products={products}
           categoriesList={categoriesList}
+          tenantId={tenantId}
           onUpdated={() => {
             fetchProductsData();
             showToast('Vitrines e coleções atualizadas com sucesso!');
