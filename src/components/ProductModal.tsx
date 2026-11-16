@@ -733,11 +733,29 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {/* COLUNA DIREITA: INFORMAÇÕES & PEDIDO */}
           <div className="lg:col-span-7 p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
             <div>
-              {/* Header de Categoria e Atalho */}
+              {/* Header de Categoria e Atalho com Breadcrumb */}
               <div className="flex items-center justify-between pr-4 sm:pr-8">
-                <span className="text-xs uppercase tracking-widest text-[#C5A059] dark:text-[#DFBE76] font-bold">
-                  {product.category}
-                </span>
+                <nav className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#C5A059] dark:text-[#DFBE76] font-bold flex-wrap">
+                  <Link
+                    href={`/catalogo?categoria=${encodeURIComponent(product.category)}`}
+                    onClick={onClose}
+                    className="hover:underline"
+                  >
+                    {product.category}
+                  </Link>
+                  {product.subcategory && (
+                    <>
+                      <span className="text-[#A8A29E] font-normal">›</span>
+                      <Link
+                        href={`/catalogo?categoria=${encodeURIComponent(product.subcategory)}`}
+                        onClick={onClose}
+                        className="text-[#78716C] dark:text-[#D6D3D1] hover:underline"
+                      >
+                        {product.subcategory}
+                      </Link>
+                    </>
+                  )}
+                </nav>
 
                 {!isAlreadyInCatalog && (
                   <Link

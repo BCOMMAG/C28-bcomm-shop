@@ -104,7 +104,10 @@ import {
   DEFAULT_STORE_ATTRIBUTES,
   ColecaoLojaItem,
   getColecoesLoja,
-  bulkUpdateProdutosColecao
+  bulkUpdateProdutosColecao,
+  CategoriaNode,
+  getCategoriaTree,
+  getDescendantCategoryIds
 } from '@/lib/admin';
 import {
   getStoredActiveMember,
@@ -282,6 +285,7 @@ export default function AdminProdutosPage() {
   const [bulkColecaoTarget, setBulkColecaoTarget] = useState('');
   const [bulkColecaoAction, setBulkColecaoAction] = useState<'adicionar' | 'remover'>('adicionar');
   const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
 
   // Modal Visual de Exclusão / Arquivamento
   const [deleteModalProduct, setDeleteModalProduct] = useState<AdminProductItem | null>(null);
@@ -358,13 +362,14 @@ export default function AdminProdutosPage() {
   const fetchProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData, reservasMap, aviseMeMap, customAttrs, colecoesData] = await Promise.all([
+      const [prodsData, catsData, reservasMap, aviseMeMap, customAttrs, colecoesData, treeData] = await Promise.all([
         getAdminProducts(tenantId),
         getAdminCategoriesFull(tenantId),
         getReservedStockMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {} })),
         getAviseMeSummaryMap(tenantId).catch(() => ({ byProduct: {}, byVariation: {}, total: 0 })),
         getStoreCustomAttributes(tenantId).catch(() => DEFAULT_STORE_ATTRIBUTES),
-        getColecoesLoja(tenantId).catch(() => [])
+        getColecoesLoja(tenantId).catch(() => []),
+        getCategoriaTree(tenantId).catch(() => [])
       ]);
 
       setCategoriesList(catsData || []);
@@ -372,6 +377,7 @@ export default function AdminProdutosPage() {
       setAviseMeSummary(aviseMeMap?.byProduct || {});
       setStoreAttributes(customAttrs || DEFAULT_STORE_ATTRIBUTES);
       setColecoesLoja(colecoesData || []);
+      setCategoryTree(treeData || []);
 
       if (prodsData && prodsData.length > 0) {
         setProducts(prodsData);
@@ -3276,7 +3282,7 @@ export default function AdminProdutosPage() {
                   <th className="p-3 min-w-[120px]">{t.products.table.thCostCmv} / {t.products.table.thMargin}</th>
                   <th className="p-3 min-w-[110px]">{t.products.table.thStock}</th>
                   <th className="p-3 min-w-[110px] text-center">{t.products.table.thVisibility}</th>
-                  <th className="p-3 min-w-[160px] text-right">{t.products.table.thActions}</th>
+                  <th className="p-3 min-w-[160px] text-right sticky right-0 bg-slate-50 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.08)]">{t.products.table.thActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -3503,7 +3509,7 @@ export default function AdminProdutosPage() {
                       </td>
 
                       {/* Ações */}
-                      <td className="p-3 text-right whitespace-nowrap">
+                      <td className={`p-3 text-right whitespace-nowrap sticky right-0 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.08)] ${isSelected ? "bg-amber-50" : isLixeira ? "bg-rose-50" : isPausada ? "bg-rose-50" : isArquivada ? "bg-slate-50" : "bg-white"}`}>
                         <div className="flex items-center justify-end gap-1">
                           {isLixeira ? (
                             <>
@@ -4257,14 +4263,26 @@ export default function AdminProdutosPage() {
               <select
                 value={bulkCategoryTarget}
                 onChange={(e) => setBulkCategoryTarget(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs"
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs cursor-pointer"
               >
                 <option value="">{t.products.bulkActions.selectCategoryLabel}</option>
-                {categoriesList.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nome}
-                  </option>
-                ))}
+                {categoryTree.length > 0 ? (
+                  categoryTree.map((cat) => {
+                    const depth = cat.nivel || 0;
+                    const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
+                    return (
+                      <option key={cat.id} value={cat.id}>
+                        {prefix}{cat.nome} {cat.caminho_completo && depth > 0 ? `(${cat.caminho_completo})` : ''}
+                      </option>
+                    );
+                  })
+                ) : (
+                  categoriesList.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nome}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">

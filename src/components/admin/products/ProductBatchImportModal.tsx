@@ -51,7 +51,12 @@ import {
 import * as XLSX from 'xlsx';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, parseMediaColor, isVideoUrl, detectMediaType } from '@/lib/products';
-import { AdminProductItem } from '@/lib/admin';
+import {
+  AdminProductItem,
+  CategoriaNode,
+  getCategoriaTree,
+  saveCategoriaNode
+} from '@/lib/admin';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 import { uploadBrowserFileToR2 } from '@/lib/r2';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
@@ -255,6 +260,7 @@ export function ProductBatchImportModal({
   // Estados locais para categorias, subcategorias e criação rápida inline
   const [localCategories, setLocalCategories] = useState<BatchCategoryOption[]>(categoriesList);
   const [localSubcategories, setLocalSubcategories] = useState<string[]>(BOUTIQUE_SUBCATEGORIES);
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
   const [creatingCategoryForRowId, setCreatingCategoryForRowId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [creatingSubcategoryForRowId, setCreatingSubcategoryForRowId] = useState<string | null>(null);
@@ -391,6 +397,27 @@ export function ProductBatchImportModal({
       });
     }
   }, [categoriesList]);
+
+  // Carrega árvore de categorias da boutique e sincroniza subcategorias dinamicamente
+  useEffect(() => {
+    if (!isOpen || !lojaId) return;
+    let isMounted = true;
+    getCategoriaTree(lojaId)
+      .then((tree) => {
+        if (!isMounted || !tree || tree.length === 0) return;
+        setCategoryTree(tree);
+        const subNames = tree
+          .filter((node) => (node.nivel && node.nivel > 0) || Boolean(node.parent_id))
+          .map((node) => node.nome);
+        if (subNames.length > 0) {
+          setLocalSubcategories(Array.from(new Set([...subNames, ...BOUTIQUE_SUBCATEGORIES])));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, lojaId]);
 
   // Sincroniza produtos existentes se carregados após a montagem inicial
   useEffect(() => {
@@ -1120,13 +1147,24 @@ export function ProductBatchImportModal({
   };
 
   // Criar subcategoria rápida inline (somente com categoria pai ativa)
-  const handleCreateSubcategoryInline = (rowId: string, nome: string) => {
+  const handleCreateSubcategoryInline = async (rowId: string, nome: string) => {
     const clean = nome.trim();
     if (!clean) return;
     if (!localSubcategories.includes(clean)) {
       setLocalSubcategories((prev) => [...prev, clean]);
     }
     handleUpdateRow(rowId, 'subcategoria', clean);
+
+    // Persiste na árvore de categorias da boutique
+    const currentRow = gridRows.find((r) => r.id === rowId);
+    if (lojaId && currentRow?.categoria_id) {
+      saveCategoriaNode(lojaId, {
+        nome: clean,
+        parent_id: currentRow.categoria_id,
+        ativo: true
+      }).catch(() => {});
+    }
+
     setSuccessGlobal(`Subcategoria "${clean}" adicionada e selecionada!`);
     setTimeout(() => setSuccessGlobal(null), 3000);
     setCreatingSubcategoryForRowId(null);
@@ -2199,11 +2237,23 @@ export function ProductBatchImportModal({
                                     className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs max-w-[170px] truncate"
                                   >
                                     <option value="">{t.products.batchModal.noCategory}</option>
-                                    {localCategories.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.nome}
-                                      </option>
-                                    ))}
+                                    {categoryTree.length > 0 ? (
+                                      categoryTree.map((c) => {
+                                        const depth = c.nivel || 0;
+                                        const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
+                                        return (
+                                          <option key={c.id} value={c.id}>
+                                            {prefix}{c.nome}
+                                          </option>
+                                        );
+                                      })
+                                    ) : (
+                                      localCategories.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.nome}
+                                        </option>
+                                      ))
+                                    )}
                                   </select>
                                   <button
                                     type="button"

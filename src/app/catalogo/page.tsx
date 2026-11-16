@@ -36,7 +36,14 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { Product } from '@/types';
-import { ColecaoLojaItem, DEFAULT_COLECOES_BASE } from '@/lib/admin';
+import {
+  ColecaoLojaItem,
+  DEFAULT_COLECOES_BASE,
+  CategoriaNode,
+  getCategoriaTree,
+  getDescendantCategoryIds,
+  getCategoryBreadcrumb
+} from '@/lib/admin';
 
 function CatalogoContent() {
   const router = useRouter();
@@ -87,6 +94,22 @@ function CatalogoContent() {
       quantity: 1
     });
   };
+
+  // Árvore de Categorias Hierárquica Multinível
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
+
+  useEffect(() => {
+    const rawTree = currentTenant?.configuracoes_visuais?.arvore_categorias;
+    if (Array.isArray(rawTree) && rawTree.length > 0) {
+      setCategoryTree(rawTree);
+    } else if (currentTenant?.id) {
+      getCategoriaTree(currentTenant.id)
+        .then((tree) => {
+          if (tree && tree.length > 0) setCategoryTree(tree);
+        })
+        .catch(() => {});
+    }
+  }, [currentTenant]);
 
   // Coleções disponíveis na loja
   const storeCollections = useMemo<ColecaoLojaItem[]>(() => {
@@ -143,6 +166,20 @@ function CatalogoContent() {
   const [draftFilters, setDraftFilters] = useState(() =>
     createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric)
   );
+
+  // Trilha Breadcrumb da Categoria Ativa
+  const activeBreadcrumbs = useMemo(() => {
+    if (appliedFilters.categories.length !== 1 || categoryTree.length === 0) return null;
+    const targetCat = (appliedFilters.categories[0] || '').toLowerCase().trim();
+    const node = categoryTree.find(
+      (n) =>
+        n.id === targetCat ||
+        n.slug.toLowerCase() === targetCat ||
+        n.nome.toLowerCase() === targetCat
+    );
+    if (!node) return null;
+    return getCategoryBreadcrumb(node.id, categoryTree);
+  }, [appliedFilters.categories, categoryTree]);
 
   // Coleção ativa em destaque editorial
   const activeCollection = useMemo(() => {
@@ -413,11 +450,33 @@ function CatalogoContent() {
       );
     }
 
-    // 2. Categorias (Seleção Múltipla com correspondência inteligente para os links do menu)
+    // 2. Categorias (Herança Recursiva em Árvore N-Níveis + Correspondência Inteligente)
     if (appliedFilters.categories.length > 0) {
       result = result.filter((p) =>
         appliedFilters.categories.some((cat) => {
-          const catLower = (cat || '').toLowerCase();
+          const catLower = (cat || '').trim().toLowerCase();
+
+          // Resolução Recursiva via Árvore de Categorias
+          if (categoryTree.length > 0) {
+            const matchedNode = categoryTree.find(
+              (n) =>
+                n.id === cat ||
+                n.slug.toLowerCase() === catLower ||
+                n.nome.toLowerCase() === catLower
+            );
+
+            if (matchedNode) {
+              const allowedIds = getDescendantCategoryIds(matchedNode.id, categoryTree);
+              const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
+              const allowedNames = allowedNodes.map((n) => n.nome.toLowerCase());
+
+              if (p.categoryId && allowedIds.includes(p.categoryId)) return true;
+              if (p.category && allowedNames.includes(p.category.toLowerCase())) return true;
+              if (p.subcategory && allowedNames.includes(p.subcategory.toLowerCase())) return true;
+            }
+          }
+
+          // Fallbacks de Compatibilidade com links antigos do menu / tags legadas
           if (catLower === 'acessórios' || catLower === 'acessorios') {
             return (
               p.category.toLowerCase() === 'acessórios' ||
@@ -903,61 +962,102 @@ function CatalogoContent() {
               <span className="text-[10px] opacity-70">({products.length})</span>
             </button>
             
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
-              Roupas Femininas
-            </p>
-            {CATEGORIES_ROUPAS.map((cat) => {
-              const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
-              const isSelected = draftFilters.categories.includes(cat);
-              return (
-                <button
-                  type="button"
-                  key={cat}
-                  onClick={() => toggleDraftCategory(cat)}
-                  className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
-                      : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
-                      {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                    </span>
-                    <span className="truncate">{cat}</span>
-                  </div>
-                  <span className="text-[10px] opacity-70 shrink-0">({count})</span>
-                </button>
-              );
-            })}
+            {categoryTree.length > 0 ? (
+              categoryTree.map((cat) => {
+                const depth = cat.nivel || 0;
+                const isSelected = draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id);
+                const descendantIds = getDescendantCategoryIds(cat.id, categoryTree);
+                const descendantNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
+                const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
+                const count = products.filter((p) => {
+                  if (p.categoryId && descendantIds.includes(p.categoryId)) return true;
+                  if (p.category && descendantNames.includes(p.category.toLowerCase())) return true;
+                  if (p.subcategory && descendantNames.includes(p.subcategory.toLowerCase())) return true;
+                  return false;
+                }).length;
 
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
-              Acessórios
-            </p>
-            {CATEGORIES_ACESSORIOS.map((cat) => {
-              const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
-              const isSelected = draftFilters.categories.includes(cat);
-              return (
-                <button
-                  type="button"
-                  key={cat}
-                  onClick={() => toggleDraftCategory(cat)}
-                  className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
-                      : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
-                      {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                    </span>
-                    <span className="truncate">{cat}</span>
-                  </div>
-                  <span className="text-[10px] opacity-70 shrink-0">({count})</span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    type="button"
+                    key={cat.id}
+                    onClick={() => toggleDraftCategory(cat.nome)}
+                    style={{ paddingLeft: `${Math.max(10, depth * 14 + 10)}px` }}
+                    className={`w-full text-left py-1.5 pr-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
+                        : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      </span>
+                      {depth > 0 && <span className="text-[10px] text-amber-500/80 shrink-0">↳</span>}
+                      <span className="truncate">{cat.nome}</span>
+                    </div>
+                    <span className="text-[10px] opacity-70 shrink-0">({count})</span>
+                  </button>
+                );
+              })
+            ) : (
+              <>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
+                  Roupas Femininas
+                </p>
+                {CATEGORIES_ROUPAS.map((cat) => {
+                  const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
+                  const isSelected = draftFilters.categories.includes(cat);
+                  return (
+                    <button
+                      type="button"
+                      key={cat}
+                      onClick={() => toggleDraftCategory(cat)}
+                      className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
+                          : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </span>
+                        <span className="truncate">{cat}</span>
+                      </div>
+                      <span className="text-[10px] opacity-70 shrink-0">({count})</span>
+                    </button>
+                  );
+                })}
+
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
+                  Acessórios
+                </p>
+                {CATEGORIES_ACESSORIOS.map((cat) => {
+                  const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
+                  const isSelected = draftFilters.categories.includes(cat);
+                  return (
+                    <button
+                      type="button"
+                      key={cat}
+                      onClick={() => toggleDraftCategory(cat)}
+                      className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
+                          : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </span>
+                        <span className="truncate">{cat}</span>
+                      </div>
+                      <span className="text-[10px] opacity-70 shrink-0">({count})</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
 
             {dynamicExtraCategories.length > 0 && (
               <>
@@ -1560,15 +1660,59 @@ function CatalogoContent() {
         {/* CONTAINER EM LARGURA TOTAL PARA PREENCHER MONITORES LARGOS (Conforme solicitado no print) */}
         <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
           
-          {/* Navegação / Breadcrumb */}
-          <div className="mb-4 flex items-center justify-between">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-white/90 hover:text-[#DFBE76] font-semibold transition-colors drop-shadow-xs"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Voltar para a Página Inicial</span>
-            </Link>
+          {/* Navegação / Breadcrumb Hierárquico Multinível */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            {activeBreadcrumbs && activeBreadcrumbs.length > 0 ? (
+              <nav className="inline-flex items-center gap-1.5 text-xs text-white/80 font-medium">
+                <Link
+                  href="/"
+                  className="hover:text-[#DFBE76] transition-colors"
+                >
+                  Início
+                </Link>
+                <span className="text-white/40">/</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppliedFilters((prev) => ({ ...prev, categories: [] }));
+                    setDraftFilters((prev) => ({ ...prev, categories: [] }));
+                  }}
+                  className="hover:text-[#DFBE76] transition-colors cursor-pointer"
+                >
+                  Catálogo
+                </button>
+                {activeBreadcrumbs.map((crumb, idx) => {
+                  const isLast = idx === activeBreadcrumbs.length - 1;
+                  return (
+                    <React.Fragment key={crumb.id}>
+                      <span className="text-white/40">/</span>
+                      {isLast ? (
+                        <span className="text-[#DFBE76] font-bold">{crumb.nome}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedFilters((prev) => ({ ...prev, categories: [crumb.nome] }));
+                            setDraftFilters((prev) => ({ ...prev, categories: [crumb.nome] }));
+                          }}
+                          className="hover:text-[#DFBE76] transition-colors cursor-pointer"
+                        >
+                          {crumb.nome}
+                        </button>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+            ) : (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-white/90 hover:text-[#DFBE76] font-semibold transition-colors drop-shadow-xs"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar para a Página Inicial</span>
+              </Link>
+            )}
 
             {wishlistCount > 0 && (
               <Link

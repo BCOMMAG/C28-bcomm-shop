@@ -328,6 +328,7 @@ export function mapDbProductToProduct(dbProd: any): Product {
     badge: resolvedBadge,
     customBadges: Array.from(new Set(customBadgesList)),
     category: dbProd.categorias?.nome || 'Geral',
+    categoryId: dbProd.categoria_id || undefined,
     subcategory: dbProd.subcategoria || undefined,
     fabric: dbProd.tecido || undefined,
     fit: dbProd.modelagem || undefined,

@@ -26,7 +26,8 @@ import {
   Check,
   Settings,
   Truck,
-  HelpCircle
+  HelpCircle,
+  FolderTree
 } from 'lucide-react';
 import {
   AdminProductItem,
@@ -40,7 +41,10 @@ import {
   UpdateProductInput,
   ColecaoLojaItem,
   getColecoesLoja,
-  bulkUpdateProdutosColecao
+  bulkUpdateProdutosColecao,
+  CategoriaNode,
+  getCategoriaTree,
+  saveCategoriaNode
 } from '@/lib/admin';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatableSelect';
@@ -160,6 +164,9 @@ export function ProductFullFormModal({
   // Coleções e Cápsulas da Loja
   const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
   const [selectedColecaoIds, setSelectedColecaoIds] = useState<string[]>([]);
+
+  // Árvore Hierárquica de Categorias da Loja
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
 
   // Sinalizadores Globais
   const [isSinalizadoresModalOpen, setIsSinalizadoresModalOpen] = useState(false);
@@ -378,6 +385,14 @@ export function ProductFullFormModal({
     }).catch((err) => {
       console.error('Erro ao carregar coleções no modal de produto:', err);
     });
+
+    getCategoriaTree(tenantId).then((nodes) => {
+      if (!isMounted) return;
+      setCategoryTree(nodes);
+    }).catch((err) => {
+      console.error('Erro ao carregar árvore de categorias no modal de produto:', err);
+    });
+
     return () => {
       isMounted = false;
     };
@@ -518,12 +533,16 @@ export function ProductFullFormModal({
       return;
     }
     try {
-      const res = await saveAdminCategory(tenantId, { nome: newCatInputName.trim() });
+      const res = await saveCategoriaNode(tenantId, {
+        nome: newCatInputName.trim(),
+        parent_id: categoriaId || null
+      });
       if (res.success && res.data) {
         const novaCat = res.data;
-        const updatedCats = [...categoriesList, novaCat];
-        if (onCategoriesUpdated) onCategoriesUpdated(updatedCats);
+        const freshTree = await getCategoriaTree(tenantId);
+        setCategoryTree(freshTree);
         setCategoriaId(novaCat.id);
+        setSubcategoria(novaCat.nome);
         setNewCatInputName('');
         setIsAddingNewCat(false);
         showToast(`Categoria "${novaCat.nome}" criada e selecionada!`);
@@ -1165,21 +1184,55 @@ export function ProductFullFormModal({
                         </button>
                       </div>
                     ) : (
-                      <select
-                        value={categoriaId}
-                        onChange={(e) => {
-                          setCategoriaId(e.target.value);
-                          setSubcategoria('');
-                        }}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="">{t.products.fullFormModal.categoryField}...</option>
-                        {categoriesList.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.nome}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="space-y-1.5">
+                        <select
+                          value={categoriaId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCategoriaId(val);
+                            const foundNode = categoryTree.find((n) => n.id === val);
+                            if (foundNode && foundNode.parent_id) {
+                              setSubcategoria(foundNode.nome);
+                            }
+                          }}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                        >
+                          <option value="">{t.products.fullFormModal.categoryField}...</option>
+                          {categoryTree.length > 0 ? (
+                            categoryTree.map((cat) => {
+                              const depth = cat.nivel || 0;
+                              const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
+                              return (
+                                <option key={cat.id} value={cat.id}>
+                                  {prefix}{cat.nome}
+                                </option>
+                              );
+                            })
+                          ) : (
+                            categoriesList.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.nome}
+                              </option>
+                            ))
+                          )}
+                        </select>
+
+                        {/* Pílula do Caminho Breadcrumb Completo */}
+                        {categoriaId && (
+                          (() => {
+                            const activeNode = categoryTree.find((n) => n.id === categoriaId);
+                            if (!activeNode) return null;
+                            return (
+                              <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium truncate shadow-2xs">
+                                <FolderTree className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="truncate">
+                                  <strong>Trilha:</strong> {activeNode.caminho_completo || activeNode.nome}
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
                     )}
                   </div>
 

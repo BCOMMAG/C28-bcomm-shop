@@ -3246,9 +3246,9 @@ export default function AdminPedidosPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] space-y-1 transition-all"
                                   >
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="font-semibold text-slate-600 flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                      <span className="font-semibold text-slate-600 flex items-center gap-1 text-[10px]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
                                         <span className="truncate">{t.orders.kanban.itemsReleasedStorefront}</span>
                                       </span>
                                       <button
@@ -3257,10 +3257,10 @@ export default function AdminPedidosPage() {
                                           handleReactivateReservation(order, 20);
                                         }}
                                         disabled={reservaActionLoading === order.id}
-                                        className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] inline-flex items-center gap-0.5 shadow-2xs cursor-pointer transition-colors"
+                                        className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] inline-flex items-center gap-1 shadow-2xs cursor-pointer transition-colors shrink-0"
                                         title="Reativar reserva de estoque por 20 minutos caso a cliente queira fechar"
                                       >
-                                        <RefreshCw className="w-2 h-2" />
+                                        <RefreshCw className="w-2.5 h-2.5" />
                                         <span>{t.orders.kanban.reactivate20m}</span>
                                       </button>
                                     </div>
@@ -3339,7 +3339,7 @@ export default function AdminPedidosPage() {
 
                           {/* Ações do Mini Card (Cliques não abrem o modal duplicado) */}
                           <div
-                            className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]"
+                            className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {cleanPhone ? (
@@ -3347,9 +3347,9 @@ export default function AdminPedidosPage() {
                                 href={formatWhatsAppUrl(cleanPhone)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 shrink-0"
+                                className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold inline-flex items-center gap-1.5 shrink-0 transition-colors"
                               >
-                                <MessageCircle className="w-3 h-3" />
+                                <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>WhatsApp</span>
                               </a>
                             ) : (
@@ -3365,11 +3365,11 @@ export default function AdminPedidosPage() {
                                     column.next as CustomerOrder['status']
                                   )
                                 }
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] cursor-pointer transition-colors shrink-0 shadow-2xs"
+                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] cursor-pointer transition-colors shrink-0 shadow-2xs"
                                 title={`Avançar pedido para ${column.next}`}
                               >
                                 <span>{t.orders.kanban.advanceBtn}</span>
-                                <ArrowRight className="w-2.5 h-2.5" />
+                                <ArrowRight className="w-3 h-3" />
                               </button>
                             )}
                           </div>

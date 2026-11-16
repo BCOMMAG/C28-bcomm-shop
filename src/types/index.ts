@@ -31,6 +31,9 @@ export interface Product {
   isBestSeller?: boolean;
   isNewArrival?: boolean;
   category: string;
+  categoryId?: string;
+  categoryPath?: string;
+  categoryBreadcrumb?: Array<{ id: string; nome: string; slug: string }>;
   subcategory?: string;
   fabric?: string; // Tecido
   fit?: string; // Modelagem

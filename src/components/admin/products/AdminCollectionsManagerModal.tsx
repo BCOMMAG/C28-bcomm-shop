@@ -27,7 +27,10 @@ import {
   bulkUpdatePromotionalFlags,
   bulkUpdateProductCategory,
   ColecaoLojaItem,
-  getColecoesLoja
+  getColecoesLoja,
+  CategoriaNode,
+  getCategoriaTree,
+  getDescendantCategoryIds
 } from '@/lib/admin';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -133,6 +136,8 @@ export function AdminCollectionsManagerModal({
 
   // Coleções configuradas pelo lojista
   const [colecoesLoja, setColecoesLoja] = useState<ColecaoLojaItem[]>([]);
+  // Árvore de Categorias da Loja
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
 
   React.useEffect(() => {
     if (!isOpen || !tenantId) return;
@@ -142,6 +147,13 @@ export function AdminCollectionsManagerModal({
         if (isMounted) setColecoesLoja(cols);
       })
       .catch(() => {});
+
+    getCategoriaTree(tenantId)
+      .then((tree) => {
+        if (isMounted) setCategoryTree(tree);
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -197,12 +209,15 @@ export function AdminCollectionsManagerModal({
   const currentCollectionProducts = useMemo(() => {
     if (activeTab === 'categorias') {
       if (!selectedCatId) return [];
-      return products.filter((p) => p.categoria_id === selectedCatId && !p.lixeira && !p.arquivado);
+      const allowedIds = categoryTree.length > 0
+        ? getDescendantCategoryIds(selectedCatId, categoryTree)
+        : [selectedCatId];
+      return products.filter((p) => Boolean(p.categoria_id && allowedIds.includes(p.categoria_id)) && !p.lixeira && !p.arquivado);
     }
     const flag = currentTabCfg.flag;
     if (!flag) return [];
     return products.filter((p) => Boolean(p[flag]) && !p.lixeira && !p.arquivado);
-  }, [products, activeTab, selectedCatId, currentTabCfg.flag]);
+  }, [products, activeTab, selectedCatId, currentTabCfg.flag, categoryTree]);
 
   // Produtos candidatos do catálogo completo disponíveis para adicionar (que NÃO estão nesta seção)
   const candidateProducts = useMemo(() => {
@@ -212,15 +227,23 @@ export function AdminCollectionsManagerModal({
       .filter((p) => !p.lixeira && !p.arquivado)
       .filter((p) => {
         if (activeTab === 'categorias') {
-          return p.categoria_id !== selectedCatId;
+          const allowedIds = categoryTree.length > 0
+            ? getDescendantCategoryIds(selectedCatId, categoryTree)
+            : [selectedCatId];
+          return !p.categoria_id || !allowedIds.includes(p.categoria_id);
         }
         const flag = currentTabCfg.flag;
         if (!flag) return false;
         return !p[flag];
       })
       .filter((p) => {
-        if (catalogCategoryFilter !== 'todos' && p.categoria_id !== catalogCategoryFilter) {
-          return false;
+        if (catalogCategoryFilter !== 'todos') {
+          const allowedFilterIds = categoryTree.length > 0
+            ? getDescendantCategoryIds(catalogCategoryFilter, categoryTree)
+            : [catalogCategoryFilter];
+          if (!p.categoria_id || !allowedFilterIds.includes(p.categoria_id)) {
+            return false;
+          }
         }
         if (!query) return true;
         const nome = (p.nome || '').toLowerCase();
@@ -228,7 +251,7 @@ export function AdminCollectionsManagerModal({
         const cat = (p.categoria_nome || '').toLowerCase();
         return nome.includes(query) || slug.includes(query) || cat.includes(query);
       });
-  }, [products, activeTab, currentTabCfg.flag, selectedCatId, searchQuery, catalogCategoryFilter]);
+  }, [products, activeTab, currentTabCfg.flag, selectedCatId, searchQuery, catalogCategoryFilter, categoryTree]);
 
   // Ação de alternar flag individualmente em uma peça (Multisseção com 1 clique)
   const handleToggleProductSectionFlag = async (
@@ -595,11 +618,25 @@ export function AdminCollectionsManagerModal({
                   }}
                   className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-900 cursor-pointer shadow-2xs"
                 >
-                  {categoriesList.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nome} ({products.filter((p) => p.categoria_id === cat.id && !p.lixeira && !p.arquivado).length})
-                    </option>
-                  ))}
+                  {categoryTree.length > 0 ? (
+                    categoryTree.map((cat) => {
+                      const depth = cat.nivel || 0;
+                      const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
+                      const allowedIds = getDescendantCategoryIds(cat.id, categoryTree);
+                      const count = products.filter((p) => Boolean(p.categoria_id && allowedIds.includes(p.categoria_id)) && !p.lixeira && !p.arquivado).length;
+                      return (
+                        <option key={cat.id} value={cat.id}>
+                          {prefix}{cat.nome} ({count})
+                        </option>
+                      );
+                    })
+                  ) : (
+                    categoriesList.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nome} ({products.filter((p) => p.categoria_id === cat.id && !p.lixeira && !p.arquivado).length})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             )}
@@ -661,18 +698,30 @@ export function AdminCollectionsManagerModal({
                 )}
               </div>
 
-              {viewMode === 'add_catalog' && categoriesList.length > 0 && (
+              {viewMode === 'add_catalog' && (categoriesList.length > 0 || categoryTree.length > 0) && (
                 <select
                   value={catalogCategoryFilter}
                   onChange={(e) => setCatalogCategoryFilter(e.target.value)}
                   className="px-2.5 py-1.5 text-[11px] font-semibold rounded-xl border border-slate-200 bg-slate-50 text-slate-800 cursor-pointer shrink-0"
                 >
                   <option value="todos">{t.products.collectionsModal.allCategoriesOption}</option>
-                  {categoriesList.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome}
-                    </option>
-                  ))}
+                  {categoryTree.length > 0 ? (
+                    categoryTree.map((cat) => {
+                      const depth = cat.nivel || 0;
+                      const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
+                      return (
+                        <option key={cat.id} value={cat.id}>
+                          {prefix}{cat.nome}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    categoriesList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))
+                  )}
                 </select>
               )}
             </div>

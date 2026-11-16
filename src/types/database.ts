@@ -64,6 +64,25 @@ export interface ColecaoLojaItem {
   updated_at: string;
 }
 
+export interface CategoriaNode {
+  id: string;                      // UUID único e estável da categoria/ramo
+  loja_id: string;                 // Isolamento multi-tenant
+  nome: string;                    // Nome visível (ex.: "Tricots de Gola Alta")
+  slug: string;                    // Slug amigável (ex.: "tricots-gola-alta")
+  parent_id: string | null;        // ID da categoria-mãe (null = Raiz / Nível 1)
+  nivel: number;                   // Profundidade (0 = Raiz, 1 = Sub, 2 = Sub-sub...)
+  display_order: number;           // Ordem entre os irmãos do mesmo pai
+  ativo: boolean;                  // Status de exibição na loja
+  icone?: string;                  // Emoji ou ícone decorativo (ex.: "🧶", "🧥")
+  descricao?: string;              // Descrição opcional para banners do catálogo
+  banner_url?: string;             // Imagem de capa para o catálogo da categoria
+  caminho_completo?: string;       // ex: "Roupas > Parte Superior > Tricots"
+  slug_path?: string;              // ex: "roupas/parte-superior/tricots"
+  filhos?: CategoriaNode[];        // Sub-ramos recursivos
+  total_produtos_diretos?: number; // Peças vinculadas diretamente a este nó
+  total_produtos_arvore?: number;  // Peças deste nó + todos os seus descendentes
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
@@ -81,6 +100,7 @@ export interface LojaConfiguracoesVisuais {
   programa_vip?: ProgramaVIPConfig;
   preloader?: StorePreloaderConfig;
   colecoes_personalizadas?: ColecaoLojaItem[];
+  arvore_categorias?: CategoriaNode[];
   [key: string]: any;
 }
 

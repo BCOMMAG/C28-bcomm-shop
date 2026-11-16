@@ -1,8 +1,8 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem } from '@/types/database';
-export type { ColecaoLojaItem };
+import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem, CategoriaNode } from '@/types/database';
+export type { ColecaoLojaItem, CategoriaNode };
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -756,31 +756,147 @@ export interface StoreNavMenuConfig {
 }
 
 /**
- * Consulta a lista completa de categorias da loja.
+ * Normaliza uma string para slug de URL seguro
  */
-export async function getAdminCategories(
-  lojaId: string = DEFAULT_TENANT_ID
-): Promise<Array<{ id: string; nome: string; slug: string }>> {
+export function slugifyCategoria(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
+/**
+ * Retorna todos os IDs descendentes de um nó (ele mesmo + todos os filhos, netos, etc.)
+ */
+export function getDescendantCategoryIds(nodeId: string, tree: CategoriaNode[]): string[] {
+  const ids: string[] = [nodeId];
+  const findChildren = (currentId: string) => {
+    tree.forEach((node) => {
+      if (node.parent_id === currentId) {
+        if (!ids.includes(node.id)) {
+          ids.push(node.id);
+          findChildren(node.id);
+        }
+      }
+    });
+  };
+  findChildren(nodeId);
+  return ids;
+}
+
+/**
+ * Retorna o breadcrumb (trilha da raiz até a folha) de um nó
+ */
+export function getCategoryBreadcrumb(
+  nodeId: string,
+  tree: CategoriaNode[]
+): Array<{ id: string; nome: string; slug: string }> {
+  const breadcrumb: Array<{ id: string; nome: string; slug: string }> = [];
+  const nodeMap = new Map<string, CategoriaNode>();
+  tree.forEach((n) => nodeMap.set(n.id, n));
+
+  let current: CategoriaNode | undefined = nodeMap.get(nodeId);
+  const visited = new Set<string>();
+
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    breadcrumb.unshift({ id: current.id, nome: current.nome, slug: current.slug });
+    if (!current.parent_id) break;
+    current = nodeMap.get(current.parent_id);
+  }
+
+  return breadcrumb;
+}
+
+/**
+ * Validação algorítmica anti-loop (impede que um pai seja movido para dentro de sua própria ramificação)
+ */
+export function validateAntiLoop(nodeId: string, newParentId: string | null, tree: CategoriaNode[]): boolean {
+  if (!newParentId) return true; // Virar raiz sempre é seguro
+  if (nodeId === newParentId) return false; // Não pode ser pai de si mesmo
+  const descendants = getDescendantCategoryIds(nodeId, tree);
+  return !descendants.includes(newParentId);
+}
+
+/**
+ * Sincroniza em cascata o nome de uma categoria renomeada nos menus da loja
+ */
+export async function syncCategoryNameInStoreMenus(
+  lojaId: string,
+  oldName: string,
+  newName: string,
+  catId: string
+): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   try {
-    const { data, error } = await supabase
-      .from('categorias')
-      .select('id, nome, slug')
-      .eq('loja_id', lojaId)
-      .order('display_order', { ascending: true });
-    if (error) throw error;
-    return data || [];
-  } catch {
-    return [];
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const menus: StoreNavMenuConfig = visuais.menu_navegacao;
+    if (!menus) return;
+
+    let hasChanges = false;
+    const updateItems = (items: NavMenuItem[]) => {
+      items.forEach((item) => {
+        if (item.type === 'category') {
+          if (item.value === oldName || (item as any).categoryId === catId) {
+            item.value = newName;
+            (item as any).categoryId = catId;
+            if (item.label === oldName) item.label = newName;
+            hasChanges = true;
+          }
+        }
+        if (item.subOptions && Array.isArray(item.subOptions)) {
+          item.subOptions.forEach((sub) => {
+            if (sub.type === 'category' || sub.type === 'subcategory') {
+              if (sub.value === oldName || (sub as any).categoryId === catId) {
+                sub.value = newName;
+                (sub as any).categoryId = catId;
+                if (sub.label === oldName) sub.label = newName;
+                hasChanges = true;
+              }
+            }
+            if (sub.extraCategory === oldName) {
+              sub.extraCategory = newName;
+              hasChanges = true;
+            }
+          });
+        }
+      });
+    };
+
+    if (Array.isArray(menus.linha_1)) updateItems(menus.linha_1);
+    if (Array.isArray(menus.linha_2)) updateItems(menus.linha_2);
+    if (Array.isArray(menus.gaveta_mobile)) updateItems(menus.gaveta_mobile);
+
+    if (hasChanges) {
+      await supabase
+        .from('lojas')
+        .update({
+          configuracoes_visuais: {
+            ...visuais,
+            menu_navegacao: menus
+          }
+        })
+        .eq('id', lojaId);
+    }
+  } catch (err) {
+    console.error('❌ [Admin] Falha ao sincronizar menus da vitrine:', err);
   }
 }
 
 /**
- * Consulta categorias com subcategorias e contagem de produtos vinculados.
+ * Consulta a Árvore Hierárquica Completa de Categorias (N-Níveis) com auto-migração e contagem de peças.
  */
-export async function getAdminCategoriesFull(
+export async function getCategoriaTree(
   lojaId: string = DEFAULT_TENANT_ID
-): Promise<AdminCategoryFull[]> {
+): Promise<CategoriaNode[]> {
   const supabase = getSupabaseBrowserClient();
   try {
     const [catsRes, prodsRes, lojaRes] = await Promise.all([
@@ -791,7 +907,7 @@ export async function getAdminCategoriesFull(
         .order('display_order', { ascending: true }),
       supabase
         .from('produtos')
-        .select('categoria_id, subcategoria')
+        .select('id, categoria_id, subcategoria')
         .eq('loja_id', lojaId),
       supabase
         .from('lojas')
@@ -803,43 +919,194 @@ export async function getAdminCategoriesFull(
     const rawCats = catsRes.data || [];
     const prods = prodsRes.data || [];
     const visuais = (lojaRes.data as any)?.configuracoes_visuais || {};
-    const subcatsMap: Record<string, string[]> = visuais.subcategorias_por_categoria || {};
+    let savedTree: CategoriaNode[] = Array.isArray(visuais.arvore_categorias)
+      ? [...visuais.arvore_categorias]
+      : [];
 
-    const prodsCountByCat: Record<string, number> = {};
+    // Mapeamento de contagem de produtos diretos por categoria_id
+    const directCountsByCatId: Record<string, number> = {};
+    const prodsBySubcatName: Record<string, string[]> = {};
+
     prods.forEach((p) => {
       if (p.categoria_id) {
-        prodsCountByCat[p.categoria_id] = (prodsCountByCat[p.categoria_id] || 0) + 1;
+        directCountsByCatId[p.categoria_id] = (directCountsByCatId[p.categoria_id] || 0) + 1;
+      }
+      if (p.subcategoria && p.categoria_id) {
+        const subTrim = p.subcategoria.trim();
+        if (!prodsBySubcatName[subTrim]) prodsBySubcatName[subTrim] = [];
+        if (!prodsBySubcatName[subTrim].includes(p.categoria_id)) {
+          prodsBySubcatName[subTrim].push(p.categoria_id);
+        }
       }
     });
 
-    return rawCats.map((c) => ({
-      id: c.id,
-      loja_id: c.loja_id,
-      nome: c.nome,
-      slug: c.slug,
-      display_order: Number(c.display_order ?? 0),
-      subcategorias: Array.isArray(subcatsMap[c.id]) ? subcatsMap[c.id] : [],
-      total_produtos: prodsCountByCat[c.id] || 0
-    }));
+    let needsSaveTree = false;
+
+    if (savedTree.length === 0) {
+      // Cria a árvore base a partir das categorias da tabela
+      rawCats.forEach((c, idx) => {
+        savedTree.push({
+          id: c.id,
+          loja_id: lojaId,
+          nome: c.nome,
+          slug: c.slug || slugifyCategoria(c.nome),
+          parent_id: null,
+          nivel: 0,
+          display_order: Number(c.display_order ?? (idx + 1) * 10),
+          ativo: true
+        });
+      });
+
+      // Se havia subcategorias em produtos ou no mapa antigo, cria nós-filhos de nível 1
+      const subcatsMap: Record<string, string[]> = visuais.subcategorias_por_categoria || {};
+
+      Object.entries(subcatsMap).forEach(([parentCatId, subs]) => {
+        if (Array.isArray(subs)) {
+          subs.forEach((subName, sIdx) => {
+            const subClean = subName.trim();
+            if (!subClean) return;
+            const existing = savedTree.find((n) => n.parent_id === parentCatId && n.nome.toLowerCase() === subClean.toLowerCase());
+            if (!existing) {
+              const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+              savedTree.push({
+                id: subId,
+                loja_id: lojaId,
+                nome: subClean,
+                slug: slugifyCategoria(subClean),
+                parent_id: parentCatId,
+                nivel: 1,
+                display_order: (sIdx + 1) * 10,
+                ativo: true
+              });
+            }
+          });
+        }
+      });
+
+      Object.entries(prodsBySubcatName).forEach(([subName, parentIds]) => {
+        parentIds.forEach((pId) => {
+          const existing = savedTree.find((n) => n.parent_id === pId && n.nome.toLowerCase() === subName.toLowerCase());
+          if (!existing) {
+            const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            savedTree.push({
+              id: subId,
+              loja_id: lojaId,
+              nome: subName,
+              slug: slugifyCategoria(subName),
+              parent_id: pId,
+              nivel: 1,
+              display_order: 100,
+              ativo: true
+            });
+          }
+        });
+      });
+
+      needsSaveTree = true;
+    } else {
+      // Garante que categorias criadas externamente na tabela entrem na árvore
+      rawCats.forEach((c) => {
+        const exists = savedTree.some((n) => n.id === c.id);
+        if (!exists) {
+          savedTree.push({
+            id: c.id,
+            loja_id: lojaId,
+            nome: c.nome,
+            slug: c.slug || slugifyCategoria(c.nome),
+            parent_id: null,
+            nivel: 0,
+            display_order: Number(c.display_order ?? 999),
+            ativo: true
+          });
+          needsSaveTree = true;
+        }
+      });
+    }
+
+    if (needsSaveTree) {
+      await supabase
+        .from('lojas')
+        .update({
+          configuracoes_visuais: {
+            ...visuais,
+            arvore_categorias: savedTree
+          }
+        })
+        .eq('id', lojaId);
+    }
+
+    // Monta a topologia da árvore em runtime
+    const nodeMap = new Map<string, CategoriaNode>();
+    savedTree.forEach((n) => {
+      nodeMap.set(n.id, {
+        ...n,
+        total_produtos_diretos: directCountsByCatId[n.id] || 0,
+        total_produtos_arvore: directCountsByCatId[n.id] || 0,
+        filhos: []
+      });
+    });
+
+    const rootNodes: CategoriaNode[] = [];
+    const flatWithCalculations: CategoriaNode[] = [];
+
+    savedTree.forEach((rawNode) => {
+      const node = nodeMap.get(rawNode.id)!;
+      const breadcrumb = getCategoryBreadcrumb(node.id, savedTree);
+      node.caminho_completo = breadcrumb.map((b) => b.nome).join(' > ');
+      node.slug_path = breadcrumb.map((b) => b.slug).join('/');
+      node.nivel = Math.max(0, breadcrumb.length - 1);
+
+      const allSubIds = getDescendantCategoryIds(node.id, savedTree);
+      node.total_produtos_arvore = allSubIds.reduce((sum, id) => sum + (directCountsByCatId[id] || 0), 0);
+
+      flatWithCalculations.push(node);
+    });
+
+    flatWithCalculations.forEach((node) => {
+      if (node.parent_id && nodeMap.has(node.parent_id)) {
+        nodeMap.get(node.parent_id)!.filhos!.push(node);
+      } else {
+        rootNodes.push(node);
+      }
+    });
+
+    const sortTree = (nodes: CategoriaNode[]) => {
+      nodes.sort((a, b) => a.display_order - b.display_order);
+      nodes.forEach((n) => {
+        if (n.filhos && n.filhos.length > 0) {
+          sortTree(n.filhos);
+        }
+      });
+    };
+    sortTree(rootNodes);
+
+    return flatWithCalculations.sort((a, b) => {
+      if (a.nivel !== b.nivel) return a.nivel - b.nivel;
+      return a.display_order - b.display_order;
+    });
   } catch (err) {
-    console.error('❌ [Admin] Falha ao carregar categorias completas:', err);
+    console.error('❌ [Admin] Falha ao carregar árvore de categorias:', err);
     return [];
   }
 }
 
 /**
- * Cria ou atualiza uma categoria e suas subcategorias vinculadas.
+ * Salva ou cria um nó em qualquer nível da árvore hierárquica.
  */
-export async function saveAdminCategory(
+export async function saveCategoriaNode(
   lojaId: string = DEFAULT_TENANT_ID,
   payload: {
     id?: string;
     nome: string;
     slug?: string;
+    parent_id?: string | null;
     display_order?: number;
-    subcategorias?: string[];
+    ativo?: boolean;
+    icone?: string;
+    descricao?: string;
+    banner_url?: string;
   }
-): Promise<{ success: boolean; data?: AdminCategoryFull; error?: string }> {
+): Promise<{ success: boolean; data?: CategoriaNode; error?: string }> {
   const supabase = getSupabaseBrowserClient();
   try {
     const nomeLimpo = payload.nome.trim();
@@ -847,40 +1114,67 @@ export async function saveAdminCategory(
       return { success: false, error: 'O nome da categoria é obrigatório.' };
     }
 
-    const slug = (
-      payload.slug?.trim() ||
-      nomeLimpo
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '')
-    );
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
 
-    let savedId = payload.id;
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    let savedTree: CategoriaNode[] = Array.isArray(visuais.arvore_categorias)
+      ? [...visuais.arvore_categorias]
+      : [];
 
-    if (savedId) {
-      const { error: upErr } = await supabase
+    const slug = payload.slug?.trim() || slugifyCategoria(nomeLimpo);
+    const parentId = payload.parent_id !== undefined ? payload.parent_id : null;
+
+    let targetId = payload.id;
+    let oldNome: string | null = null;
+
+    if (targetId) {
+      const existing = savedTree.find((n) => n.id === targetId);
+      if (existing) {
+        oldNome = existing.nome;
+      }
+
+      if (parentId !== undefined && !validateAntiLoop(targetId, parentId, savedTree)) {
+        return {
+          success: false,
+          error: 'Operação inválida: uma categoria não pode ser movida para dentro de sua própria ramificação.'
+        };
+      }
+
+      await supabase
         .from('categorias')
         .update({
           nome: nomeLimpo,
           slug,
           ...(payload.display_order !== undefined ? { display_order: payload.display_order } : {})
         })
-        .eq('id', savedId)
+        .eq('id', targetId)
         .eq('loja_id', lojaId);
 
-      if (upErr) throw upErr;
+      savedTree = savedTree.map((node) => {
+        if (node.id === targetId) {
+          return {
+            ...node,
+            nome: nomeLimpo,
+            slug,
+            parent_id: parentId,
+            display_order: payload.display_order ?? node.display_order,
+            ativo: payload.ativo ?? node.ativo ?? true,
+            icone: payload.icone !== undefined ? payload.icone : node.icone,
+            descricao: payload.descricao !== undefined ? payload.descricao : node.descricao,
+            banner_url: payload.banner_url !== undefined ? payload.banner_url : node.banner_url
+          };
+        }
+        return node;
+      });
     } else {
       let order = payload.display_order;
       if (order === undefined) {
-        const { data: lastCats } = await supabase
-          .from('categorias')
-          .select('display_order')
-          .eq('loja_id', lojaId)
-          .order('display_order', { ascending: false })
-          .limit(1);
-        order = ((lastCats?.[0]?.display_order ?? 0) as number) + 10;
+        const siblings = savedTree.filter((n) => n.parent_id === parentId);
+        order = siblings.length > 0 ? Math.max(...siblings.map((s) => s.display_order)) + 10 : 10;
       }
 
       const { data: insData, error: insErr } = await supabase
@@ -894,31 +1188,53 @@ export async function saveAdminCategory(
         .select()
         .single();
 
-      if (insErr) throw insErr;
-      savedId = insData.id;
+      if (insErr) {
+        const uniqueSlug = `${slug}-${Math.random().toString(36).substring(2, 6)}`;
+        const { data: insData2, error: insErr2 } = await supabase
+          .from('categorias')
+          .insert({
+            loja_id: lojaId,
+            nome: nomeLimpo,
+            slug: uniqueSlug,
+            display_order: order
+          })
+          .select()
+          .single();
+        if (insErr2) throw insErr2;
+        targetId = insData2.id;
+      } else {
+        targetId = insData.id;
+      }
+
+      const newNode: CategoriaNode = {
+        id: targetId!,
+        loja_id: lojaId,
+        nome: nomeLimpo,
+        slug,
+        parent_id: parentId,
+        nivel: parentId ? 1 : 0,
+        display_order: order,
+        ativo: payload.ativo !== undefined ? payload.ativo : true,
+        icone: payload.icone,
+        descricao: payload.descricao,
+        banner_url: payload.banner_url
+      };
+
+      savedTree.push(newNode);
     }
 
-    // Atualiza o mapa de subcategorias no JSONB da loja
-    if (savedId && payload.subcategorias !== undefined) {
-      const { data: loja } = await supabase
-        .from('lojas')
-        .select('configuracoes_visuais')
-        .eq('id', lojaId)
-        .single();
+    await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          arvore_categorias: savedTree
+        }
+      })
+      .eq('id', lojaId);
 
-      const visuais = (loja as any)?.configuracoes_visuais || {};
-      const currentSubMap = { ...(visuais.subcategorias_por_categoria || {}) };
-      currentSubMap[savedId] = Array.from(new Set(payload.subcategorias.map((s) => s.trim()).filter(Boolean)));
-
-      await supabase
-        .from('lojas')
-        .update({
-          configuracoes_visuais: {
-            ...visuais,
-            subcategorias_por_categoria: currentSubMap
-          }
-        })
-        .eq('id', lojaId);
+    if (oldNome && oldNome !== nomeLimpo && targetId) {
+      await syncCategoryNameInStoreMenus(lojaId, oldNome, nomeLimpo, targetId);
     }
 
     clearTenantCache();
@@ -927,42 +1243,30 @@ export async function saveAdminCategory(
       window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
     }
 
+    const savedNode = savedTree.find((n) => n.id === targetId);
     return {
       success: true,
-      data: {
-        id: savedId!,
-        loja_id: lojaId,
-        nome: nomeLimpo,
-        slug,
-        display_order: payload.display_order ?? 0,
-        subcategorias: payload.subcategorias || [],
-        total_produtos: 0
-      }
+      data: savedNode
     };
   } catch (err: any) {
-    console.error('❌ [Admin] Falha ao salvar categoria:', err);
-    return { success: false, error: err?.message || 'Falha ao salvar categoria.' };
+    console.error('❌ [Admin] Falha ao salvar nó de categoria:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar nó de categoria.' };
   }
 }
 
 /**
- * Remove uma categoria da loja e limpa suas subcategorias.
+ * Remove um nó da árvore de categorias com proteção contra órfãos e realocação.
  */
-export async function deleteAdminCategory(
-  catId: string,
-  lojaId: string = DEFAULT_TENANT_ID
+export async function deleteCategoriaNode(
+  lojaId: string = DEFAULT_TENANT_ID,
+  nodeId: string,
+  options: {
+    strategy?: 'reparent_to_parent' | 'orphan' | 'cascade';
+    targetParentId?: string | null;
+  } = {}
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseBrowserClient();
   try {
-    const { error: delErr } = await supabase
-      .from('categorias')
-      .delete()
-      .eq('id', catId)
-      .eq('loja_id', lojaId);
-
-    if (delErr) throw delErr;
-
-    // Remove do JSONB de subcategorias
     const { data: loja } = await supabase
       .from('lojas')
       .select('configuracoes_visuais')
@@ -970,19 +1274,58 @@ export async function deleteAdminCategory(
       .single();
 
     const visuais = (loja as any)?.configuracoes_visuais || {};
-    if (visuais.subcategorias_por_categoria && visuais.subcategorias_por_categoria[catId]) {
-      const updatedMap = { ...visuais.subcategorias_por_categoria };
-      delete updatedMap[catId];
-      await supabase
-        .from('lojas')
-        .update({
-          configuracoes_visuais: {
-            ...visuais,
-            subcategorias_por_categoria: updatedMap
-          }
-        })
-        .eq('id', lojaId);
+    let savedTree: CategoriaNode[] = Array.isArray(visuais.arvore_categorias)
+      ? [...visuais.arvore_categorias]
+      : [];
+
+    const nodeToDelete = savedTree.find((n) => n.id === nodeId);
+    if (!nodeToDelete) {
+      return { success: false, error: 'Categoria não encontrada.' };
     }
+
+    const strategy = options.strategy || 'reparent_to_parent';
+    const fallbackParentId = options.targetParentId !== undefined ? options.targetParentId : nodeToDelete.parent_id;
+
+    if (strategy === 'reparent_to_parent') {
+      savedTree = savedTree.map((n) => {
+        if (n.parent_id === nodeId) {
+          return { ...n, parent_id: fallbackParentId };
+        }
+        return n;
+      });
+      if (fallbackParentId) {
+        await supabase
+          .from('produtos')
+          .update({ categoria_id: fallbackParentId })
+          .eq('categoria_id', nodeId)
+          .eq('loja_id', lojaId);
+      }
+    } else if (strategy === 'orphan') {
+      savedTree = savedTree.map((n) => {
+        if (n.parent_id === nodeId) {
+          return { ...n, parent_id: null, nivel: 0 };
+        }
+        return n;
+      });
+    }
+
+    savedTree = savedTree.filter((n) => n.id !== nodeId);
+
+    await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          arvore_categorias: savedTree
+        }
+      })
+      .eq('id', lojaId);
+
+    await supabase
+      .from('categorias')
+      .delete()
+      .eq('id', nodeId)
+      .eq('loja_id', lojaId);
 
     clearTenantCache();
     if (typeof window !== 'undefined') {
@@ -992,29 +1335,53 @@ export async function deleteAdminCategory(
 
     return { success: true };
   } catch (err: any) {
-    console.error('❌ [Admin] Falha ao excluir categoria:', err);
+    console.error('❌ [Admin] Falha ao excluir nó de categoria:', err);
     return { success: false, error: err?.message || 'Falha ao excluir categoria.' };
   }
 }
 
 /**
- * Reordena categorias no banco de dados.
+ * Reordena os nós da árvore entre irmãos do mesmo pai.
  */
-export async function reorderAdminCategories(
+export async function reorderCategoriaNodes(
   lojaId: string = DEFAULT_TENANT_ID,
+  parentId: string | null,
   orderedIds: string[]
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseBrowserClient();
   try {
-    await Promise.all(
-      orderedIds.map((id, index) =>
-        supabase
-          .from('categorias')
-          .update({ display_order: (index + 1) * 10 })
-          .eq('id', id)
-          .eq('loja_id', lojaId)
-      )
-    );
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    let savedTree: CategoriaNode[] = Array.isArray(visuais.arvore_categorias)
+      ? [...visuais.arvore_categorias]
+      : [];
+
+    const orderMap = new Map<string, number>();
+    orderedIds.forEach((id, idx) => {
+      orderMap.set(id, (idx + 1) * 10);
+    });
+
+    savedTree = savedTree.map((n) => {
+      if (orderMap.has(n.id)) {
+        return { ...n, display_order: orderMap.get(n.id)! };
+      }
+      return n;
+    });
+
+    await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          arvore_categorias: savedTree
+        }
+      })
+      .eq('id', lojaId);
 
     clearTenantCache();
     if (typeof window !== 'undefined') {
@@ -1023,9 +1390,129 @@ export async function reorderAdminCategories(
 
     return { success: true };
   } catch (err: any) {
-    console.error('❌ [Admin] Falha ao reordenar categorias:', err);
+    console.error('❌ [Admin] Falha ao reordenar nós:', err);
     return { success: false, error: err?.message || 'Falha ao reordenar categorias.' };
   }
+}
+
+/**
+ * Consulta a lista de categorias em formato plano (para retrocompatibilidade).
+ */
+export async function getAdminCategories(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<Array<{ id: string; nome: string; slug: string }>> {
+  try {
+    const tree = await getCategoriaTree(lojaId);
+    return tree.map((t) => ({ id: t.id, nome: t.caminho_completo || t.nome, slug: t.slug }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Consulta categorias com subcategorias vinculadas (retrocompatibilidade rica).
+ */
+export async function getAdminCategoriesFull(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<AdminCategoryFull[]> {
+  try {
+    const tree = await getCategoriaTree(lojaId);
+    const roots = tree.filter((n) => !n.parent_id);
+
+    return roots.map((root) => {
+      const descendants = tree.filter((n) => n.parent_id === root.id);
+      return {
+        id: root.id,
+        loja_id: root.loja_id,
+        nome: root.nome,
+        slug: root.slug,
+        display_order: root.display_order,
+        subcategorias: descendants.map((d) => d.nome),
+        total_produtos: root.total_produtos_arvore || root.total_produtos_diretos || 0
+      };
+    });
+  } catch (err) {
+    console.error('❌ [Admin] Falha ao carregar categorias completas:', err);
+    return [];
+  }
+}
+
+/**
+ * Cria ou atualiza uma categoria (wrapper retrocompatível com a nova árvore).
+ */
+export async function saveAdminCategory(
+  lojaId: string = DEFAULT_TENANT_ID,
+  payload: {
+    id?: string;
+    nome: string;
+    slug?: string;
+    display_order?: number;
+    subcategorias?: string[];
+  }
+): Promise<{ success: boolean; data?: AdminCategoryFull; error?: string }> {
+  try {
+    const res = await saveCategoriaNode(lojaId, {
+      id: payload.id,
+      nome: payload.nome,
+      slug: payload.slug,
+      display_order: payload.display_order
+    });
+
+    if (!res.success || !res.data) {
+      return { success: false, error: res.error };
+    }
+
+    // Se foram enviadas subcategorias como array de strings, garante que existam como filhas
+    if (Array.isArray(payload.subcategorias) && payload.subcategorias.length > 0) {
+      const currentTree = await getCategoriaTree(lojaId);
+      for (const subName of payload.subcategorias) {
+        const subTrim = subName.trim();
+        if (!subTrim) continue;
+        const exists = currentTree.some((n) => n.parent_id === res.data!.id && n.nome.toLowerCase() === subTrim.toLowerCase());
+        if (!exists) {
+          await saveCategoriaNode(lojaId, {
+            nome: subTrim,
+            parent_id: res.data!.id
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        id: res.data.id,
+        loja_id: lojaId,
+        nome: res.data.nome,
+        slug: res.data.slug,
+        display_order: res.data.display_order,
+        subcategorias: payload.subcategorias || [],
+        total_produtos: 0
+      }
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Falha ao salvar categoria.' };
+  }
+}
+
+/**
+ * Remove uma categoria da loja (wrapper retrocompatível com a nova árvore).
+ */
+export async function deleteAdminCategory(
+  catId: string,
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<{ success: boolean; error?: string }> {
+  return deleteCategoriaNode(lojaId, catId, { strategy: 'reparent_to_parent' });
+}
+
+/**
+ * Reordena categorias no banco de dados (wrapper retrocompatível com a nova árvore).
+ */
+export async function reorderAdminCategories(
+  lojaId: string = DEFAULT_TENANT_ID,
+  orderedIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  return reorderCategoriaNodes(lojaId, null, orderedIds);
 }
 
 /**
