@@ -724,7 +724,9 @@ export function ProductFullFormModal({
             console.error('Erro ao sincronizar coleções da peça:', syncErr);
           }
 
-          const catObj = categoriesList.find((c) => c.id === categoriaId);
+          const catObj =
+            categoryTree.find((c) => c.id === categoriaId) ||
+            categoriesList.find((c) => c.id === categoriaId);
           const updatedItem: AdminProductItem = {
             ...product,
             nome: nome.trim(),
@@ -827,7 +829,9 @@ export function ProductFullFormModal({
             console.error('Erro ao vincular nova peça às coleções:', syncErr);
           }
 
-          const catObj = categoriesList.find((c) => c.id === categoriaId);
+          const catObj =
+            categoryTree.find((c) => c.id === categoriaId) ||
+            categoriesList.find((c) => c.id === categoriaId);
           const newItem: AdminProductItem = {
             id: res.product.id,
             nome: res.product.nome,
@@ -1133,11 +1137,7 @@ export function ProductFullFormModal({
                       placeholder={t.products.fullFormModal.categoryField + '...'}
                       onChange={(catId, catNome, subcatNome) => {
                         setCategoriaId(catId);
-                        if (subcatNome) {
-                          setSubcategoria(subcatNome);
-                        } else if (!subcategoria) {
-                          setSubcategoria('');
-                        }
+                        setSubcategoria(subcatNome || '');
                       }}
                       onAddNewCategory={async (name, parentId) => {
                         try {

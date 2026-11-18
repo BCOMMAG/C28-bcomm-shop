@@ -36,6 +36,7 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { Product } from '@/types';
+import { DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 import {
   ColecaoLojaItem,
   DEFAULT_COLECOES_BASE,
@@ -44,6 +45,14 @@ import {
   getDescendantCategoryIds,
   getCategoryBreadcrumb
 } from '@/lib/admin';
+
+// Função utilitária para comparação insensível a acentos e maiúsculas/minúsculas
+const normalizeCatString = (str?: string | null) =>
+  (str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 function CatalogoContent() {
   const router = useRouter();
@@ -95,8 +104,11 @@ function CatalogoContent() {
     });
   };
 
-  // Árvore de Categorias Hierárquica Multinível
-  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
+  // Árvore de Categorias Hierárquica Multinível com inicialização imediata
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>(() => {
+    const defaultTree = DEFAULT_LEIDY_TENANT?.configuracoes_visuais?.arvore_categorias;
+    return Array.isArray(defaultTree) ? defaultTree : [];
+  });
 
   useEffect(() => {
     const rawTree = currentTenant?.configuracoes_visuais?.arvore_categorias;
@@ -171,11 +183,14 @@ function CatalogoContent() {
   const activeBreadcrumbs = useMemo(() => {
     if (appliedFilters.categories.length !== 1 || categoryTree.length === 0) return null;
     const targetCat = (appliedFilters.categories[0] || '').toLowerCase().trim();
+    const targetNorm = normalizeCatString(appliedFilters.categories[0]);
     const node = categoryTree.find(
       (n) =>
-        n.id === targetCat ||
+        n.id === appliedFilters.categories[0] ||
         n.slug.toLowerCase() === targetCat ||
-        n.nome.toLowerCase() === targetCat
+        n.nome.toLowerCase() === targetCat ||
+        normalizeCatString(n.slug) === targetNorm ||
+        normalizeCatString(n.nome) === targetNorm
     );
     if (!node) return null;
     return getCategoryBreadcrumb(node.id, categoryTree);
@@ -450,11 +465,12 @@ function CatalogoContent() {
       );
     }
 
-    // 2. Categorias (Herança Recursiva em Árvore N-Níveis + Correspondência Inteligente)
+    // 2. Categorias (Herança Recursiva em Árvore N-Níveis + Correspondência Inteligente com Normalização)
     if (appliedFilters.categories.length > 0) {
       result = result.filter((p) =>
         appliedFilters.categories.some((cat) => {
           const catLower = (cat || '').trim().toLowerCase();
+          const catNorm = normalizeCatString(cat);
 
           // Resolução Recursiva via Árvore de Categorias
           if (categoryTree.length > 0) {
@@ -462,78 +478,101 @@ function CatalogoContent() {
               (n) =>
                 n.id === cat ||
                 n.slug.toLowerCase() === catLower ||
-                n.nome.toLowerCase() === catLower
+                n.nome.toLowerCase() === catLower ||
+                normalizeCatString(n.slug) === catNorm ||
+                normalizeCatString(n.nome) === catNorm
             );
 
             if (matchedNode) {
               const allowedIds = getDescendantCategoryIds(matchedNode.id, categoryTree);
               const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
               const allowedNames = allowedNodes.map((n) => n.nome.toLowerCase());
+              const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
+              const allowedSlugsNorm = allowedNodes.map((n) => normalizeCatString(n.slug));
 
               if (p.categoryId && allowedIds.includes(p.categoryId)) return true;
-              if (p.category && allowedNames.includes(p.category.toLowerCase())) return true;
-              if (p.subcategory && allowedNames.includes(p.subcategory.toLowerCase())) return true;
+              if (
+                p.category &&
+                (allowedNames.includes(p.category.toLowerCase()) ||
+                  allowedNamesNorm.includes(normalizeCatString(p.category)) ||
+                  allowedSlugsNorm.includes(normalizeCatString(p.category)))
+              ) {
+                return true;
+              }
+              if (
+                p.subcategory &&
+                (allowedNames.includes(p.subcategory.toLowerCase()) ||
+                  allowedNamesNorm.includes(normalizeCatString(p.subcategory)) ||
+                  allowedSlugsNorm.includes(normalizeCatString(p.subcategory)))
+              ) {
+                return true;
+              }
             }
           }
 
           // Fallbacks de Compatibilidade com links antigos do menu / tags legadas
-          if (catLower === 'acessórios' || catLower === 'acessorios') {
+          if (catLower === 'acessórios' || catLower === 'acessorios' || catNorm === 'acessorios') {
             return (
-              p.category.toLowerCase() === 'acessórios' ||
-              p.category.toLowerCase() === 'acessorios' ||
-              CATEGORIES_ACESSORIOS.some((ac) => ac.toLowerCase() === p.category.toLowerCase()) ||
-              Boolean(p.subcategory && CATEGORIES_ACESSORIOS.some((ac) => ac.toLowerCase() === p.subcategory?.toLowerCase()))
+              normalizeCatString(p.category) === 'acessorios' ||
+              CATEGORIES_ACESSORIOS.some((ac) => normalizeCatString(ac) === normalizeCatString(p.category)) ||
+              Boolean(p.subcategory && CATEGORIES_ACESSORIOS.some((ac) => normalizeCatString(ac) === normalizeCatString(p.subcategory)))
             );
           }
-          if (catLower === 'tricots') {
+          if (catNorm === 'tricots' || catNorm === 'tricot') {
             return (
-              p.category.toLowerCase().includes('tricot') ||
-              (p.subcategory && p.subcategory.toLowerCase().includes('tricot')) ||
-              (p.fabric && p.fabric.toLowerCase().includes('tricot'))
+              normalizeCatString(p.category).includes('tricot') ||
+              (p.subcategory && normalizeCatString(p.subcategory).includes('tricot')) ||
+              (p.fabric && normalizeCatString(p.fabric).includes('tricot'))
             );
           }
-          if (catLower === 'alfaiataria') {
+          if (catNorm === 'alfaiataria') {
             return (
-              p.category.toLowerCase().includes('alfaiataria') ||
-              (p.fit && p.fit.toLowerCase().includes('alfaiataria')) ||
-              p.category.toLowerCase().includes('blazer')
+              normalizeCatString(p.category).includes('alfaiataria') ||
+              (p.fit && normalizeCatString(p.fit).includes('alfaiataria')) ||
+              normalizeCatString(p.category).includes('blazer')
             );
           }
-          if (catLower === 'jaquetas e casacos' || catLower === 'casacos & jaquetas') {
-            return p.category.toLowerCase().includes('casaco') || p.category.toLowerCase().includes('jaqueta');
-          }
-          if (catLower === 'shorts e saias' || catLower === 'saias e shorts') {
+          if (catNorm.includes('casaco') || catNorm.includes('jaqueta')) {
             return (
-              p.category.toLowerCase().includes('saia') ||
-              p.category.toLowerCase().includes('short') ||
-              p.category.toLowerCase().includes('bermuda')
+              normalizeCatString(p.category).includes('casaco') ||
+              normalizeCatString(p.category).includes('jaqueta')
             );
           }
-          if (catLower === 'vestidos e macacões' || catLower === 'vestidos e macacoes') {
+          if (catNorm.includes('saia') || catNorm.includes('short')) {
             return (
-              p.category.toLowerCase().includes('vestido') ||
-              p.category.toLowerCase().includes('macacão') ||
-              p.category.toLowerCase().includes('macacoes')
+              normalizeCatString(p.category).includes('saia') ||
+              normalizeCatString(p.category).includes('short') ||
+              normalizeCatString(p.category).includes('bermuda')
             );
           }
-          if (catLower === 'vestidos') {
-            return p.category.toLowerCase().includes('vestido');
-          }
-          if (catLower === 'blusas') {
+          if (catNorm.includes('vestido') || catNorm.includes('macacao')) {
             return (
-              p.category.toLowerCase().includes('blusa') ||
-              p.category.toLowerCase().includes('camisa') ||
-              p.category.toLowerCase().includes('top')
+              normalizeCatString(p.category).includes('vestido') ||
+              normalizeCatString(p.category).includes('macacao')
             );
           }
-          if (catLower === 'calças' || catLower === 'calcas') {
-            return p.category.toLowerCase().includes('calça') || p.category.toLowerCase().includes('calca');
+          if (catNorm === 'vestidos' || catNorm === 'vestido') {
+            return normalizeCatString(p.category).includes('vestido');
           }
+          if (catNorm === 'blusas' || catNorm === 'blusa') {
+            return (
+              normalizeCatString(p.category).includes('blusa') ||
+              normalizeCatString(p.category).includes('camisa') ||
+              normalizeCatString(p.category).includes('top')
+            );
+          }
+          if (catNorm === 'calcas' || catNorm === 'calca') {
+            return normalizeCatString(p.category).includes('calca');
+          }
+
+          const pCatNorm = normalizeCatString(p.category);
+          const pSubNorm = normalizeCatString(p.subcategory);
+
           return (
             p.category.toLowerCase() === catLower ||
-            (p.subcategory && p.subcategory.toLowerCase() === catLower) ||
-            p.category.toLowerCase().includes(catLower) ||
-            catLower.includes(p.category.toLowerCase())
+            pCatNorm === catNorm ||
+            (p.subcategory && (p.subcategory.toLowerCase() === catLower || pSubNorm === catNorm)) ||
+            (pCatNorm && catNorm && (pCatNorm.includes(catNorm) || catNorm.includes(pCatNorm)))
           );
         })
       );

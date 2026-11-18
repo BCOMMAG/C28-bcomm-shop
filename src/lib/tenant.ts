@@ -72,6 +72,20 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
     "menu_navegacao": {
       "linha_1": [
         {
+          "id": "nav-1795019461825",
+          "type": "category",
+          "label": "VERÃO",
+          "value": "Verão",
+          "isSpecial": false
+        },
+        {
+          "id": "nav-1795019502866",
+          "type": "category",
+          "label": "INVERNO",
+          "value": "Inverno",
+          "isSpecial": false
+        },
+        {
           "id": "nav-l1-1",
           "type": "status",
           "label": "Lançamento 2026",

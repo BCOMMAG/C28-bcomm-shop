@@ -1,6 +1,7 @@
 import { Product, ProductMedia, ProductVariation } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
 
 export const DEFAULT_TENANT_ID =
   process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'e8b7f890-4e3a-4a89-9c56-8e1234567890';
@@ -327,7 +328,14 @@ export function mapDbProductToProduct(dbProd: any): Product {
     remainingPieces,
     badge: resolvedBadge,
     customBadges: Array.from(new Set(customBadgesList)),
-    category: dbProd.categorias?.nome || 'Geral',
+    category:
+      dbProd.categorias?.nome ||
+      (dbProd.categoria_id
+        ? DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
+            (n: any) => n.id === dbProd.categoria_id
+          )?.nome
+        : null) ||
+      'Geral',
     categoryId: dbProd.categoria_id || undefined,
     subcategory: dbProd.subcategoria || undefined,
     fabric: dbProd.tecido || undefined,
