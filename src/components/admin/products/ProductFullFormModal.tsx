@@ -48,6 +48,7 @@ import {
 } from '@/lib/admin';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatableSelect';
+import { AdminCategorySearchSelect } from '@/components/admin/products/AdminCategorySearchSelect';
 import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { ProductVariationPriceMatrix, PrecoVariavelItem } from '@/components/admin/products/ProductVariationPriceMatrix';
 import { ProductMediaGalleryManager, FormMediaItem } from '@/components/admin/products/ProductMediaGalleryManager';
@@ -72,17 +73,6 @@ export interface ProductFullFormModalProps {
   onCategoriesUpdated?: (updated: AdminCategoryFull[]) => void;
   onStoreAttributesUpdated?: (updated: StoreCustomAttributes) => void;
 }
-
-const NOBLE_FABRIC_PILLS = [
-  'Crepe Alfaiataria',
-  'Linho Puro',
-  'Seda Acetinada',
-  'Tricot Modal',
-  'Algodão Pima',
-  'Viscose Sarjada',
-  'Tweed Francês',
-  'Couro Ecológico Premium'
-];
 
 export function ProductFullFormModal({
   isOpen,
@@ -120,10 +110,6 @@ export function ProductFullFormModal({
   const [linha, setLinha] = useState(product?.linha || 'Alto Verão');
   const [descricao, setDescricao] = useState(product?.descricao || '');
   const [especificacoesTexto, setEspecificacoesTexto] = useState('');
-
-  // Criação inline de categoria
-  const [isAddingNewCat, setIsAddingNewCat] = useState(false);
-  const [newCatInputName, setNewCatInputName] = useState('');
 
   // Aba 2: Mídias
   const [mediaList, setMediaList] = useState<FormMediaItem[]>([]);
@@ -447,14 +433,43 @@ export function ProductFullFormModal({
   // Alias para retrocompatibilidade
   const availableColors = gradeColors;
 
-  // Tamanhos ativos na grade para alimentar a matriz
+  // Ordem customizada dos tamanhos definida pelo lojista na matriz
+  const [customSizeOrder, setCustomSizeOrder] = useState<string[] | null>(null);
+
+  // Tamanhos ativos na grade para alimentar a matriz, respeitando a ordem do lojista
   const availableSizes = React.useMemo(() => {
     const set = new Set<string>();
     variacoes.forEach((v) => {
       if (v.tamanho) set.add(v.tamanho);
     });
-    return Array.from(set);
-  }, [variacoes]);
+    const rawSizes = Array.from(set);
+    if (!customSizeOrder || customSizeOrder.length === 0) return rawSizes;
+
+    return [...rawSizes].sort((a, b) => {
+      const iA = customSizeOrder.indexOf(a);
+      const iB = customSizeOrder.indexOf(b);
+      if (iA !== -1 && iB !== -1) return iA - iB;
+      if (iA !== -1) return -1;
+      if (iB !== -1) return 1;
+      return 0;
+    });
+  }, [variacoes, customSizeOrder]);
+
+  // Reordenação dinâmica das variações quando o lojista move as colunas na matriz
+  const handleReorderSizes = (newOrder: string[]) => {
+    setCustomSizeOrder(newOrder);
+    setVariacoes((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        const iA = newOrder.indexOf(a.tamanho);
+        const iB = newOrder.indexOf(b.tamanho);
+        if (iA !== -1 && iB !== -1) return iA - iB;
+        if (iA !== -1) return -1;
+        if (iB !== -1) return 1;
+        return 0;
+      });
+      return sorted;
+    });
+  };
 
   // Cálculos em tempo real
   const parsedPromo = precoPromocional ? parseFloat(precoPromocional) : null;
@@ -524,34 +539,6 @@ export function ProductFullFormModal({
     setSelectedColorPreset('custom');
     setMultiSizeRows([{ id: 'size_1', tamanho: 'M', estoque: 5 }]);
     showToast(`Cor "${corNomeFinal}" com ${newVars.length} tamanhos adicionada à grade!`);
-  };
-
-  // Salvar Categoria Inline
-  const handleCreateCategoryInline = async () => {
-    if (!newCatInputName.trim()) {
-      showToast('Digite o nome da categoria.', 'error');
-      return;
-    }
-    try {
-      const res = await saveCategoriaNode(tenantId, {
-        nome: newCatInputName.trim(),
-        parent_id: categoriaId || null
-      });
-      if (res.success && res.data) {
-        const novaCat = res.data;
-        const freshTree = await getCategoriaTree(tenantId);
-        setCategoryTree(freshTree);
-        setCategoriaId(novaCat.id);
-        setSubcategoria(novaCat.nome);
-        setNewCatInputName('');
-        setIsAddingNewCat(false);
-        showToast(`Categoria "${novaCat.nome}" criada e selecionada!`);
-      } else {
-        showToast(res.error || 'Erro ao criar categoria.', 'error');
-      }
-    } catch (err: any) {
-      showToast(err?.message || 'Erro ao criar categoria.', 'error');
-    }
   };
 
   // Salvar Novo Atributo Customizado da Loja
@@ -1135,104 +1122,58 @@ export function ProductFullFormModal({
 
                 {/* Seletores Dinâmicos de Categoria, Subcategoria, Tecido, Modelagem e Coleção */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Categoria com botão inline para cadastrar nova */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-slate-700 font-bold">{t.products.fullFormModal.categoryField}</label>
-                      {!isAddingNewCat && (
-                        <button
-                          type="button"
-                          onClick={() => setIsAddingNewCat(true)}
-                          className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>{t.products.fullFormModal.newCategoryBtn}</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {isAddingNewCat ? (
-                      <div className="flex items-center gap-1.5 p-1.5 bg-amber-50 border border-amber-300 rounded-lg">
-                        <input
-                          type="text"
-                          value={newCatInputName}
-                          onChange={(e) => setNewCatInputName(e.target.value)}
-                          placeholder="Nome da categoria..."
-                          className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 font-semibold"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCreateCategoryInline();
-                            if (e.key === 'Escape') setIsAddingNewCat(false);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleCreateCategoryInline}
-                          className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-bold cursor-pointer"
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAddingNewCat(false);
-                            setNewCatInputName('');
-                          }}
-                          className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <select
-                          value={categoriaId}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCategoriaId(val);
-                            const foundNode = categoryTree.find((n) => n.id === val);
-                            if (foundNode && foundNode.parent_id) {
-                              setSubcategoria(foundNode.nome);
+                  {/* Categoria com Busca em Tempo Real (Combobox Autocomplete) */}
+                  <div className="space-y-1.5">
+                    <AdminCategorySearchSelect
+                      label={t.products.fullFormModal.categoryField}
+                      value={categoriaId}
+                      subcategoria={subcategoria}
+                      tree={categoryTree}
+                      fallbackList={categoriesList}
+                      placeholder={t.products.fullFormModal.categoryField + '...'}
+                      onChange={(catId, catNome, subcatNome) => {
+                        setCategoriaId(catId);
+                        if (subcatNome) {
+                          setSubcategoria(subcatNome);
+                        } else if (!subcategoria) {
+                          setSubcategoria('');
+                        }
+                      }}
+                      onAddNewCategory={async (name, parentId) => {
+                        try {
+                          const res = await saveCategoriaNode(tenantId, {
+                            nome: name,
+                            parent_id: parentId || null
+                          });
+                          if (res.success && res.data) {
+                            const freshTree = await getCategoriaTree(tenantId);
+                            setCategoryTree(freshTree);
+                            setCategoriaId(res.data.id);
+                            if (res.data.nivel > 0) {
+                              setSubcategoria(res.data.nome);
                             }
-                          }}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                        >
-                          <option value="">{t.products.fullFormModal.categoryField}...</option>
-                          {categoryTree.length > 0 ? (
-                            categoryTree.map((cat) => {
-                              const depth = cat.nivel || 0;
-                              const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
-                              return (
-                                <option key={cat.id} value={cat.id}>
-                                  {prefix}{cat.nome}
-                                </option>
-                              );
-                            })
-                          ) : (
-                            categoriesList.map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.nome}
-                              </option>
-                            ))
-                          )}
-                        </select>
+                            showToast(`Categoria "${res.data.nome}" criada e selecionada!`);
+                          }
+                        } catch (err: any) {
+                          showToast(err?.message || 'Erro ao criar categoria.', 'error');
+                        }
+                      }}
+                    />
 
-                        {/* Pílula do Caminho Breadcrumb Completo */}
-                        {categoriaId && (
-                          (() => {
-                            const activeNode = categoryTree.find((n) => n.id === categoriaId);
-                            if (!activeNode) return null;
-                            return (
-                              <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium truncate shadow-2xs">
-                                <FolderTree className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span className="truncate">
-                                  <strong>Trilha:</strong> {activeNode.caminho_completo || activeNode.nome}
-                                </span>
-                              </div>
-                            );
-                          })()
-                        )}
-                      </div>
+                    {/* Pílula do Caminho Breadcrumb Completo */}
+                    {categoriaId && (
+                      (() => {
+                        const activeNode = categoryTree.find((n) => n.id === categoriaId);
+                        if (!activeNode) return null;
+                        return (
+                          <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium truncate shadow-2xs">
+                            <FolderTree className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="truncate">
+                              <strong>Trilha:</strong> {activeNode.caminho_completo || activeNode.nome}
+                            </span>
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
 
@@ -1259,7 +1200,7 @@ export function ProductFullFormModal({
                     )}
                   </div>
 
-                  {/* Tecido com 8 Pílulas Rápidas */}
+                  {/* Tecido / Composição (Visual Limpo e Otimizado) */}
                   <div className="sm:col-span-2 lg:col-span-1">
                     <AdminCreatableSelect
                       label={t.products.fullFormModal.fabricField}
@@ -1269,23 +1210,6 @@ export function ProductFullFormModal({
                       onCreateOption={(val) => handleCreateStoreAttribute('tecidos', val)}
                       placeholder={t.products.fullFormModal.fabricField}
                     />
-                    {/* 8 Pílulas de Clique Rápido */}
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {NOBLE_FABRIC_PILLS.map((tec) => (
-                        <button
-                          key={tec}
-                          type="button"
-                          onClick={() => setTecido(tec)}
-                          className={`px-1.5 py-0.5 text-[10px] rounded transition-colors cursor-pointer ${
-                            tecido === tec
-                              ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
-                              : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-400'
-                          }`}
-                        >
-                          {tec}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Modelagem */}
@@ -1802,6 +1726,7 @@ export function ProductFullFormModal({
                     precosPorVariacao={precosDiferenciados}
                     onChange={(updated) => setPrecosDiferenciados(updated)}
                     onFeedback={showToast}
+                    onReorderTamanhos={handleReorderSizes}
                   />
                 </div>
 

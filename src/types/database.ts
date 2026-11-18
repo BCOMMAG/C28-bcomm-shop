@@ -81,6 +81,9 @@ export interface CategoriaNode {
   filhos?: CategoriaNode[];        // Sub-ramos recursivos
   total_produtos_diretos?: number; // Peças vinculadas diretamente a este nó
   total_produtos_arvore?: number;  // Peças deste nó + todos os seus descendentes
+  caminho_slugs?: string;          // ex: "roupas/parte-superior/tricots"
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LojaConfiguracoesVisuais {

@@ -1,7 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Sparkles, DollarSign, RotateCcw, Copy, Lock, Unlock, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Sparkles,
+  DollarSign,
+  RotateCcw,
+  Copy,
+  Lock,
+  Unlock,
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  ArrowDownUp,
+  SlidersHorizontal
+} from 'lucide-react';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
 export interface PrecoVariavelItem {
@@ -18,7 +30,34 @@ export interface ProductVariationPriceMatrixProps {
   precosPorVariacao: Record<string, PrecoVariavelItem>;
   onChange: (updated: Record<string, PrecoVariavelItem>) => void;
   onFeedback?: (msg: string) => void;
+  onReorderTamanhos?: (newOrder: string[]) => void;
 }
+
+// Ordem clássica vestuário para botão de 1 clique
+const STANDARD_CLOTHING_SIZES_ORDER = [
+  'PP',
+  'P',
+  'M',
+  'G',
+  'GG',
+  'XG',
+  'XGG',
+  'G1',
+  'G2',
+  'G3',
+  '34',
+  '36',
+  '38',
+  '40',
+  '42',
+  '44',
+  '46',
+  '48',
+  '50',
+  '52',
+  'Único',
+  'Tamanho Único'
+];
 
 export function ProductVariationPriceMatrix({
   cores,
@@ -28,10 +67,31 @@ export function ProductVariationPriceMatrix({
   variacoes,
   precosPorVariacao,
   onChange,
-  onFeedback
+  onFeedback,
+  onReorderTamanhos
 }: ProductVariationPriceMatrixProps) {
   const { currency, t } = useAdminI18n();
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
+
+  // Ordem dinâmica e autônoma das colunas de tamanhos definida pelo lojista
+  const [orderedSizes, setOrderedSizes] = useState<string[]>(tamanhos);
+
+  // Sincroniza quando tamanhos externos mudarem preservando a ordenação customizada
+  useEffect(() => {
+    setOrderedSizes((prev) => {
+      const kept = prev.filter((s) => tamanhos.includes(s));
+      const added = tamanhos.filter((s) => !kept.includes(s));
+      const merged = [...kept, ...added];
+      // Se a ordem resultante for idêntica, mantém prev
+      if (
+        merged.length === prev.length &&
+        merged.every((val, idx) => val === prev[idx])
+      ) {
+        return prev;
+      }
+      return merged;
+    });
+  }, [tamanhos]);
 
   // Controle de células desbloqueadas manualmente pelo administrador mesmo sem estoque
   const [unlockedCells, setUnlockedCells] = useState<Set<string>>(new Set());
@@ -42,6 +102,42 @@ export function ProductVariationPriceMatrix({
     existsInGrade: boolean;
   } | null>(null);
 
+  // Mover coluna de tamanho para esquerda ou direita com autonomia total
+  const handleMoveSizeColumn = (index: number, direction: 'left' | 'right') => {
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedSizes.length) return;
+
+    const newOrder = [...orderedSizes];
+    const [movedSize] = newOrder.splice(index, 1);
+    newOrder.splice(targetIndex, 0, movedSize);
+
+    setOrderedSizes(newOrder);
+    onReorderTamanhos?.(newOrder);
+    onFeedback?.(`Ordem de tamanhos atualizada: ${newOrder.join(' → ')}`);
+  };
+
+  // Ordenação Rápida 1: Padrão Vestuário (P -> M -> G -> GG...)
+  const handleSortStandardOrder = () => {
+    const sorted = [...orderedSizes].sort((a, b) => {
+      const idxA = STANDARD_CLOTHING_SIZES_ORDER.indexOf(a.trim().toUpperCase());
+      const idxB = STANDARD_CLOTHING_SIZES_ORDER.indexOf(b.trim().toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    setOrderedSizes(sorted);
+    onReorderTamanhos?.(sorted);
+    onFeedback?.(`Colunas ordenadas no padrão vestuário: ${sorted.join(' → ')}`);
+  };
+
+  // Ordenação Rápida 2: Alfabética (A-Z)
+  const handleSortAlphabetical = () => {
+    const sorted = [...orderedSizes].sort((a, b) => a.localeCompare(b));
+    setOrderedSizes(sorted);
+    onReorderTamanhos?.(sorted);
+    onFeedback?.(`Colunas ordenadas alfabeticamente: ${sorted.join(' → ')}`);
+  };
 
   const handleUpdateCellPrice = (
     corNome: string,
@@ -68,7 +164,7 @@ export function ProductVariationPriceMatrix({
   const handleReplicarBaseParaTodos = () => {
     const updated: Record<string, PrecoVariavelItem> = {};
     cores.forEach((c) => {
-      tamanhos.forEach((t) => {
+      orderedSizes.forEach((t) => {
         const key = `${c.nome}_${t}`;
         updated[key] = {
           preco: basePrice > 0 ? basePrice : undefined,
@@ -86,13 +182,13 @@ export function ProductVariationPriceMatrix({
   };
 
   const handleReplicarLinhaCor = (corNome: string) => {
-    if (tamanhos.length <= 1) return;
-    const firstTam = tamanhos[0];
+    if (orderedSizes.length <= 1) return;
+    const firstTam = orderedSizes[0];
     const sourceKey = `${corNome}_${firstTam}`;
     const source = precosPorVariacao[sourceKey] || { preco: basePrice, preco_promocional: basePromoPrice };
 
     const updated = { ...precosPorVariacao };
-    tamanhos.forEach((t) => {
+    orderedSizes.forEach((t) => {
       const key = `${corNome}_${t}`;
       updated[key] = {
         preco: source.preco,
@@ -122,7 +218,7 @@ export function ProductVariationPriceMatrix({
     onFeedback?.(t.products.matrix.toastReplicatedCol(tamanho));
   };
 
-  if (cores.length === 0 || tamanhos.length === 0) {
+  if (cores.length === 0 || orderedSizes.length === 0) {
     return (
       <div className="p-6 text-center bg-amber-50/50 rounded-xl border border-dashed border-amber-300 text-amber-900 text-xs">
         {t.products.matrix.emptyGrid}
@@ -132,15 +228,77 @@ export function ProductVariationPriceMatrix({
 
   return (
     <div className="space-y-2">
+      {/* Barra de Autonomia do Lojista: Reordenação de Colunas de Tamanho */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs">
+        <div className="flex items-center gap-2 text-amber-950 font-medium">
+          <SlidersHorizontal className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            <strong>Ordem das Colunas:</strong> Use as setas <span className="font-mono bg-amber-200/70 px-1 py-0.5 rounded text-[11px] font-bold">←</span> e <span className="font-mono bg-amber-200/70 px-1 py-0.5 rounded text-[11px] font-bold">→</span> no cabeçalho para organizar os tamanhos como preferir.
+          </span>
+        </div>
+
+        {orderedSizes.length > 1 && (
+          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+            <span className="text-[10px] text-amber-800/80 font-bold uppercase tracking-wider hidden md:inline">
+              Atalhos rápidos:
+            </span>
+            <button
+              type="button"
+              onClick={handleSortStandardOrder}
+              className="px-2 py-1 rounded bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[11px] cursor-pointer shadow-2xs transition-colors"
+              title="Organiza no fluxo clássico do vestuário: PP → P → M → G → GG..."
+            >
+              P → M → G
+            </button>
+            <button
+              type="button"
+              onClick={handleSortAlphabetical}
+              className="px-2 py-1 rounded bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[11px] cursor-pointer shadow-2xs transition-colors"
+              title="Organiza por ordem alfabética"
+            >
+              A → Z
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Tabela Matriz */}
       <div className="overflow-x-auto border border-amber-200/80 rounded-xl bg-white shadow-2xs">
         <table className="w-full text-left border-collapse text-xs">
           <thead className="bg-amber-100/70 text-amber-950 font-bold uppercase text-[10px] border-b border-amber-200">
             <tr>
               <th className="p-2.5 min-w-[140px]">{t.products.matrix.thColor}</th>
-              {tamanhos.map((tam) => (
-                <th key={tam} className="p-2.5 text-center min-w-[140px]">
-                  {t.products.matrix.thSize} {tam === 'Tamanho Único' ? t.products.matrix.singleSize : tam} ({currencySymbol})
+              {orderedSizes.map((tam, idx) => (
+                <th
+                  key={tam}
+                  className="p-2 text-center min-w-[145px] bg-amber-100/80 border-r border-amber-200/60 last:border-r-0"
+                >
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveSizeColumn(idx, 'left')}
+                      className="w-5 h-5 flex items-center justify-center rounded hover:bg-amber-300 text-amber-900 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                      title="Mover coluna para a esquerda"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                    </button>
+
+                    <span className="font-extrabold text-amber-950 px-1.5 py-0.5 rounded bg-amber-200/90 text-[11px] shadow-2xs">
+                      {t.products.matrix.thSize} {tam === 'Tamanho Único' ? t.products.matrix.singleSize : tam}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={idx === orderedSizes.length - 1}
+                      onClick={() => handleMoveSizeColumn(idx, 'right')}
+                      className="w-5 h-5 flex items-center justify-center rounded hover:bg-amber-300 text-amber-900 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                      title="Mover coluna para a direita"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-amber-800/80 font-semibold block">({currencySymbol})</span>
                 </th>
               ))}
               <th className="p-2.5 text-center min-w-[140px]">{t.products.matrix.thActions}</th>
@@ -161,7 +319,7 @@ export function ProductVariationPriceMatrix({
                     <span className="truncate">{corNome}</span>
                   </td>
 
-                  {tamanhos.map((tam) => {
+                  {orderedSizes.map((tam) => {
                     const key = `${corNome}_${tam}`;
                     const customItem = precosPorVariacao[key];
                     const hasCustom = customItem?.preco !== undefined || customItem?.preco_promocional !== undefined;
@@ -354,7 +512,7 @@ export function ProductVariationPriceMatrix({
               <td className="p-2 text-slate-500 uppercase tracking-wider">
                 {t.products.matrix.replicateSizeFooter}
               </td>
-              {tamanhos.map((tam) => (
+              {orderedSizes.map((tam) => (
                 <td key={tam} className="p-2 text-center">
                   <button
                     type="button"
