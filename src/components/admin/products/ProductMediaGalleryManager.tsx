@@ -659,23 +659,38 @@ export function ProductMediaGalleryManager({
                     </div>
                   )}
 
-                  {/* Seletor de Vínculo de Cor */}
+                  {/* Seletor de Vínculo de Cor com Proteção Total Anti-Perda */}
                   <div>
                     <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">
                       {t.products.gallery.linkToColorBtn}
                     </label>
-                    <select
-                      value={parsed.colorName || ''}
-                      onChange={(e) => handleSetColor(originalIndex, e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    >
-                      <option value="">{t.products.gallery.unlinkedColorOption}</option>
-                      {availableColors.map((c) => (
-                        <option key={c.nome} value={c.nome}>
-                          {c.nome}
-                        </option>
-                      ))}
-                    </select>
+                    {(() => {
+                      const matchedCor = parsed.colorName
+                        ? availableColors.find((c) => c.nome.toLowerCase() === parsed.colorName?.toLowerCase())
+                        : null;
+                      const selectedVal = matchedCor ? matchedCor.nome : (parsed.colorName || '');
+                      const isCustomColor = parsed.colorName && !matchedCor;
+
+                      return (
+                        <select
+                          value={selectedVal}
+                          onChange={(e) => handleSetColor(originalIndex, e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        >
+                          <option value="">{t.products.gallery.unlinkedColorOption}</option>
+                          {isCustomColor && (
+                            <option value={parsed.colorName}>
+                              🎨 {parsed.colorName}
+                            </option>
+                          )}
+                          {availableColors.map((c) => (
+                            <option key={c.nome} value={c.nome}>
+                              {c.nome}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
 
                   {/* Ações Rápidas: Capa da Cor e Ocultar */}

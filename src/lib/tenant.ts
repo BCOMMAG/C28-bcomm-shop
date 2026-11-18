@@ -627,6 +627,20 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       },
       "modoIndependente": false
     },
+    "atributos_pecas": {
+      "subcategorias": [
+        "Alfaiataria",
+        "Casual Chic",
+        "Vestidos & Macacões",
+        "Conjuntos Nobres",
+        "Blazers & Casacos",
+        "Calças & Bermudas",
+        "Blusas & Camisas",
+        "Saias",
+        "Acessórios Nobres",
+        "Regatas"
+      ]
+    },
     "tipografia_menu": {
       "fontSize": "12px",
       "fontFamily": "Montserrat",
@@ -780,316 +794,6 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "display_order": 110
       },
       {
-        "id": "sub_1794918036245_jsv8n",
-        "nome": "Cardigãs",
-        "slug": "cardigas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "011a157c-b66e-4451-8202-c0c020d19612",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_hvzl3",
-        "nome": "Camisas",
-        "slug": "camisas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "d1561164-21ed-4c95-8b9f-aa3623f11eec",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_s1n3y",
-        "nome": "Camisas",
-        "slug": "camisas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5c854cb5-fcf3-4b93-b516-44a2aded8d0a",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_izwhr",
-        "nome": "Cintos",
-        "slug": "cintos",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "2a046488-04a5-40eb-a314-3c27b43990c2",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_dg5fk",
-        "nome": "Saias",
-        "slug": "saias",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "4f9f1c8c-bc43-459a-ab7f-14416556a70f",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_44gj7",
-        "nome": "Colares & Joias",
-        "slug": "colares-joias",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "2a046488-04a5-40eb-a314-3c27b43990c2",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_4nqo3",
-        "nome": "Bolsas & Carteiras",
-        "slug": "bolsas-carteiras",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "2a046488-04a5-40eb-a314-3c27b43990c2",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_7i17l",
-        "nome": "Vestidos & Macacões",
-        "slug": "vestidos-macacoes",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "bb53b49d-0c5b-42ee-a922-a22dcf19bd46",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_h7qom",
-        "nome": "Blazers & Alfaiataria",
-        "slug": "blazers-alfaiataria",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "7cce3027-c085-44fe-9fb7-a5c402a06ef5",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_tz0is",
-        "nome": "Calças",
-        "slug": "calcas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "f44896e8-9616-4a2d-8811-3c17c23dc972",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_5ml8h",
-        "nome": "Calças",
-        "slug": "calcas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "7cce3027-c085-44fe-9fb7-a5c402a06ef5",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_nlj4v",
-        "nome": "Bermudas & Shorts",
-        "slug": "bermudas-shorts",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "6286ef46-657a-4313-b22a-047c6310e387",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_r72im",
-        "nome": "Lenços",
-        "slug": "lencos",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "2a046488-04a5-40eb-a314-3c27b43990c2",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_lxwk6",
-        "nome": "Casacos & Jaquetas",
-        "slug": "casacos-jaquetas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5239f87a-dad3-448c-a625-2b88db525c40",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_d13ke",
-        "nome": "Coletes & Cardigãs",
-        "slug": "coletes-cardigas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "6f8a5a2f-bea5-4157-ab00-fdac167dbf35",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_okqf1",
-        "nome": "Pantalonas",
-        "slug": "pantalonas",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "f44896e8-9616-4a2d-8811-3c17c23dc972",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_xbl6t",
-        "nome": "Tricots",
-        "slug": "tricots",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "d50fc063-4cf9-4772-81f5-ab70420e732c",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_8un0p",
-        "nome": "Tricots",
-        "slug": "tricots",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "011a157c-b66e-4451-8202-c0c020d19612",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_2q1eg",
-        "nome": "Tricots",
-        "slug": "tricots",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5239f87a-dad3-448c-a625-2b88db525c40",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_o706b",
-        "nome": "Vestidos Curtos",
-        "slug": "vestidos-curtos",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "bb53b49d-0c5b-42ee-a922-a22dcf19bd46",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036245_ozwp5",
-        "nome": "Coletes",
-        "slug": "coletes",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "6f8a5a2f-bea5-4157-ab00-fdac167dbf35",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_pa9zs",
-        "nome": "Conjuntos de Festa",
-        "slug": "conjuntos-de-festa",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "d1561164-21ed-4c95-8b9f-aa3623f11eec",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_caa6g",
-        "nome": "Conjuntos de Festa",
-        "slug": "conjuntos-de-festa",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "bb53b49d-0c5b-42ee-a922-a22dcf19bd46",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_nex1l",
-        "nome": "Calças Alfaiataria",
-        "slug": "calcas-alfaiataria",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "f44896e8-9616-4a2d-8811-3c17c23dc972",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_0fld3",
-        "nome": "Vestidos",
-        "slug": "vestidos",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "2b55c1e2-5cb2-42e5-a04d-70b63c12fe7c",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_0f2vq",
-        "nome": "Camisas Alfaiataria",
-        "slug": "camisas-alfaiataria",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5c854cb5-fcf3-4b93-b516-44a2aded8d0a",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_fzlr3",
-        "nome": "Camisas de Cetim",
-        "slug": "camisas-de-cetim",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5c854cb5-fcf3-4b93-b516-44a2aded8d0a",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_wt092",
-        "nome": "T-shirts & Tops",
-        "slug": "t-shirts-tops",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "5c854cb5-fcf3-4b93-b516-44a2aded8d0a",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_14fi1",
-        "nome": "Conjuntos",
-        "slug": "conjuntos",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "011a157c-b66e-4451-8202-c0c020d19612",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_ew1xw",
-        "nome": "Conjuntos de Inverno",
-        "slug": "conjuntos-de-inverno",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "d1561164-21ed-4c95-8b9f-aa3623f11eec",
-        "display_order": 100
-      },
-      {
-        "id": "sub_1794918036246_5ntg0",
-        "nome": "Moletom & Malharia",
-        "slug": "moletom-malharia",
-        "ativo": true,
-        "nivel": 1,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "d1561164-21ed-4c95-8b9f-aa3623f11eec",
-        "display_order": 100
-      },
-      {
         "id": "082213ff-0d34-4478-9efe-b67817496836",
         "nome": "Verão",
         "slug": "verao",
@@ -1152,6 +856,17 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "caminho_slugs": "primavera",
         "display_order": 17,
         "caminho_completo": "Primavera"
+      },
+      {
+        "id": "cat-verao-regatas",
+        "nome": "Regatas",
+        "slug": "regatas",
+        "ativo": true,
+        "nivel": 1,
+        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
+        "parent_id": "082213ff-0d34-4478-9efe-b67817496836",
+        "display_order": 10,
+        "caminho_completo": "Verão > Regatas"
       }
     ],
     "barra_aviso_ativa": true,

@@ -1008,12 +1008,16 @@ function CatalogoContent() {
                 const descendantIds = getDescendantCategoryIds(cat.id, categoryTree);
                 const descendantNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
                 const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
+                const descendantNamesNorm = descendantNodes.map((n) => normalizeCatString(n.nome));
                 const count = products.filter((p) => {
                   if (p.categoryId && descendantIds.includes(p.categoryId)) return true;
-                  if (p.category && descendantNames.includes(p.category.toLowerCase())) return true;
-                  if (p.subcategory && descendantNames.includes(p.subcategory.toLowerCase())) return true;
+                  if (p.category && (descendantNames.includes(p.category.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(p.category)))) return true;
+                  if (p.subcategory && (descendantNames.includes(p.subcategory.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(p.subcategory)))) return true;
                   return false;
                 }).length;
+
+                // Não exibe categorias ou subcategorias com 0 produtos (a menos que esteja marcada no filtro pelo usuário)
+                if (count === 0 && !isSelected) return null;
 
                 return (
                   <button
@@ -1046,6 +1050,7 @@ function CatalogoContent() {
                 {CATEGORIES_ROUPAS.map((cat) => {
                   const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
                   const isSelected = draftFilters.categories.includes(cat);
+                  if (count === 0 && !isSelected) return null;
                   return (
                     <button
                       type="button"
@@ -1074,6 +1079,7 @@ function CatalogoContent() {
                 {CATEGORIES_ACESSORIOS.map((cat) => {
                   const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
                   const isSelected = draftFilters.categories.includes(cat);
+                  if (count === 0 && !isSelected) return null;
                   return (
                     <button
                       type="button"
@@ -1098,37 +1104,48 @@ function CatalogoContent() {
               </>
             )}
 
-            {dynamicExtraCategories.length > 0 && (
-              <>
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
-                  Outras Categorias & Subs
-                </p>
-                {dynamicExtraCategories.map((cat) => {
-                  const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
-                  const isSelected = draftFilters.categories.includes(cat);
-                  return (
-                    <button
-                      type="button"
-                      key={cat}
-                      onClick={() => toggleDraftCategory(cat)}
-                      className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
-                          : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
-                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                        </span>
-                        <span className="truncate">{cat}</span>
-                      </div>
-                      <span className="text-[10px] opacity-70 shrink-0">({count})</span>
-                    </button>
-                  );
-                })}
-              </>
-            )}
+            {/* Subcategorias / Categorias extras: exibe somente se houver itens com contagem > 0 */}
+            {(() => {
+              const activeExtras = dynamicExtraCategories.filter((cat) => {
+                const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
+                const isSelected = draftFilters.categories.includes(cat);
+                return count > 0 || isSelected;
+              });
+
+              if (activeExtras.length === 0) return null;
+
+              return (
+                <>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-[#A8A29E] pt-2 pb-1 px-2">
+                    Outras Categorias & Subs
+                  </p>
+                  {activeExtras.map((cat) => {
+                    const count = products.filter((p) => p.category === cat || p.subcategory === cat).length;
+                    const isSelected = draftFilters.categories.includes(cat);
+                    return (
+                      <button
+                        type="button"
+                        key={cat}
+                        onClick={() => toggleDraftCategory(cat)}
+                        className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
+                            : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className={`w-3 h-3 rounded-none border flex items-center justify-center shrink-0 ${isSelected ? 'border-white bg-white/20' : 'border-black/30 dark:border-white/30'}`}>
+                            {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </span>
+                          <span className="truncate">{cat}</span>
+                        </div>
+                        <span className="text-[10px] opacity-70 shrink-0">({count})</span>
+                      </button>
+                    );
+                  })}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

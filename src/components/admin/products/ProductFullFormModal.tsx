@@ -167,6 +167,10 @@ export function ProductFullFormModal({
   const [pairedSlugs, setPairedSlugs] = useState<string[]>([]);
   const [isCrossSellPickerOpen, setIsCrossSellPickerOpen] = useState(false);
 
+  // Alerta de Alta Densidade (200+ Variações)
+  const [showHighDensityWarning, setShowHighDensityWarning] = useState(false);
+  const [hasConfirmedHighDensity, setHasConfirmedHighDensity] = useState(false);
+
   // Toast
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (onToast) onToast(msg, type === 'info' ? 'success' : type);
@@ -413,22 +417,46 @@ export function ProductFullFormModal({
     return Array.from(map.values());
   }, [variacoes]);
 
-  // Cores ativas na grade somadas com a paleta da boutique para alimentar exclusivamente a galeria de mídias
+  // Cores ativas na grade somadas com cores de fotos e paleta da boutique para alimentar a galeria de mídias sem perder nenhuma cor
   const availableColorsForMedia = React.useMemo(() => {
     const map = new Map<string, { nome: string; hex?: string }>();
-    variacoes.forEach((v) => {
-      const trimmed = (v.cor_nome || '').trim();
-      if (trimmed && !map.has(trimmed)) {
-        map.set(trimmed, { nome: trimmed, hex: v.cor_hex || '#111' });
+    const register = (nome?: string | null, hex?: string | null) => {
+      const clean = (nome || '').trim();
+      if (!clean) return;
+      const lower = clean.toLowerCase();
+      if (!map.has(lower)) {
+        map.set(lower, { nome: clean, hex: hex || '#111' });
       }
+    };
+
+    // 1. Cores na grade física
+    variacoes.forEach((v) => register(v.cor_nome, v.cor_hex));
+
+    // 2. Cores já etiquetadas nas mídias do produto
+    mediaList.forEach((m) => {
+      const p = parseMediaColor(m.label || undefined);
+      if (p.colorName) register(p.colorName);
     });
-    BOUTIQUE_OFFICIAL_COLORS.forEach((c) => {
-      if (!map.has(c.nome)) {
-        map.set(c.nome, { nome: c.nome, hex: c.hex });
-      }
-    });
+
+    // 3. Cores em fotos_por_cor do dossiê
+    const fotosPorCor = (product?.detalhes as any)?.fotos_por_cor;
+    if (fotosPorCor && typeof fotosPorCor === 'object') {
+      Object.keys(fotosPorCor).forEach((cor) => register(cor));
+    }
+
+    // 4. Cores nos atributos da loja
+    if (storeAttributes?.cores && Array.isArray(storeAttributes.cores)) {
+      storeAttributes.cores.forEach((c: any) => {
+        if (typeof c === 'string') register(c);
+        else if (c && c.nome) register(c.nome, c.hex);
+      });
+    }
+
+    // 5. Paleta oficial da boutique
+    BOUTIQUE_OFFICIAL_COLORS.forEach((c) => register(c.nome, c.hex));
+
     return Array.from(map.values());
-  }, [variacoes]);
+  }, [variacoes, mediaList, product, storeAttributes]);
 
   // Alias para retrocompatibilidade
   const availableColors = gradeColors;
@@ -598,6 +626,12 @@ export function ProductFullFormModal({
     if (variacoes.length === 0) {
       showToast('Cadastre ao menos uma variação (cor e tamanho) na grade da peça.', 'error');
       setActiveTab('grade');
+      return;
+    }
+
+    // Alerta amigável de Alta Densidade (200+ Variações) com autonomia total
+    if (variacoes.length >= 200 && !hasConfirmedHighDensity) {
+      setShowHighDensityWarning(true);
       return;
     }
 
@@ -1137,7 +1171,11 @@ export function ProductFullFormModal({
                       placeholder={t.products.fullFormModal.categoryField + '...'}
                       onChange={(catId, catNome, subcatNome) => {
                         setCategoriaId(catId);
-                        setSubcategoria(subcatNome || '');
+                        if (subcatNome) {
+                          setSubcategoria(subcatNome);
+                        } else if (!catId) {
+                          setSubcategoria('');
+                        }
                       }}
                       onAddNewCategory={async (name, parentId) => {
                         try {
@@ -2110,6 +2148,56 @@ export function ProductFullFormModal({
           }}
           onToast={showToast}
         />
+      )}
+
+      {/* Pop-up de Aviso de Alta Densidade (+200 Variações) */}
+      {showHighDensityWarning && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-amber-300 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-slate-900 text-base">
+                  Grade com Alta Densidade ({variacoes.length} Variações)
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Esta peça possui mais de 200 variações cadastradas. O sistema da Leidy Boutique suporta variações ilimitadas sem interrupções. No entanto, para volumes expressivos acima de 200 combinações, disponibilizamos assessoria técnica direta para otimizações sob medida na vitrine mobile.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 text-[11px] text-amber-900 space-y-1">
+              <p className="font-bold">Deseja falar com nossa equipe?</p>
+              <p>Você pode entrar em contato para ajustes exclusivos no código ou continuar o salvamento integral imediatamente com total autonomia.</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <a
+                href="https://wa.me/5541999999999?text=Ol%C3%A1%2C%20estou%20cadastrando%20uma%20pe%C3%A7a%20com%20mais%20de%20200%20varia%C3%A7%C3%B5es%20na%20Leidy%20Boutique%20e%20gostaria%20de%20suporte."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors"
+              >
+                Falar com Suporte (WhatsApp)
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasConfirmedHighDensity(true);
+                  setShowHighDensityWarning(false);
+                  setTimeout(() => {
+                    handleExecuteSave();
+                  }, 50);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
+              >
+                Continuar e Salvar Tudo
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

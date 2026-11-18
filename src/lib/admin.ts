@@ -2271,7 +2271,14 @@ export async function updateAdminProductFull(
         mergedDetalhes.precos_diferenciados = input.precos_diferenciados;
       }
       if (input.fotos_por_cor !== undefined) {
-        mergedDetalhes.fotos_por_cor = input.fotos_por_cor;
+        // Mesclagem inteligente com o existente no banco para proteger contra perda por concorrência
+        const existingFotosPorCor = (curProdData?.detalhes && typeof curProdData.detalhes.fotos_por_cor === 'object' && !Array.isArray(curProdData.detalhes.fotos_por_cor))
+          ? curProdData.detalhes.fotos_por_cor
+          : {};
+        mergedDetalhes.fotos_por_cor = {
+          ...existingFotosPorCor,
+          ...(input.fotos_por_cor || {})
+        };
       }
 
       updateFields.detalhes = Object.keys(mergedDetalhes).length > 0 ? mergedDetalhes : null;
@@ -2286,27 +2293,31 @@ export async function updateAdminProductFull(
 
     if (prodErr) throw prodErr;
 
-    // 2. Sincronizar grade de variações (se enviada)
+    // 2. Sincronizar grade de variações com proteção contra concorrência
     if (input.variacoes && Array.isArray(input.variacoes)) {
       const { data: existingVars } = await supabase
         .from('variacoes_produto')
-        .select('id')
+        .select('*')
         .eq('produto_id', input.id);
 
-      const existingIds = new Set((existingVars || []).map((v) => v.id));
       const incomingIds = new Set(input.variacoes.filter((v) => v.id && !v.id.startsWith('temp_')).map((v) => v.id!));
+      const incomingColorNames = new Set(input.variacoes.map((v) => (v.cor_nome || '').trim().toLowerCase()));
 
-      // 2a. Deletar variações removidas pelo usuário
-      const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id));
+      // 2a. Só deleta variações se pertencerem a cores tratadas explicitamente nesta submissão (protege cores adicionadas por outro operador)
+      const toDelete = (existingVars || []).filter((v: any) => {
+        if (incomingIds.has(v.id)) return false;
+        const vCor = (v.cor_nome || '').trim().toLowerCase();
+        if (!incomingColorNames.has(vCor)) return false; // Preserva cores de outros operadores
+        return true;
+      }).map((v: any) => v.id);
+
       if (toDelete.length > 0) {
         await supabase.from('variacoes_produto').delete().in('id', toDelete);
       }
 
       // 2b. Atualizar existentes e inserir novas
-      let totalEstoqueCalc = 0;
       for (const v of input.variacoes) {
         const est = Number(v.estoque || 0);
-        totalEstoqueCalc += est;
 
         const isNew = !v.id || v.id.startsWith('temp_');
         if (isNew) {
@@ -2339,34 +2350,70 @@ export async function updateAdminProductFull(
         }
       }
 
-      // 2c. Atualiza estoque_total recalculado em produtos
+      // 2c. Atualiza estoque_total recalculado em produtos somando todas as variações finais ativas
+      const { data: allFinalVars } = await supabase
+        .from('variacoes_produto')
+        .select('estoque')
+        .eq('produto_id', input.id);
+
+      const finalTotalEstoque = (allFinalVars || []).reduce((acc: number, v: any) => acc + (Number(v.estoque) || 0), 0);
       await supabase
         .from('produtos')
-        .update({ estoque_total: totalEstoqueCalc })
+        .update({ estoque_total: finalTotalEstoque })
         .eq('id', input.id);
     }
 
-    // 3. Sincronizar Mídias (se enviadas)
+    // 3. Sincronizar Mídias com Proteção de Concorrência e Preservação de Labels de Cor
     if (input.fotos && Array.isArray(input.fotos)) {
-      // Remove mídias anteriores e insere a lista atualizada com a nova ordenação
-      await supabase.from('midias_produto').delete().eq('produto_id', input.id);
+      const { data: existingDbMidias } = await supabase
+        .from('midias_produto')
+        .select('*')
+        .eq('produto_id', input.id);
+
+      const existingByUrl = new Map<string, any>();
+      (existingDbMidias || []).forEach((m: any) => existingByUrl.set(m.url, m));
 
       const midiasToInsert: any[] = [];
       const seenUrls = new Set<string>();
 
-      // Primeiro, insere as fotos ordenadas da galeria (garantindo deduplicação estrita)
+      // Insere as fotos ordenadas da galeria (preservando labels de cor existentes no banco)
       input.fotos.forEach((f, idx) => {
         if (!f.url || seenUrls.has(f.url)) return;
         seenUrls.add(f.url);
         const isVid = detectMediaType(f.tipo, f.url) === 'video';
+        const existing = existingByUrl.get(f.url);
+
+        let resolvedLabel = f.label;
+        if ((!resolvedLabel || resolvedLabel.startsWith('Foto ') || resolvedLabel === 'Capa Principal') && existing?.label && existing.label.includes('[COR:')) {
+          resolvedLabel = existing.label;
+        }
+        if (!resolvedLabel) {
+          resolvedLabel = isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`);
+        }
+
         midiasToInsert.push({
           loja_id: input.loja_id || updatedProd.loja_id,
           produto_id: input.id,
           tipo: isVid ? 'video' : 'image',
           url: f.url,
-          label: f.label || (isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`)),
+          label: resolvedLabel,
           display_order: f.display_order !== undefined ? f.display_order : idx
         });
+      });
+
+      // Preserva fotos já salvas no banco que outro usuário possa ter acabado de enviar
+      (existingDbMidias || []).forEach((m: any) => {
+        if (!seenUrls.has(m.url)) {
+          seenUrls.add(m.url);
+          midiasToInsert.push({
+            loja_id: m.loja_id || updatedProd.loja_id,
+            produto_id: input.id,
+            tipo: m.tipo,
+            url: m.url,
+            label: m.label,
+            display_order: midiasToInsert.length
+          });
+        }
       });
 
       // Se video_provador_url foi enviado e ainda NÃO está na lista, adiciona no final
@@ -2383,6 +2430,7 @@ export async function updateAdminProductFull(
       }
 
       if (midiasToInsert.length > 0) {
+        await supabase.from('midias_produto').delete().eq('produto_id', input.id);
         await supabase.from('midias_produto').insert(midiasToInsert);
 
         // Garante que a primeira foto estática válida vire a foto_principal (NUNCA vídeo)
@@ -4859,6 +4907,7 @@ export interface StoreCustomAttributes {
   modelagens: string[];
   colecoes: string[];
   tamanhos: string[];
+  cores?: Array<{ nome: string; hex?: string } | string>;
   sinalizadores: CustomSinalizador[];
 }
 
