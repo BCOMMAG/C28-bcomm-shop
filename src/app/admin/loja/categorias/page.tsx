@@ -394,7 +394,7 @@ export default function AdminCategoriasPage() {
             {/* Identificação Textual */}
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-slate-900 text-sm font-serif-luxury truncate">
+                <span className="font-bold text-slate-900 text-sm truncate">
                   {node.nome}
                 </span>
 
@@ -540,7 +540,7 @@ export default function AdminCategoriasPage() {
               <Network className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 font-serif-luxury flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <span>Taxonomia & Árvore de Categorias</span>
                 <span className="text-[10px] font-sans font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 tracking-wider">
                   N-NÍVEIS
@@ -586,7 +586,7 @@ export default function AdminCategoriasPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Departamentos Raiz
             </span>
-            <span className="text-xl font-bold text-slate-900 font-serif-luxury">
+            <span className="text-xl font-bold text-slate-900">
               {loading ? '...' : rootCount}
             </span>
           </div>
@@ -600,7 +600,7 @@ export default function AdminCategoriasPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Sub-ramificações
             </span>
-            <span className="text-xl font-bold text-slate-900 font-serif-luxury">
+            <span className="text-xl font-bold text-slate-900">
               {loading ? '...' : subBranchCount}
             </span>
           </div>
@@ -614,7 +614,7 @@ export default function AdminCategoriasPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Profundidade da Árvore
             </span>
-            <span className="text-xl font-bold text-slate-900 font-serif-luxury">
+            <span className="text-xl font-bold text-slate-900">
               {loading ? '...' : `${maxDepth} Camadas`}
             </span>
           </div>
@@ -628,7 +628,7 @@ export default function AdminCategoriasPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Peças Categorizadas
             </span>
-            <span className="text-xl font-bold text-slate-900 font-serif-luxury">
+            <span className="text-xl font-bold text-slate-900">
               {loading ? '...' : totalProdutosCategorizados}
             </span>
           </div>
@@ -700,7 +700,7 @@ export default function AdminCategoriasPage() {
               <FolderTree className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 font-serif-luxury">
+              <h3 className="text-base font-bold text-slate-900">
                 Nenhuma categoria na árvore ainda
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
@@ -735,7 +735,7 @@ export default function AdminCategoriasPage() {
                   {formIcone || '📁'}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base font-serif-luxury">
+                  <h3 className="font-bold text-slate-900 text-base">
                     {editingNode ? `Editar: ${editingNode.nome}` : formParentId ? 'Nova Subcategoria' : 'Novo Departamento Raiz'}
                   </h3>
                   <p className="text-xs text-slate-400">
@@ -887,7 +887,7 @@ export default function AdminCategoriasPage() {
                 <Trash2 className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-sm font-serif-luxury">
+                <h3 className="font-bold text-slate-900 text-sm">
                   Excluir "{nodeToDelete.nome}"?
                 </h3>
                 <p className="text-xs text-slate-400">
