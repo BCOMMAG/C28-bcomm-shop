@@ -26,7 +26,9 @@ import {
   Link as LinkIcon,
   ShoppingBag,
   Sliders,
-  Layers
+  Layers,
+  FolderTree,
+  Check
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -42,7 +44,9 @@ import {
   AdminProductItem,
   getAdminProducts,
   ColecaoLojaItem,
-  getColecoesLoja
+  getColecoesLoja,
+  CategoriaNode,
+  getCategoriaTree
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -57,6 +61,7 @@ export default function AdminMenuPage() {
   const [categories, setCategories] = useState<AdminCategoryFull[]>([]);
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [colecoes, setColecoes] = useState<ColecaoLojaItem[]>([]);
+  const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'linha_1' | 'linha_2' | 'gaveta_mobile'>('linha_1');
@@ -79,14 +84,21 @@ export default function AdminMenuPage() {
   const [badgeText, setBadgeText] = useState('NOVO');
   const [badgeColorBg, setBadgeColorBg] = useState('bg-[#C5A059]');
 
-  // Subopções do Item
+  // Subopções do Item - Configuração Avançada em Árvore Hierárquica Multinível
   const [itemSubOptions, setItemSubOptions] = useState<NavMenuSubOption[]>([]);
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
   const [subLabel, setSubLabel] = useState('');
-  const [subType, setSubType] = useState<'status' | 'category' | 'subcategory' | 'link' | 'fabric'>('category');
+  
+  // Modo de Destino do Submenu: 'tree' (Hierárquico multinível), 'status' (Coleções), 'fabric' (Tecidos), 'link' (Livre)
+  const [subDestMode, setSubDestMode] = useState<'tree' | 'status' | 'fabric' | 'link'>('tree');
+  const [selectedRootCat, setSelectedRootCat] = useState('');
+  const [selectedSubCat, setSelectedSubCat] = useState('');
+  const [selectedSubSubCat, setSelectedSubSubCat] = useState('');
+  const [customNewSubCat, setCustomNewSubCat] = useState('');
+
+  // Fallbacks legados para outros tipos
   const [subValue, setSubValue] = useState('');
-  const [subParentCategory, setSubParentCategory] = useState('');
   const [subCustomUrl, setSubCustomUrl] = useState('');
   const [subExtraCategory, setSubExtraCategory] = useState('');
   const [subExtraFabric, setSubExtraFabric] = useState('');
@@ -99,19 +111,58 @@ export default function AdminMenuPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  // Sanitização profunda e auto-cura de dados antigos ou inconsistentes
+  const sanitizeMenuConfig = (cfg: StoreNavMenuConfig): StoreNavMenuConfig => {
+    const sanitizeList = (list: NavMenuItem[]) =>
+      (list || []).map((item) => {
+        const itemCat = item.type === 'category' ? item.value : undefined;
+        const sanitizedSubs = (item.subOptions || []).map((sub) => {
+          if (sub.type === 'subcategory') {
+            const effectiveParent = sub.parentCategory || itemCat || 'Verão';
+            const isRegataGlitch =
+              sub.label.toLowerCase() === 'regatas' &&
+              (sub.value === 'Casacos & Jaquetas' || !sub.value);
+            return {
+              ...sub,
+              parentCategory: effectiveParent,
+              value: isRegataGlitch ? 'Regatas' : (sub.value || sub.label)
+            };
+          }
+          return sub;
+        });
+        return {
+          ...item,
+          subOptions: sanitizedSubs
+        };
+      });
+
+    return {
+      linha_1: sanitizeList(cfg.linha_1),
+      linha_2: sanitizeList(cfg.linha_2),
+      gaveta_mobile: sanitizeList(cfg.gaveta_mobile)
+    };
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [menuRes, catsRes, prodsRes, colecoesRes] = await Promise.all([
+      const [menuRes, catsRes, prodsRes, colecoesRes, treeRes] = await Promise.all([
         getStoreNavMenuConfig(tenantId),
         getAdminCategoriesFull(tenantId),
         getAdminProducts(tenantId).catch(() => []),
-        getColecoesLoja(tenantId).catch(() => [])
+        getColecoesLoja(tenantId).catch(() => []),
+        getCategoriaTree(tenantId).catch(() => [])
       ]);
-      setMenuConfig(menuRes);
+
+      if (menuRes) {
+        setMenuConfig(sanitizeMenuConfig(menuRes));
+      } else {
+        setMenuConfig(menuRes);
+      }
       setCategories(catsRes);
       setProducts(prodsRes);
       setColecoes(colecoesRes);
+      setCategoryTree(treeRes || []);
     } catch {
       showToast(t.storeMenu.toastError, 'error');
     } finally {
@@ -133,6 +184,153 @@ export default function AdminMenuPage() {
     });
     return list;
   }, [categories]);
+
+  // Categorias Raiz da Loja (Nível 1 na Árvore)
+  const rootCategoryNodes = useMemo(() => {
+    if (categoryTree && categoryTree.length > 0) {
+      const roots = categoryTree.filter((n) => !n.parent_id || n.nivel === 0);
+      if (roots.length > 0) return roots;
+    }
+    return categories.map((c) => ({
+      id: c.id,
+      nome: c.nome,
+      slug: c.slug,
+      parent_id: null,
+      nivel: 0
+    })) as CategoriaNode[];
+  }, [categoryTree, categories]);
+
+  // Subcategorias filhas da Categoria Raiz selecionada (Nível 2)
+  const childSubcategoryNodes = useMemo(() => {
+    if (!selectedRootCat) return [];
+    const rootNode = categoryTree.find(
+      (n) => n.nome.toLowerCase() === selectedRootCat.toLowerCase() || n.id === selectedRootCat
+    );
+    const result: Array<{ id: string; nome: string; parent_id: string | null; nivel: number }> = [];
+
+    if (rootNode) {
+      categoryTree
+        .filter((n) => n.parent_id === rootNode.id)
+        .forEach((child) => {
+          result.push(child);
+        });
+    }
+
+    // Complementa com o cadastro tradicional se não duplicado
+    const catObj = categories.find(
+      (c) => c.nome.toLowerCase() === selectedRootCat.toLowerCase() || c.id === selectedRootCat
+    );
+    if (catObj && Array.isArray(catObj.subcategorias)) {
+      catObj.subcategorias.forEach((s) => {
+        if (s && s.trim() && !result.some((r) => r.nome.toLowerCase() === s.trim().toLowerCase())) {
+          result.push({
+            id: `sub-${s.trim()}`,
+            nome: s.trim(),
+            parent_id: rootNode ? rootNode.id : catObj.id,
+            nivel: 1
+          });
+        }
+      });
+    }
+
+    // Complementa com produtos cadastrados com essa categoria e subcategoria
+    products.forEach((p) => {
+      const isMatch =
+        (p.categoria_nome && p.categoria_nome.toLowerCase() === selectedRootCat.toLowerCase()) ||
+        (catObj && p.categoria_id === catObj.id) ||
+        (rootNode && p.categoria_id === rootNode.id);
+      if (isMatch && p.subcategoria && p.subcategoria.trim()) {
+        const sTrim = p.subcategoria.trim();
+        if (!result.some((r) => r.nome.toLowerCase() === sTrim.toLowerCase())) {
+          result.push({
+            id: `sub-prod-${sTrim}`,
+            nome: sTrim,
+            parent_id: rootNode ? rootNode.id : null,
+            nivel: 1
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [selectedRootCat, categoryTree, categories, products]);
+
+  // Sub-subcategorias (Nível 3 se existirem nós netos)
+  const grandChildNodes = useMemo(() => {
+    if (!selectedSubCat || selectedSubCat === '__ALL__' || selectedSubCat === '__NEW__') return [];
+    const subNode = childSubcategoryNodes.find(
+      (n) => n.nome.toLowerCase() === selectedSubCat.toLowerCase()
+    );
+    if (!subNode) return [];
+    return categoryTree.filter((n) => n.parent_id === subNode.id);
+  }, [selectedSubCat, childSubcategoryNodes, categoryTree]);
+
+  // Prévia da Trilha e Destino do Submenu em Tempo Real
+  const previewData = useMemo(() => {
+    if (subDestMode === 'tree') {
+      const effectiveSub = selectedSubCat === '__NEW__' ? customNewSubCat.trim() : selectedSubCat;
+      const isAllRoot = !effectiveSub || effectiveSub === '__ALL__';
+
+      const trail = isAllRoot
+        ? `Item 1 (Raiz): ${selectedRootCat}`
+        : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
+        ? `Item 1: ${selectedRootCat} ➔ Subitem: ${effectiveSub} ➔ Sub-subitem: ${selectedSubSubCat}`
+        : `Item 1: ${selectedRootCat} ➔ Subitem: ${effectiveSub}`;
+
+      const link = isAllRoot
+        ? `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}`
+        : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
+        ? `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}&subcategoria=${encodeURIComponent(selectedSubSubCat)}`
+        : `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}&subcategoria=${encodeURIComponent(effectiveSub)}`;
+
+      return {
+        trail,
+        link,
+        type: isAllRoot ? ('category' as const) : ('subcategory' as const),
+        value: isAllRoot
+          ? selectedRootCat
+          : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
+          ? selectedSubSubCat
+          : effectiveSub,
+        parentCategory: isAllRoot ? undefined : selectedRootCat
+      };
+    }
+
+    if (subDestMode === 'status') {
+      const col = subValue || 'Lançamento';
+      const link = subExtraCategory
+        ? `/catalogo?status=${encodeURIComponent(col)}&categoria=${encodeURIComponent(subExtraCategory)}`
+        : `/catalogo?status=${encodeURIComponent(col)}`;
+      return {
+        trail: `Coleção: ${col}${subExtraCategory ? ` ➔ Categoria: ${subExtraCategory}` : ''}`,
+        link,
+        type: 'status' as const,
+        value: col,
+        parentCategory: undefined
+      };
+    }
+
+    if (subDestMode === 'fabric') {
+      const fab = subValue || 'Linho Puro';
+      const link = `/catalogo?tecido=${encodeURIComponent(fab)}`;
+      return {
+        trail: `Tecido Nobre: ${fab}`,
+        link,
+        type: 'fabric' as const,
+        value: fab,
+        parentCategory: undefined
+      };
+    }
+
+    // Link personalizado
+    return {
+      trail: `Link Personalizado: ${subCustomUrl || '/'}`,
+      link: subCustomUrl || '/',
+      type: 'link' as const,
+      value: subCustomUrl || '/',
+      parentCategory: undefined
+    };
+  }, [subDestMode, selectedRootCat, selectedSubCat, selectedSubSubCat, customNewSubCat, subValue, subExtraCategory, subCustomUrl]);
 
   // Lista de produtos filtrada para o Link Picker de Peça Única
   const filteredProducts = useMemo(() => {
@@ -204,7 +402,25 @@ export default function AdminMenuPage() {
     setHasBadge(Boolean(item.badge));
     setBadgeText(item.badge?.text || 'NOVO');
     setBadgeColorBg(item.badge?.colorBg || 'bg-[#C5A059]');
-    setItemSubOptions(item.subOptions ? [...item.subOptions] : []);
+
+    // Sanitiza e auto-cura submenus ao abrir
+    const itemCat = item.type === 'category' ? item.value : undefined;
+    const sanitizedSubs = (item.subOptions || []).map((sub) => {
+      if (sub.type === 'subcategory') {
+        const effectiveParent = sub.parentCategory || itemCat || 'Verão';
+        const isRegataGlitch =
+          sub.label.toLowerCase() === 'regatas' &&
+          (sub.value === 'Casacos & Jaquetas' || !sub.value);
+        return {
+          ...sub,
+          parentCategory: effectiveParent,
+          value: isRegataGlitch ? 'Regatas' : (sub.value || sub.label)
+        };
+      }
+      return sub;
+    });
+
+    setItemSubOptions(sanitizedSubs);
     setIsModalOpen(true);
   };
 
@@ -287,51 +503,6 @@ export default function AdminMenuPage() {
     handleSaveMenu(updatedConfig);
   };
 
-  // Busca inteligente de subcategorias filhas pertencentes a uma categoria pai
-  const getSubcategoriesForParent = (parentName: string): string[] => {
-    if (!parentName) return [];
-    const subs = new Set<string>();
-
-    // 1. Da lista de categorias cadastradas do lojista
-    const catObj = categories.find(
-      (c) => c.nome.toLowerCase() === parentName.toLowerCase() || c.id === parentName
-    );
-    if (catObj && Array.isArray(catObj.subcategorias)) {
-      catObj.subcategorias.forEach((s) => {
-        if (s && s.trim()) subs.add(s.trim());
-      });
-    }
-
-    // 2. Da árvore de categorias do tenant
-    const tree = currentTenant?.configuracoes_visuais?.arvore_categorias || [];
-    const parentNode = tree.find(
-      (n: any) =>
-        n.nome.toLowerCase() === parentName.toLowerCase() ||
-        n.id === parentName ||
-        n.slug.toLowerCase() === parentName.toLowerCase()
-    );
-    if (parentNode) {
-      tree
-        .filter((n: any) => n.parent_id === parentNode.id)
-        .forEach((c: any) => {
-          if (c.nome && c.nome.trim()) subs.add(c.nome.trim());
-        });
-    }
-
-    // 3. Dos produtos cadastrados com essa categoria pai
-    products.forEach((p) => {
-      const isMatch =
-        (p.categoria_nome && p.categoria_nome.toLowerCase() === parentName.toLowerCase()) ||
-        (catObj && p.categoria_id === catObj.id) ||
-        (parentNode && p.categoria_id === parentNode.id);
-      if (isMatch && p.subcategoria && p.subcategoria.trim()) {
-        subs.add(p.subcategoria.trim());
-      }
-    });
-
-    return Array.from(subs);
-  };
-
   // Subopções: Salvar modal de subopção
   const handleSaveSubOption = (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,16 +512,17 @@ export default function AdminMenuPage() {
     }
 
     const newSub: NavMenuSubOption = {
-      id: editingSubIndex !== null && itemSubOptions[editingSubIndex]?.id
-        ? itemSubOptions[editingSubIndex].id
-        : `sub-${Date.now()}`,
+      id:
+        editingSubIndex !== null && itemSubOptions[editingSubIndex]?.id
+          ? itemSubOptions[editingSubIndex].id
+          : `sub-${Date.now()}`,
       label: subLabel.trim(),
-      type: subType,
-      value: subValue.trim(),
-      parentCategory: subType === 'subcategory' ? (subParentCategory.trim() || undefined) : undefined,
-      customUrl: subCustomUrl.trim() || undefined,
-      extraCategory: subExtraCategory.trim() || undefined,
-      extraFabric: subExtraFabric.trim() || undefined
+      type: previewData.type,
+      value: previewData.value,
+      parentCategory: previewData.parentCategory,
+      customUrl: subDestMode === 'link' ? (subCustomUrl.trim() || undefined) : undefined,
+      extraCategory: subDestMode === 'status' ? (subExtraCategory.trim() || undefined) : undefined,
+      extraFabric: subDestMode === 'fabric' ? (subExtraFabric.trim() || undefined) : undefined
     };
 
     if (editingSubIndex !== null) {
@@ -364,36 +536,77 @@ export default function AdminMenuPage() {
     setSubModalOpen(false);
   };
 
+  // Abrir modal para adicionar submenu com herança inteligente da raiz
   const handleOpenAddSub = () => {
     setEditingSubIndex(null);
-    setSubLabel('');
-    setSubType('subcategory');
-    const defaultParent = itemType === 'category' && itemValue ? itemValue : (categories[0]?.nome || '');
-    setSubParentCategory(defaultParent);
-    const availableSubs = getSubcategoriesForParent(defaultParent);
-    const initialSubVal = availableSubs[0] || '';
-    setSubValue(initialSubVal);
-    if (initialSubVal) setSubLabel(initialSubVal);
+    setSubDestMode('tree');
+
+    // Se o item pai for uma categoria (ex: VERÃO), já pré-seleciona "Verão" como Raiz!
+    const defaultRoot =
+      itemType === 'category' && itemValue
+        ? itemValue
+        : (rootCategoryNodes[0]?.nome || categories[0]?.nome || 'Verão');
+
+    setSelectedRootCat(defaultRoot);
+
+    // Carrega filhos daquela raiz
+    const rootNode = categoryTree.find(
+      (n) => n.nome.toLowerCase() === defaultRoot.toLowerCase() || n.id === defaultRoot
+    );
+    const children = rootNode ? categoryTree.filter((n) => n.parent_id === rootNode.id) : [];
+
+    if (children.length > 0) {
+      setSelectedSubCat(children[0].nome);
+      setSubLabel(children[0].nome);
+    } else {
+      setSelectedSubCat('__ALL__');
+      setSubLabel(defaultRoot);
+    }
+
+    setSelectedSubSubCat('');
+    setCustomNewSubCat('');
+    setSubValue('');
     setSubCustomUrl('');
     setSubExtraCategory('');
     setSubExtraFabric('');
     setSubModalOpen(true);
   };
 
+  // Abrir modal para editar submenu
   const handleOpenEditSub = (subIdx: number) => {
     const target = itemSubOptions[subIdx];
     if (!target) return;
     setEditingSubIndex(subIdx);
     setSubLabel(target.label || '');
-    setSubType(target.type || 'category');
-    setSubValue(target.value || '');
-    const parentVal = target.parentCategory || (itemType === 'category' ? itemValue : (categories[0]?.nome || ''));
-    setSubParentCategory(parentVal);
-    setSubCustomUrl(target.customUrl || '');
-    setSubExtraCategory(target.extraCategory || '');
-    setSubExtraFabric(target.extraFabric || '');
+
+    if (target.type === 'subcategory') {
+      setSubDestMode('tree');
+      const parent = target.parentCategory || (itemType === 'category' ? itemValue : 'Verão');
+      setSelectedRootCat(parent);
+      setSelectedSubCat(target.value || target.label);
+      setSelectedSubSubCat('');
+      setCustomNewSubCat('');
+    } else if (target.type === 'category') {
+      setSubDestMode('tree');
+      setSelectedRootCat(target.value || (itemType === 'category' ? itemValue : 'Verão'));
+      setSelectedSubCat('__ALL__');
+      setSelectedSubSubCat('');
+      setCustomNewSubCat('');
+    } else if (target.type === 'status') {
+      setSubDestMode('status');
+      setSubValue(target.value || 'Lançamento');
+      setSubExtraCategory(target.extraCategory || '');
+    } else if (target.type === 'fabric') {
+      setSubDestMode('fabric');
+      setSubValue(target.value || 'Linho Puro');
+    } else {
+      setSubDestMode('link');
+      setSubCustomUrl(target.customUrl || target.value || '');
+    }
+
     setSubModalOpen(true);
   };
+
 
   const handleMoveSubOptionUp = (idx: number) => {
     if (idx <= 0) return;
@@ -1015,71 +1228,107 @@ export default function AdminMenuPage() {
                   </div>
 
                   {itemSubOptions.length > 0 ? (
-                    <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 max-h-56 overflow-y-auto">
-                      {itemSubOptions.map((sub, sIdx) => (
-                        <div
-                          key={sub.id || sIdx}
-                          className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs group hover:border-slate-300 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-5 h-5 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
-                              {sIdx + 1}
-                            </span>
-                            <div className="truncate">
-                              <span className="font-bold text-slate-900 block truncate">{sub.label}</span>
-                              <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                                <span className="uppercase font-semibold tracking-wider text-amber-700 bg-amber-50 px-1 py-0.2 rounded text-[9px]">
-                                  {sub.type}
-                                </span>
-                                {sub.parentCategory ? (
-                                  <span className="text-slate-600 font-medium truncate">
-                                    {sub.parentCategory} &gt; {sub.value}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-600 truncate">{sub.value}</span>
-                                )}
+                    <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200 max-h-64 overflow-y-auto">
+                      {itemSubOptions.map((sub, sIdx) => {
+                        const isSubcategory = sub.type === 'subcategory';
+                        const parentName = sub.parentCategory || (itemType === 'category' ? itemValue : undefined);
+                        const targetLink = isSubcategory
+                          ? `/catalogo?categoria=${encodeURIComponent(parentName || '')}&subcategoria=${encodeURIComponent(sub.value)}`
+                          : sub.type === 'category'
+                          ? `/catalogo?categoria=${encodeURIComponent(sub.value)}`
+                          : sub.type === 'status'
+                          ? `/catalogo?status=${encodeURIComponent(sub.value)}`
+                          : sub.customUrl || '#';
+
+                        return (
+                          <div
+                            key={sub.id || sIdx}
+                            className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs group hover:border-amber-300 transition-all"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-5 h-5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200/60 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {sIdx + 1}
                               </span>
+                              <div className="truncate">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 truncate">{sub.label}</span>
+                                  {isSubcategory && parentName ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80">
+                                      <span>{parentName}</span>
+                                      <span className="text-amber-500 font-bold">➔</span>
+                                      <span>{sub.value}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                      {sub.type === 'category' ? `Categoria: ${sub.value}` : sub.type}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 block truncate mt-0.5">
+                                  {targetLink}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (sIdx <= 0) return;
+                                  setItemSubOptions((prev) => {
+                                    const copy = [...prev];
+                                    const temp = copy[sIdx - 1];
+                                    copy[sIdx - 1] = copy[sIdx];
+                                    copy[sIdx] = temp;
+                                    return copy;
+                                  });
+                                }}
+                                disabled={sIdx === 0}
+                                title="Mover para Cima"
+                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (sIdx >= itemSubOptions.length - 1) return;
+                                  setItemSubOptions((prev) => {
+                                    const copy = [...prev];
+                                    const temp = copy[sIdx + 1];
+                                    copy[sIdx + 1] = copy[sIdx];
+                                    copy[sIdx] = temp;
+                                    return copy;
+                                  });
+                                }}
+                                disabled={sIdx === itemSubOptions.length - 1}
+                                title="Mover para Baixo"
+                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditSub(sIdx)}
+                                title="Editar Submenu"
+                                className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setItemSubOptions((prev) => prev.filter((_, idx) => idx !== sIdx));
+                                }}
+                                title="Excluir Submenu"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1 shrink-0 ml-2">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSubOptionUp(sIdx)}
-                              disabled={sIdx === 0}
-                              title="Mover para Cima"
-                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
-                            >
-                              <ArrowUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSubOptionDown(sIdx)}
-                              disabled={sIdx === itemSubOptions.length - 1}
-                              title="Mover para Baixo"
-                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
-                            >
-                              <ArrowDown className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditSub(sIdx)}
-                              title="Editar Submenu"
-                              className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSubOption(sIdx)}
-                              title="Excluir Submenu"
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-[11px] italic text-slate-400 bg-slate-50 p-3 rounded-xl border border-dashed border-slate-200 text-center">
@@ -1114,184 +1363,268 @@ export default function AdminMenuPage() {
       {/* MODAL SECUNDÁRIO: ADICIONAR / EDITAR SUBMENU SUSPENSO */}
       {subModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
-                  <Sliders className="w-3.5 h-3.5" />
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                  <Sliders className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  {editingSubIndex !== null ? 'Editar Submenu Suspenso' : t.storeMenu.subModalHeading}
-                </h4>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    {editingSubIndex !== null ? 'Editar Submenu Suspenso' : 'Adicionar Submenu Suspenso'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Selecione o destino encadeado e defina o rótulo da opção
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSubModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveSubOption} className="space-y-3.5">
+            <form onSubmit={handleSaveSubOption} className="space-y-4">
+              {/* SELETOR PRINCIPAL DO TIPO DE DESTINO */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  {t.storeMenu.subTextLabel}
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Tipo de Destino do Submenu
                 </label>
-                <input
-                  type="text"
-                  placeholder={t.storeMenu.subTextPlaceholder}
-                  value={subLabel}
-                  onChange={(e) => setSubLabel(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-amber-400 shadow-2xs"
-                />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubDestMode('tree');
+                      if (!selectedRootCat) {
+                        const def = itemType === 'category' && itemValue ? itemValue : (rootCategoryNodes[0]?.nome || 'Verão');
+                        setSelectedRootCat(def);
+                        setSelectedSubCat('__ALL__');
+                      }
+                    }}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1',
+                      subDestMode === 'tree'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                    )}
+                  >
+                    <FolderTree className="w-3.5 h-3.5" />
+                    <span>Catálogo (Árvore)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubDestMode('status');
+                      if (!subValue) setSubValue('Lançamento');
+                    }}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1',
+                      subDestMode === 'status'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                    )}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Coleção / Status</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubDestMode('fabric');
+                      if (!subValue) setSubValue('Linho Puro');
+                    }}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1',
+                      subDestMode === 'fabric'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                    )}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Tecido Nobre</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubDestMode('link')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer flex flex-col items-center gap-1',
+                      subDestMode === 'link'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                    )}
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>Link Livre</span>
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  {t.storeMenu.destinationType}
-                </label>
-                <select
-                  value={subType}
-                  onChange={(e) => {
-                    const newType = e.target.value as any;
-                    setSubType(newType);
-                    if (newType === 'category') {
-                      setSubValue(categories[0]?.nome || '');
-                    } else if (newType === 'subcategory') {
-                      const parent = subParentCategory || (itemType === 'category' ? itemValue : (categories[0]?.nome || ''));
-                      setSubParentCategory(parent);
-                      const childSubs = getSubcategoriesForParent(parent);
-                      const firstChild = childSubs[0] || '';
-                      setSubValue(firstChild);
-                      if (!subLabel && firstChild) setSubLabel(firstChild);
-                    } else if (newType === 'status') {
-                      setSubValue(colecoes[0]?.nome || 'Lançamento');
-                    }
-                  }}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400 shadow-2xs"
-                >
-                  <option value="subcategory">Subcategoria (Hierárquica com Categoria Pai)</option>
-                  <option value="category">{t.storeMenu.destTypeCategory}</option>
-                  <option value="status">{t.storeMenu.destTypeStatus}</option>
-                  <option value="link">{t.storeMenu.destTypeCustom}</option>
-                </select>
-              </div>
-
-              {/* SELEÇÃO EM CASCATA: CATEGORIA PAI -> SUBCATEGORIA FILHA */}
-              {subType === 'subcategory' && (
-                <div className="space-y-3 p-3 bg-amber-50/40 rounded-xl border border-amber-200/70">
+              {/* SELEÇÃO HIERÁRQUICA: ITEM 1 -> SUBITEM -> SUBSUBITEM */}
+              {subDestMode === 'tree' && (
+                <div className="space-y-3.5 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  {/* NÍVEL 1: CATEGORIA RAIZ */}
                   <div>
-                    <label className="block text-[10px] font-bold text-amber-900 uppercase mb-1">
-                      1. Categoria Pai (Origem na Boutique)
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</span>
+                        <span>Item 1: Categoria Raiz da Loja</span>
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium">Origem do submenu</span>
+                    </div>
                     <select
-                      value={subParentCategory}
+                      value={selectedRootCat}
                       onChange={(e) => {
-                        const newParent = e.target.value;
-                        setSubParentCategory(newParent);
-                        const childSubs = getSubcategoriesForParent(newParent);
-                        const firstChild = childSubs[0] || '';
-                        setSubValue(firstChild);
-                        if (!subLabel || childSubs.includes(subLabel) || categories.some((c) => c.nome === subLabel)) {
-                          if (firstChild) setSubLabel(firstChild);
+                        const newRoot = e.target.value;
+                        setSelectedRootCat(newRoot);
+                        const rootNode = categoryTree.find(
+                          (n) => n.nome.toLowerCase() === newRoot.toLowerCase() || n.id === newRoot
+                        );
+                        const children = rootNode ? categoryTree.filter((n) => n.parent_id === rootNode.id) : [];
+                        if (children.length > 0) {
+                          setSelectedSubCat(children[0].nome);
+                          setSubLabel(children[0].nome);
+                        } else {
+                          setSelectedSubCat('__ALL__');
+                          setSubLabel(newRoot);
                         }
+                        setSelectedSubSubCat('');
+                        setCustomNewSubCat('');
                       }}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     >
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.nome}>
-                          {c.nome}
+                      {rootCategoryNodes.map((cat) => (
+                        <option key={cat.id} value={cat.nome}>
+                          {cat.nome} {cat.icone ? `${cat.icone} ` : ''}
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-amber-800/70 mt-1">
-                      O submenu pertencerá à categoria &quot;{subParentCategory}&quot;, filtrando precisamente as peças desta categoria.
-                    </p>
                   </div>
 
+                  {/* NÍVEL 2: SUBITEM / SUBCATEGORIA */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[10px] font-bold text-amber-900 uppercase">
-                        2. Subcategoria em &quot;{subParentCategory}&quot;
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">2</span>
+                        <span>Subitem: Subcategoria em &quot;{selectedRootCat}&quot;</span>
                       </label>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100/60 px-1.5 py-0.2 rounded">
-                        {getSubcategoriesForParent(subParentCategory).length} encontradas
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md">
+                        {childSubcategoryNodes.length} vinculada{childSubcategoryNodes.length === 1 ? '' : 's'}
                       </span>
                     </div>
 
-                    {getSubcategoriesForParent(subParentCategory).length > 0 ? (
+                    <select
+                      value={selectedSubCat}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedSubCat(val);
+                        setSelectedSubSubCat('');
+                        if (val === '__ALL__') {
+                          setSubLabel(selectedRootCat);
+                        } else if (val !== '__NEW__') {
+                          setSubLabel(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-amber-300/80 bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    >
+                      <option value="__ALL__">
+                        • Toda a Categoria &quot;{selectedRootCat}&quot; (Ver todas as peças da raiz)
+                      </option>
+                      {childSubcategoryNodes.map((s) => (
+                        <option key={s.id} value={s.nome}>
+                          ↳ {s.nome}
+                        </option>
+                      ))}
+                      <option value="__NEW__">
+                        + Criar Nova Subcategoria em &quot;{selectedRootCat}&quot;...
+                      </option>
+                    </select>
+
+                    {/* Campo se escolher criar nova subcategoria */}
+                    {selectedSubCat === '__NEW__' && (
+                      <div className="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 animate-in fade-in duration-150">
+                        <label className="text-[10px] uppercase font-bold text-amber-900 block">
+                          Nome da Nova Subcategoria em &quot;{selectedRootCat}&quot;:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Regatas, Croppeds, etc."
+                          value={customNewSubCat}
+                          onChange={(e) => {
+                            setCustomNewSubCat(e.target.value);
+                            setSubLabel(e.target.value);
+                          }}
+                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-slate-800 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* NÍVEL 3: SUB-SUBITEM (Se houver netos cadastrados) */}
+                  {grandChildNodes.length > 0 && (
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">3</span>
+                        <span>Sub-subitem: Refinamento em &quot;{selectedSubCat}&quot;</span>
+                      </label>
                       <select
-                        value={subValue}
+                        value={selectedSubSubCat}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setSubValue(val);
-                          if (!subLabel || getSubcategoriesForParent(subParentCategory).includes(subLabel)) {
+                          setSelectedSubSubCat(val);
+                          if (val && val !== '__ALL_SUB__') {
                             setSubLabel(val);
                           }
                         }}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400"
+                        className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-emerald-300 bg-white text-slate-900 shadow-2xs"
                       >
-                        {getSubcategoriesForParent(subParentCategory).map((s) => (
-                          <option key={s} value={s}>
-                            {s}
+                        <option value="__ALL_SUB__">
+                          • Todas as peças de &quot;{selectedSubCat}&quot;
+                        </option>
+                        {grandChildNodes.map((gc) => (
+                          <option key={gc.id} value={gc.nome}>
+                            ↳ {gc.nome}
                           </option>
                         ))}
                       </select>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <input
-                          type="text"
-                          placeholder="Digite o nome da nova subcategoria..."
-                          value={subValue}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSubValue(val);
-                            if (!subLabel) setSubLabel(val);
-                          }}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-amber-300 bg-white focus:outline-none focus:border-amber-500"
-                        />
-                        <p className="text-[10px] text-amber-800/80 italic">
-                          Nenhuma subcategoria prévia em &quot;{subParentCategory}&quot;. Digite o nome da nova subcategoria acima.
-                        </p>
-                      </div>
-                    )}
+                    </div>
+                  )}
+
+                  {/* CARD VISUAL DA TRILHA */}
+                  <div className="p-3 bg-white border border-amber-200/90 rounded-xl space-y-2 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Trilha Hierárquica do Submenu:</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900">
+                        {previewData.trail}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-200 truncate">
+                      Destino Vitrine: {previewData.link}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {subType === 'category' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Categoria
-                  </label>
-                  <select
-                    value={subValue}
-                    onChange={(e) => {
-                      setSubValue(e.target.value);
-                      if (!subLabel) setSubLabel(e.target.value);
-                    }}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.nome}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {subType === 'status' && (
-                <div className="space-y-3">
+              {/* OPÇÃO 2: STATUS / COLEÇÃO */}
+              {subDestMode === 'status' && (
+                <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                      {t.storeMenu.destTypeStatus}
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                      Coleção ou Status
                     </label>
                     <select
                       value={subValue}
-                      onChange={(e) => setSubValue(e.target.value)}
+                      onChange={(e) => {
+                        setSubValue(e.target.value);
+                        if (!subLabel || colecoes.some((c) => c.nome === subLabel)) {
+                          setSubLabel(e.target.value);
+                        }
+                      }}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
                     >
                       {colecoes.length > 0 ? (
@@ -1302,17 +1635,17 @@ export default function AdminMenuPage() {
                         ))
                       ) : (
                         <>
-                          <option value="Lançamento">{t.storeMenu.statusLancamento}</option>
-                          <option value="Mais Vendidos">{t.storeMenu.statusMaisVendidos}</option>
-                          <option value="OUTLET">{t.storeMenu.statusOutlet}</option>
-                          <option value="Últimas Peças">{t.storeMenu.statusUltimasPecas}</option>
+                          <option value="Lançamento">Lançamento</option>
+                          <option value="Mais Vendidos">Mais Vendidos</option>
+                          <option value="OUTLET">OUTLET</option>
+                          <option value="Últimas Peças">Últimas Peças</option>
                         </>
                       )}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Filtrar Categoria na Coleção (Opcional)
                     </label>
                     <select
@@ -1331,9 +1664,32 @@ export default function AdminMenuPage() {
                 </div>
               )}
 
-              {subType === 'link' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+              {/* OPÇÃO 3: TECIDO NOBRE */}
+              {subDestMode === 'fabric' && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    Selecione o Tecido Nobre
+                  </label>
+                  <select
+                    value={subValue}
+                    onChange={(e) => {
+                      setSubValue(e.target.value);
+                      if (!subLabel) setSubLabel(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  >
+                    <option value="Linho Puro">Linho Puro</option>
+                    <option value="Tricot Biamar">Tricot Biamar</option>
+                    <option value="Alfaiataria Premium">Alfaiataria Premium</option>
+                    <option value="Seda Acetinada">Seda Acetinada</option>
+                  </select>
+                </div>
+              )}
+
+              {/* OPÇÃO 4: LINK LIVRE */}
+              {subDestMode === 'link' && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                     URL ou Caminho Interno
                   </label>
                   <input
@@ -1341,24 +1697,41 @@ export default function AdminMenuPage() {
                     placeholder="Ex: /cliente ou https://..."
                     value={subCustomUrl}
                     onChange={(e) => setSubCustomUrl(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
                   />
                 </div>
               )}
 
+              {/* RÓTULO VISÍVEL DO SUBMENU */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Texto do Submenu (Visível para o Cliente) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Regatas, Linho, Lançamentos..."
+                  value={subLabel}
+                  onChange={(e) => setSubLabel(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shadow-2xs font-semibold text-slate-900"
+                />
+              </div>
+
+              {/* BOTÕES DE AÇÃO */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setSubModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold uppercase tracking-wider text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer transition-colors shadow-xs"
                 >
-                  {editingSubIndex !== null ? 'Salvar Submenu' : t.storeMenu.subModalConfirmBtn}
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{editingSubIndex !== null ? 'Salvar Submenu' : 'Confirmar Submenu'}</span>
                 </button>
               </div>
             </form>

@@ -79,7 +79,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "isSpecial": false,
           "subOptions": [
             {
-              "id": "sub-1795089048862",
+              "id": "sub-1795093853238",
               "type": "subcategory",
               "label": "Regatas",
               "value": "Regatas",
