@@ -225,7 +225,6 @@ export default function AdminProdutosPage() {
 
   // Estado do formulário de novo produto
   const [newProductName, setNewProductName] = useState('');
-  const [newProductSlug, setNewProductSlug] = useState('');
   const [newProductCatId, setNewProductCatId] = useState('');
   const [newProductSubcat, setNewProductSubcat] = useState('');
   const [newCustomCatName, setNewCustomCatName] = useState('');
@@ -1816,14 +1815,12 @@ export default function AdminProdutosPage() {
         ? gridVariations.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0)
         : Number(newProductStockSimple || 10);
 
-      const generatedSlug =
-        newProductSlug.trim() ||
-        newProductName
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)+/g, '');
+      const generatedSlug = newProductName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
 
       const payload: CreateProductInput = {
         nome: newProductName.trim(),
@@ -1856,7 +1853,6 @@ export default function AdminProdutosPage() {
         setIsCreateModalOpen(false);
         // Reset formulário
         setNewProductName('');
-        setNewProductSlug('');
         setNewProductPrice('');
         setNewProductPromoPrice('');
         setNewProductCostPrice('');

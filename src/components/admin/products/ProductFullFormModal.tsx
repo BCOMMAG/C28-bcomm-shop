@@ -26,7 +26,6 @@ import {
   Check,
   Settings,
   Truck,
-  HelpCircle,
   FolderTree
 } from 'lucide-react';
 import {
@@ -479,16 +478,16 @@ export function ProductFullFormModal({
     };
   }, [tenantId, product, isOpen]);
 
-  // Auto-geração de slug ao digitar nome no modo criação
+  // Auto-geração e padronização contínua do slug do sistema
   const handleNameChange = (val: string) => {
     setNome(val);
-    if (!isEdit && (!slug || slug === normalizeSlug(nome))) {
+    if (!isEdit || !slug) {
       setSlug(normalizeSlug(val));
     }
   };
 
   const normalizeSlug = (text: string) => {
-    return text
+    return (text || '')
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -776,7 +775,7 @@ export function ProductFullFormModal({
 
     setIsSaving(true);
     try {
-      const finalSlug = slug.trim().toLowerCase() || normalizeSlug(nome);
+      const finalSlug = normalizeSlug(slug || nome);
 
       // Especificações e Badges
       const baseSpecs = especificacoesTexto
@@ -1287,42 +1286,16 @@ export function ProductFullFormModal({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.nameField}</label>
-                    <input
-                      type="text"
-                      required
-                      value={nome}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      placeholder={t.products.fullFormModal.namePlaceholder}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <label className="text-slate-700 font-bold">{t.products.fullFormModal.slugField}</label>
-                      <div className="relative inline-flex items-center group cursor-help">
-                        <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                        <div className="absolute right-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col w-72 p-2.5 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl shadow-2xl z-50 pointer-events-none">
-                          <span>{t.products.fullFormModal.slugHelpTooltip}</span>
-                          <span className="text-amber-300 font-semibold mt-1">{t.products.fullFormModal.slugHelpWarning}</span>
-                          <span className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
-                        </div>
-                      </div>
-                    </div>
-                    <input
-                      type="text"
-                      value={slug}
-                      onChange={(e) => setSlug(normalizeSlug(e.target.value))}
-                      placeholder="ex: vestido-midi-seda-florenca"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-amber-500"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      {t.products.fullFormModal.slugAutoNotice}
-                    </p>
-                  </div>
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.nameField}</label>
+                  <input
+                    type="text"
+                    required
+                    value={nome}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder={t.products.fullFormModal.namePlaceholder}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
 
                 {/* Seletores Dinâmicos de Categoria, Subcategoria, Tecido, Modelagem e Coleção */}
