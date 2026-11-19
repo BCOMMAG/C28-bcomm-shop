@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   DollarSign,
@@ -14,7 +14,9 @@ import {
   ArrowDownUp,
   SlidersHorizontal,
   Plus,
-  X
+  X,
+  Trash2,
+  Search
 } from 'lucide-react';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -34,6 +36,9 @@ export interface ProductVariationPriceMatrixProps {
   onFeedback?: (msg: string) => void;
   onReorderTamanhos?: (newOrder: string[]) => void;
   onAddTamanhoNaCor?: (corNome: string, tamanho: string, estoqueInicial?: number) => void;
+  onUpdateEstoque?: (corNome: string, tamanho: string, novoEstoque: number) => void;
+  onDeleteCor?: (corNome: string) => void;
+  onZerarEstoqueCor?: (corNome: string) => void;
 }
 
 // Ordem clássica vestuário para botão de 1 clique
@@ -72,7 +77,10 @@ export function ProductVariationPriceMatrix({
   onChange,
   onFeedback,
   onReorderTamanhos,
-  onAddTamanhoNaCor
+  onAddTamanhoNaCor,
+  onUpdateEstoque,
+  onDeleteCor,
+  onZerarEstoqueCor
 }: ProductVariationPriceMatrixProps) {
   const { currency, t } = useAdminI18n();
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
@@ -80,10 +88,28 @@ export function ProductVariationPriceMatrix({
   // Ordem dinâmica e autônoma das colunas de tamanhos definida pelo lojista
   const [orderedSizes, setOrderedSizes] = useState<string[]>(tamanhos);
 
+  // Busca e filtro rápido de cores na matriz
+  const [colorFilter, setColorFilter] = useState('');
+
+  // Modais de ação rápida da cor
+  const [deleteConfirmColor, setDeleteConfirmColor] = useState<string | null>(null);
+  const [zeroStockConfirmColor, setZeroStockConfirmColor] = useState<string | null>(null);
+
   // Estado para popover de adicionar novo tamanho na cor
   const [addingSizeColor, setAddingSizeColor] = useState<string | null>(null);
   const [newSizeName, setNewSizeName] = useState('');
   const [newSizeStock, setNewSizeStock] = useState<number>(0);
+
+  // Cores processadas: ordenadas alfabeticamente A-Z por padrão e filtradas pela busca
+  const processedColors = useMemo(() => {
+    let list = [...cores];
+    list.sort((a, b) => a.nome.localeCompare(b.nome));
+    if (colorFilter.trim()) {
+      const q = colorFilter.trim().toLowerCase();
+      list = list.filter((c) => c.nome.toLowerCase().includes(q));
+    }
+    return list;
+  }, [cores, colorFilter]);
 
   const isLightColor = (hex: string) => {
     const clean = (hex || '').replace('#', '');
@@ -247,19 +273,38 @@ export function ProductVariationPriceMatrix({
 
   return (
     <div className="space-y-2">
-      {/* Barra de Autonomia do Lojista: Reordenação de Colunas de Tamanho */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs">
-        <div className="flex items-center gap-2 text-amber-950 font-medium">
-          <SlidersHorizontal className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>
-            <strong>Ordem das Colunas:</strong> Use as setas <span className="font-mono bg-amber-200/70 px-1 py-0.5 rounded text-[11px] font-bold">←</span> e <span className="font-mono bg-amber-200/70 px-1 py-0.5 rounded text-[11px] font-bold">→</span> no cabeçalho para organizar os tamanhos como preferir.
+      {/* Barra de Autonomia do Lojista: Busca de Cores & Reordenação de Colunas de Tamanho */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs">
+        {/* Campo de Busca Rápida de Cores */}
+        <div className="flex items-center gap-2 flex-1 max-w-sm">
+          <div className="relative w-full">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={colorFilter}
+              onChange={(e) => setColorFilter(e.target.value)}
+              placeholder="Buscar cor na grade (ex: Off-White, Preto)..."
+              className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-7 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 placeholder:font-normal"
+            />
+            {colorFilter && (
+              <button
+                type="button"
+                onClick={() => setColorFilter('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          <span className="text-[10px] text-amber-950 font-bold whitespace-nowrap bg-amber-200/70 px-2 py-1 rounded-md border border-amber-300/60 shrink-0">
+            {processedColors.length} de {cores.length} cores
           </span>
         </div>
 
         {orderedSizes.length > 1 && (
           <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
             <span className="text-[10px] text-amber-800/80 font-bold uppercase tracking-wider hidden md:inline">
-              Atalhos rápidos:
+              Ordem dos Tamanhos:
             </span>
             <button
               type="button"
@@ -273,7 +318,7 @@ export function ProductVariationPriceMatrix({
               type="button"
               onClick={handleSortAlphabetical}
               className="px-2 py-1 rounded bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[11px] cursor-pointer shadow-2xs transition-colors"
-              title="Organiza por ordem alfabética"
+              title="Organiza tamanhos por ordem alfabética"
             >
               A → Z
             </button>
@@ -324,228 +369,268 @@ export function ProductVariationPriceMatrix({
             </tr>
           </thead>
           <tbody className="divide-y divide-amber-100 bg-white">
-            {cores.map((c) => {
-              const corNome = c.nome;
-              const hex = c.hex || '#1A1918';
+            {processedColors.length === 0 ? (
+              <tr>
+                <td colSpan={orderedSizes.length + 2} className="p-8 text-center text-slate-400 text-xs">
+                  Nenhuma cor encontrada com &ldquo;{colorFilter}&rdquo;.
+                </td>
+              </tr>
+            ) : (
+              processedColors.map((c) => {
+                const corNome = c.nome;
+                const hex = c.hex || '#1A1918';
 
-              return (
-                <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
-                  <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2.5">
-                    <span
-                      className="w-5 h-5 rounded-md border border-black/20 shrink-0 shadow-2xs relative overflow-hidden"
-                      style={{ backgroundColor: hex }}
-                      title={`${corNome} (${hex})`}
-                    >
-                      {isLightColor(hex) && (
-                        <span className="absolute inset-0 border border-slate-300 rounded-md pointer-events-none" />
-                      )}
-                    </span>
-                    <span className="truncate">{corNome}</span>
-                  </td>
-
-                  {orderedSizes.map((tam) => {
-                    const key = `${corNome}_${tam}`;
-                    const customItem = precosPorVariacao[key];
-                    const hasCustom = customItem?.preco !== undefined || customItem?.preco_promocional !== undefined;
-                    const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : basePrice;
-                    const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (basePromoPrice || 0);
-
-                    // Análise de estoque para bloqueio inteligente
-                    const matchingVar = variacoes?.find(
-                      (v) => (v.cor_nome || '').trim().toLowerCase() === corNome.trim().toLowerCase() && (v.tamanho || '').trim() === tam.trim()
-                    );
-                    const existsInGrade = Boolean(matchingVar);
-                    const estoqueNum = matchingVar ? Number(matchingVar.estoque || 0) : 0;
-                    const isZeroStock = !existsInGrade || estoqueNum === 0;
-                    const isUnlockedManually = unlockedCells.has(key);
-                    const isBlocked = isZeroStock && !isUnlockedManually;
-
-                    return (
-                      <td
-                        key={tam}
-                        className={`p-2 text-center transition-colors ${
-                          isBlocked
-                            ? 'bg-slate-100/80 border border-slate-200'
-                            : isUnlockedManually
-                            ? 'bg-amber-50/40 border border-amber-300/60'
-                            : ''
-                        }`}
+                return (
+                  <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
+                    <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2.5">
+                      <span
+                        className="w-5 h-5 rounded-md border border-black/20 shrink-0 shadow-2xs relative overflow-hidden"
+                        style={{ backgroundColor: hex }}
+                        title={`${corNome} (${hex})`}
                       >
-                        <div className="space-y-1">
-                          {/* Indicador de Status de Estoque e Cadeado */}
-                          {isBlocked ? (
-                            <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold px-0.5 mb-1">
-                              <span className="flex items-center gap-1 text-slate-500">
-                                <Lock className="w-2.5 h-2.5 text-slate-400" />
-                                {existsInGrade ? t.products.matrix.stockZero : t.products.matrix.notInGrade}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setConfirmModalData({
-                                    corNome,
-                                    tam,
-                                    estoque: estoqueNum,
-                                    existsInGrade
-                                  })
-                                }
-                                className="text-amber-700 hover:text-amber-900 underline text-[9px] cursor-pointer"
-                                title={t.products.matrix.unlockNotice}
-                              >
-                                {t.products.matrix.unlockBtn}
-                              </button>
-                            </div>
-                          ) : isUnlockedManually ? (
-                            <div className="flex items-center justify-between text-[9px] text-amber-800 font-bold px-0.5 mb-1">
-                              <span className="flex items-center gap-1">
-                                <Unlock className="w-2.5 h-2.5 text-amber-600" />
-                                {t.products.matrix.unlockedBadge}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setUnlockedCells((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(key);
-                                    return next;
-                                  });
-                                }}
-                                className="text-slate-400 hover:text-slate-600 text-[9px] cursor-pointer"
-                                title={t.products.matrix.relockBtn}
-                              >
-                                {t.products.matrix.relockBtn}
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium px-0.5 mb-0.5">
-                              <span>{t.products.matrix.stockLabel}</span>
-                              <span className="font-bold text-slate-700">{estoqueNum} {t.products.matrix.stockUnit}</span>
-                            </div>
-                          )}
+                        {isLightColor(hex) && (
+                          <span className="absolute inset-0 border border-slate-300 rounded-md pointer-events-none" />
+                        )}
+                      </span>
+                      <span className="truncate">{corNome}</span>
+                    </td>
 
-                          {/* Preço de Venda do Tamanho */}
-                          <div className="relative">
-                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currencySymbol}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={precoVendaAtual || ''}
-                              readOnly={isBlocked}
-                              onClick={() => {
-                                if (isBlocked) {
-                                  setConfirmModalData({
-                                    corNome,
-                                    tam,
-                                    estoque: estoqueNum,
-                                    existsInGrade
-                                  });
-                                }
-                              }}
-                              onChange={(e) => {
-                                if (isBlocked) return;
-                                handleUpdateCellPrice(
-                                  corNome,
-                                  tam,
-                                  'preco',
-                                  parseFloat(e.target.value) || 0
-                                );
-                              }}
-                              className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
+                    {orderedSizes.map((tam) => {
+                      const key = `${corNome}_${tam}`;
+                      const customItem = precosPorVariacao[key];
+                      const hasCustom = customItem?.preco !== undefined || customItem?.preco_promocional !== undefined;
+                      const precoVendaAtual = customItem?.preco !== undefined ? customItem.preco : basePrice;
+                      const promoAtual = customItem?.preco_promocional !== undefined ? customItem.preco_promocional : (basePromoPrice || 0);
+
+                      // Análise de estoque para bloqueio inteligente
+                      const matchingVar = variacoes?.find(
+                        (v) => (v.cor_nome || '').trim().toLowerCase() === corNome.trim().toLowerCase() && (v.tamanho || '').trim() === tam.trim()
+                      );
+                      const existsInGrade = Boolean(matchingVar);
+                      const estoqueNum = matchingVar ? Number(matchingVar.estoque || 0) : 0;
+                      const isZeroStock = !existsInGrade || estoqueNum === 0;
+                      const isUnlockedManually = unlockedCells.has(key);
+                      const isBlocked = isZeroStock && !isUnlockedManually;
+
+                      return (
+                        <td
+                          key={tam}
+                          className={`p-2 text-center transition-colors ${
+                            isBlocked
+                              ? 'bg-slate-100/80 border border-slate-200'
+                              : isUnlockedManually
+                              ? 'bg-amber-50/40 border border-amber-300/60'
+                              : ''
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            {/* Controle Interativo de Estoque Físico da Variação */}
+                            <div
+                              className={`flex items-center justify-between text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
                                 isBlocked
-                                  ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed'
-                                  : customItem?.preco !== undefined && customItem.preco !== basePrice
-                                  ? 'bg-amber-100/70 border border-amber-400 text-amber-950 font-black focus:ring-1 focus:ring-amber-500'
-                                  : 'bg-white border border-slate-300 text-slate-900 focus:ring-1 focus:ring-amber-500'
+                                  ? 'bg-slate-200/60 border-slate-300 text-slate-500'
+                                  : 'bg-slate-50 border-slate-200/90 text-slate-700'
                               }`}
-                              title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thSalePrice}: ${corNome} ${tam}`}
-                            />
-                          </div>
+                            >
+                              <span className="text-[9px] font-semibold text-slate-500">
+                                {isBlocked && !existsInGrade ? 'Novo Est:' : t.products.matrix.stockLabel}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={estoqueNum}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                                    onUpdateEstoque?.(corNome, tam, val);
+                                    if (val > 0) {
+                                      setUnlockedCells((prev) => new Set([...prev, key]));
+                                    }
+                                  }}
+                                  className="w-11 bg-white border border-slate-300 rounded px-1 py-0.5 text-center font-bold text-slate-900 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-2xs"
+                                  title={`Alterar estoque de ${corNome} (${tam})`}
+                                />
+                                <span className="text-[9px] text-slate-400 font-semibold">{t.products.matrix.stockUnit}</span>
+                              </div>
+                            </div>
 
-                          {/* Preço Promocional Específico */}
-                          <div className="relative">
-                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">{currencySymbol}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={promoAtual || ''}
-                              readOnly={isBlocked}
-                              onClick={() => {
-                                if (isBlocked) {
-                                  setConfirmModalData({
-                                    corNome,
-                                    tam,
-                                    estoque: estoqueNum,
-                                    existsInGrade
-                                  });
-                                }
-                              }}
-                              onChange={(e) => {
-                                if (isBlocked) return;
-                                handleUpdateCellPrice(
-                                  corNome,
-                                  tam,
-                                  'preco_promocional',
-                                  parseFloat(e.target.value) || 0
-                                );
-                              }}
-                              placeholder={isBlocked ? t.products.matrix.blockedPlaceholder : t.products.matrix.promoPlaceholder}
-                              className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
-                                isBlocked
-                                  ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed placeholder:text-slate-400'
-                                  : 'bg-rose-50/40 border border-rose-200 text-rose-900 focus:ring-1 focus:ring-rose-500'
-                              }`}
-                              title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thPromoPrice}: ${corNome} ${tam}`}
-                            />
-                          </div>
-
-                          {/* Badge Herança vs Personalizado */}
-                          <div className="text-[9px]">
-                            {hasCustom ? (
-                              <span className="text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded">{t.products.matrix.customBadge}</span>
-                            ) : (
-                              <span className="text-slate-400">{t.products.matrix.inheritedBadge}</span>
+                            {/* Alerta de Desbloqueio se Estiver Bloqueado */}
+                            {isBlocked && (
+                              <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold px-0.5">
+                                <span className="flex items-center gap-1 text-slate-500">
+                                  <Lock className="w-2.5 h-2.5 text-slate-400" />
+                                  {existsInGrade ? t.products.matrix.stockZero : t.products.matrix.notInGrade}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmModalData({
+                                      corNome,
+                                      tam,
+                                      estoque: estoqueNum,
+                                      existsInGrade
+                                    })
+                                  }
+                                  className="text-amber-700 hover:text-amber-900 underline text-[9px] cursor-pointer"
+                                  title={t.products.matrix.unlockNotice}
+                                >
+                                  {t.products.matrix.unlockBtn}
+                                </button>
+                              </div>
                             )}
+
+                            {/* Preço de Venda do Tamanho */}
+                            <div className="relative">
+                              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currencySymbol}</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={precoVendaAtual || ''}
+                                readOnly={isBlocked}
+                                onClick={() => {
+                                  if (isBlocked) {
+                                    setConfirmModalData({
+                                      corNome,
+                                      tam,
+                                      estoque: estoqueNum,
+                                      existsInGrade
+                                    });
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  if (isBlocked) return;
+                                  handleUpdateCellPrice(
+                                    corNome,
+                                    tam,
+                                    'preco',
+                                    parseFloat(e.target.value) || 0
+                                  );
+                                }}
+                                className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
+                                  isBlocked
+                                    ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed'
+                                    : customItem?.preco !== undefined && customItem.preco !== basePrice
+                                    ? 'bg-amber-100/70 border border-amber-400 text-amber-950 font-black focus:ring-1 focus:ring-amber-500'
+                                    : 'bg-white border border-slate-300 text-slate-900 focus:ring-1 focus:ring-amber-500'
+                                }`}
+                                title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thSalePrice}: ${corNome} ${tam}`}
+                              />
+                            </div>
+
+                            {/* Preço Promocional Específico */}
+                            <div className="relative">
+                              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-rose-400">{currencySymbol}</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={promoAtual || ''}
+                                readOnly={isBlocked}
+                                onClick={() => {
+                                  if (isBlocked) {
+                                    setConfirmModalData({
+                                      corNome,
+                                      tam,
+                                      estoque: estoqueNum,
+                                      existsInGrade
+                                    });
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  if (isBlocked) return;
+                                  handleUpdateCellPrice(
+                                    corNome,
+                                    tam,
+                                    'preco_promocional',
+                                    parseFloat(e.target.value) || 0
+                                  );
+                                }}
+                                placeholder={isBlocked ? t.products.matrix.blockedPlaceholder : t.products.matrix.promoPlaceholder}
+                                className={`w-28 pl-5 pr-1.5 py-1 rounded-md text-[11px] font-mono font-bold focus:outline-none shadow-2xs ${
+                                  isBlocked
+                                    ? 'bg-slate-200/50 border border-slate-300 text-slate-500 cursor-not-allowed placeholder:text-slate-400'
+                                    : 'bg-rose-50/40 border border-rose-200 text-rose-900 focus:ring-1 focus:ring-rose-500'
+                                }`}
+                                title={isBlocked ? t.products.matrix.unlockNotice : `${t.products.matrix.thPromoPrice}: ${corNome} ${tam}`}
+                              />
+                            </div>
+
+                            {/* Badge Herança vs Personalizado */}
+                            <div className="text-[9px]">
+                              {hasCustom ? (
+                                <span className="text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded">{t.products.matrix.customBadge}</span>
+                              ) : (
+                                <span className="text-slate-400">{t.products.matrix.inheritedBadge}</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                    );
-                  })}
+                        </td>
+                      );
+                    })}
 
-                  {/* Ação da Cor */}
-                  <td className="p-2 text-center">
-                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => handleReplicarLinhaCor(corNome)}
-                        className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
-                        title={t.products.matrix.replicateInColorTooltip(corNome)}
-                      >
-                        <Copy className="w-2.5 h-2.5" />
-                        <span>{t.products.matrix.replicateInColorBtn}</span>
-                      </button>
-
-                      {onAddTamanhoNaCor && (
+                    {/* Ações da Cor Turbinadas */}
+                    <td className="p-2 text-center">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {/* 1. Replicar Preço nesta Cor */}
                         <button
                           type="button"
-                          onClick={() => {
-                            setAddingSizeColor(corNome);
-                            setNewSizeName('');
-                            setNewSizeStock(0);
-                          }}
-                          className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
-                          title={`Adicionar novo tamanho (ex: PP) diretamente na cor ${corNome}`}
+                          onClick={() => handleReplicarLinhaCor(corNome)}
+                          className="px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          title={t.products.matrix.replicateInColorTooltip(corNome)}
                         >
-                          <Plus className="w-2.5 h-2.5 text-emerald-700" />
-                          <span>+ Tam</span>
+                          <Copy className="w-2.5 h-2.5" />
+                          <span>{t.products.matrix.replicateInColorBtn}</span>
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+
+                        {/* 2. Inserir Novo Tamanho Diretamente nesta Cor */}
+                        {onAddTamanhoNaCor && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingSizeColor(corNome);
+                              setNewSizeName('');
+                              setNewSizeStock(0);
+                            }}
+                            className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
+                            title={`Adicionar novo tamanho (ex: PP) diretamente na cor ${corNome}`}
+                          >
+                            <Plus className="w-2.5 h-2.5 text-emerald-700" />
+                            <span>+ Tam</span>
+                          </button>
+                        )}
+
+                        {/* 3. Zerar Estoque de Todos os Tamanhos desta Cor */}
+                        {onZerarEstoqueCor && (
+                          <button
+                            type="button"
+                            onClick={() => setZeroStockConfirmColor(corNome)}
+                            className="px-2 py-1 rounded-md bg-slate-50 hover:bg-amber-50 text-slate-600 hover:text-amber-900 border border-slate-200 hover:border-amber-300 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
+                            title={`Zerar estoque de todos os tamanhos da cor ${corNome}`}
+                          >
+                            <RotateCcw className="w-2.5 h-2.5 text-slate-500" />
+                            <span>Zerar</span>
+                          </button>
+                        )}
+
+                        {/* 4. Excluir Cor e Todas as Variações desta Peça */}
+                        {onDeleteCor && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmColor(corNome)}
+                            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 cursor-pointer transition-colors"
+                            title={`Excluir cor ${corNome} e todas as suas variações da peça`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
 
           {/* Rodapé: Ações por Tamanho */}
@@ -742,6 +827,86 @@ export function ProductVariationPriceMatrix({
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Inserir Tamanho</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação: Excluir Cor e Todas as Variações */}
+      {deleteConfirmColor && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-rose-300 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Excluir cor &ldquo;{deleteConfirmColor}&rdquo;?
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Esta ação removerá a cor <strong>{deleteConfirmColor}</strong> e todas as suas variações da grade física e da precificação da peça.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmColor(null)}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteCor?.(deleteConfirmColor);
+                  setDeleteConfirmColor(null);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Excluir Cor e Variações
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação: Zerar Estoque da Cor */}
+      {zeroStockConfirmColor && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-amber-300 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Zerar estoque da cor &ldquo;{zeroStockConfirmColor}&rdquo;?
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  O estoque de todos os tamanhos cadastrados para a cor <strong>{zeroStockConfirmColor}</strong> será definido como 0 unidades.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setZeroStockConfirmColor(null)}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onZerarEstoqueCor?.(zeroStockConfirmColor);
+                  setZeroStockConfirmColor(null);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Zerar Estoque
               </button>
             </div>
           </div>

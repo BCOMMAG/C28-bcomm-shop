@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, Plus, Check, ChevronDown, Palette, X } from 'lucide-react';
+import { Search, Plus, Check, ChevronDown, Palette, X, AlertCircle } from 'lucide-react';
 
 export interface BoutiqueColorItem {
   nome: string;
@@ -30,6 +30,7 @@ export function AdminColorSearchSelect({
   const [isCreatingCustom, setIsCreatingCustom] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customHex, setCustomHex] = useState('#1A1918');
+  const [confirmColorModal, setConfirmColorModal] = useState<BoutiqueColorItem | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,26 @@ export function AdminColorSearchSelect({
     );
   }, [deduplicatedColors, search]);
 
+  // Detecção inteligente de cores parecidas para evitar duplicações (ex: "off" -> "Off-White")
+  const similarColors = useMemo(() => {
+    const raw = customName.trim().toLowerCase();
+    if (raw.length < 2) return [];
+
+    const cleanRaw = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+    return deduplicatedColors
+      .filter((c) => {
+        const cLower = c.nome.trim().toLowerCase();
+        const cleanC = cLower.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+        if (cleanC === cleanRaw) return true;
+        if (cleanC.includes(cleanRaw) || cleanRaw.includes(cleanC)) return true;
+        if (cleanC.startsWith(cleanRaw) || cleanRaw.startsWith(cleanC)) return true;
+        return false;
+      })
+      .slice(0, 4);
+  }, [customName, deduplicatedColors]);
+
   const activeColor = useMemo(() => {
     if (!selectedColorName) return null;
     return (
@@ -96,8 +117,17 @@ export function AdminColorSearchSelect({
   };
 
   const handleSaveCustom = () => {
-    const nomeFinal = customName.trim() || 'Nova Cor';
-    const hexFinal = customHex || '#1A1918';
+    const rawTrimmed = customName.trim();
+    if (!rawTrimmed) return;
+
+    // Normaliza e verifica se já existe cor idêntica (case-insensitive ou sem acentos)
+    const existing = deduplicatedColors.find(
+      (c) => c.nome.trim().toLowerCase() === rawTrimmed.toLowerCase()
+    );
+
+    const nomeFinal = existing ? existing.nome : (rawTrimmed.charAt(0).toUpperCase() + rawTrimmed.slice(1));
+    const hexFinal = existing ? (existing.hex || customHex || '#1A1918') : (customHex || '#1A1918');
+
     onSelectColor(nomeFinal, hexFinal);
     setIsOpen(false);
     setIsCreatingCustom(false);
@@ -262,11 +292,41 @@ export function AdminColorSearchSelect({
                 </div>
               </div>
 
+              {/* Alerta Inteligente de Cores Semelhantes / Duplicadas */}
+              {similarColors.length > 0 && (
+                <div className="p-2.5 bg-amber-100/70 border border-amber-300 rounded-xl space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-950 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span>Cores parecidas já cadastradas na boutique:</span>
+                  </div>
+                  <p className="text-[10px] text-amber-800 leading-tight">
+                    Evite cadastrar variações duplicadas (como maiúsculas/minúsculas). Clique para usar:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {similarColors.map((sc) => (
+                      <button
+                        key={sc.nome}
+                        type="button"
+                        onClick={() => setConfirmColorModal(sc)}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-200 text-amber-950 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                        title={`Clique para usar a cor existente "${sc.nome}"`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-md border border-black/20 shrink-0 shadow-2xs"
+                          style={{ backgroundColor: sc.hex }}
+                        />
+                        <span>{sc.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleSaveCustom}
                 disabled={!customName.trim()}
-                className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                className="w-full py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 Concluir e Usar Esta Cor
               </button>
@@ -297,9 +357,9 @@ export function AdminColorSearchSelect({
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Swatch Real CSS em Alta Resolução */}
+                      {/* Swatch Real CSS em Alta Resolução e Maior Nitidez */}
                       <span
-                        className="w-6 h-6 rounded-lg shrink-0 border border-black/20 shadow-2xs relative"
+                        className="w-7 h-7 rounded-lg shrink-0 border border-black/20 shadow-xs relative overflow-hidden"
                         style={{ backgroundColor: c.hex }}
                       >
                         {light && (
@@ -332,6 +392,53 @@ export function AdminColorSearchSelect({
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Pop-up de Confirmação para Reuso de Cor Existente */}
+      {confirmColorModal && (
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-amber-300 space-y-4">
+            <div className="flex items-start gap-3">
+              <span
+                className="w-9 h-9 rounded-xl border border-black/20 shrink-0 shadow-xs mt-0.5 overflow-hidden"
+                style={{ backgroundColor: confirmColorModal.hex }}
+              />
+              <div className="min-w-0 flex-1">
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Deseja usar a cor &ldquo;{confirmColorModal.nome}&rdquo;?
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Esta cor já está cadastrada na loja ({confirmColorModal.hex}). Clicando em &ldquo;Usar Cor Existente&rdquo;, você evita variações repetidas com grafias parecidas na peça.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setConfirmColorModal(null)}
+                className="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectColor(confirmColorModal.nome, confirmColorModal.hex || '#1A1918');
+                  setConfirmColorModal(null);
+                  setIsOpen(false);
+                  setIsCreatingCustom(false);
+                  setSearch('');
+                  setCustomName('');
+                }}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Usar {confirmColorModal.nome}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

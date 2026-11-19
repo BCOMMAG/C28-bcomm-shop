@@ -26,7 +26,11 @@ import {
   Check,
   Settings,
   Truck,
-  FolderTree
+  FolderTree,
+  Search,
+  RotateCcw,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import {
   AdminProductItem,
@@ -127,6 +131,10 @@ export function ProductFullFormModal({
     Array<{ id?: string; cor_nome: string; cor_hex: string; tamanho: string; estoque: number; sku?: string | null }>
   >([]);
   const [precosDiferenciados, setPrecosDiferenciados] = useState<Record<string, PrecoVariavelItem>>({});
+
+  // Organização e Performance da Grade de Estoque (Aba 3)
+  const [stockSearchTerm, setStockSearchTerm] = useState('');
+  const [stockViewMode, setStockViewMode] = useState<'grouped' | 'list'>('grouped');
 
   // Construtor Multi-Tamanhos por Cor
   const [selectedColorPreset, setSelectedColorPreset] = useState<string>('custom');
@@ -495,17 +503,76 @@ export function ProductFullFormModal({
       .replace(/(^-|-$)+/g, '');
   };
 
-  // Cores cadastradas estritamente na grade física desta peça (sem poluição de cores globais)
+  // Cores cadastradas estritamente na grade física desta peça (deduplicadas case-insensitive e ordenadas A-Z)
   const gradeColors = React.useMemo(() => {
     const map = new Map<string, { nome: string; hex?: string }>();
     variacoes.forEach((v) => {
       const trimmed = (v.cor_nome || '').trim();
-      if (trimmed && !map.has(trimmed)) {
-        map.set(trimmed, { nome: trimmed, hex: v.cor_hex || '#111' });
+      if (!trimmed) return;
+      const lower = trimmed.toLowerCase();
+      if (!map.has(lower)) {
+        const canonical = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+        map.set(lower, { nome: canonical, hex: v.cor_hex || '#111' });
       }
     });
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [variacoes]);
+
+  // Variações agrupadas por Cor para exibição limpa e ultrarrápida na Seção 3
+  const groupedVariations = React.useMemo(() => {
+    const map = new Map<string, { cor_nome: string; cor_hex: string; items: typeof variacoes }>();
+    variacoes.forEach((v) => {
+      const trimmed = (v.cor_nome || '').trim();
+      if (!trimmed) return;
+      const lower = trimmed.toLowerCase();
+      if (!map.has(lower)) {
+        const canonical = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+        map.set(lower, { cor_nome: canonical, cor_hex: v.cor_hex || '#111', items: [] });
+      }
+      map.get(lower)!.items.push(v);
+    });
+
+    let groups = Array.from(map.values());
+    groups.sort((a, b) => a.cor_nome.localeCompare(b.cor_nome));
+
+    if (stockSearchTerm.trim()) {
+      const q = stockSearchTerm.trim().toLowerCase();
+      groups = groups
+        .map((g) => {
+          const matchColor = g.cor_nome.toLowerCase().includes(q);
+          const filteredItems = g.items.filter(
+            (item) => item.tamanho.toLowerCase().includes(q) || (item.sku && item.sku.toLowerCase().includes(q))
+          );
+          if (matchColor) return g;
+          if (filteredItems.length > 0) return { ...g, items: filteredItems };
+          return null;
+        })
+        .filter(Boolean) as typeof groups;
+    }
+
+    return groups;
+  }, [variacoes, stockSearchTerm]);
+
+  // Variações em lista plana ordenadas por Cor (A-Z) e Tamanho para a visão lista
+  const sortedFlatVariations = React.useMemo(() => {
+    let list = [...variacoes];
+    list.sort((a, b) => {
+      const corComp = (a.cor_nome || '').localeCompare(b.cor_nome || '');
+      if (corComp !== 0) return corComp;
+      return (a.tamanho || '').localeCompare(b.tamanho || '');
+    });
+
+    if (stockSearchTerm.trim()) {
+      const q = stockSearchTerm.trim().toLowerCase();
+      list = list.filter(
+        (v) =>
+          (v.cor_nome || '').toLowerCase().includes(q) ||
+          (v.tamanho || '').toLowerCase().includes(q) ||
+          (v.sku || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [variacoes, stockSearchTerm]);
 
   // Cores ativas na grade somadas com cores de fotos e paleta da boutique para alimentar a galeria de mídias sem perder nenhuma cor
   const availableColorsForMedia = React.useMemo(() => {
@@ -625,6 +692,77 @@ export function ProductFullFormModal({
     showToast(`Tamanho ${cleanTam} adicionado com sucesso em ${corNome}!`, 'success');
   };
 
+  // Alteração direta de estoque de variação (chamado pela Seção 3 ou Seção 4)
+  const handleUpdateEstoqueVariacao = (corNome: string, tamanho: string, novoEstoque: number) => {
+    const cleanTam = tamanho.trim();
+    const cleanCor = corNome.trim();
+    if (!cleanTam || !cleanCor) return;
+
+    setVariacoes((prev) => {
+      const idx = prev.findIndex(
+        (v) =>
+          (v.cor_nome || '').trim().toLowerCase() === cleanCor.toLowerCase() &&
+          (v.tamanho || '').trim().toUpperCase() === cleanTam.toUpperCase()
+      );
+      if (idx !== -1) {
+        return prev.map((item, i) =>
+          i === idx ? { ...item, estoque: Math.max(0, novoEstoque) } : item
+        );
+      } else {
+        if (novoEstoque <= 0) return prev;
+        const foundCor = availableColors.find(
+          (c) => (c.nome || '').trim().toLowerCase() === cleanCor.toLowerCase()
+        );
+        const corHex = foundCor?.hex || '#1A1918';
+        const baseSlug = slug || normalizeSlug(nome) || 'PECA';
+        const genSku = `${baseSlug}-${cleanCor}-${cleanTam}`
+          .toUpperCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Z0-9-]/g, '');
+
+        const newVar = {
+          id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          cor_nome: cleanCor,
+          cor_hex: corHex,
+          tamanho: cleanTam,
+          estoque: Math.max(0, novoEstoque),
+          sku: genSku
+        };
+        return [...prev, newVar];
+      }
+    });
+  };
+
+  // Exclusão completa da cor e de todas as suas unidades
+  const handleDeleteCorVariacoes = (corNome: string) => {
+    const cleanCor = corNome.trim().toLowerCase();
+    setVariacoes((prev) =>
+      prev.filter((v) => (v.cor_nome || '').trim().toLowerCase() !== cleanCor)
+    );
+    setPrecosDiferenciados((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach((k) => {
+        if (k.toLowerCase().startsWith(`${cleanCor}_`)) {
+          delete updated[k];
+        }
+      });
+      return updated;
+    });
+    showToast(`Cor "${corNome}" e suas variações foram removidas.`);
+  };
+
+  // Zerar estoque de todos os tamanhos da cor
+  const handleZerarEstoqueCor = (corNome: string) => {
+    const cleanCor = corNome.trim().toLowerCase();
+    setVariacoes((prev) =>
+      prev.map((v) =>
+        (v.cor_nome || '').trim().toLowerCase() === cleanCor ? { ...v, estoque: 0 } : v
+      )
+    );
+    showToast(`Estoque de todos os tamanhos da cor "${corNome}" foi zerado com sucesso!`);
+  };
+
   // Cálculos em tempo real
   const parsedPromo = precoPromocional ? parseFloat(precoPromocional) : null;
   const parsedCost = precoCusto ? parseFloat(precoCusto) : null;
@@ -655,44 +793,64 @@ export function ProductFullFormModal({
     showToast(`Grade pré-definida ${preset === 'pmg' ? 'P, M, G' : '36 ao 44'} carregada no construtor!`);
   };
 
-  // Adicionar cor com múltiplos tamanhos
+  // Adicionar cor com múltiplos tamanhos com proteção anti-duplicação
   const handleFinishColorMultiSizes = () => {
     if (!newColorName.trim()) {
       showToast('Digite o nome da cor.', 'error');
       return;
     }
-    const corNomeFinal = newColorName.trim();
-    const hexFinal = newColorHex || '#111111';
+    const rawCorNome = newColorName.trim();
+    // Verifica se já existe uma cor cadastrada com grafia equivalente (case-insensitive)
+    const existingCor = variacoes.find(
+      (v) => (v.cor_nome || '').trim().toLowerCase() === rawCorNome.toLowerCase()
+    );
+    const corNomeFinal = existingCor
+      ? existingCor.cor_nome
+      : rawCorNome.charAt(0).toUpperCase() + rawCorNome.slice(1);
+    const hexFinal = existingCor ? (existingCor.cor_hex || newColorHex || '#111111') : (newColorHex || '#111111');
 
-    const newVars: typeof variacoes = [];
-    multiSizeRows.forEach((row) => {
-      if (!row.tamanho.trim()) return;
-      const skuAuto = `${slug || normalizeSlug(nome) || 'PECA'}-${corNomeFinal}-${row.tamanho.trim()}`
-        .toUpperCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^A-Z0-9-]/g, '');
+    setVariacoes((prev) => {
+      const nextVars = [...prev];
+      multiSizeRows.forEach((row) => {
+        const cleanTam = row.tamanho.trim();
+        if (!cleanTam) return;
+        const estNum = Number(row.estoque || 0);
 
-      newVars.push({
-        id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        cor_nome: corNomeFinal,
-        cor_hex: hexFinal,
-        tamanho: row.tamanho.trim(),
-        estoque: Number(row.estoque || 0),
-        sku: skuAuto
+        const existingVarIdx = nextVars.findIndex(
+          (v) =>
+            (v.cor_nome || '').trim().toLowerCase() === corNomeFinal.toLowerCase() &&
+            (v.tamanho || '').trim().toUpperCase() === cleanTam.toUpperCase()
+        );
+
+        if (existingVarIdx !== -1) {
+          nextVars[existingVarIdx] = {
+            ...nextVars[existingVarIdx],
+            estoque: nextVars[existingVarIdx].estoque + estNum
+          };
+        } else {
+          const skuAuto = `${slug || normalizeSlug(nome) || 'PECA'}-${corNomeFinal}-${cleanTam}`
+            .toUpperCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9-]/g, '');
+
+          nextVars.push({
+            id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            cor_nome: corNomeFinal,
+            cor_hex: hexFinal,
+            tamanho: cleanTam,
+            estoque: estNum,
+            sku: skuAuto
+          });
+        }
       });
+      return nextVars;
     });
 
-    if (newVars.length === 0) {
-      showToast('Adicione ao menos um tamanho para a cor.', 'error');
-      return;
-    }
-
-    setVariacoes((prev) => [...prev, ...newVars]);
     setNewColorName('');
     setSelectedColorPreset('custom');
     setMultiSizeRows([{ id: 'size_1', tamanho: 'M', estoque: 5 }]);
-    showToast(`Cor "${corNomeFinal}" com ${newVars.length} tamanhos adicionada à grade!`);
+    showToast(`Cor "${corNomeFinal}" processada com sucesso na grade!`);
   };
 
   // Salvar Novo Atributo Customizado da Loja
@@ -1493,16 +1651,61 @@ export function ProductFullFormModal({
                   </div>
                 )}
 
-                {/* Barra de Ações do Estoque */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-amber-600" />
-                    <span className="text-xs font-bold text-slate-800">
-                      {t.products.fullFormModal.secStockTitle} ({variacoes.length})
-                    </span>
+                {/* Barra de Ações do Estoque com Busca & Toggle de Visualização */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-2.5">
+                  <div className="flex items-center gap-2 flex-1 max-w-sm">
+                    <div className="relative w-full">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={stockSearchTerm}
+                        onChange={(e) => setStockSearchTerm(e.target.value)}
+                        placeholder="Filtrar por cor, tamanho ou SKU..."
+                        className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-7 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 placeholder:font-normal"
+                      />
+                      {stockSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setStockSearchTerm('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Toggle de Visualização: Agrupado por Cor vs Lista Plana */}
+                    <div className="flex items-center p-0.5 bg-slate-100 border border-slate-200 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setStockViewMode('grouped')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          stockViewMode === 'grouped'
+                            ? 'bg-white text-amber-900 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Agrupar variações por cor de forma limpa e organizada"
+                      >
+                        <LayoutGrid className="w-3 h-3 text-amber-600" />
+                        <span>Por Cor (A-Z)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStockViewMode('list')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          stockViewMode === 'list'
+                            ? 'bg-white text-amber-900 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Ver lista de todas as variações"
+                      >
+                        <List className="w-3 h-3 text-amber-600" />
+                        <span>Lista Plana</span>
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleAutoGenerateSKUs}
@@ -1510,7 +1713,7 @@ export function ProductFullFormModal({
                       title={t.products.fullFormModal.autoSkuBtn}
                     >
                       <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>{t.products.fullFormModal.autoSkuBtn}</span>
+                      <span className="hidden sm:inline">{t.products.fullFormModal.autoSkuBtn}</span>
                     </button>
 
                     <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg shrink-0">
@@ -1520,100 +1723,274 @@ export function ProductFullFormModal({
                 </div>
 
                 <div className="space-y-3">
-                  {/* Lista de Variações Existentes em Grid de 2 Colunas */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {variacoes.length === 0 ? (
-                      <div className="col-span-full p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white">
-                        {t.products.fullFormModal.emptyStockGrid}
+                  {/* Visão 1: Agrupada por Cor (Padrão de Alta Performance e Organização) */}
+                  {stockViewMode === 'grouped' ? (
+                    groupedVariations.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white">
+                        {stockSearchTerm ? `Nenhuma variação encontrada com "${stockSearchTerm}".` : t.products.fullFormModal.emptyStockGrid}
                       </div>
                     ) : (
-                      variacoes.map((v, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-amber-300 transition-colors flex items-center justify-between gap-2"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <span
-                              className="w-6 h-6 rounded-lg border border-black/20 shadow-2xs shrink-0 relative overflow-hidden"
-                              style={{ backgroundColor: v.cor_hex || '#1A1918' }}
-                              title={`${v.cor_nome} (${v.cor_hex || '#1A1918'})`}
+                      <div className="space-y-3">
+                        {groupedVariations.map((group) => {
+                          const corTotal = group.items.reduce((acc, item) => acc + Number(item.estoque || 0), 0);
+                          const isLight = isLightColor(group.cor_hex);
+
+                          return (
+                            <div
+                              key={group.cor_nome}
+                              className="rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs hover:border-amber-300 transition-all space-y-2.5"
                             >
-                              {isLightColor(v.cor_hex || '#1A1918') && (
-                                <span className="absolute inset-0 border border-slate-300 rounded-lg pointer-events-none" />
-                              )}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <span className="font-black text-slate-900 text-xs shrink-0">{v.tamanho}</span>
-                                <span className="text-slate-300 text-[10px]">&bull;</span>
-                                <span className="font-semibold text-slate-700 text-xs truncate" title={v.cor_nome}>
-                                  {v.cor_nome}
-                                </span>
-                                <span className="text-[9px] font-mono text-slate-600 bg-slate-100 px-1 py-0.2 rounded border border-slate-200 shrink-0">
-                                  {v.cor_hex || '#1A1918'}
-                                </span>
+                              {/* Header do Grupo de Cor */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span
+                                    className="w-7 h-7 rounded-xl border border-black/20 shadow-xs shrink-0 relative overflow-hidden"
+                                    style={{ backgroundColor: group.cor_hex }}
+                                    title={`${group.cor_nome} (${group.cor_hex})`}
+                                  >
+                                    {isLight && (
+                                      <span className="absolute inset-0 border border-slate-300 rounded-xl pointer-events-none" />
+                                    )}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-extrabold text-slate-900 text-sm truncate">
+                                        {group.cor_nome}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                        {group.cor_hex}
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] text-slate-500 font-medium">
+                                      {group.items.length} tamanho(s) &bull; Total: <strong>{corTotal} un</strong>
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedColorPreset(group.cor_nome);
+                                      setNewColorName(group.cor_nome);
+                                      setNewColorHex(group.cor_hex);
+                                    }}
+                                    className="px-2 py-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                    title={`Adicionar novo tamanho para a cor ${group.cor_nome}`}
+                                  >
+                                    <Plus className="w-3 h-3 text-amber-700" />
+                                    <span>+ Tam</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleZerarEstoqueCor(group.cor_nome)}
+                                    className="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 border border-slate-200 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                    title={`Zerar estoque de todos os tamanhos da cor ${group.cor_nome}`}
+                                  >
+                                    <RotateCcw className="w-3 h-3 text-slate-500" />
+                                    <span>Zerar</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCorVariacoes(group.cor_nome)}
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                    title={`Excluir cor ${group.cor_nome} e todas as suas unidades`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[9px] text-slate-400 font-mono shrink-0">SKU:</span>
-                                <input
-                                  type="text"
-                                  value={v.sku || ''}
-                                  placeholder="SKU..."
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setVariacoes((prev) =>
-                                      prev.map((item, i) => (i === idx ? { ...item, sku: val } : item))
-                                    );
-                                  }}
-                                  className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 w-28 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                />
+
+                              {/* Grade Interna de Tamanhos da Cor */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                {group.items.map((item) => (
+                                  <div
+                                    key={item.id || `${group.cor_nome}_${item.tamanho}`}
+                                    className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-amber-300 transition-all space-y-1.5"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-black text-slate-900 text-xs px-1.5 py-0.5 rounded bg-white border border-slate-200 shadow-2xs">
+                                        Tam. {item.tamanho}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setVariacoes((prev) =>
+                                            prev.filter(
+                                              (v) =>
+                                                !(
+                                                  (v.cor_nome || '').trim().toLowerCase() === group.cor_nome.toLowerCase() &&
+                                                  (v.tamanho || '').trim().toUpperCase() === item.tamanho.toUpperCase()
+                                                )
+                                            )
+                                          )
+                                        }
+                                        className="p-0.5 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                                        title={`Remover tamanho ${item.tamanho} de ${group.cor_nome}`}
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] text-slate-500 font-semibold">Qtd:</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={item.estoque}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={(e) => {
+                                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                                          handleUpdateEstoqueVariacao(group.cor_nome, item.tamanho, val);
+                                        }}
+                                        className="w-14 bg-white border border-slate-300 rounded-lg py-1 px-1.5 text-center font-bold text-slate-900 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none shadow-2xs"
+                                      />
+                                      <span className="text-[10px] text-slate-400 font-medium">un</span>
+                                    </div>
+
+                                    <div>
+                                      <input
+                                        type="text"
+                                        value={item.sku || ''}
+                                        placeholder="SKU..."
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setVariacoes((prev) =>
+                                            prev.map((v) =>
+                                              (v.cor_nome || '').trim().toLowerCase() === group.cor_nome.toLowerCase() &&
+                                              (v.tamanho || '').trim().toUpperCase() === item.tamanho.toUpperCase()
+                                                ? { ...v, sku: val }
+                                                : v
+                                            )
+                                          );
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                        title={`SKU de ${group.cor_nome} ${item.tamanho}`}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedColorPreset(v.cor_nome);
-                                setNewColorName(v.cor_nome);
-                                setNewColorHex(v.cor_hex || '#1A1918');
-                              }}
-                              className="px-1.5 py-0.5 text-amber-700 hover:text-amber-900 hover:bg-amber-50 rounded text-[10px] font-bold transition-colors cursor-pointer"
-                              title={`Selecionar ${v.cor_nome} para adicionar outros tamanhos`}
-                            >
-                              + Tam
-                            </button>
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                min="0"
-                                value={v.estoque}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => {
-                                  const val = Math.max(0, parseInt(e.target.value) || 0);
-                                  setVariacoes((prev) =>
-                                    prev.map((item, i) => (i === idx ? { ...item, estoque: val } : item))
-                                  );
-                                }}
-                                className="w-14 bg-slate-50 border border-slate-300 rounded-lg p-1 text-center font-bold text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-amber-500"
-                              />
-                              <span className="text-[10px] text-slate-400 font-medium">un</span>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setVariacoes((prev) => prev.filter((_, i) => i !== idx))}
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    /* Visão 2: Lista Plana Ordenada por Cor (A-Z) e Tamanho */
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {sortedFlatVariations.length === 0 ? (
+                        <div className="col-span-full p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white">
+                          {stockSearchTerm ? `Nenhuma variação encontrada com "${stockSearchTerm}".` : t.products.fullFormModal.emptyStockGrid}
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ) : (
+                        sortedFlatVariations.map((v) => {
+                          const isLight = isLightColor(v.cor_hex || '#1A1918');
+                          return (
+                            <div
+                              key={v.id || `${v.cor_nome}_${v.tamanho}`}
+                              className="p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-amber-300 transition-colors flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span
+                                  className="w-6 h-6 rounded-lg border border-black/20 shadow-2xs shrink-0 relative overflow-hidden"
+                                  style={{ backgroundColor: v.cor_hex || '#1A1918' }}
+                                  title={`${v.cor_nome} (${v.cor_hex || '#1A1918'})`}
+                                >
+                                  {isLight && (
+                                    <span className="absolute inset-0 border border-slate-300 rounded-lg pointer-events-none" />
+                                  )}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="font-black text-slate-900 text-xs shrink-0">{v.tamanho}</span>
+                                    <span className="text-slate-300 text-[10px]">&bull;</span>
+                                    <span className="font-semibold text-slate-700 text-xs truncate" title={v.cor_nome}>
+                                      {v.cor_nome}
+                                    </span>
+                                    <span className="text-[9px] font-mono text-slate-600 bg-slate-100 px-1 py-0.2 rounded border border-slate-200 shrink-0">
+                                      {v.cor_hex || '#1A1918'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-[9px] text-slate-400 font-mono shrink-0">SKU:</span>
+                                    <input
+                                      type="text"
+                                      value={v.sku || ''}
+                                      placeholder="SKU..."
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setVariacoes((prev) =>
+                                          prev.map((item) =>
+                                            (item.cor_nome || '').trim().toLowerCase() === (v.cor_nome || '').trim().toLowerCase() &&
+                                            (item.tamanho || '').trim().toUpperCase() === (v.tamanho || '').trim().toUpperCase()
+                                              ? { ...item, sku: val }
+                                              : item
+                                          )
+                                        );
+                                      }}
+                                      className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 w-28 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedColorPreset(v.cor_nome);
+                                    setNewColorName(v.cor_nome);
+                                    setNewColorHex(v.cor_hex || '#1A1918');
+                                  }}
+                                  className="px-1.5 py-0.5 text-amber-700 hover:text-amber-900 hover:bg-amber-50 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                                  title={`Selecionar ${v.cor_nome} para adicionar outros tamanhos`}
+                                >
+                                  + Tam
+                                </button>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={v.estoque}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      handleUpdateEstoqueVariacao(v.cor_nome, v.tamanho, val);
+                                    }}
+                                    className="w-14 bg-slate-50 border border-slate-300 rounded-lg p-1 text-center font-bold text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-amber-500"
+                                  />
+                                  <span className="text-[10px] text-slate-400 font-medium">un</span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVariacoes((prev) =>
+                                      prev.filter(
+                                        (item) =>
+                                          !(
+                                            (item.cor_nome || '').trim().toLowerCase() === (v.cor_nome || '').trim().toLowerCase() &&
+                                            (item.tamanho || '').trim().toUpperCase() === (v.tamanho || '').trim().toUpperCase()
+                                          )
+                                      )
+                                    )
+                                  }
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                  title="Remover variação"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
 
                   {/* Construtor de Nova Cor com Múltiplos Tamanhos */}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
@@ -1752,7 +2129,6 @@ export function ProductFullFormModal({
                     </button>
                   </div>
                 </div>
-              </div>
             )}
 
             {/* SEÇÃO 4: PRECIFICAÇÃO BASE, CUSTO (CMV) & VARIAÇÕES */}
@@ -1877,6 +2253,9 @@ export function ProductFullFormModal({
                     onFeedback={showToast}
                     onReorderTamanhos={handleReorderSizes}
                     onAddTamanhoNaCor={handleAddTamanhoNaCor}
+                    onUpdateEstoque={handleUpdateEstoqueVariacao}
+                    onDeleteCor={handleDeleteCorVariacoes}
+                    onZerarEstoqueCor={handleZerarEstoqueCor}
                   />
                 </div>
 
