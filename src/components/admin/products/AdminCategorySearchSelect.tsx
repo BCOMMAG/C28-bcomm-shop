@@ -85,11 +85,19 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
     }
   }, [isCreatingInline]);
 
-  // Encontra o nó ativo
+  // Encontra o nó ativo (com suporte a nó folha quando houver subcategoria)
   const activeNode = useMemo(() => {
     if (!value) return null;
+    if (subcategoria) {
+      const child = tree.find(
+        (n) =>
+          (n.parent_id === value || n.caminho_completo?.toLowerCase().includes(subcategoria.toLowerCase())) &&
+          n.nome.toLowerCase() === subcategoria.toLowerCase()
+      );
+      if (child) return child;
+    }
     return tree.find((n) => n.id === value) || null;
-  }, [value, tree]);
+  }, [value, subcategoria, tree]);
 
   // Rótulo visível no botão do combobox
   const displayLabel = useMemo(() => {
@@ -132,8 +140,16 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
       onChange(node.id, node.nome, '', node.caminho_completo || node.nome);
     } else {
       // Subcategoria / Ramificação Interna
-      // Define o nó selecionado e preenche a subcategoria com o nome da folha
-      onChange(node.id, node.nome, node.nome, node.caminho_completo || node.nome);
+      // Resolve a categoria raiz ancestral (que possui o ID oficial da tabela SQL categorias)
+      let rootNode: CategoriaNode = node;
+      let currParentId = node.parent_id;
+      while (currParentId) {
+        const parent = tree.find((p) => p.id === currParentId);
+        if (!parent) break;
+        rootNode = parent;
+        currParentId = parent.parent_id;
+      }
+      onChange(rootNode.id, rootNode.nome, node.nome, node.caminho_completo || node.nome);
     }
     setIsOpen(false);
     setSearchTerm('');

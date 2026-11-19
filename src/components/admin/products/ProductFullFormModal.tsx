@@ -1353,7 +1353,16 @@ export function ProductFullFormModal({
                           if (res.success && res.data) {
                             const freshTree = await getCategoriaTree(tenantId);
                             setCategoryTree(freshTree);
-                            setCategoriaId(res.data.id);
+                            // Garante que categoria_id aponta para o nó raiz na tabela SQL
+                            let rootId = res.data.id;
+                            let currParent = res.data.parent_id;
+                            while (currParent) {
+                              const pNode = freshTree.find((n) => n.id === currParent);
+                              if (!pNode) break;
+                              rootId = pNode.id;
+                              currParent = pNode.parent_id;
+                            }
+                            setCategoriaId(rootId);
                             if (res.data.nivel > 0) {
                               setSubcategoria(res.data.nome);
                             }
