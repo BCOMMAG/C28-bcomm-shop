@@ -134,6 +134,7 @@ function CatalogoContent() {
 
   // Parâmetros de URL iniciais
   const urlCategory = searchParams.get('categoria') || '';
+  const urlSubcategory = searchParams.get('subcategoria') || '';
   const urlStatus = searchParams.get('status') || '';
   const urlColecao = searchParams.get('colecao') || '';
   const urlFabric = searchParams.get('tecido') || '';
@@ -142,8 +143,17 @@ function CatalogoContent() {
   const urlSearch = searchParams.get('q') || '';
 
   // Função para criar o estado padrão dos filtros com seleção múltipla
-  const createDefaultFilters = (cat?: string, st?: string, col?: string, minP?: number | null, maxP?: number | null, tec?: string) => {
+  const createDefaultFilters = (
+    cat?: string,
+    st?: string,
+    col?: string,
+    minP?: number | null,
+    maxP?: number | null,
+    tec?: string,
+    sub?: string
+  ) => {
     const categories: string[] = cat && cat !== 'Todas as Peças' ? [cat] : [];
+    const subcategories: string[] = sub && sub !== 'Todas as Peças' ? [sub] : [];
     const statuses: string[] = st && st !== 'Todos' ? [st] : [];
     const collections: string[] = col ? [col] : [];
     const fabrics: string[] = tec ? [tec] : [];
@@ -156,6 +166,7 @@ function CatalogoContent() {
 
     return {
       categories,
+      subcategories,
       priceRangeIndices,
       customMinPrice: minP !== null && priceRangeIndices.length === 0 ? String(minP) : '',
       customMaxPrice: maxP !== null && priceRangeIndices.length === 0 ? String(maxP) : '',
@@ -171,30 +182,62 @@ function CatalogoContent() {
 
   // 1. Filtros Efetivamente Aplicados na Listagem de Produtos
   const [appliedFilters, setAppliedFilters] = useState(() =>
-    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric)
+    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric, urlSubcategory)
   );
 
   // 2. Filtros em Edição / Rascunho (o usuário pode mexer à vontade e depois clicar em APLICAR FILTROS)
   const [draftFilters, setDraftFilters] = useState(() =>
-    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric)
+    createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric, urlSubcategory)
   );
 
-  // Trilha Breadcrumb da Categoria Ativa
+  // Trilha Breadcrumb da Categoria Ativa e Subcategoria
   const activeBreadcrumbs = useMemo(() => {
-    if (appliedFilters.categories.length !== 1 || categoryTree.length === 0) return null;
-    const targetCat = (appliedFilters.categories[0] || '').toLowerCase().trim();
-    const targetNorm = normalizeCatString(appliedFilters.categories[0]);
-    const node = categoryTree.find(
-      (n) =>
-        n.id === appliedFilters.categories[0] ||
-        n.slug.toLowerCase() === targetCat ||
-        n.nome.toLowerCase() === targetCat ||
-        normalizeCatString(n.slug) === targetNorm ||
-        normalizeCatString(n.nome) === targetNorm
-    );
-    if (!node) return null;
-    return getCategoryBreadcrumb(node.id, categoryTree);
-  }, [appliedFilters.categories, categoryTree]);
+    const activeCat = appliedFilters.categories[0];
+    const activeSub = appliedFilters.subcategories?.[0];
+
+    if (!activeCat && !activeSub) return null;
+    if (appliedFilters.categories.length > 1) return null;
+
+    if (activeCat && categoryTree.length > 0) {
+      const targetCat = (activeCat || '').toLowerCase().trim();
+      const targetNorm = normalizeCatString(activeCat);
+      const node = categoryTree.find(
+        (n) =>
+          n.id === activeCat ||
+          n.slug.toLowerCase() === targetCat ||
+          n.nome.toLowerCase() === targetCat ||
+          normalizeCatString(n.slug) === targetNorm ||
+          normalizeCatString(n.nome) === targetNorm
+      );
+      if (node) {
+        const baseCrumbs = getCategoryBreadcrumb(node.id, categoryTree);
+        if (activeSub) {
+          return [
+            ...baseCrumbs,
+            { id: `sub-${activeSub}`, nome: activeSub, slug: activeSub.toLowerCase() } as any
+          ];
+        }
+        return baseCrumbs;
+      }
+    }
+
+    if (activeCat && activeSub) {
+      return [
+        { id: `cat-${activeCat}`, nome: activeCat, slug: activeCat.toLowerCase() } as any,
+        { id: `sub-${activeSub}`, nome: activeSub, slug: activeSub.toLowerCase() } as any
+      ];
+    }
+
+    if (activeCat) {
+      return [{ id: `cat-${activeCat}`, nome: activeCat, slug: activeCat.toLowerCase() } as any];
+    }
+
+    if (activeSub) {
+      return [{ id: `sub-${activeSub}`, nome: activeSub, slug: activeSub.toLowerCase() } as any];
+    }
+
+    return null;
+  }, [appliedFilters.categories, appliedFilters.subcategories, categoryTree]);
 
   // Coleção ativa em destaque editorial
   const activeCollection = useMemo(() => {
@@ -243,13 +286,22 @@ function CatalogoContent() {
     }
 
     const cat = searchParams.get('categoria');
+    const sub = searchParams.get('subcategoria');
     const st = searchParams.get('status');
     const col = searchParams.get('colecao');
     const tec = searchParams.get('tecido');
     const min = searchParams.get('precoMin') ? Number(searchParams.get('precoMin')) : null;
     const max = searchParams.get('precoMax') ? Number(searchParams.get('precoMax')) : null;
 
-    const updated = createDefaultFilters(cat || undefined, st || undefined, col || undefined, min, max, tec || undefined);
+    const updated = createDefaultFilters(
+      cat || undefined,
+      st || undefined,
+      col || undefined,
+      min,
+      max,
+      tec || undefined,
+      sub || undefined
+    );
     setAppliedFilters(updated);
     setDraftFilters(updated);
   }, [searchParams, setSearchQuery]);
@@ -265,16 +317,21 @@ function CatalogoContent() {
     { label: 'Dourado Champagne', value: 'Dourado Champagne', hex: '#DFBE76' }
   ];
 
-  // Identificação dinâmica de categorias ou subcategorias extras cadastradas no banco
+  // Identificação dinâmica de categorias ou subcategorias extras cadastradas no banco (sem duplicar as da árvore)
   const dynamicExtraCategories = useMemo(() => {
-    const allKnown = new Set([...CATEGORIES_ROUPAS, ...CATEGORIES_ACESSORIOS]);
+    const allKnown = new Set([
+      ...CATEGORIES_ROUPAS,
+      ...CATEGORIES_ACESSORIOS,
+      ...categoryTree.map((c) => c.nome),
+      ...categoryTree.map((c) => c.slug)
+    ]);
     const extras = new Set<string>();
     products.forEach((p) => {
       if (p.category && !allKnown.has(p.category)) extras.add(p.category);
       if (p.subcategory && !allKnown.has(p.subcategory)) extras.add(p.subcategory);
     });
     return Array.from(extras).sort();
-  }, [products]);
+  }, [products, categoryTree]);
 
   // Alternadores de Seleção Múltipla para o Rascunho de Filtros
   const toggleDraftCategory = (cat: string) => {
@@ -284,6 +341,18 @@ function CatalogoContent() {
         ? prev.categories.filter((c) => c !== cat)
         : [...prev.categories, cat]
     }));
+  };
+
+  const toggleDraftSubcategory = (sub: string) => {
+    setDraftFilters((prev) => {
+      const currentSubs = prev.subcategories || [];
+      return {
+        ...prev,
+        subcategories: currentSubs.includes(sub)
+          ? currentSubs.filter((s) => s !== sub)
+          : [...currentSubs, sub]
+      };
+    });
   };
 
   const toggleDraftPriceRange = (idx: number) => {
@@ -393,6 +462,12 @@ function CatalogoContent() {
     const updated = appliedFilters.categories.filter((c) => c !== cat);
     setAppliedFilters((prev) => ({ ...prev, categories: updated }));
     setDraftFilters((prev) => ({ ...prev, categories: updated }));
+  };
+
+  const removeAppliedSubcategory = (sub: string) => {
+    const updated = (appliedFilters.subcategories || []).filter((s) => s !== sub);
+    setAppliedFilters((prev) => ({ ...prev, subcategories: updated }));
+    setDraftFilters((prev) => ({ ...prev, subcategories: updated }));
   };
 
   const removeAppliedStatus = (st: string) => {
@@ -578,6 +653,45 @@ function CatalogoContent() {
       );
     }
 
+    // 2.1. Subcategorias Específicas (Filtro Combinado ou Isolado)
+    if (appliedFilters.subcategories && appliedFilters.subcategories.length > 0) {
+      result = result.filter((p) =>
+        appliedFilters.subcategories.some((sub) => {
+          const subLower = (sub || '').trim().toLowerCase();
+          const subNorm = normalizeCatString(sub);
+
+          if (p.subcategory) {
+            const pSubLower = p.subcategory.trim().toLowerCase();
+            const pSubNorm = normalizeCatString(p.subcategory);
+            if (pSubLower === subLower || pSubNorm === subNorm || pSubNorm.includes(subNorm) || subNorm.includes(pSubNorm)) {
+              return true;
+            }
+          }
+
+          if (categoryTree.length > 0) {
+            const subNode = categoryTree.find(
+              (n) =>
+                n.id === sub ||
+                n.slug.toLowerCase() === subLower ||
+                n.nome.toLowerCase() === subLower ||
+                normalizeCatString(n.slug) === subNorm ||
+                normalizeCatString(n.nome) === subNorm
+            );
+            if (subNode) {
+              const allowedIds = getDescendantCategoryIds(subNode.id, categoryTree);
+              if (p.categoryId && allowedIds.includes(p.categoryId)) return true;
+              const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
+              const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
+              if (p.subcategory && allowedNamesNorm.includes(normalizeCatString(p.subcategory))) return true;
+              if (p.category && allowedNamesNorm.includes(normalizeCatString(p.category))) return true;
+            }
+          }
+
+          return false;
+        })
+      );
+    }
+
     // 3. Status & Destaques (Seleção Múltipla)
     if (appliedFilters.statuses.length > 0) {
       result = result.filter((p) =>
@@ -732,6 +846,17 @@ function CatalogoContent() {
       );
     }
 
+    if (draftFilters.subcategories && draftFilters.subcategories.length > 0) {
+      result = result.filter((p) =>
+        draftFilters.subcategories.some(
+          (sub) =>
+            p.subcategory &&
+            (p.subcategory.toLowerCase() === sub.toLowerCase() ||
+              normalizeCatString(p.subcategory) === normalizeCatString(sub))
+        )
+      );
+    }
+
     if (draftFilters.statuses.length > 0) {
       result = result.filter((p) =>
         draftFilters.statuses.some((st) => {
@@ -801,6 +926,7 @@ function CatalogoContent() {
       (searchQuery.trim() !== '' ? 1 : 0) +
       (appliedFilters.collections?.length || 0) +
       appliedFilters.categories.length +
+      (appliedFilters.subcategories?.length || 0) +
       appliedFilters.statuses.length +
       appliedFilters.priceRangeIndices.length +
       (appliedFilters.customMinPrice || appliedFilters.customMaxPrice ? 1 : 0) +
@@ -1004,7 +1130,10 @@ function CatalogoContent() {
             {categoryTree.length > 0 ? (
               categoryTree.map((cat) => {
                 const depth = cat.nivel || 0;
-                const isSelected = draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id);
+                const isSubNode = depth > 0;
+                const isSelected = isSubNode
+                  ? (draftFilters.subcategories?.includes(cat.nome) || draftFilters.categories.includes(cat.nome))
+                  : (draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id));
                 const descendantIds = getDescendantCategoryIds(cat.id, categoryTree);
                 const descendantNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
                 const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
@@ -1023,7 +1152,13 @@ function CatalogoContent() {
                   <button
                     type="button"
                     key={cat.id}
-                    onClick={() => toggleDraftCategory(cat.nome)}
+                    onClick={() => {
+                      if (isSubNode) {
+                        toggleDraftSubcategory(cat.nome);
+                      } else {
+                        toggleDraftCategory(cat.nome);
+                      }
+                    }}
                     style={{ paddingLeft: `${Math.max(10, depth * 14 + 10)}px` }}
                     className={`w-full text-left py-1.5 pr-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
                       isSelected
@@ -2044,6 +2179,23 @@ function CatalogoContent() {
                         onClick={() => removeAppliedCategory(cat)}
                         className="hover:text-red-400 cursor-pointer text-[#DFBE76]"
                         title={`Remover filtro ${cat}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {appliedFilters.subcategories?.map((sub) => (
+                    <span
+                      key={sub}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none bg-black/60 dark:bg-[#1A1918]/90 border border-[#C5A059]/50 text-xs text-white font-medium shadow-sm backdrop-blur-xs"
+                    >
+                      <span className="text-[#DFBE76] font-semibold">Sub:</span>
+                      <span>{sub}</span>
+                      <button
+                        onClick={() => removeAppliedSubcategory(sub)}
+                        className="hover:text-red-400 cursor-pointer text-[#DFBE76]"
+                        title={`Remover filtro de subcategoria ${sub}`}
                       >
                         <X className="w-3 h-3" />
                       </button>

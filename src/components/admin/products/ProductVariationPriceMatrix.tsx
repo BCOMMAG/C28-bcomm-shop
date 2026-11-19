@@ -12,7 +12,9 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowDownUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Plus,
+  X
 } from 'lucide-react';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 
@@ -31,6 +33,7 @@ export interface ProductVariationPriceMatrixProps {
   onChange: (updated: Record<string, PrecoVariavelItem>) => void;
   onFeedback?: (msg: string) => void;
   onReorderTamanhos?: (newOrder: string[]) => void;
+  onAddTamanhoNaCor?: (corNome: string, tamanho: string, estoqueInicial?: number) => void;
 }
 
 // Ordem clássica vestuário para botão de 1 clique
@@ -68,13 +71,29 @@ export function ProductVariationPriceMatrix({
   precosPorVariacao,
   onChange,
   onFeedback,
-  onReorderTamanhos
+  onReorderTamanhos,
+  onAddTamanhoNaCor
 }: ProductVariationPriceMatrixProps) {
   const { currency, t } = useAdminI18n();
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
 
   // Ordem dinâmica e autônoma das colunas de tamanhos definida pelo lojista
   const [orderedSizes, setOrderedSizes] = useState<string[]>(tamanhos);
+
+  // Estado para popover de adicionar novo tamanho na cor
+  const [addingSizeColor, setAddingSizeColor] = useState<string | null>(null);
+  const [newSizeName, setNewSizeName] = useState('');
+  const [newSizeStock, setNewSizeStock] = useState<number>(0);
+
+  const isLightColor = (hex: string) => {
+    const clean = (hex || '').replace('#', '');
+    if (clean.length !== 6) return false;
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 210;
+  };
 
   // Sincroniza quando tamanhos externos mudarem preservando a ordenação customizada
   useEffect(() => {
@@ -311,11 +330,16 @@ export function ProductVariationPriceMatrix({
 
               return (
                 <tr key={corNome} className="hover:bg-amber-50/40 transition-colors">
-                  <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2">
+                  <td className="p-2.5 font-bold text-slate-800 flex items-center gap-2.5">
                     <span
-                      className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0 shadow-2xs"
+                      className="w-5 h-5 rounded-md border border-black/20 shrink-0 shadow-2xs relative overflow-hidden"
                       style={{ backgroundColor: hex }}
-                    />
+                      title={`${corNome} (${hex})`}
+                    >
+                      {isLightColor(hex) && (
+                        <span className="absolute inset-0 border border-slate-300 rounded-md pointer-events-none" />
+                      )}
+                    </span>
                     <span className="truncate">{corNome}</span>
                   </td>
 
@@ -491,15 +515,33 @@ export function ProductVariationPriceMatrix({
 
                   {/* Ação da Cor */}
                   <td className="p-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleReplicarLinhaCor(corNome)}
-                      className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1"
-                      title={t.products.matrix.replicateInColorTooltip(corNome)}
-                    >
-                      <Copy className="w-2.5 h-2.5" />
-                      <span>{t.products.matrix.replicateInColorBtn}</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleReplicarLinhaCor(corNome)}
+                        className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
+                        title={t.products.matrix.replicateInColorTooltip(corNome)}
+                      >
+                        <Copy className="w-2.5 h-2.5" />
+                        <span>{t.products.matrix.replicateInColorBtn}</span>
+                      </button>
+
+                      {onAddTamanhoNaCor && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddingSizeColor(corNome);
+                            setNewSizeName('');
+                            setNewSizeStock(0);
+                          }}
+                          className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          title={`Adicionar novo tamanho (ex: PP) diretamente na cor ${corNome}`}
+                        >
+                          <Plus className="w-2.5 h-2.5 text-emerald-700" />
+                          <span>+ Tam</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -576,6 +618,130 @@ export function ProductVariationPriceMatrix({
               >
                 <Unlock className="w-3.5 h-3.5" />
                 <span>{t.products.matrix.modalConfirmUnlockBtn}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Popover de Inserção Rápida de Tamanho na Cor */}
+      {addingSizeColor && (
+        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-amber-300 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-4 h-4 rounded-full border border-black/20 shrink-0"
+                  style={{
+                    backgroundColor:
+                      cores.find((c) => c.nome === addingSizeColor)?.hex || '#1A1918'
+                  }}
+                />
+                <h5 className="font-bold text-xs text-slate-800">
+                  Adicionar Tamanho em <span className="text-amber-800 font-extrabold">{addingSizeColor}</span>
+                </h5>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingSizeColor(null);
+                  setNewSizeName('');
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Sugestões Rápidas de Tamanhos */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                Sugestões Rápidas:
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {['PP', 'P', 'M', 'G', 'GG', 'XG', '34', '36', '38', '40', '42', '44', 'Único'].map((sug) => {
+                  const alreadyHas = (variacoes || []).some(
+                    (v) =>
+                      v.cor_nome.toLowerCase() === addingSizeColor.toLowerCase() &&
+                      v.tamanho.toUpperCase() === sug.toUpperCase()
+                  );
+                  return (
+                    <button
+                      key={sug}
+                      type="button"
+                      disabled={alreadyHas}
+                      onClick={() => setNewSizeName(sug)}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        alreadyHas
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                          : newSizeName === sug
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 hover:border-amber-300'
+                      }`}
+                    >
+                      {sug} {alreadyHas && '✓'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Inputs manuais */}
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                  Tamanho Desejado
+                </label>
+                <input
+                  type="text"
+                  value={newSizeName}
+                  onChange={(e) => setNewSizeName(e.target.value)}
+                  placeholder="Ex: PP, 36, G1..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:ring-1 focus:ring-amber-500 uppercase"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                  Estoque Inicial
+                </label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={newSizeStock}
+                    onChange={(e) => setNewSizeStock(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-xs font-bold text-slate-900 text-center focus:bg-white focus:ring-1 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-400 font-medium">un</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingSizeColor(null);
+                  setNewSizeName('');
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!newSizeName.trim()}
+                onClick={() => {
+                  if (!newSizeName.trim()) return;
+                  onAddTamanhoNaCor?.(addingSizeColor, newSizeName.trim(), newSizeStock);
+                  setAddingSizeColor(null);
+                  setNewSizeName('');
+                  setNewSizeStock(0);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Inserir Tamanho</span>
               </button>
             </div>
           </div>

@@ -727,6 +727,9 @@ export interface NavMenuSubOption {
   label: string;
   type: 'status' | 'category' | 'subcategory' | 'link' | 'fabric';
   value: string;
+  parentCategory?: string;
+  categoriaId?: string;
+  subcategoriaId?: string;
   extraCategory?: string;
   extraFabric?: string;
   customUrl?: string;
@@ -737,6 +740,9 @@ export interface NavMenuItem {
   label: string;
   type: 'status' | 'category' | 'subcategory' | 'link' | 'fabric';
   value: string;
+  parentCategory?: string;
+  categoriaId?: string;
+  subcategoriaId?: string;
   extraCategory?: string;
   extraFabric?: string;
   customUrl?: string;
@@ -2448,6 +2454,215 @@ export async function updateAdminProductFull(
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao atualizar cadastro completo da peça:', err);
     return { success: false, error: err?.message || 'Falha ao salvar alterações' };
+  }
+}
+
+// ==========================================
+// SISTEMA DE TRAVA DE CONCORRÊNCIA E PRESENÇA (PRODUCT LOCKING)
+// ==========================================
+
+export interface ProductLockInfo {
+  produto_id: string;
+  loja_id: string;
+  usuario_id: string;
+  usuario_nome: string;
+  usuario_email?: string;
+  bloqueado_em: string;
+  ultimo_heartbeat: string;
+  solicitacao_liberacao?: {
+    solicitante_id: string;
+    solicitante_nome: string;
+    solicitante_email?: string;
+    solicitado_em: string;
+  } | null;
+}
+
+export interface AcquireLockResult {
+  success: boolean;
+  lockedByOther: boolean;
+  lockInfo?: ProductLockInfo;
+  error?: string;
+}
+
+const LOCK_TTL_SECONDS = 60; // 60 segundos de tolerância sem heartbeat
+
+export async function checkOrAcquireProductLock(
+  produtoId: string,
+  lojaId: string,
+  usuario: { id: string; nome: string; email?: string }
+): Promise<AcquireLockResult> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: existingLock, error: fetchErr } = await supabase
+      .from('bloqueios_edicao_produtos')
+      .select('*')
+      .eq('produto_id', produtoId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.warn('Aviso ao consultar lock de edição:', fetchErr);
+    }
+
+    const agora = new Date();
+
+    if (existingLock) {
+      // Se o lock já pertence ao mesmo usuário:
+      if (existingLock.usuario_id === usuario.id) {
+        await supabase
+          .from('bloqueios_edicao_produtos')
+          .update({
+            ultimo_heartbeat: agora.toISOString(),
+            usuario_nome: usuario.nome || existingLock.usuario_nome,
+            usuario_email: usuario.email || existingLock.usuario_email
+          })
+          .eq('produto_id', produtoId);
+
+        return { success: true, lockedByOther: false, lockInfo: existingLock };
+      }
+
+      // Se o lock pertence a outro usuário, verificar se expirou (TTL 60s)
+      const ultimoHeartbeat = new Date(existingLock.ultimo_heartbeat || existingLock.bloqueado_em);
+      const diffSegundos = (agora.getTime() - ultimoHeartbeat.getTime()) / 1000;
+
+      if (diffSegundos < LOCK_TTL_SECONDS) {
+        // Lock ativo de outro usuário
+        return {
+          success: false,
+          lockedByOther: true,
+          lockInfo: existingLock
+        };
+      }
+
+      // Se expirou, sobrescreve o lock antigo para o usuário atual
+      await supabase
+        .from('bloqueios_edicao_produtos')
+        .delete()
+        .eq('produto_id', produtoId);
+    }
+
+    // Inserir novo lock
+    const newLockPayload: any = {
+      produto_id: produtoId,
+      loja_id: lojaId,
+      usuario_id: usuario.id,
+      usuario_nome: usuario.nome || 'Operador da Loja',
+      usuario_email: usuario.email || null,
+      bloqueado_em: agora.toISOString(),
+      ultimo_heartbeat: agora.toISOString(),
+      solicitacao_liberacao: null
+    };
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('bloqueios_edicao_produtos')
+      .upsert(newLockPayload, { onConflict: 'produto_id' })
+      .select('*')
+      .single();
+
+    if (insertErr) {
+      console.warn('Aviso ao registrar lock de edição:', insertErr);
+    }
+
+    return {
+      success: true,
+      lockedByOther: false,
+      lockInfo: inserted || newLockPayload
+    };
+  } catch (err: any) {
+    console.error('Erro em checkOrAcquireProductLock:', err);
+    return { success: true, lockedByOther: false }; // Degradação graciosa
+  }
+}
+
+export async function heartbeatProductLock(
+  produtoId: string,
+  usuarioId: string
+): Promise<{ success: boolean; solicitacaoLiberacao?: any }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data, error } = await supabase
+      .from('bloqueios_edicao_produtos')
+      .update({ ultimo_heartbeat: new Date().toISOString() })
+      .eq('produto_id', produtoId)
+      .eq('usuario_id', usuarioId)
+      .select('solicitacao_liberacao')
+      .maybeSingle();
+
+    if (error) return { success: false };
+    return { success: true, solicitacaoLiberacao: data?.solicitacao_liberacao || null };
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function releaseProductLock(
+  produtoId: string,
+  usuarioId: string
+): Promise<{ success: boolean }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    await supabase
+      .from('bloqueios_edicao_produtos')
+      .delete()
+      .eq('produto_id', produtoId)
+      .eq('usuario_id', usuarioId);
+
+    return { success: true };
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function forceAcquireProductLock(
+  produtoId: string,
+  lojaId: string,
+  usuario: { id: string; nome: string; email?: string }
+): Promise<AcquireLockResult> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const agora = new Date();
+    const payload: any = {
+      produto_id: produtoId,
+      loja_id: lojaId,
+      usuario_id: usuario.id,
+      usuario_nome: usuario.nome || 'Operador da Loja',
+      usuario_email: usuario.email || null,
+      bloqueado_em: agora.toISOString(),
+      ultimo_heartbeat: agora.toISOString(),
+      solicitacao_liberacao: null
+    };
+
+    await supabase
+      .from('bloqueios_edicao_produtos')
+      .upsert(payload, { onConflict: 'produto_id' });
+
+    return { success: true, lockedByOther: false, lockInfo: payload };
+  } catch (err: any) {
+    return { success: false, lockedByOther: false, error: err.message };
+  }
+}
+
+export async function requestUnlockProduct(
+  produtoId: string,
+  solicitante: { id: string; nome: string; email?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const solicitacao = {
+      solicitante_id: solicitante.id,
+      solicitante_nome: solicitante.nome || 'Um colega da equipe',
+      solicitante_email: solicitante.email || null,
+      solicitado_em: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('bloqueios_edicao_produtos')
+      .update({ solicitacao_liberacao: solicitacao })
+      .eq('produto_id', produtoId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
 

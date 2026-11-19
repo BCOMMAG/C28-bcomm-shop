@@ -44,11 +44,19 @@ import {
   bulkUpdateProdutosColecao,
   CategoriaNode,
   getCategoriaTree,
-  saveCategoriaNode
+  saveCategoriaNode,
+  checkOrAcquireProductLock,
+  heartbeatProductLock,
+  releaseProductLock,
+  forceAcquireProductLock,
+  requestUnlockProduct,
+  ProductLockInfo
 } from '@/lib/admin';
+import { getStoredActiveMember } from '@/lib/team';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
 import { AdminCreatableSelect } from '@/components/admin/products/AdminCreatableSelect';
 import { AdminCategorySearchSelect } from '@/components/admin/products/AdminCategorySearchSelect';
+import { AdminColorSearchSelect } from '@/components/admin/products/AdminColorSearchSelect';
 import { CrossSellPickerModal } from '@/components/admin/products/CrossSellPickerModal';
 import { ProductVariationPriceMatrix, PrecoVariavelItem } from '@/components/admin/products/ProductVariationPriceMatrix';
 import { ProductMediaGalleryManager, FormMediaItem } from '@/components/admin/products/ProductMediaGalleryManager';
@@ -174,6 +182,89 @@ export function ProductFullFormModal({
   // Toast
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (onToast) onToast(msg, type === 'info' ? 'success' : type);
+  };
+
+  // Estados de Bloqueio de Concorrência & Presença em Tempo Real
+  const [productLock, setProductLock] = useState<ProductLockInfo | null>(null);
+  const [isLockedByOther, setIsLockedByOther] = useState(false);
+  const [isReadOnlyMode, setIsReadOnlyMode] = useState(false);
+  const [lockRequestSent, setLockRequestSent] = useState(false);
+  const [incomingUnlockRequest, setIncomingUnlockRequest] = useState<{
+    solicitante_nome: string;
+    solicitado_em: string;
+  } | null>(null);
+
+  // Helper para contraste em cores claras
+  const isLightColor = (hex: string) => {
+    const clean = (hex || '').replace('#', '');
+    if (clean.length !== 6) return false;
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 210;
+  };
+
+  // Gerenciamento de Presença & Lock de Edição
+  useEffect(() => {
+    if (!isOpen || !product?.id || mode !== 'edit') {
+      setIsLockedByOther(false);
+      setIsReadOnlyMode(false);
+      setProductLock(null);
+      setLockRequestSent(false);
+      return;
+    }
+
+    const member = getStoredActiveMember();
+    const currentUser = {
+      id: member?.id || 'admin_local',
+      nome: member?.nome || 'Operador da Loja',
+      email: member?.email || undefined
+    };
+
+    let heartbeatTimer: any = null;
+
+    async function initLock() {
+      if (!product?.id) return;
+      const res = await checkOrAcquireProductLock(product.id, tenantId, currentUser);
+      if (res.lockedByOther && res.lockInfo) {
+        setProductLock(res.lockInfo);
+        setIsLockedByOther(true);
+      } else {
+        setIsLockedByOther(false);
+        setIsReadOnlyMode(false);
+        setProductLock(res.lockInfo || null);
+
+        // Inicia heartbeat a cada 20 segundos
+        heartbeatTimer = setInterval(async () => {
+          if (!product?.id) return;
+          const hbRes = await heartbeatProductLock(product.id, currentUser.id);
+          if (hbRes.solicitacaoLiberacao) {
+            setIncomingUnlockRequest(hbRes.solicitacaoLiberacao);
+          }
+        }, 20000);
+      }
+    }
+
+    initLock();
+
+    return () => {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (product?.id) {
+        releaseProductLock(product.id, currentUser.id);
+      }
+    };
+  }, [isOpen, product?.id, mode, tenantId]);
+
+  const handleCloseModal = () => {
+    if (product?.id && mode === 'edit') {
+      const member = getStoredActiveMember();
+      const userId = member?.id || 'admin_local';
+      releaseProductLock(product.id, userId);
+    }
+    setIsLockedByOther(false);
+    setIsReadOnlyMode(false);
+    onClose();
   };
 
   // Carrega preferência de visualização do localStorage
@@ -499,6 +590,42 @@ export function ProductFullFormModal({
     });
   };
 
+  // Adição direta de tamanho em uma cor na grade ou na matriz
+  const handleAddTamanhoNaCor = (corNome: string, tamanho: string, estoqueInicial: number = 0) => {
+    const cleanTam = tamanho.trim().toUpperCase();
+    if (!cleanTam) return;
+
+    const exists = variacoes.some(
+      (v) =>
+        v.cor_nome.toLowerCase() === corNome.toLowerCase() &&
+        v.tamanho.toUpperCase() === cleanTam
+    );
+    if (exists) {
+      showToast(`O tamanho ${cleanTam} já existe para a cor ${corNome}.`, 'error');
+      return;
+    }
+
+    const foundCor = availableColors.find(
+      (c) => c.nome.toLowerCase() === corNome.toLowerCase()
+    );
+    const corHex = foundCor?.hex || '#1A1918';
+
+    const newVar = {
+      id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      cor_nome: corNome,
+      cor_hex: corHex,
+      tamanho: cleanTam,
+      estoque: estoqueInicial,
+      sku: `${slug || product?.slug || 'item'}-${corNome}-${cleanTam}`.toUpperCase()
+    };
+
+    setVariacoes((prev) => [...prev, newVar]);
+    if (customSizeOrder && !customSizeOrder.includes(cleanTam)) {
+      setCustomSizeOrder((prev) => (prev ? [...prev, cleanTam] : [cleanTam]));
+    }
+    showToast(`Tamanho ${cleanTam} adicionado com sucesso em ${corNome}!`, 'success');
+  };
+
   // Cálculos em tempo real
   const parsedPromo = precoPromocional ? parseFloat(precoPromocional) : null;
   const parsedCost = precoCusto ? parseFloat(precoCusto) : null;
@@ -613,6 +740,10 @@ export function ProductFullFormModal({
 
   // SALVAR FORMULÁRIO (Criação ou Edição)
   const handleExecuteSave = async () => {
+    if (isReadOnlyMode) {
+      showToast('Esta peça está em modo somente leitura pois outro operador está com ela aberta.', 'error');
+      return;
+    }
     if (!nome.trim()) {
       showToast('Informe o nome da peça.', 'error');
       setActiveTab('geral');
@@ -806,7 +937,7 @@ export function ProductFullFormModal({
           notifyStockChangeCrossTab();
           showToast(`Peça "${nome}" atualizada com sucesso!`);
           onSaved(updatedItem, false);
-          onClose();
+          handleCloseModal();
         } else {
           showToast(res.error || 'Erro ao atualizar produto.', 'error');
         }
@@ -911,7 +1042,7 @@ export function ProductFullFormModal({
           notifyStockChangeCrossTab();
           showToast(`Peça "${nome}" cadastrada com sucesso no catálogo!`);
           onSaved(newItem, true);
-          onClose();
+          handleCloseModal();
         } else {
           showToast(res.error || 'Erro ao cadastrar produto.', 'error');
         }
@@ -1035,7 +1166,7 @@ export function ProductFullFormModal({
             </button>
 
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
               title="Esc"
             >
@@ -1043,6 +1174,42 @@ export function ProductFullFormModal({
             </button>
           </div>
         </div>
+
+        {/* Banner de Solicitação de Liberação Recebida */}
+        {incomingUnlockRequest && (
+          <div className="bg-amber-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-3 shadow-sm animate-in slide-in-from-top-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🔔</span>
+              <span>
+                <strong>{incomingUnlockRequest.solicitante_nome}</strong> solicitou acesso para editar esta peça. Salve ou libere a tela quando possível.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIncomingUnlockRequest(null)}
+              className="p-1 hover:bg-amber-700 rounded text-white cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Banner de Modo Somente Leitura */}
+        {isReadOnlyMode && (
+          <div className="bg-slate-900 text-amber-300 px-4 py-2 text-xs font-bold flex items-center justify-between gap-2 shadow-inner">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>MODO SOMENTE LEITURA: Esta peça está em edição por outro operador. Alterações não poderão ser salvas.</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="text-white hover:text-amber-200 underline text-[11px] cursor-pointer"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
 
         {/* ============================================================== */}
         {/* NAVEGAÇÃO: ABAS OU ÂNCORAS NO MODO SCROLL                      */}
@@ -1385,16 +1552,23 @@ export function ProductFullFormModal({
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <span
-                              className="w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0"
-                              style={{ backgroundColor: v.cor_hex || '#111' }}
-                              title={`${v.cor_nome} (${v.cor_hex || '#111'})`}
-                            />
+                              className="w-6 h-6 rounded-lg border border-black/20 shadow-2xs shrink-0 relative overflow-hidden"
+                              style={{ backgroundColor: v.cor_hex || '#1A1918' }}
+                              title={`${v.cor_nome} (${v.cor_hex || '#1A1918'})`}
+                            >
+                              {isLightColor(v.cor_hex || '#1A1918') && (
+                                <span className="absolute inset-0 border border-slate-300 rounded-lg pointer-events-none" />
+                              )}
+                            </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 truncate">
                                 <span className="font-black text-slate-900 text-xs shrink-0">{v.tamanho}</span>
                                 <span className="text-slate-300 text-[10px]">&bull;</span>
                                 <span className="font-semibold text-slate-700 text-xs truncate" title={v.cor_nome}>
                                   {v.cor_nome}
+                                </span>
+                                <span className="text-[9px] font-mono text-slate-600 bg-slate-100 px-1 py-0.2 rounded border border-slate-200 shrink-0">
+                                  {v.cor_hex || '#1A1918'}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 mt-0.5">
@@ -1416,6 +1590,18 @@ export function ProductFullFormModal({
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedColorPreset(v.cor_nome);
+                                setNewColorName(v.cor_nome);
+                                setNewColorHex(v.cor_hex || '#1A1918');
+                              }}
+                              className="px-1.5 py-0.5 text-amber-700 hover:text-amber-900 hover:bg-amber-50 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                              title={`Selecionar ${v.cor_nome} para adicionar outros tamanhos`}
+                            >
+                              + Tam
+                            </button>
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
@@ -1479,76 +1665,19 @@ export function ProductFullFormModal({
                       </div>
                     </div>
 
-                    {/* Seletor de Cores da Boutique ou Personalizada */}
+                    {/* Seletor de Cores da Boutique com Busca e Swatches Reais */}
                     <div className="space-y-2.5">
-                      <div>
-                        <label className="block text-slate-700 text-xs mb-1 font-bold">
-                          {t.products.fullFormModal.selectColorLabel}
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-8 h-8 rounded-lg border border-slate-300 shadow-2xs shrink-0"
-                            style={{ backgroundColor: newColorHex }}
-                          />
-                          <select
-                            value={selectedColorPreset}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setSelectedColorPreset(val);
-                              if (val === 'custom') {
-                                setNewColorName('');
-                                setNewColorHex('#111111');
-                              } else {
-                                const found = BOUTIQUE_OFFICIAL_COLORS.find((c) => c.nome === val);
-                                if (found) {
-                                  setNewColorName(found.nome);
-                                  setNewColorHex(found.hex);
-                                }
-                              }
-                            }}
-                            className="flex-1 bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs focus:ring-1 focus:ring-amber-500"
-                          >
-                            <option value="custom">{t.products.fullFormModal.customColorOption}</option>
-                            {BOUTIQUE_OFFICIAL_COLORS.map((c) => (
-                              <option key={c.nome} value={c.nome}>
-                                ■ {c.nome} ({c.hex})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {selectedColorPreset === 'custom' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white border border-slate-200 rounded-xl">
-                          <div>
-                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">{t.products.fullFormModal.customColorNameLabel}</label>
-                            <input
-                              type="text"
-                              value={newColorName}
-                              onChange={(e) => setNewColorName(e.target.value)}
-                              placeholder="Ex: Terracota Nobre, Off White, Nude..."
-                              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs font-semibold focus:bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-600 text-[11px] mb-1 font-semibold">{t.products.fullFormModal.customColorHexLabel}</label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="color"
-                                value={newColorHex}
-                                onChange={(e) => setNewColorHex(e.target.value)}
-                                className="w-8 h-8 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white shrink-0"
-                              />
-                              <input
-                                type="text"
-                                value={newColorHex}
-                                onChange={(e) => setNewColorHex(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs font-semibold focus:bg-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <AdminColorSearchSelect
+                        label={t.products.fullFormModal.selectColorLabel}
+                        selectedColorName={newColorName || (selectedColorPreset !== 'custom' ? selectedColorPreset : '')}
+                        selectedColorHex={newColorHex}
+                        availableColors={availableColors}
+                        onSelectColor={(corNome, corHex) => {
+                          setSelectedColorPreset(corNome);
+                          setNewColorName(corNome);
+                          setNewColorHex(corHex);
+                        }}
+                      />
                     </div>
 
                     {/* Lista de Tamanhos para esta Cor */}
@@ -1765,6 +1894,7 @@ export function ProductFullFormModal({
                     onChange={(updated) => setPrecosDiferenciados(updated)}
                     onFeedback={showToast}
                     onReorderTamanhos={handleReorderSizes}
+                    onAddTamanhoNaCor={handleAddTamanhoNaCor}
                   />
                 </div>
 
@@ -2090,7 +2220,7 @@ export function ProductFullFormModal({
           <div className="flex items-center gap-2.5 ml-auto">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCloseModal}
               disabled={isSaving}
               className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
@@ -2195,6 +2325,115 @@ export function ProductFullFormModal({
               >
                 Continuar e Salvar Tudo
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Conflito de Concorrência e Bloqueio de Edição */}
+      {isLockedByOther && productLock && (
+        <div className="fixed inset-0 z-70 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-amber-400 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-inner">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-slate-900 text-base">
+                  Peça em Edição no Momento
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  O produto <strong>{product?.nome}</strong> está sendo editado neste momento por{' '}
+                  <span className="font-extrabold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                    {productLock.usuario_nome}
+                  </span>
+                  {productLock.usuario_email && (
+                    <span className="block text-[11px] text-slate-500 mt-0.5">
+                      ({productLock.usuario_email})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-900 space-y-1.5">
+              <p className="font-bold">Para evitar sobreposição ou perda de dados:</p>
+              <p className="text-slate-600 leading-relaxed">
+                Você pode solicitar liberação para que o colega conclua a edição, abrir em modo de consulta para visualizar informações ou assumir a edição conscientemente.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsReadOnlyMode(true);
+                    setIsLockedByOther(false);
+                    showToast('Visualizando em Modo Somente Leitura (alterações não serão salvas).', 'info');
+                  }}
+                  className="flex-1 py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  👁️ Modo Consulta
+                </button>
+
+                <button
+                  type="button"
+                  disabled={lockRequestSent}
+                  onClick={async () => {
+                    if (!product?.id) return;
+                    const member = getStoredActiveMember();
+                    const reqUser = {
+                      id: member?.id || 'admin_local',
+                      nome: member?.nome || 'Operador da Loja',
+                      email: member?.email || undefined
+                    };
+                    const res = await requestUnlockProduct(product.id, reqUser);
+                    if (res.success) {
+                      setLockRequestSent(true);
+                      showToast(`Solicitação enviada para ${productLock.usuario_nome}!`, 'success');
+                    } else {
+                      showToast('Falha ao enviar solicitação.', 'error');
+                    }
+                  }}
+                  className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1"
+                >
+                  {lockRequestSent ? '✓ Solicitado' : '🔔 Avisar Operador'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                >
+                  Fechar Janela
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!product?.id) return;
+                    const member = getStoredActiveMember();
+                    const reqUser = {
+                      id: member?.id || 'admin_local',
+                      nome: member?.nome || 'Operador da Loja',
+                      email: member?.email || undefined
+                    };
+                    const forceRes = await forceAcquireProductLock(product.id, tenantId, reqUser);
+                    if (forceRes.success) {
+                      setIsLockedByOther(false);
+                      setIsReadOnlyMode(false);
+                      setProductLock(forceRes.lockInfo || null);
+                      showToast('Você assumiu a edição da peça.', 'info');
+                    }
+                  }}
+                  className="text-[11px] text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer"
+                >
+                  Assumir Edição Forçada
+                </button>
+              </div>
             </div>
           </div>
         </div>

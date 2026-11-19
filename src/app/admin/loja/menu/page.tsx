@@ -86,6 +86,7 @@ export default function AdminMenuPage() {
   const [subLabel, setSubLabel] = useState('');
   const [subType, setSubType] = useState<'status' | 'category' | 'subcategory' | 'link' | 'fabric'>('category');
   const [subValue, setSubValue] = useState('');
+  const [subParentCategory, setSubParentCategory] = useState('');
   const [subCustomUrl, setSubCustomUrl] = useState('');
   const [subExtraCategory, setSubExtraCategory] = useState('');
   const [subExtraFabric, setSubExtraFabric] = useState('');
@@ -286,6 +287,51 @@ export default function AdminMenuPage() {
     handleSaveMenu(updatedConfig);
   };
 
+  // Busca inteligente de subcategorias filhas pertencentes a uma categoria pai
+  const getSubcategoriesForParent = (parentName: string): string[] => {
+    if (!parentName) return [];
+    const subs = new Set<string>();
+
+    // 1. Da lista de categorias cadastradas do lojista
+    const catObj = categories.find(
+      (c) => c.nome.toLowerCase() === parentName.toLowerCase() || c.id === parentName
+    );
+    if (catObj && Array.isArray(catObj.subcategorias)) {
+      catObj.subcategorias.forEach((s) => {
+        if (s && s.trim()) subs.add(s.trim());
+      });
+    }
+
+    // 2. Da árvore de categorias do tenant
+    const tree = currentTenant?.configuracoes_visuais?.arvore_categorias || [];
+    const parentNode = tree.find(
+      (n: any) =>
+        n.nome.toLowerCase() === parentName.toLowerCase() ||
+        n.id === parentName ||
+        n.slug.toLowerCase() === parentName.toLowerCase()
+    );
+    if (parentNode) {
+      tree
+        .filter((n: any) => n.parent_id === parentNode.id)
+        .forEach((c: any) => {
+          if (c.nome && c.nome.trim()) subs.add(c.nome.trim());
+        });
+    }
+
+    // 3. Dos produtos cadastrados com essa categoria pai
+    products.forEach((p) => {
+      const isMatch =
+        (p.categoria_nome && p.categoria_nome.toLowerCase() === parentName.toLowerCase()) ||
+        (catObj && p.categoria_id === catObj.id) ||
+        (parentNode && p.categoria_id === parentNode.id);
+      if (isMatch && p.subcategoria && p.subcategoria.trim()) {
+        subs.add(p.subcategoria.trim());
+      }
+    });
+
+    return Array.from(subs);
+  };
+
   // Subopções: Salvar modal de subopção
   const handleSaveSubOption = (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,10 +341,13 @@ export default function AdminMenuPage() {
     }
 
     const newSub: NavMenuSubOption = {
-      id: `sub-${Date.now()}`,
+      id: editingSubIndex !== null && itemSubOptions[editingSubIndex]?.id
+        ? itemSubOptions[editingSubIndex].id
+        : `sub-${Date.now()}`,
       label: subLabel.trim(),
       type: subType,
-      value: subValue,
+      value: subValue.trim(),
+      parentCategory: subType === 'subcategory' ? (subParentCategory.trim() || undefined) : undefined,
       customUrl: subCustomUrl.trim() || undefined,
       extraCategory: subExtraCategory.trim() || undefined,
       extraFabric: subExtraFabric.trim() || undefined
@@ -318,12 +367,54 @@ export default function AdminMenuPage() {
   const handleOpenAddSub = () => {
     setEditingSubIndex(null);
     setSubLabel('');
-    setSubType('category');
-    setSubValue(categories[0]?.nome || '');
+    setSubType('subcategory');
+    const defaultParent = itemType === 'category' && itemValue ? itemValue : (categories[0]?.nome || '');
+    setSubParentCategory(defaultParent);
+    const availableSubs = getSubcategoriesForParent(defaultParent);
+    const initialSubVal = availableSubs[0] || '';
+    setSubValue(initialSubVal);
+    if (initialSubVal) setSubLabel(initialSubVal);
     setSubCustomUrl('');
     setSubExtraCategory('');
     setSubExtraFabric('');
     setSubModalOpen(true);
+  };
+
+  const handleOpenEditSub = (subIdx: number) => {
+    const target = itemSubOptions[subIdx];
+    if (!target) return;
+    setEditingSubIndex(subIdx);
+    setSubLabel(target.label || '');
+    setSubType(target.type || 'category');
+    setSubValue(target.value || '');
+    const parentVal = target.parentCategory || (itemType === 'category' ? itemValue : (categories[0]?.nome || ''));
+    setSubParentCategory(parentVal);
+    setSubCustomUrl(target.customUrl || '');
+    setSubExtraCategory(target.extraCategory || '');
+    setSubExtraFabric(target.extraFabric || '');
+    setSubModalOpen(true);
+  };
+
+  const handleMoveSubOptionUp = (idx: number) => {
+    if (idx <= 0) return;
+    setItemSubOptions((prev) => {
+      const copy = [...prev];
+      const temp = copy[idx - 1];
+      copy[idx - 1] = copy[idx];
+      copy[idx] = temp;
+      return copy;
+    });
+  };
+
+  const handleMoveSubOptionDown = (idx: number) => {
+    if (idx >= itemSubOptions.length - 1) return;
+    setItemSubOptions((prev) => {
+      const copy = [...prev];
+      const temp = copy[idx + 1];
+      copy[idx + 1] = copy[idx];
+      copy[idx] = temp;
+      return copy;
+    });
   };
 
   const handleRemoveSubOption = (subIdx: number) => {
@@ -924,25 +1015,69 @@ export default function AdminMenuPage() {
                   </div>
 
                   {itemSubOptions.length > 0 ? (
-                    <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 max-h-48 overflow-y-auto">
+                    <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 max-h-56 overflow-y-auto">
                       {itemSubOptions.map((sub, sIdx) => (
                         <div
                           key={sub.id || sIdx}
-                          className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs"
+                          className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs group hover:border-slate-300 transition-colors"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800">{sub.label}</span>
-                            <span className="text-[10px] text-slate-400">
-                              ({sub.type}: {sub.value})
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
+                              {sIdx + 1}
                             </span>
+                            <div className="truncate">
+                              <span className="font-bold text-slate-900 block truncate">{sub.label}</span>
+                              <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                <span className="uppercase font-semibold tracking-wider text-amber-700 bg-amber-50 px-1 py-0.2 rounded text-[9px]">
+                                  {sub.type}
+                                </span>
+                                {sub.parentCategory ? (
+                                  <span className="text-slate-600 font-medium truncate">
+                                    {sub.parentCategory} &gt; {sub.value}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 truncate">{sub.value}</span>
+                                )}
+                              </span>
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSubOption(sIdx)}
-                            className="text-slate-400 hover:text-rose-600 p-0.5"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+
+                          <div className="flex items-center gap-1 shrink-0 ml-2">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveSubOptionUp(sIdx)}
+                              disabled={sIdx === 0}
+                              title="Mover para Cima"
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveSubOptionDown(sIdx)}
+                              disabled={sIdx === itemSubOptions.length - 1}
+                              title="Mover para Baixo"
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditSub(sIdx)}
+                              title="Editar Submenu"
+                              className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSubOption(sIdx)}
+                              title="Excluir Submenu"
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -976,22 +1111,29 @@ export default function AdminMenuPage() {
         </div>
       )}
 
-      {/* MODAL SECUNDÁRIO: ADICIONAR SUBMENU SUSPENSO */}
+      {/* MODAL SECUNDÁRIO: ADICIONAR / EDITAR SUBMENU SUSPENSO */}
       {subModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 className="text-sm font-bold text-slate-900">{t.storeMenu.subModalHeading}</h4>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                  <Sliders className="w-3.5 h-3.5" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  {editingSubIndex !== null ? 'Editar Submenu Suspenso' : t.storeMenu.subModalHeading}
+                </h4>
+              </div>
               <button
                 type="button"
                 onClick={() => setSubModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveSubOption} className="space-y-3">
+            <form onSubmit={handleSaveSubOption} className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                   {t.storeMenu.subTextLabel}
@@ -1002,7 +1144,7 @@ export default function AdminMenuPage() {
                   value={subLabel}
                   onChange={(e) => setSubLabel(e.target.value)}
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-amber-400 shadow-2xs"
                 />
               </div>
 
@@ -1013,18 +1155,111 @@ export default function AdminMenuPage() {
                 <select
                   value={subType}
                   onChange={(e) => {
-                    setSubType(e.target.value as any);
-                    if (e.target.value === 'category') setSubValue(categories[0]?.nome || '');
-                    if (e.target.value === 'status') setSubValue('Lançamento');
+                    const newType = e.target.value as any;
+                    setSubType(newType);
+                    if (newType === 'category') {
+                      setSubValue(categories[0]?.nome || '');
+                    } else if (newType === 'subcategory') {
+                      const parent = subParentCategory || (itemType === 'category' ? itemValue : (categories[0]?.nome || ''));
+                      setSubParentCategory(parent);
+                      const childSubs = getSubcategoriesForParent(parent);
+                      const firstChild = childSubs[0] || '';
+                      setSubValue(firstChild);
+                      if (!subLabel && firstChild) setSubLabel(firstChild);
+                    } else if (newType === 'status') {
+                      setSubValue(colecoes[0]?.nome || 'Lançamento');
+                    }
                   }}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400 shadow-2xs"
                 >
+                  <option value="subcategory">Subcategoria (Hierárquica com Categoria Pai)</option>
                   <option value="category">{t.storeMenu.destTypeCategory}</option>
-                  <option value="subcategory">{t.storeMenu.subTypeSubcategory}</option>
                   <option value="status">{t.storeMenu.destTypeStatus}</option>
                   <option value="link">{t.storeMenu.destTypeCustom}</option>
                 </select>
               </div>
+
+              {/* SELEÇÃO EM CASCATA: CATEGORIA PAI -> SUBCATEGORIA FILHA */}
+              {subType === 'subcategory' && (
+                <div className="space-y-3 p-3 bg-amber-50/40 rounded-xl border border-amber-200/70">
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-900 uppercase mb-1">
+                      1. Categoria Pai (Origem na Boutique)
+                    </label>
+                    <select
+                      value={subParentCategory}
+                      onChange={(e) => {
+                        const newParent = e.target.value;
+                        setSubParentCategory(newParent);
+                        const childSubs = getSubcategoriesForParent(newParent);
+                        const firstChild = childSubs[0] || '';
+                        setSubValue(firstChild);
+                        if (!subLabel || childSubs.includes(subLabel) || categories.some((c) => c.nome === subLabel)) {
+                          if (firstChild) setSubLabel(firstChild);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.nome}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-amber-800/70 mt-1">
+                      O submenu pertencerá à categoria &quot;{subParentCategory}&quot;, filtrando precisamente as peças desta categoria.
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold text-amber-900 uppercase">
+                        2. Subcategoria em &quot;{subParentCategory}&quot;
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100/60 px-1.5 py-0.2 rounded">
+                        {getSubcategoriesForParent(subParentCategory).length} encontradas
+                      </span>
+                    </div>
+
+                    {getSubcategoriesForParent(subParentCategory).length > 0 ? (
+                      <select
+                        value={subValue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSubValue(val);
+                          if (!subLabel || getSubcategoriesForParent(subParentCategory).includes(subLabel)) {
+                            setSubLabel(val);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-400"
+                      >
+                        {getSubcategoriesForParent(subParentCategory).map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder="Digite o nome da nova subcategoria..."
+                          value={subValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSubValue(val);
+                            if (!subLabel) setSubLabel(val);
+                          }}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-amber-300 bg-white focus:outline-none focus:border-amber-500"
+                        />
+                        <p className="text-[10px] text-amber-800/80 italic">
+                          Nenhuma subcategoria prévia em &quot;{subParentCategory}&quot;. Digite o nome da nova subcategoria acima.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {subType === 'category' && (
                 <div>
@@ -1033,31 +1268,15 @@ export default function AdminMenuPage() {
                   </label>
                   <select
                     value={subValue}
-                    onChange={(e) => setSubValue(e.target.value)}
+                    onChange={(e) => {
+                      setSubValue(e.target.value);
+                      if (!subLabel) setSubLabel(e.target.value);
+                    }}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.nome}>
                         {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {subType === 'subcategory' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Subcategoria
-                  </label>
-                  <select
-                    value={subValue}
-                    onChange={(e) => setSubValue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
-                  >
-                    {allSubcategories.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
                       </option>
                     ))}
                   </select>
@@ -1115,11 +1334,11 @@ export default function AdminMenuPage() {
               {subType === 'link' && (
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    URL
+                    URL ou Caminho Interno
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: /cliente"
+                    placeholder="Ex: /cliente ou https://..."
                     value={subCustomUrl}
                     onChange={(e) => setSubCustomUrl(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200"
@@ -1131,15 +1350,15 @@ export default function AdminMenuPage() {
                 <button
                   type="button"
                   onClick={() => setSubModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
                 >
-                  {t.storeMenu.subModalConfirmBtn}
+                  {editingSubIndex !== null ? 'Salvar Submenu' : t.storeMenu.subModalConfirmBtn}
                 </button>
               </div>
             </form>

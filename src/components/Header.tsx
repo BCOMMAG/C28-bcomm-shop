@@ -37,6 +37,7 @@ export interface SubOption {
   label: string;
   type: string;
   value: string;
+  parentCategory?: string;
   extraCategory?: string;
   extraFabric?: string;
   customUrl?: string;
@@ -47,6 +48,7 @@ export interface NavItem {
   label: string;
   type: string;
   value: string;
+  parentCategory?: string;
   isSpecial?: boolean;
   customUrl?: string;
   badge?: {
@@ -383,6 +385,7 @@ export const Header: React.FC<HeaderProps> = ({
   const handleNavClick = (item: {
     type?: string;
     value?: string;
+    parentCategory?: string;
     extraCategory?: string;
     extraFabric?: string;
     customUrl?: string;
@@ -414,7 +417,16 @@ export const Header: React.FC<HeaderProps> = ({
       if (item.extraCategory) {
         params.set('categoria', item.extraCategory);
       }
-    } else if (item.type === 'category' || item.type === 'subcategory') {
+    } else if (item.type === 'subcategory') {
+      const parent = item.parentCategory || item.extraCategory;
+      if (parent) {
+        params.set('categoria', parent);
+      }
+      params.set('subcategoria', item.value || '');
+      if (item.extraFabric) {
+        params.set('tecido', item.extraFabric);
+      }
+    } else if (item.type === 'category') {
       params.set('categoria', item.value || '');
       if (item.extraFabric) {
         params.set('tecido', item.extraFabric);
@@ -601,7 +613,10 @@ export const Header: React.FC<HeaderProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                      e.stopPropagation();
-                                     handleNavClick(sub);
+                                     handleNavClick({
+                                       ...sub,
+                                       parentCategory: sub.parentCategory || (item.type === 'category' ? item.value : undefined)
+                                     });
                                   }}
                                   className="w-full text-left text-xs py-1.5 px-2.5 text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#252220] hover:text-[color:var(--menu-hover-color)] transition-colors rounded-none truncate cursor-pointer"
                                 >
@@ -969,7 +984,12 @@ export const Header: React.FC<HeaderProps> = ({
                             <button
                               key={sub.id || sub.label}
                               type="button"
-                              onClick={() => handleNavClick(sub)}
+                              onClick={() =>
+                                handleNavClick({
+                                  ...sub,
+                                  parentCategory: sub.parentCategory || (item.type === 'category' ? item.value : undefined)
+                                })
+                              }
                               className="w-full text-left py-2 px-2.5 text-xs sm:text-sm font-medium text-[#57534E] dark:text-[#D6D3D1] hover:text-[#C5A059] dark:hover:text-[#DFBE76] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-between cursor-pointer"
                             >
                               <span>{sub.label}</span>

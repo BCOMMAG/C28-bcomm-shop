@@ -76,7 +76,16 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "type": "category",
           "label": "VERÃO",
           "value": "Verão",
-          "isSpecial": false
+          "isSpecial": false,
+          "subOptions": [
+            {
+              "id": "sub-1795089048862",
+              "type": "subcategory",
+              "label": "Regatas",
+              "value": "Regatas",
+              "parentCategory": "Verão"
+            }
+          ]
         },
         {
           "id": "nav-1795019502866",
