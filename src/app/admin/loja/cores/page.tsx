@@ -704,16 +704,7 @@ export default function StoreColorsManagementPage() {
 
                       {/* Nome da Cor */}
                       <td className="py-3 px-4 font-bold text-slate-900 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span>{color.nome}</span>
-                          {BOUTIQUE_OFFICIAL_COLORS.some(
-                            (b) => b.nome.toLowerCase() === color.nome.toLowerCase()
-                          ) && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-semibold">
-                              Oficial
-                            </span>
-                          )}
-                        </div>
+                        <span>{color.nome}</span>
                       </td>
 
                       {/* Código HEX com botão de copiar */}
