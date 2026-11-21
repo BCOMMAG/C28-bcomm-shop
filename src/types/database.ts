@@ -123,6 +123,9 @@ export interface LojaConfiguracoesFinanceiras {
   tipo_chave_pix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pix_titular?: string;
   pix_banco?: string;
+  max_parcelas_sem_juros?: number;
+  parcela_minima_valor?: number;
+  parcelamento_ativo?: boolean;
 }
 
 export interface Loja {

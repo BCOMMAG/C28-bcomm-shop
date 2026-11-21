@@ -96,6 +96,15 @@ interface StoreContextType {
   storeLanguage: string;
   formatStorePrice: (val: number, overrideCurrency?: string) => string;
   st: StorefrontTranslations;
+  // Parcelamento Dinâmico da Loja
+  maxInstallments: number;
+  minInstallmentValue: number;
+  isInstallmentsActive: boolean;
+  getInstallmentsInfo: (amount: number) => {
+    installments: number;
+    installmentValue: number;
+    formattedText: string;
+  };
   // Acesso Supremo Master God Mode
   switchTenant: (storeOrSlugOrId: Loja | string) => Promise<void>;
   isMaster: boolean;
@@ -1244,6 +1253,59 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return getStorefrontTranslation(storeLanguage);
   }, [storeLanguage]);
 
+  // Configuração Dinâmica de Parcelamento Sem Juros
+  const maxInstallments = useMemo(() => {
+    const fin = (currentTenant as any)?.configuracoes_financeiras;
+    const val = Number(fin?.max_parcelas_sem_juros);
+    return !isNaN(val) && val > 0 ? val : 3;
+  }, [currentTenant]);
+
+  const minInstallmentValue = useMemo(() => {
+    const fin = (currentTenant as any)?.configuracoes_financeiras;
+    const val = Number(fin?.parcela_minima_valor);
+    return !isNaN(val) && val > 0 ? val : 0;
+  }, [currentTenant]);
+
+  const isInstallmentsActive = useMemo(() => {
+    const fin = (currentTenant as any)?.configuracoes_financeiras;
+    return fin?.parcelamento_ativo !== undefined ? Boolean(fin.parcelamento_ativo) : true;
+  }, [currentTenant]);
+
+  const getInstallmentsInfo = useCallback((amount: number) => {
+    if (!isInstallmentsActive || maxInstallments <= 1 || amount <= 0) {
+      return {
+        installments: 1,
+        installmentValue: amount,
+        formattedText: storeLanguage === 'en'
+          ? 'Single payment'
+          : storeLanguage === 'es'
+          ? 'En 1 cuota'
+          : 'À vista'
+      };
+    }
+
+    let calculatedMax = maxInstallments;
+    if (minInstallmentValue > 0) {
+      const allowed = Math.floor(amount / minInstallmentValue);
+      calculatedMax = Math.min(maxInstallments, Math.max(1, allowed));
+    }
+
+    const valPerInstallment = amount / calculatedMax;
+    const formattedPrice = formatStorePrice(valPerInstallment);
+
+    const formattedText = storeLanguage === 'en'
+      ? `Up to ${calculatedMax}x of ${formattedPrice} interest-free`
+      : storeLanguage === 'es'
+      ? `Hasta ${calculatedMax} cuotas de ${formattedPrice} sin interés`
+      : `Em até ${calculatedMax}x de ${formattedPrice} sem juros`;
+
+    return {
+      installments: calculatedMax,
+      installmentValue: valPerInstallment,
+      formattedText
+    };
+  }, [isInstallmentsActive, maxInstallments, minInstallmentValue, storeLanguage, formatStorePrice]);
+
   // Indicador de privilégio Master God Mode
   const [isMaster, setIsMaster] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -1372,6 +1434,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         storeLanguage,
         formatStorePrice,
         st,
+        // Parcelamento Dinâmico
+        maxInstallments,
+        minInstallmentValue,
+        isInstallmentsActive,
+        getInstallmentsInfo,
         // Modo Master God Mode
         switchTenant,
         isMaster

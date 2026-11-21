@@ -615,8 +615,60 @@ export function ProductFullFormModal({
     return Array.from(map.values());
   }, [variacoes, mediaList, product, storeAttributes]);
 
-  // Alias para retrocompatibilidade
-  const availableColors = gradeColors;
+  // Catálogo Universal de Cores da Boutique (Consolidação Global para todas as peças da loja)
+  const universalStoreColors = React.useMemo(() => {
+    const map = new Map<string, { nome: string; hex?: string }>();
+    const register = (nome?: string | null, hex?: string | null) => {
+      const clean = (nome || '').trim();
+      if (!clean) return;
+      const lower = clean.toLowerCase();
+      if (!map.has(lower)) {
+        const canonical = clean.charAt(0).toUpperCase() + clean.slice(1);
+        map.set(lower, { nome: canonical, hex: hex || '#1A1918' });
+      }
+    };
+
+    // 1. Cores salvas no cadastro universal de atributos da boutique (storeAttributes.cores)
+    if (storeAttributes?.cores && Array.isArray(storeAttributes.cores)) {
+      storeAttributes.cores.forEach((c: any) => {
+        if (typeof c === 'string') register(c);
+        else if (c && c.nome) register(c.nome, c.hex);
+      });
+    }
+
+    // 2. Cores de TODAS as peças já cadastradas na loja (allProducts)
+    if (allProducts && Array.isArray(allProducts)) {
+      allProducts.forEach((p) => {
+        if (p.variacoes && Array.isArray(p.variacoes)) {
+          p.variacoes.forEach((v: any) => register(v.cor_nome, v.cor_hex));
+        }
+        if (p.detalhes?.fotos_por_cor && typeof p.detalhes.fotos_por_cor === 'object') {
+          Object.keys(p.detalhes.fotos_por_cor).forEach((cor) => register(cor));
+        }
+        if ((p as any).cores && Array.isArray((p as any).cores)) {
+          (p as any).cores.forEach((c: any) => {
+            if (typeof c === 'string') register(c);
+            else if (c && (c.nome || c.name)) register(c.nome || c.name, c.hex);
+          });
+        }
+      });
+    }
+
+    // 3. Cores da peça em edição atual (grade física e mídias)
+    variacoes.forEach((v) => register(v.cor_nome, v.cor_hex));
+    mediaList.forEach((m) => {
+      const p = parseMediaColor(m.label || undefined);
+      if (p.colorName) register(p.colorName);
+    });
+
+    // 4. Paleta oficial da boutique
+    BOUTIQUE_OFFICIAL_COLORS.forEach((c) => register(c.nome, c.hex));
+
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [storeAttributes, allProducts, variacoes, mediaList]);
+
+  // Alias para o seletor de cores da boutique (acesso global a todas as cores cadastradas)
+  const availableColors = universalStoreColors;
 
   // Ordem customizada dos tamanhos definida pelo lojista na matriz
   const [customSizeOrder, setCustomSizeOrder] = useState<string[] | null>(null);
@@ -851,11 +903,18 @@ export function ProductFullFormModal({
     setSelectedColorPreset('custom');
     setMultiSizeRows([{ id: 'size_1', tamanho: 'M', estoque: 5 }]);
     showToast(`Cor "${corNomeFinal}" processada com sucesso na grade!`);
+
+    // Registra no Catálogo Universal de Cores da Loja para ficar disponível em todas as peças
+    try {
+      saveStoreCustomAttribute(tenantId, 'cores' as any, { nome: corNomeFinal, hex: hexFinal }, 'add')
+        .then((updated) => onStoreAttributesUpdated && onStoreAttributesUpdated(updated))
+        .catch(() => {});
+    } catch {}
   };
 
   // Salvar Novo Atributo Customizado da Loja
   const handleCreateStoreAttribute = async (
-    tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos',
+    tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos' | 'cores',
     novoItem: string
   ) => {
     try {
@@ -2035,6 +2094,11 @@ export function ProductFullFormModal({
                           setSelectedColorPreset(corNome);
                           setNewColorName(corNome);
                           setNewColorHex(corHex);
+                          try {
+                            saveStoreCustomAttribute(tenantId, 'cores' as any, { nome: corNome, hex: corHex }, 'add')
+                              .then((updated) => onStoreAttributesUpdated && onStoreAttributesUpdated(updated))
+                              .catch(() => {});
+                          } catch {}
                         }}
                       />
                     </div>

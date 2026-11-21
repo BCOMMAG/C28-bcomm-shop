@@ -3774,6 +3774,9 @@ export interface StoreSettingsData {
   pixExpiracaoMinutos: number;
   pixWhatsappComprovante?: string;
   senhaMestraBalcao?: string;
+  maxParcelasSemJuros?: number;
+  parcelaMinimaValor?: number;
+  parcelamentoAtivo?: boolean;
 
   // Logística & Envios
   prazoManuseioDias: number;
@@ -4225,6 +4228,9 @@ export interface SaveStoreSettingsInput {
   pixExpiracaoMinutos?: number;
   pixWhatsappComprovante?: string;
   senhaMestraBalcao?: string;
+  maxParcelasSemJuros?: number;
+  parcelaMinimaValor?: number;
+  parcelamentoAtivo?: boolean;
 
   // Logística & Envios
   prazoManuseioDias?: number;
@@ -4355,6 +4361,9 @@ export async function getStoreSettings(
       pixExpiracaoMinutos: Number(fin.pix_expiracao_minutos ?? 30),
       pixWhatsappComprovante: fin.pix_whatsapp_comprovante || (isLeidyTenant ? '554197347601' : ''),
       senhaMestraBalcao: fin.senha_mestra_balcao || '123456',
+      maxParcelasSemJuros: Number(fin.max_parcelas_sem_juros ?? 3),
+      parcelaMinimaValor: Number(fin.parcela_minima_valor ?? 0),
+      parcelamentoAtivo: fin.parcelamento_ativo !== undefined ? Boolean(fin.parcelamento_ativo) : true,
 
       // Logística & Envios
       prazoManuseioDias: Number(vis.prazo_manuseio_dias ?? 1),
@@ -4594,7 +4603,10 @@ export async function saveStoreGeneralSettings(
       ...(input.pixDescontoPercent !== undefined ? { pix_desconto_percent: Number(input.pixDescontoPercent) } : {}),
       ...(input.pixExpiracaoMinutos !== undefined ? { pix_expiracao_minutos: Number(input.pixExpiracaoMinutos) } : {}),
       ...(input.pixWhatsappComprovante !== undefined ? { pix_whatsapp_comprovante: input.pixWhatsappComprovante.replace(/\D/g, '') } : {}),
-      ...(input.senhaMestraBalcao !== undefined ? { senha_mestra_balcao: input.senhaMestraBalcao.trim() } : {})
+      ...(input.senhaMestraBalcao !== undefined ? { senha_mestra_balcao: input.senhaMestraBalcao.trim() } : {}),
+      ...(input.maxParcelasSemJuros !== undefined ? { max_parcelas_sem_juros: Math.max(1, Math.min(12, Number(input.maxParcelasSemJuros))) } : {}),
+      ...(input.parcelaMinimaValor !== undefined ? { parcela_minima_valor: Math.max(0, Number(input.parcelaMinimaValor)) } : {}),
+      ...(input.parcelamentoAtivo !== undefined ? { parcelamento_ativo: Boolean(input.parcelamentoAtivo) } : {})
     };
 
     const updatePayload: Record<string, any> = {
@@ -5247,12 +5259,28 @@ export async function getStoreCustomAttributes(
       (a, b) => (a.ordem ?? 99) - (b.ordem ?? 99)
     );
 
+    const rawCores = attrs.cores || [];
+    const coresMap = new Map<string, { nome: string; hex?: string }>();
+    if (Array.isArray(rawCores)) {
+      rawCores.forEach((c: any) => {
+        if (typeof c === 'string') {
+          const clean = c.trim();
+          if (clean) coresMap.set(clean.toLowerCase(), { nome: clean.charAt(0).toUpperCase() + clean.slice(1), hex: '#1A1918' });
+        } else if (c && c.nome) {
+          const clean = String(c.nome).trim();
+          if (clean) coresMap.set(clean.toLowerCase(), { nome: clean.charAt(0).toUpperCase() + clean.slice(1), hex: c.hex || '#1A1918' });
+        }
+      });
+    }
+    const cores = Array.from(coresMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+
     return {
       subcategorias,
       tecidos,
       modelagens,
       colecoes,
       tamanhos,
+      cores,
       sinalizadores: sinalizadoresOrdenados
     };
   } catch (err) {
@@ -5328,8 +5356,8 @@ export async function saveStoreSinalizadores(
  */
 export async function saveStoreCustomAttribute(
   lojaId: string = DEFAULT_TENANT_ID,
-  tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos' | 'sinalizadores',
-  item: string | CustomSinalizador,
+  tipo: 'subcategorias' | 'tecidos' | 'modelagens' | 'colecoes' | 'tamanhos' | 'cores' | 'sinalizadores',
+  item: string | CustomSinalizador | { nome: string; hex?: string },
   acao: 'adicionar' | 'remover' | 'add' | 'remove' = 'adicionar'
 ): Promise<StoreCustomAttributes> {
   const supabase = getSupabaseBrowserClient();
@@ -5353,13 +5381,13 @@ export async function saveStoreCustomAttribute(
       let targetSinalizador: CustomSinalizador;
       if (typeof item === 'object') {
         targetSinalizador = {
-          id: item.id || `badge_${Date.now()}`,
-          nome: item.nome || item.label || 'Sinalizador',
-          cor: item.cor || item.color || '#d97706',
-          icone: item.icone || item.icon || '✨',
-          label: item.label || item.nome || 'Sinalizador',
-          color: item.color || item.cor || '#d97706',
-          icon: item.icon || item.icone || '✨'
+          id: (item as any).id || `badge_${Date.now()}`,
+          nome: (item as any).nome || (item as any).label || 'Sinalizador',
+          cor: (item as any).cor || (item as any).color || '#d97706',
+          icone: (item as any).icone || (item as any).icon || '✨',
+          label: (item as any).label || (item as any).nome || 'Sinalizador',
+          color: (item as any).color || (item as any).cor || '#d97706',
+          icon: (item as any).icon || (item as any).icone || '✨'
         };
       } else {
         targetSinalizador = {
@@ -5380,6 +5408,32 @@ export async function saveStoreCustomAttribute(
         updatedList = currentList.filter((s) => s.id !== targetSinalizador.id);
       }
       attrs.sinalizadores = updatedList;
+    } else if (tipo === 'cores') {
+      const currentCores: Array<{ nome: string; hex?: string }> = [];
+      const rawCores = attrs.cores || [];
+      if (Array.isArray(rawCores)) {
+        rawCores.forEach((c: any) => {
+          if (typeof c === 'string') currentCores.push({ nome: c.trim(), hex: '#1A1918' });
+          else if (c && c.nome) currentCores.push({ nome: String(c.nome).trim(), hex: c.hex || '#1A1918' });
+        });
+      }
+
+      const itemNome = typeof item === 'object' && 'nome' in item ? String(item.nome).trim() : String(item).trim();
+      const itemHex = typeof item === 'object' && 'hex' in item ? ((item as any).hex || '#1A1918') : '#1A1918';
+
+      if (!itemNome) return await getStoreCustomAttributes(lojaId);
+
+      const canonicalNome = itemNome.charAt(0).toUpperCase() + itemNome.slice(1);
+      const lower = itemNome.toLowerCase();
+
+      let updatedCores: Array<{ nome: string; hex?: string }>;
+      if (isAdd) {
+        const withoutOld = currentCores.filter((c) => c.nome.toLowerCase() !== lower);
+        updatedCores = [...withoutOld, { nome: canonicalNome, hex: itemHex }];
+      } else {
+        updatedCores = currentCores.filter((c) => c.nome.toLowerCase() !== lower);
+      }
+      attrs.cores = updatedCores;
     } else {
       const currentArray: string[] = Array.isArray(attrs[tipo])
         ? [...attrs[tipo]]

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -101,7 +101,9 @@ export default function CheckoutPage() {
     formatStorePrice,
     storeCurrency,
     refreshTenant,
-    st
+    st,
+    maxInstallments,
+    minInstallmentValue
   } = useStore();
 
   // Ouvinte em tempo real para sincronização de logística/regras do lojista
@@ -429,6 +431,20 @@ export default function CheckoutPage() {
   const pixDiscount = paymentMethod === 'pix' ? (subtotalAfterCoupon * 0.05) : 0;
   const currentGiftCost = isGift ? (isVipGiftFree ? 0 : giftFee) : 0;
   const totalAmount = Math.max(0, subtotalAfterCoupon + shippingPrice - pixDiscount + currentGiftCost);
+
+  // Opções de parcelas calculadas dinamicamente com base nas regras da loja e valor total
+  const availableInstallmentOptions: number[] = useMemo(() => {
+    let max = Math.max(1, maxInstallments || 3);
+    if (minInstallmentValue > 0 && totalAmount > 0) {
+      const allowed = Math.floor(totalAmount / minInstallmentValue);
+      max = Math.min(max, Math.max(1, allowed));
+    }
+    const list: number[] = [];
+    for (let i = 1; i <= max; i++) {
+      list.push(i);
+    }
+    return list;
+  }, [maxInstallments, minInstallmentValue, totalAmount]);
 
   // Captura de Leads Local e no Supabase (Nuvem) com Sincronização da Loja
   const captureLead = (phoneToSave: string, clientName: string, status: 'iniciado' | 'finalizado' = 'iniciado') => {
@@ -2212,9 +2228,11 @@ export default function CheckoutPage() {
                             onChange={(e) => setCardInstallments(Number(e.target.value))}
                             className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-[#141312] border border-[#C5A059]/30 text-[#1A1918] dark:text-[#FAF8F5] font-semibold focus:outline-none"
                           >
-                            {[1, 2, 3, 4, 5, 6].map((n) => (
+                            {availableInstallmentOptions.map((n) => (
                               <option key={n} value={n}>
-                                {n}x de {formatStorePrice((totalAmount / n))} sem juros no link blindado
+                                {n === 1
+                                  ? `1x de ${formatStorePrice(totalAmount)} (À vista no link blindado)`
+                                  : `${n}x de ${formatStorePrice((totalAmount / n))} sem juros no link blindado`}
                               </option>
                             ))}
                           </select>

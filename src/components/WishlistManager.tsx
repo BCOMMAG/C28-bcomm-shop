@@ -57,7 +57,9 @@ export function WishlistManager() {
     products,
     currentTenant,
     formatStorePrice,
-    storeLanguage
+    storeLanguage,
+    isInstallmentsActive,
+    getInstallmentsInfo
   } = useStore();
 
   const tenantSlug = normalizeTenantSlug(currentTenant?.slug);
@@ -228,7 +230,7 @@ export function WishlistManager() {
 
       <main className="flex-1 pt-24 sm:pt-32 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           {/* Navegação / Breadcrumb */}
           <div className="mb-6 flex items-center justify-between">
             <Link
@@ -335,13 +337,11 @@ export function WishlistManager() {
                   <span className="text-2xl sm:text-3xl font-bold font-serif-luxury text-[#1A1918] dark:text-white">
                     {formatStorePrice(subtotal)}
                   </span>
-                  <span className="text-xs text-[#78716C] dark:text-[#A8A29E]">
-                    {storeLanguage === 'en'
-                      ? `up to 6x of ${formatStorePrice(subtotal / 6)} interest-free`
-                      : storeLanguage === 'es'
-                      ? `hasta 6 cuotas de ${formatStorePrice(subtotal / 6)} sin interés`
-                      : `em até 6x de ${formatStorePrice(subtotal / 6)} sem juros`}
-                  </span>
+                  {isInstallmentsActive && (
+                    <span className="text-xs text-[#78716C] dark:text-[#A8A29E]">
+                      {getInstallmentsInfo(subtotal).formattedText}
+                    </span>
+                  )}
                 </div>
 
                 {savings > 0 && (
@@ -349,8 +349,8 @@ export function WishlistManager() {
                     {storeLanguage === 'en'
                       ? `🎉 Total savings of ${formatStorePrice(savings)} in this selection!`
                       : storeLanguage === 'es'
-                      ? `🎉 ¡Ahorro total de ${formatStorePrice(savings)} en esta selección!`
-                      : `🎉 Economia total de ${formatStorePrice(savings)} nesta seleção!`}
+                        ? `🎉 ¡Ahorro total de ${formatStorePrice(savings)} en esta selección!`
+                        : `🎉 Economia total de ${formatStorePrice(savings)} nesta seleção!`}
                   </p>
                 )}
               </div>
@@ -373,11 +373,10 @@ export function WishlistManager() {
               <Filter className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
               <button
                 onClick={() => setSelectedCategoryFilter('todas')}
-                className={`px-3 py-1 text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                  selectedCategoryFilter === 'todas'
+                className={`px-3 py-1 text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${selectedCategoryFilter === 'todas'
                     ? 'bg-[#C5A059] text-white'
                     : 'bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#78716C]'
-                }`}
+                  }`}
               >
                 Todas ({favoriteProducts.length})
               </button>
@@ -387,11 +386,10 @@ export function WishlistManager() {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategoryFilter(cat)}
-                    className={`px-3 py-1 text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                      selectedCategoryFilter === cat
+                    className={`px-3 py-1 text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${selectedCategoryFilter === cat
                         ? 'bg-[#C5A059] text-white'
                         : 'bg-white dark:bg-[#1A1918] border border-[#C5A059]/30 text-[#78716C]'
-                    }`}
+                      }`}
                   >
                     {cat} ({count})
                   </button>
@@ -496,11 +494,10 @@ export function WishlistManager() {
                                       [product.id]: { ...selection, size: s }
                                     }))
                                   }
-                                  className={`px-2 py-0.5 text-[10px] font-bold border transition-colors cursor-pointer ${
-                                    selection.size === s
+                                  className={`px-2 py-0.5 text-[10px] font-bold border transition-colors cursor-pointer ${selection.size === s
                                       ? 'bg-[#1A1918] dark:bg-[#C5A059] text-white border-transparent'
                                       : 'bg-transparent text-[#78716C] border-[#C5A059]/30 hover:border-[#C5A059]'
-                                  }`}
+                                    }`}
                                 >
                                   {s}
                                 </button>
@@ -527,11 +524,10 @@ export function WishlistManager() {
                                     }))
                                   }
                                   title={c.name}
-                                  className={`w-4 h-4 rounded-full border transition-all cursor-pointer ${
-                                    selection.color === c.name
+                                  className={`w-4 h-4 rounded-full border transition-all cursor-pointer ${selection.color === c.name
                                       ? 'ring-2 ring-[#C5A059] ring-offset-1 scale-110'
                                       : 'opacity-70 hover:opacity-100'
-                                  }`}
+                                    }`}
                                   style={{ backgroundColor: c.hex }}
                                 />
                               ))}

@@ -41,6 +41,11 @@ export default function PaymentSettingsPage() {
   const [pixExpiracaoMinutos, setPixExpiracaoMinutos] = useState(30);
   const [pixWhatsappComprovante, setPixWhatsappComprovante] = useState('');
 
+  // Cartão & Parcelamento Sem Juros
+  const [maxParcelasSemJuros, setMaxParcelasSemJuros] = useState(3);
+  const [parcelaMinimaValor, setParcelaMinimaValor] = useState(0);
+  const [parcelamentoAtivo, setParcelamentoAtivo] = useState(true);
+
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -62,6 +67,9 @@ export default function PaymentSettingsPage() {
           if (data.pixDescontoPercent !== undefined) setPixDescontoPercent(data.pixDescontoPercent);
           if (data.pixExpiracaoMinutos !== undefined) setPixExpiracaoMinutos(data.pixExpiracaoMinutos);
           if (data.pixWhatsappComprovante) setPixWhatsappComprovante(data.pixWhatsappComprovante);
+          if (data.maxParcelasSemJuros !== undefined) setMaxParcelasSemJuros(data.maxParcelasSemJuros);
+          if (data.parcelaMinimaValor !== undefined) setParcelaMinimaValor(data.parcelaMinimaValor);
+          if (data.parcelamentoAtivo !== undefined) setParcelamentoAtivo(data.parcelamentoAtivo);
         }
       } catch (err) {
         console.error('Erro ao buscar dados de pagamento:', err);
@@ -85,7 +93,10 @@ export default function PaymentSettingsPage() {
         pixBanco: pixBanco.trim(),
         pixDescontoPercent: Number(pixDescontoPercent),
         pixExpiracaoMinutos: Number(pixExpiracaoMinutos),
-        pixWhatsappComprovante: pixWhatsappComprovante.replace(/\D/g, '')
+        pixWhatsappComprovante: pixWhatsappComprovante.replace(/\D/g, ''),
+        maxParcelasSemJuros: Number(maxParcelasSemJuros),
+        parcelaMinimaValor: Number(parcelaMinimaValor),
+        parcelamentoAtivo: Boolean(parcelamentoAtivo)
       });
 
       if (res.success) {
@@ -362,6 +373,101 @@ export default function PaymentSettingsPage() {
               <span className="text-slate-400 font-semibold">{t.storePayments.badgeConfigurable}</span>
             </div>
           </div>
+        </div>
+
+        {/* REGRAS DE PARCELAMENTO SEM JUROS NA VITRINE */}
+        <div className="pt-5 border-t border-slate-100 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                {t.storePayments.installmentsTitle}
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                {t.storePayments.installmentsHint}
+              </p>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto">
+              <input
+                type="checkbox"
+                checked={parcelamentoAtivo}
+                onChange={(e) => setParcelamentoAtivo(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-slate-700">
+                Exibir parcelamento sem juros na vitrine
+              </span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Seletor de Parcelas */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Número Máximo de Parcelas Sem Juros:
+              </label>
+              <select
+                disabled={!parcelamentoAtivo}
+                value={maxParcelasSemJuros}
+                onChange={(e) => setMaxParcelasSemJuros(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+              >
+                <option value={1}>1x (Somente à vista)</option>
+                <option value={2}>Em até 2x sem juros</option>
+                <option value={3}>Em até 3x sem juros (Padrão)</option>
+                <option value={4}>Em até 4x sem juros</option>
+                <option value={5}>Em até 5x sem juros</option>
+                <option value={6}>Em até 6x sem juros</option>
+                <option value={7}>Em até 7x sem juros</option>
+                <option value={8}>Em até 8x sem juros</option>
+                <option value={9}>Em até 9x sem juros</option>
+                <option value={10}>Em até 10x sem juros</option>
+                <option value={11}>Em até 11x sem juros</option>
+                <option value={12}>Em até 12x sem juros</option>
+              </select>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Define a quantidade máxima de parcelas sem acréscimo oferecidas aos clientes.
+              </span>
+            </div>
+
+            {/* Valor Mínimo por Parcela */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Valor Mínimo da Parcela (R$):
+              </label>
+              <input
+                type="number"
+                disabled={!parcelamentoAtivo}
+                min="0"
+                step="5"
+                value={parcelaMinimaValor}
+                onChange={(e) => setParcelaMinimaValor(Number(e.target.value))}
+                placeholder="0 (Livre para qualquer valor)"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Ex: Se colocar R$ 30,00, uma peça de R$ 60,00 será parcelada em no máximo 2x. Deixe 0 para parcelar livremente.
+              </span>
+            </div>
+          </div>
+
+          {/* Prévia em tempo real */}
+          {parcelamentoAtivo && (
+            <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">👁️</span>
+                <span className="text-xs text-slate-700">
+                  <strong>Prévia na Vitrine:</strong> Para uma peça de <strong>R$ 219,90</strong> aparecerá para o cliente:
+                </span>
+              </div>
+              <div className="px-3 py-1 bg-white rounded-lg border border-amber-300 font-bold text-xs text-[#C5A059] shadow-2xs self-start sm:self-auto">
+                {maxParcelasSemJuros <= 1
+                  ? 'À vista no cartão ou PIX'
+                  : `Peça Exclusiva • Em até ${maxParcelasSemJuros}x de R$ ${(219.9 / maxParcelasSemJuros).toFixed(2).replace('.', ',')} sem juros`}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

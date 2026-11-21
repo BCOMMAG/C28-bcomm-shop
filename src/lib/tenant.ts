@@ -637,6 +637,21 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "modoIndependente": false
     },
     "atributos_pecas": {
+      "tecidos": [
+        "Cetim de Seda",
+        "Tricot Biamar",
+        "Crepe Alfaiataria",
+        "Couro Premium",
+        "Metal Nobre Banho 18k",
+        "Lã & Fios Nobres",
+        "Linho Puro",
+        "Algodão Egípcio",
+        "Algodão",
+        "Linho 100%",
+        "Poliester",
+        "Viscose",
+        "Viscose + Linho"
+      ],
       "subcategorias": [
         "Alfaiataria",
         "Casual Chic",
@@ -647,7 +662,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "Blusas & Camisas",
         "Saias",
         "Acessórios Nobres",
-        "Regatas"
+        "Regatas",
+        "Blusas"
       ]
     },
     "tipografia_menu": {

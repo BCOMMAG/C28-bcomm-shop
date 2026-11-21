@@ -89,7 +89,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     getColorAvailability,
     formatStorePrice,
     st,
-    storeLanguage
+    storeLanguage,
+    isInstallmentsActive,
+    getInstallmentsInfo
   } = useStore();
 
   const showStockQty = currentTenant?.configuracoes_visuais?.exibir_quantidade_estoque_consumidor ?? true;
@@ -895,13 +897,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </div>
                   )}
 
-                  {!hasDiscount && (
+                  {!hasDiscount && isInstallmentsActive && (
                     <span className="text-[11px] text-[#C5A059] dark:text-[#DFBE76] font-medium block mt-0.5">
                       {storeLanguage === 'en'
-                        ? `Exclusive Piece • Up to 3x of ${formatStorePrice(rawCurrentPrice / 3)} interest-free`
+                        ? `Exclusive Piece • ${getInstallmentsInfo(rawCurrentPrice).formattedText}`
                         : storeLanguage === 'es'
-                        ? `Prenda Exclusiva • Hasta 3 cuotas de ${formatStorePrice(rawCurrentPrice / 3)} sin interés`
-                        : `Peça Exclusiva • Em até 3x de ${formatStorePrice(rawCurrentPrice / 3)} sem juros`}
+                        ? `Prenda Exclusiva • ${getInstallmentsInfo(rawCurrentPrice).formattedText}`
+                        : `Peça Exclusiva • ${getInstallmentsInfo(rawCurrentPrice).formattedText}`}
                     </span>
                   )}
                 </div>

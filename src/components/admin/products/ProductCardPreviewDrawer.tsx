@@ -6,6 +6,7 @@ import { Eye, Sparkles, Tag, Package, Star } from 'lucide-react';
 import { FormMediaItem } from './ProductMediaGalleryManager';
 import { parseMediaColor } from '@/lib/products';
 import { useAdminI18n } from '@/context/AdminI18nContext';
+import { useStore } from '@/context/StoreContext';
 
 export interface ProductCardPreviewProps {
   nome: string;
@@ -40,6 +41,8 @@ export function ProductCardPreviewDrawer({
 }: ProductCardPreviewProps) {
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
   const { formatCurrency, t } = useAdminI18n();
+  const { maxInstallments, isInstallmentsActive } = useStore();
+  const parcelasNum = Math.max(1, maxInstallments || 3);
 
   // Determina se há preços divergentes entre variações
   const precosValores = Object.values(precosPorVariacao)
@@ -196,9 +199,11 @@ export function ProductCardPreviewDrawer({
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
-              {t.products.previewDrawer.installments(formatCurrency((temPromo ? precoPromocional! : menorPrecoVariacao) / 6))}
-            </span>
+            {isInstallmentsActive && parcelasNum > 1 && (
+              <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
+                em até {parcelasNum}x de {formatCurrency((temPromo ? precoPromocional! : menorPrecoVariacao) / parcelasNum)} sem juros
+              </span>
+            )}
           </div>
         </div>
       </div>
