@@ -150,11 +150,22 @@ export function AdminColorSearchSelect({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {label && (
-        <label className="block text-slate-700 text-xs mb-1 font-bold">
-          {label}
-        </label>
-      )}
+      <div className="flex items-center justify-between mb-1">
+        {label && (
+          <label className="block text-slate-700 text-xs font-bold">
+            {label}
+          </label>
+        )}
+        <a
+          href="/admin/loja/cores"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-amber-700 hover:text-amber-800 font-bold hover:underline flex items-center gap-1"
+          title="Abrir página de gerenciamento de cores da loja"
+        >
+          <span>⚙️ Gerenciar Cores</span>
+        </a>
+      </div>
 
       {/* Trigger Button */}
       <button

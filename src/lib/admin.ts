@@ -6131,3 +6131,277 @@ export async function bulkUpdateProdutosColecao(
   }
 }
 
+/**
+ * Renomeia e/ou altera o código HEX de uma cor no catálogo universal da loja,
+ * com opção de atualizar em cascata todas as peças/variações vinculadas.
+ */
+export async function renameStoreColor(
+  lojaId: string = DEFAULT_TENANT_ID,
+  oldName: string,
+  newName: string,
+  newHex?: string,
+  updateProducts: boolean = true
+): Promise<{ success: boolean; updatedProductsCount?: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  const cleanOld = oldName.trim();
+  const cleanNew = newName.trim();
+  const canonicalNew = cleanNew.charAt(0).toUpperCase() + cleanNew.slice(1);
+  const finalHex = newHex?.trim() || '#1A1918';
+
+  if (!cleanOld || !cleanNew) {
+    return { success: false, error: 'Nome de cor inválido.' };
+  }
+
+  try {
+    // 1. Atualizar no catálogo universal da loja (configuracoes_visuais.atributos_pecas.cores)
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+    const currentCores: Array<{ nome: string; hex?: string }> = [];
+    const rawCores = attrs.cores || [];
+
+    if (Array.isArray(rawCores)) {
+      rawCores.forEach((c: any) => {
+        if (typeof c === 'string') currentCores.push({ nome: c.trim(), hex: '#1A1918' });
+        else if (c && c.nome) currentCores.push({ nome: String(c.nome).trim(), hex: c.hex || '#1A1918' });
+      });
+    }
+
+    // Filtra removendo tanto a cor antiga quanto eventuais duplicatas com o novo nome
+    const filtered = currentCores.filter(
+      (c) => c.nome.toLowerCase() !== cleanOld.toLowerCase() && c.nome.toLowerCase() !== cleanNew.toLowerCase()
+    );
+    filtered.push({ nome: canonicalNew, hex: finalHex });
+    attrs.cores = filtered.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    const { error: updLojaErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updLojaErr) throw updLojaErr;
+
+    let updatedCount = 0;
+
+    // 2. Se solicitado, atualiza as variações físicas dos produtos da loja no banco
+    if (updateProducts) {
+      const { data: prods } = await supabase
+        .from('produtos')
+        .select('id, detalhes')
+        .eq('loja_id', lojaId);
+
+      const prodIds = (prods || []).map((p) => p.id);
+      if (prodIds.length > 0) {
+        const { data: affectedVars, error: varErr } = await supabase
+          .from('variacoes_produto')
+          .update({
+            cor_nome: canonicalNew,
+            ...(finalHex ? { cor_hex: finalHex } : {})
+          })
+          .in('produto_id', prodIds)
+          .ilike('cor_nome', cleanOld)
+          .select('id');
+
+        if (!varErr && affectedVars) {
+          updatedCount = affectedVars.length;
+        }
+
+        // Também atualiza fotos_por_cor em detalhes se houver a chave antiga
+        for (const prod of (prods || [])) {
+          if (prod.detalhes?.fotos_por_cor && typeof prod.detalhes.fotos_por_cor === 'object') {
+            const fotosPorCor = { ...prod.detalhes.fotos_por_cor };
+            const oldKey = Object.keys(fotosPorCor).find((k) => k.toLowerCase() === cleanOld.toLowerCase());
+            if (oldKey) {
+              const fotos = fotosPorCor[oldKey];
+              delete fotosPorCor[oldKey];
+              fotosPorCor[canonicalNew] = fotos;
+              await supabase
+                .from('produtos')
+                .update({
+                  detalhes: {
+                    ...prod.detalhes,
+                    fotos_por_cor: fotosPorCor
+                  }
+                })
+                .eq('id', prod.id);
+            }
+          }
+        }
+      }
+    }
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'cores', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, updatedProductsCount: updatedCount };
+  } catch (err: any) {
+    console.error('Erro ao renomear cor da boutique:', err);
+    return { success: false, error: err?.message || 'Falha ao renomear cor.' };
+  }
+}
+
+/**
+ * Remove uma ou mais cores do catálogo universal da loja.
+ */
+export async function deleteStoreColors(
+  lojaId: string = DEFAULT_TENANT_ID,
+  colorNames: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  if (!colorNames || colorNames.length === 0) return { success: true };
+
+  const namesLower = colorNames.map((n) => n.trim().toLowerCase());
+
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+    const currentCores: Array<{ nome: string; hex?: string }> = [];
+    const rawCores = attrs.cores || [];
+
+    if (Array.isArray(rawCores)) {
+      rawCores.forEach((c: any) => {
+        if (typeof c === 'string') currentCores.push({ nome: c.trim(), hex: '#1A1918' });
+        else if (c && c.nome) currentCores.push({ nome: String(c.nome).trim(), hex: c.hex || '#1A1918' });
+      });
+    }
+
+    attrs.cores = currentCores.filter((c) => !namesLower.includes(c.nome.toLowerCase()));
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'cores', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir cores da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao excluir cores.' };
+  }
+}
+
+/**
+ * Mescla e unifica múltiplas cores em uma só cor oficial no catálogo da boutique.
+ * Todas as variações e peças vinculadas às cores de origem são transferidas para a cor destino.
+ */
+export async function mergeStoreColors(
+  lojaId: string = DEFAULT_TENANT_ID,
+  sourceColorNames: string[],
+  targetColor: { nome: string; hex: string }
+): Promise<{ success: boolean; migratedCount?: number; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  const canonicalTarget = targetColor.nome.trim().charAt(0).toUpperCase() + targetColor.nome.trim().slice(1);
+  const targetHex = targetColor.hex?.trim() || '#1A1918';
+  const sourcesLower = sourceColorNames.map((s) => s.trim().toLowerCase());
+
+  try {
+    // 1. Atualizar catálogo universal
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+    const currentCores: Array<{ nome: string; hex?: string }> = [];
+    const rawCores = attrs.cores || [];
+
+    if (Array.isArray(rawCores)) {
+      rawCores.forEach((c: any) => {
+        if (typeof c === 'string') currentCores.push({ nome: c.trim(), hex: '#1A1918' });
+        else if (c && c.nome) currentCores.push({ nome: String(c.nome).trim(), hex: c.hex || '#1A1918' });
+      });
+    }
+
+    const filtered = currentCores.filter(
+      (c) => !sourcesLower.includes(c.nome.toLowerCase()) && c.nome.toLowerCase() !== canonicalTarget.toLowerCase()
+    );
+    filtered.push({ nome: canonicalTarget, hex: targetHex });
+    attrs.cores = filtered.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    // 2. Migrar variações de produtos da loja
+    const { data: prods } = await supabase
+      .from('produtos')
+      .select('id, detalhes')
+      .eq('loja_id', lojaId);
+
+    let migrated = 0;
+    const prodIds = (prods || []).map((p) => p.id);
+
+    if (prodIds.length > 0) {
+      for (const source of sourceColorNames) {
+        const { data: updatedVars } = await supabase
+          .from('variacoes_produto')
+          .update({
+            cor_nome: canonicalTarget,
+            cor_hex: targetHex
+          })
+          .in('produto_id', prodIds)
+          .ilike('cor_nome', source.trim())
+          .select('id');
+
+        if (updatedVars) migrated += updatedVars.length;
+      }
+    }
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'cores', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, migratedCount: migrated };
+  } catch (err: any) {
+    console.error('Erro ao mesclar cores da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao mesclar cores.' };
+  }
+}
+

@@ -650,7 +650,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "Linho 100%",
         "Poliester",
         "Viscose",
-        "Viscose + Linho"
+        "Viscose + Linho",
+        "Algodão + Poliamida"
       ],
       "subcategorias": [
         "Alfaiataria",
@@ -663,7 +664,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "Saias",
         "Acessórios Nobres",
         "Regatas",
-        "Blusas"
+        "Blusas",
+        "Casacos"
       ]
     },
     "tipografia_menu": {

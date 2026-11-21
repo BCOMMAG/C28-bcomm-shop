@@ -15,6 +15,7 @@ import {
   CreditCard,
   Globe,
   Layers,
+  Pipette,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -78,6 +79,13 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
       href: '/admin/loja/categorias',
       icon: FolderTree,
       badge: t.storeTabs.badges.structure
+    },
+    {
+      id: 'cores',
+      label: 'Cores das Peças',
+      href: '/admin/loja/cores',
+      icon: Pipette,
+      badge: 'PALETA'
     },
     {
       id: 'cupons',
