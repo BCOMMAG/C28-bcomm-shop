@@ -484,11 +484,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const generateWhatsAppDirectLink = () => {
     const storeWhatsapp = currentTenant?.whatsapp?.replace(/\D/g, '') || STORE_INFO.whatsapp;
-    let text = `Olá! Tenho interesse no *${product.name}*.\n- Cor: *${selectedColor}*\n- Tamanho: *${selectedSize}*\n- Quantidade: *${quantity}*\n- Valor da peça: *${product.formattedPrice}*`;
+    let text = `Olá! Gostaria de tirar algumas dúvidas sobre a peça *${product.name}*.\n- Cor: *${selectedColor || 'Padrão'}*\n- Tamanho: *${selectedSize || 'Único'}*\n- Valor da peça: *${formattedCurrentPrice || product.formattedPrice}*`;
     if (shippingAddress) {
-      text += `\n- Entrega em: *${shippingAddress.localidade}/${shippingAddress.uf}* (CEP: ${shippingAddress.cep})`;
+      text += `\n- Entrega para: *${shippingAddress.localidade}/${shippingAddress.uf}* (CEP: ${shippingAddress.cep})`;
     }
-    text += `\n\nPoderia me confirmar a disponibilidade?`;
+    text += `\n\nPoderia me ajudar? ✨`;
     return `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(text)}`;
   };
 
@@ -1261,46 +1261,42 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   </>
                 )}
 
-                {/* Botão Direto de WhatsApp */}
-                <a
-                  href={generateWhatsAppDirectLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 px-5 rounded-none text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2.5 border border-[#C5A059]/30 bg-white dark:bg-[#252220] text-[#1A1918] dark:text-[#FAF8F5] hover:bg-[#FAF8F5] dark:hover:bg-[#2E2A27] transition-all duration-300 shadow-xs cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  <span>PEDIR ESTA PEÇA NO WHATSAPP DA LEIDY</span>
-                </a>
-
-                {/* Botões de Compartilhar Look (Social Share) */}
+                {/* Linha Única: Tirar Dúvidas no WhatsApp (em destaque) + Compartilhar Look (compacto) */}
                 <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href={generateWhatsAppDirectLink()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 px-3 rounded-none text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 border border-[#25D366]/50 bg-[#25D366]/10 hover:bg-[#25D366] text-[#1A1918] dark:text-[#FAF8F5] hover:text-white transition-all duration-300 shadow-xs cursor-pointer group"
+                    title={storeLanguage === 'en' ? 'Ask questions on WhatsApp' : storeLanguage === 'es' ? 'Dudas por WhatsApp' : 'Tirar dúvidas sobre esta peça no WhatsApp'}
+                  >
+                    <MessageCircle className="w-4 h-4 text-[#25D366] group-hover:text-white transition-colors shrink-0" />
+                    <span className="truncate">
+                      {storeLanguage === 'en'
+                        ? 'Questions on WhatsApp'
+                        : storeLanguage === 'es'
+                        ? 'Dúvidas no WhatsApp'
+                        : 'Tirar Dúvidas no WhatsApp'}
+                    </span>
+                  </a>
+
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="flex-1 py-2.5 px-3 rounded-none border border-[#C5A059]/40 bg-white dark:bg-[#252220] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] uppercase tracking-wider font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer group"
-                    title="Compartilhar este look com amigas"
+                    className="py-2.5 px-3 rounded-none border border-[#C5A059]/40 bg-white dark:bg-[#252220] hover:bg-[#1A1918] hover:text-white dark:hover:bg-[#C5A059] text-[#1A1918] dark:text-[#FAF8F5] text-[11px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer group shrink-0"
+                    title="Compartilhar este look"
                   >
                     {copiedLink ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-[#25D366]" />
-                        <span className="text-[#25D366] font-bold">LINK COPIADO! ✨</span>
+                        <span className="text-[#25D366] font-bold text-[10px]">COPIADO!</span>
                       </>
                     ) : (
                       <>
-                        <Share2 className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current transition-colors" />
-                        <span>COMPARTILHAR LOOK</span>
+                        <Share2 className="w-3.5 h-3.5 text-[#C5A059] group-hover:text-current transition-colors shrink-0" />
+                        <span>Compartilhar</span>
                       </>
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={shareOnWhatsApp}
-                    className="py-2.5 px-3 rounded-none border border-[#25D366]/40 bg-[#25D366]/10 hover:bg-[#25D366] text-[#1A1918] dark:text-[#FAF8F5] hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                    title="Enviar este look para amigas no WhatsApp"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 text-[#25D366] hover:text-white" />
-                    <span>WhatsApp</span>
                   </button>
                 </div>
               </div>

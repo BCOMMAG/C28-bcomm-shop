@@ -123,9 +123,13 @@ export interface LojaConfiguracoesFinanceiras {
   tipo_chave_pix?: 'telefone' | 'cnpj' | 'email' | 'aleatoria';
   pix_titular?: string;
   pix_banco?: string;
+  pix_desconto_percent?: number;
+  pix_expiracao_minutos?: number;
+  pix_whatsapp_comprovante?: string;
   max_parcelas_sem_juros?: number;
   parcela_minima_valor?: number;
   parcelamento_ativo?: boolean;
+  [key: string]: any;
 }
 
 export interface Loja {

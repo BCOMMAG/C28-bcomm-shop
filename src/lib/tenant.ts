@@ -637,6 +637,12 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       "modoIndependente": false
     },
     "atributos_pecas": {
+      "cores": [
+        {
+          "hex": "#FFFFFFFF",
+          "nome": "Branco"
+        }
+      ],
       "tecidos": [
         "Cetim de Seda",
         "Tricot Biamar",
@@ -1157,7 +1163,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "descricao": "Raridades em grade final. Garanta sua numeração antes que esgote definitivamente.",
         "created_at": "2026-01-01T00:00:00.000Z",
         "is_sistema": true,
-        "updated_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-11-21T18:34:14.649Z",
         "badge_texto": "ÚLTIMAS",
         "produto_ids": [
           "028c24fe-6f7b-44ba-bba1-a64b08e083fc",
@@ -1165,7 +1171,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "c5149946-8c00-4dbf-ad01-7b43e8324ddf",
           "1bda2b97-38d6-4d40-9951-a718411ad1f4",
           "6fa7e32c-17e6-46e1-8945-1e39727cec76",
-          "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0"
+          "dfda0835-0d2e-4178-91e2-d2bb7c5e8ce0",
+          "3c8cac51-11ab-4b00-a8a4-2d06a15e2799"
         ],
         "exibir_na_home": true
       }
@@ -1187,15 +1194,21 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
   },
   "ativo": true,
   "created_at": "2026-10-14T16:19:01.168355+00:00",
-  "updated_at": "2026-11-11T14:46:09.04+00:00",
+  "updated_at": "2026-11-21T18:06:54.027+00:00",
   "configuracoes_financeiras": {
     "chave_pix": "554197347601",
     "pix_banco": "Nu Pagamentos S.A. (Nubank)",
     "pix_titular": "Leidyane Cristina da Silva",
     "imposto_padrao": 4,
     "tipo_chave_pix": "telefone",
+    "parcelamento_ativo": true,
     "taxa_cartao_padrao": 3.5,
-    "custo_embalagem_padrao": 8
+    "parcela_minima_valor": 0,
+    "pix_desconto_percent": 5,
+    "pix_expiracao_minutos": 30,
+    "custo_embalagem_padrao": 8,
+    "max_parcelas_sem_juros": 6,
+    "pix_whatsapp_comprovante": "554197347601"
   }
 };
 
