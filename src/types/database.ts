@@ -86,6 +86,39 @@ export interface CategoriaNode {
   updated_at?: string;
 }
 
+export interface TabelaMedidasLinha {
+  id: string;
+  tamanho: string;
+  manequim: string;
+  busto: string;
+  cintura: string;
+  quadril: string;
+  comprimento?: string;
+  busto_min?: number;
+  busto_max?: number;
+  cintura_min?: number;
+  cintura_max?: number;
+  quadril_min?: number;
+  quadril_max?: number;
+  is_adaptavel?: boolean;
+}
+
+export interface GradePredefinida {
+  id: string;
+  nome: string;
+  tamanhos: string[];
+}
+
+export interface LojaGuiaMedidas {
+  ativo: boolean;
+  titulo?: string;
+  subtitulo?: string;
+  dica_caimento?: string;
+  provador_virtual_ativo?: boolean;
+  linhas: TabelaMedidasLinha[];
+  whatsapp_duvidas_ativo?: boolean;
+}
+
 export interface LojaConfiguracoesVisuais {
   cor_primaria: string;
   cor_secundaria: string;
@@ -104,6 +137,7 @@ export interface LojaConfiguracoesVisuais {
   preloader?: StorePreloaderConfig;
   colecoes_personalizadas?: ColecaoLojaItem[];
   arvore_categorias?: CategoriaNode[];
+  guia_medidas?: LojaGuiaMedidas;
   [key: string]: any;
 }
 

@@ -53,7 +53,9 @@ import {
   releaseProductLock,
   forceAcquireProductLock,
   requestUnlockProduct,
-  ProductLockInfo
+  ProductLockInfo,
+  GradePredefinida,
+  DEFAULT_STORE_SIZE_GRIDS
 } from '@/lib/admin';
 import { getStoredActiveMember } from '@/lib/team';
 import { notifyStockChangeCrossTab } from '@/context/StoreContext';
@@ -838,11 +840,18 @@ export function ProductFullFormModal({
     showToast('Códigos SKU gerados automaticamente para todas as variações!');
   };
 
-  // Presets de grade
+  // Presets de grade dinâmicos
   const handleApplySizePreset = (preset: 'pmg' | 'numeros') => {
     const presetSizes = preset === 'pmg' ? ['P', 'M', 'G'] : ['36', '38', '40', '42', '44'];
-    setMultiSizeRows(presetSizes.map((t, idx) => ({ id: `size_preset_${idx}`, tamanho: t, estoque: 5 })));
+    setMultiSizeRows(presetSizes.map((t, idx) => ({ id: `size_preset_${idx}_${Date.now()}`, tamanho: t, estoque: 5 })));
     showToast(`Grade pré-definida ${preset === 'pmg' ? 'P, M, G' : '36 ao 44'} carregada no construtor!`);
+  };
+
+  const handleApplyCustomGrid = (grid: GradePredefinida) => {
+    setMultiSizeRows(
+      grid.tamanhos.map((t, idx) => ({ id: `size_preset_${idx}_${Date.now()}`, tamanho: t, estoque: 5 }))
+    );
+    showToast(`Grade "${grid.nome}" carregada no construtor!`);
   };
 
   // Adicionar cor com múltiplos tamanhos com proteção anti-duplicação
@@ -2064,22 +2073,22 @@ export function ProductFullFormModal({
                         </p>
                       </div>
 
-                      {/* Presets Rápidos */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleApplySizePreset('pmg')}
-                          className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
-                        >
-                          {t.products.fullFormModal.colorPillPmg}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApplySizePreset('numeros')}
-                          className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
-                        >
-                          {t.products.fullFormModal.colorPillNum}
-                        </button>
+                      {/* Presets Rápidos Dinâmicos do Lojista */}
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                        {((storeAttributes?.grades_predefinidas && storeAttributes.grades_predefinidas.length > 0)
+                          ? storeAttributes.grades_predefinidas
+                          : DEFAULT_STORE_SIZE_GRIDS
+                        ).map((grid) => (
+                          <button
+                            key={grid.id}
+                            type="button"
+                            onClick={() => handleApplyCustomGrid(grid)}
+                            className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                            title={`Carregar tamanhos: ${grid.tamanhos.join(', ')}`}
+                          >
+                            <span>⚡ {grid.nome}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
 

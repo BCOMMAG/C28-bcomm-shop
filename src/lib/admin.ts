@@ -1,8 +1,8 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
-import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem, CategoriaNode } from '@/types/database';
-export type { ColecaoLojaItem, CategoriaNode };
+import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida } from '@/types/database';
+export type { ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida };
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -5134,9 +5134,107 @@ export interface StoreCustomAttributes {
   modelagens: string[];
   colecoes: string[];
   tamanhos: string[];
+  grades_predefinidas?: GradePredefinida[];
   cores?: Array<{ nome: string; hex?: string } | string>;
   sinalizadores: CustomSinalizador[];
 }
+
+export const DEFAULT_STORE_SIZE_GRIDS: GradePredefinida[] = [
+  { id: 'grid_pmg', nome: 'Grade P, M, G', tamanhos: ['P', 'M', 'G'] },
+  { id: 'grid_completa', nome: 'Grade PP ao GG', tamanhos: ['PP', 'P', 'M', 'G', 'GG'] },
+  { id: 'grid_numerica', nome: 'Grade 36 ao 44', tamanhos: ['36', '38', '40', '42', '44'] },
+  { id: 'grid_unico', nome: 'Tamanho Único', tamanhos: ['Tamanho Único'] }
+];
+
+export const DEFAULT_STORE_SIZE_GUIDE: LojaGuiaMedidas = {
+  ativo: true,
+  titulo: 'Guia de Medidas & Caimento Interativo',
+  subtitulo: 'Encontre o tamanho ideal com caimento impecável para seu biotipo',
+  dica_caimento: 'Se suas medidas ficarem entre dois tamanhos, recomendamos escolher o tamanho maior para tecidos planos (linho e alfaiataria), ou o menor para tecidos canelados com elastano.',
+  provador_virtual_ativo: true,
+  whatsapp_duvidas_ativo: true,
+  linhas: [
+    {
+      id: 'pp',
+      tamanho: 'PP',
+      manequim: '34 - 36',
+      busto: '80 - 84 cm',
+      cintura: '62 - 66 cm',
+      quadril: '88 - 92 cm',
+      busto_min: 80,
+      busto_max: 84,
+      cintura_min: 62,
+      cintura_max: 66,
+      quadril_min: 88,
+      quadril_max: 92
+    },
+    {
+      id: 'p',
+      tamanho: 'P',
+      manequim: '36 - 38',
+      busto: '84 - 88 cm',
+      cintura: '66 - 70 cm',
+      quadril: '92 - 96 cm',
+      busto_min: 84,
+      busto_max: 88,
+      cintura_min: 66,
+      cintura_max: 70,
+      quadril_min: 92,
+      quadril_max: 96
+    },
+    {
+      id: 'm',
+      tamanho: 'M',
+      manequim: '40',
+      busto: '90 - 94 cm',
+      cintura: '72 - 76 cm',
+      quadril: '98 - 102 cm',
+      busto_min: 89,
+      busto_max: 95,
+      cintura_min: 71,
+      cintura_max: 77,
+      quadril_min: 97,
+      quadril_max: 103
+    },
+    {
+      id: 'g',
+      tamanho: 'G',
+      manequim: '42 - 44',
+      busto: '96 - 102 cm',
+      cintura: '78 - 84 cm',
+      quadril: '104 - 110 cm',
+      busto_min: 96,
+      busto_max: 103,
+      cintura_min: 78,
+      cintura_max: 85,
+      quadril_min: 104,
+      quadril_max: 111
+    },
+    {
+      id: 'gg',
+      tamanho: 'GG',
+      manequim: '46',
+      busto: '104 - 110 cm',
+      cintura: '86 - 92 cm',
+      quadril: '112 - 118 cm',
+      busto_min: 104,
+      busto_max: 112,
+      cintura_min: 86,
+      cintura_max: 93,
+      quadril_min: 112,
+      quadril_max: 120
+    },
+    {
+      id: 'unico',
+      tamanho: 'Tamanho Único',
+      manequim: '38 ao 44',
+      busto: 'Modelagem inteligente com elasticidade e caimento adaptável',
+      cintura: '-',
+      quadril: '-',
+      is_adaptavel: true
+    }
+  ]
+};
 
 export const DEFAULT_STORE_ATTRIBUTES: StoreCustomAttributes = {
   subcategorias: [
@@ -5189,6 +5287,7 @@ export const DEFAULT_STORE_ATTRIBUTES: StoreCustomAttributes = {
     '44',
     '46'
   ],
+  grades_predefinidas: DEFAULT_STORE_SIZE_GRIDS,
   sinalizadores: [
     { id: 'destaque', nome: 'Lançamento', cor: '#C5A059', icone: '🌟', label: 'Lançamento', color: '#C5A059', icon: '🌟', textColor: '#ffffff', ativo: true, ordem: 1, isSystem: true },
     { id: 'mais_vendido', nome: 'Mais Vendido', cor: '#9333EA', icone: '🔥', label: 'Mais Vendido', color: '#9333EA', icon: '🔥', textColor: '#ffffff', ativo: true, ordem: 2, isSystem: true },
@@ -5274,12 +5373,18 @@ export async function getStoreCustomAttributes(
     }
     const cores = Array.from(coresMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
 
+    const rawGrades = attrs.grades_predefinidas;
+    const grades_predefinidas: GradePredefinida[] = Array.isArray(rawGrades) && rawGrades.length > 0
+      ? rawGrades
+      : DEFAULT_STORE_SIZE_GRIDS;
+
     return {
       subcategorias,
       tecidos,
       modelagens,
       colecoes,
       tamanhos,
+      grades_predefinidas,
       cores,
       sinalizadores: sinalizadoresOrdenados
     };
@@ -6402,6 +6507,175 @@ export async function mergeStoreColors(
   } catch (err: any) {
     console.error('Erro ao mesclar cores da loja:', err);
     return { success: false, error: err?.message || 'Falha ao mesclar cores.' };
+  }
+}
+
+/**
+ * Consulta o Guia de Medidas configurado na loja (ou retorna os valores padrão oficiais da boutique).
+ */
+export async function getStoreSizeGuide(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<LojaGuiaMedidas> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const guia = visuais.guia_medidas;
+
+    if (!guia || !Array.isArray(guia.linhas) || guia.linhas.length === 0) {
+      return DEFAULT_STORE_SIZE_GUIDE;
+    }
+
+    return {
+      ativo: guia.ativo !== false,
+      titulo: guia.titulo || DEFAULT_STORE_SIZE_GUIDE.titulo,
+      subtitulo: guia.subtitulo || DEFAULT_STORE_SIZE_GUIDE.subtitulo,
+      dica_caimento: guia.dica_caimento || DEFAULT_STORE_SIZE_GUIDE.dica_caimento,
+      provador_virtual_ativo: guia.provador_virtual_ativo !== false,
+      whatsapp_duvidas_ativo: guia.whatsapp_duvidas_ativo !== false,
+      linhas: guia.linhas
+    };
+  } catch (err) {
+    console.error('Falha ao carregar guia de medidas da loja:', err);
+    return DEFAULT_STORE_SIZE_GUIDE;
+  }
+}
+
+/**
+ * Salva as configurações completas do Guia de Medidas da loja no Supabase.
+ */
+export async function saveStoreSizeGuide(
+  lojaId: string = DEFAULT_TENANT_ID,
+  guia: LojaGuiaMedidas
+): Promise<{ success: boolean; data?: LojaGuiaMedidas; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          guia_medidas: guia
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:sizeguide_updated', { detail: { lojaId, guia } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, data: guia };
+  } catch (err: any) {
+    console.error('Erro ao salvar guia de medidas da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar guia de medidas.' };
+  }
+}
+
+/**
+ * Salva a lista ordenada de tamanhos oficiais da loja no Supabase.
+ */
+export async function saveStoreSizesList(
+  lojaId: string = DEFAULT_TENANT_ID,
+  tamanhos: string[]
+): Promise<{ success: boolean; tamanhos?: string[]; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+
+    const sanitized = Array.from(new Set(tamanhos.map((t) => t.trim()).filter(Boolean)));
+    attrs.tamanhos = sanitized;
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'tamanhos', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, tamanhos: sanitized };
+  } catch (err: any) {
+    console.error('Erro ao salvar tamanhos da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar tamanhos da loja.' };
+  }
+}
+
+/**
+ * Salva a lista de grades rápidas pré-definidas da loja no Supabase.
+ */
+export async function saveStoreSizeGrids(
+  lojaId: string = DEFAULT_TENANT_ID,
+  grades: GradePredefinida[]
+): Promise<{ success: boolean; grades?: GradePredefinida[]; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const attrs = { ...(visuais.atributos_pecas || {}) };
+
+    attrs.grades_predefinidas = grades;
+
+    const { error: updErr } = await supabase
+      .from('lojas')
+      .update({
+        configuracoes_visuais: {
+          ...visuais,
+          atributos_pecas: attrs
+        }
+      })
+      .eq('id', lojaId);
+
+    if (updErr) throw updErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:attributes_updated', { detail: { tipo: 'grades_predefinidas', lojaId } }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true, grades };
+  } catch (err: any) {
+    console.error('Erro ao salvar grades da loja:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar grades da loja.' };
   }
 }
 

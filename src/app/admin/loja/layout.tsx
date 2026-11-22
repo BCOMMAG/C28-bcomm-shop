@@ -17,7 +17,8 @@ import {
   Layers,
   Pipette,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Ruler
 } from 'lucide-react';
 import { useAdminUnsavedChanges } from '@/context/AdminUnsavedChangesContext';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -86,6 +87,13 @@ export default function LojaVirtualHubLayout({ children }: { children: React.Rea
       href: '/admin/loja/cores',
       icon: Pipette,
       badge: 'PALETA'
+    },
+    {
+      id: 'medidas',
+      label: 'Tamanhos & Medidas',
+      href: '/admin/loja/medidas',
+      icon: Ruler,
+      badge: 'MEDIDAS'
     },
     {
       id: 'cupons',

@@ -107,7 +107,9 @@ import {
   bulkUpdateProdutosColecao,
   CategoriaNode,
   getCategoriaTree,
-  getDescendantCategoryIds
+  getDescendantCategoryIds,
+  GradePredefinida,
+  DEFAULT_STORE_SIZE_GRIDS
 } from '@/lib/admin';
 import {
   getStoredActiveMember,
@@ -1020,6 +1022,13 @@ export default function AdminProdutosPage() {
       ]);
       showToast('Grade 36 ao 44 carregada!');
     }
+  };
+
+  const handleApplyCustomGrid = (grid: GradePredefinida) => {
+    setMultiVarSizes(
+      grid.tamanhos.map((t, idx) => ({ id: `size_preset_${idx}_${Date.now()}`, tamanho: t, estoque: 5 }))
+    );
+    showToast(`Grade "${grid.nome}" carregada!`);
   };
 
   const handleFinishColorMultiSizes = () => {
