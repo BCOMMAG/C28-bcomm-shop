@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType } from '@/lib/products';
+import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType, parseMediaColor } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
 import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida } from '@/types/database';
 export type { ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida };
@@ -115,6 +115,8 @@ export interface UpdateProductInput {
     preco?: number | null;
     preco_promocional?: number | null;
   }>;
+  deletedVariationIds?: string[];
+  deletedColorNames?: string[];
 }
 
 export interface CreateProductInput {
@@ -2277,14 +2279,32 @@ export async function updateAdminProductFull(
         mergedDetalhes.precos_diferenciados = input.precos_diferenciados;
       }
       if (input.fotos_por_cor !== undefined) {
-        // Mesclagem inteligente com o existente no banco para proteger contra perda por concorrência
+        // Sanitiza e mescla fotos por cor, removendo cores explicitamente excluídas ou ausentes da grade
         const existingFotosPorCor = (curProdData?.detalhes && typeof curProdData.detalhes.fotos_por_cor === 'object' && !Array.isArray(curProdData.detalhes.fotos_por_cor))
           ? curProdData.detalhes.fotos_por_cor
           : {};
-        mergedDetalhes.fotos_por_cor = {
+
+        const deletedColorsClean = new Set(
+          (input.deletedColorNames || []).map((c) => c.trim().toLowerCase())
+        );
+        const incomingColorNamesClean = input.variacoes && Array.isArray(input.variacoes)
+          ? new Set(input.variacoes.map((v) => (v.cor_nome || '').trim().toLowerCase()))
+          : null;
+
+        const mergedMap: Record<string, string[]> = {
           ...existingFotosPorCor,
           ...(input.fotos_por_cor || {})
         };
+
+        const cleanFotosPorCor: Record<string, string[]> = {};
+        Object.entries(mergedMap).forEach(([cor, urls]) => {
+          const lower = cor.trim().toLowerCase();
+          if (deletedColorsClean.has(lower)) return;
+          if (incomingColorNamesClean && incomingColorNamesClean.size > 0 && !incomingColorNamesClean.has(lower)) return;
+          cleanFotosPorCor[cor] = urls;
+        });
+
+        mergedDetalhes.fotos_por_cor = Object.keys(cleanFotosPorCor).length > 0 ? cleanFotosPorCor : null;
       }
 
       updateFields.detalhes = Object.keys(mergedDetalhes).length > 0 ? mergedDetalhes : null;
@@ -2299,7 +2319,10 @@ export async function updateAdminProductFull(
 
     if (prodErr) throw prodErr;
 
-    // 2. Sincronizar grade de variações com proteção contra concorrência
+    // 2. Sincronizar grade de variações com proteção contra concorrência e exclusão real
+    const deletedColorsSet = new Set((input.deletedColorNames || []).map((c) => c.trim().toLowerCase()));
+    const deletedIdsSet = new Set(input.deletedVariationIds || []);
+
     if (input.variacoes && Array.isArray(input.variacoes)) {
       const { data: existingVars } = await supabase
         .from('variacoes_produto')
@@ -2307,13 +2330,16 @@ export async function updateAdminProductFull(
         .eq('produto_id', input.id);
 
       const incomingIds = new Set(input.variacoes.filter((v) => v.id && !v.id.startsWith('temp_')).map((v) => v.id!));
-      const incomingColorNames = new Set(input.variacoes.map((v) => (v.cor_nome || '').trim().toLowerCase()));
 
-      // 2a. Só deleta variações se pertencerem a cores tratadas explicitamente nesta submissão (protege cores adicionadas por outro operador)
+      // Deleta variações removidas:
+      // - Qualquer ID explicitamente informado em deletedVariationIds
+      // - Qualquer variação cuja cor esteja em deletedColorNames
+      // - Na Edição Completa da Peça, qualquer variação pré-existente cujo ID não esteja em incomingIds
       const toDelete = (existingVars || []).filter((v: any) => {
         if (incomingIds.has(v.id)) return false;
+        if (deletedIdsSet.has(v.id)) return true;
         const vCor = (v.cor_nome || '').trim().toLowerCase();
-        if (!incomingColorNames.has(vCor)) return false; // Preserva cores de outros operadores
+        if (deletedColorsSet.has(vCor)) return true;
         return true;
       }).map((v: any) => v.id);
 
@@ -2382,7 +2408,7 @@ export async function updateAdminProductFull(
       const midiasToInsert: any[] = [];
       const seenUrls = new Set<string>();
 
-      // Insere as fotos ordenadas da galeria (preservando labels de cor existentes no banco)
+      // Insere as fotos ordenadas da galeria (preservando labels de cor existentes no banco, exceto cores excluídas)
       input.fotos.forEach((f, idx) => {
         if (!f.url || seenUrls.has(f.url)) return;
         seenUrls.add(f.url);
@@ -2393,6 +2419,15 @@ export async function updateAdminProductFull(
         if ((!resolvedLabel || resolvedLabel.startsWith('Foto ') || resolvedLabel === 'Capa Principal') && existing?.label && existing.label.includes('[COR:')) {
           resolvedLabel = existing.label;
         }
+
+        // Se a cor foi excluída, desassocia a etiqueta de cor da mídia
+        if (resolvedLabel && deletedColorsSet.size > 0) {
+          const p = parseMediaColor(resolvedLabel);
+          if (p.colorName && deletedColorsSet.has(p.colorName.trim().toLowerCase())) {
+            resolvedLabel = resolvedLabel.replace(/\[COR:\s*[^\]]+\]/gi, '').replace(/\[CAPA_COR\]/gi, '').trim() || null;
+          }
+        }
+
         if (!resolvedLabel) {
           resolvedLabel = isVid ? 'Vídeo do Produto' : (idx === 0 ? 'Capa Principal' : `Foto ${idx + 1}`);
         }
@@ -2407,16 +2442,23 @@ export async function updateAdminProductFull(
         });
       });
 
-      // Preserva fotos já salvas no banco que outro usuário possa ter acabado de enviar
+      // Preserva fotos já salvas no banco que outro usuário possa ter acabado de enviar (limpando cor excluída)
       (existingDbMidias || []).forEach((m: any) => {
         if (!seenUrls.has(m.url)) {
           seenUrls.add(m.url);
+          let mLabel = m.label;
+          if (mLabel && deletedColorsSet.size > 0) {
+            const p = parseMediaColor(mLabel);
+            if (p.colorName && deletedColorsSet.has(p.colorName.trim().toLowerCase())) {
+              mLabel = mLabel.replace(/\[COR:\s*[^\]]+\]/gi, '').replace(/\[CAPA_COR\]/gi, '').trim() || null;
+            }
+          }
           midiasToInsert.push({
             loja_id: m.loja_id || updatedProd.loja_id,
             produto_id: input.id,
             tipo: m.tipo,
             url: m.url,
-            label: m.label,
+            label: mLabel,
             display_order: midiasToInsert.length
           });
         }

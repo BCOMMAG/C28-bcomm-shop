@@ -641,6 +641,10 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "hex": "#FFFFFFFF",
           "nome": "Branco"
+        },
+        {
+          "hex": "#5e3003",
+          "nome": "Marrom"
         }
       ],
       "tecidos": [

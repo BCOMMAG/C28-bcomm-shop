@@ -203,6 +203,10 @@ export function ProductFullFormModal({
     solicitado_em: string;
   } | null>(null);
 
+  // Rastreamento explícito de IDs de variações e nomes de cores excluídos
+  const [deletedVariationIds, setDeletedVariationIds] = useState<string[]>([]);
+  const [deletedColorNames, setDeletedColorNames] = useState<string[]>([]);
+
   // Helper para contraste em cores claras
   const isLightColor = (hex: string) => {
     const clean = (hex || '').replace('#', '');
@@ -406,8 +410,12 @@ export function ProductFullFormModal({
         sku: v.sku || ''
       }));
       setVariacoes(existingVars);
+      setDeletedVariationIds([]);
+      setDeletedColorNames([]);
     } else {
       // Modo Criação do zero
+      setDeletedVariationIds([]);
+      setDeletedColorNames([]);
       setNome('');
       setSlug('');
       setAtivo(true);
@@ -791,6 +799,15 @@ export function ProductFullFormModal({
   // Exclusão completa da cor e de todas as suas unidades
   const handleDeleteCorVariacoes = (corNome: string) => {
     const cleanCor = corNome.trim().toLowerCase();
+
+    // Rastreia IDs reais que serão excluídos no banco
+    const removedVars = variacoes.filter((v) => (v.cor_nome || '').trim().toLowerCase() === cleanCor);
+    const removedIds = removedVars.map((v) => v.id).filter((id): id is string => Boolean(id && !id.startsWith('temp_')));
+    if (removedIds.length > 0) {
+      setDeletedVariationIds((prev) => Array.from(new Set([...prev, ...removedIds])));
+    }
+    setDeletedColorNames((prev) => Array.from(new Set([...prev, corNome.trim()])));
+
     setVariacoes((prev) =>
       prev.filter((v) => (v.cor_nome || '').trim().toLowerCase() !== cleanCor)
     );
@@ -803,6 +820,25 @@ export function ProductFullFormModal({
       });
       return updated;
     });
+
+    // Desvincula etiquetas de fotos associadas a esta cor para evitar referências órfãs
+    setMediaList((prev) =>
+      prev.map((m) => {
+        const p = parseMediaColor(m.label || undefined);
+        if (p.colorName && p.colorName.trim().toLowerCase() === cleanCor) {
+          const newLabel = (m.label || '')
+            .replace(/\[COR:\s*[^\]]+\]/gi, '')
+            .replace(/\[CAPA_COR\]/gi, '')
+            .trim();
+          return {
+            ...m,
+            label: newLabel || null
+          };
+        }
+        return m;
+      })
+    );
+
     showToast(`Cor "${corNome}" e suas variações foram removidas.`);
   };
 
@@ -1093,7 +1129,9 @@ export function ProductFullFormModal({
           foto_principal: safeFotoPrincipal,
           fotos: orderedFotos,
           video_provador_url: firstVideo ? firstVideo.url : null,
-          variacoes: variacoesPayload
+          variacoes: variacoesPayload,
+          deletedVariationIds: deletedVariationIds.length > 0 ? deletedVariationIds : undefined,
+          deletedColorNames: deletedColorNames.length > 0 ? deletedColorNames : undefined
         };
 
         const res = await updateAdminProductFull(updatePayload);
@@ -1884,7 +1922,10 @@ export function ProductFullFormModal({
                                       </span>
                                       <button
                                         type="button"
-                                        onClick={() =>
+                                        onClick={() => {
+                                          if (item.id && !item.id.startsWith('temp_')) {
+                                            setDeletedVariationIds((prev) => Array.from(new Set([...prev, item.id!])));
+                                          }
                                           setVariacoes((prev) =>
                                             prev.filter(
                                               (v) =>
@@ -1893,8 +1934,8 @@ export function ProductFullFormModal({
                                                   (v.tamanho || '').trim().toUpperCase() === item.tamanho.toUpperCase()
                                                 )
                                             )
-                                          )
-                                        }
+                                          );
+                                        }}
                                         className="p-0.5 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
                                         title={`Remover tamanho ${item.tamanho} de ${group.cor_nome}`}
                                       >
@@ -2035,7 +2076,10 @@ export function ProductFullFormModal({
 
                                 <button
                                   type="button"
-                                  onClick={() =>
+                                  onClick={() => {
+                                    if (v.id && !v.id.startsWith('temp_')) {
+                                      setDeletedVariationIds((prev) => Array.from(new Set([...prev, v.id!])));
+                                    }
                                     setVariacoes((prev) =>
                                       prev.filter(
                                         (item) =>
@@ -2044,8 +2088,8 @@ export function ProductFullFormModal({
                                             (item.tamanho || '').trim().toUpperCase() === (v.tamanho || '').trim().toUpperCase()
                                           )
                                       )
-                                    )
-                                  }
+                                    );
+                                  }}
                                   className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                                   title="Remover variação"
                                 >
