@@ -584,6 +584,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {
           event: '*',
           schema: 'public',
+          table: 'midias_produto'
+        },
+        () => {
+          refreshProducts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'reservas_estoque'
         },
         (payload: any) => {
@@ -651,7 +662,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel('bcomm_stock_sync');
         bc.onmessage = (event) => {
-          if (event.data?.type === 'reservation_change' || event.data === 'sync') {
+          if (event.data?.type === 'reservation_change' || event.data === 'sync' || event.data?.type === 'products_refresh') {
             refreshReservations();
             refreshProducts();
           }
@@ -680,8 +691,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         refreshProducts();
       }
     };
+    const handleProductsUpdated = () => {
+      refreshProducts();
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', handleStorageEvent);
+      window.addEventListener('bcomm:products_updated', handleProductsUpdated);
     }
 
     // Camada 3: Pulso Leve de Heartbeat (a cada 8 segundos) e revalidação ao focar aba
@@ -703,6 +719,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       supabase.removeChannel(channel);
       clearInterval(heartbeatTimer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageEvent);
+        window.removeEventListener('bcomm:products_updated', handleProductsUpdated);
+      }
       if (bc) {
         try { bc.close(); } catch {}
       }

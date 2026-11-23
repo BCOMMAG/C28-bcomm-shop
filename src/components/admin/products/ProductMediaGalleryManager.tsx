@@ -220,8 +220,7 @@ export function ProductMediaGalleryManager({
     const reordered = updated.map((m, idx) => ({ ...m, display_order: idx }));
     onChange(reordered);
     if (onCoverIndexChange) {
-      if (coverIndex === index) onCoverIndexChange(targetIndex);
-      else if (coverIndex === targetIndex) onCoverIndexChange(index);
+      onCoverIndexChange(0);
     }
   };
 

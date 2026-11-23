@@ -2438,7 +2438,7 @@ export async function updateAdminProductFull(
           tipo: isVid ? 'video' : 'image',
           url: f.url,
           label: resolvedLabel,
-          display_order: f.display_order !== undefined ? f.display_order : idx
+          display_order: idx
         });
       });
 
@@ -2481,14 +2481,30 @@ export async function updateAdminProductFull(
         await supabase.from('midias_produto').delete().eq('produto_id', input.id);
         await supabase.from('midias_produto').insert(midiasToInsert);
 
-        // Garante que a primeira foto estática válida vire a foto_principal (NUNCA vídeo)
+        // Garante que a primeira foto estática válida vire a foto_principal soberana (NUNCA vídeo)
         const firstPhoto = midiasToInsert.find((m) => m.tipo === 'image' && !isVideoUrl(m.url));
-        if (firstPhoto) {
+        const effectiveCoverUrl = (input.foto_principal && !isVideoUrl(input.foto_principal))
+          ? input.foto_principal
+          : firstPhoto?.url;
+
+        if (effectiveCoverUrl) {
           await supabase
             .from('produtos')
-            .update({ foto_principal: firstPhoto.url })
+            .update({ foto_principal: effectiveCoverUrl })
             .eq('id', input.id);
         }
+      }
+    }
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:products_updated', { detail: { produtoId: input.id } }));
+      if ('BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('bcomm_stock_sync');
+          bc.postMessage({ type: 'products_refresh', timestamp: Date.now() });
+          setTimeout(() => bc.close(), 100);
+        } catch {}
       }
     }
 

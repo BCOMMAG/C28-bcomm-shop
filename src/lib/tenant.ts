@@ -74,8 +74,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "id": "nav-1795019461825",
           "type": "category",
-          "label": "VERÃO",
-          "value": "Verão",
+          "label": "PRIMAVERA/ VERÃO",
+          "value": "Primavera/Verão",
           "isSpecial": false,
           "subOptions": [
             {
@@ -90,8 +90,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "id": "nav-1795019502866",
           "type": "category",
-          "label": "INVERNO",
-          "value": "Inverno",
+          "label": "OUTUNO/INVERNO",
+          "value": "Outono/Inverno",
           "isSpecial": false
         },
         {
@@ -248,13 +248,15 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "id": "nav-l1-5",
           "type": "category",
           "label": "Blusas",
-          "value": "Blusas"
+          "value": "Blusas",
+          "subOptions": []
         },
         {
           "id": "nav-l1-6",
           "type": "category",
           "label": "Calças",
-          "value": "Calças"
+          "value": "Calças",
+          "subOptions": []
         }
       ],
       "linha_2": [
@@ -262,31 +264,36 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "id": "nav-l2-1",
           "type": "category",
           "label": "Alfaiataria",
-          "value": "Alfaiataria"
+          "value": "Alfaiataria",
+          "subOptions": []
         },
         {
           "id": "nav-l2-2",
           "type": "category",
           "label": "Vestidos",
-          "value": "Vestidos"
+          "value": "Vestidos",
+          "subOptions": []
         },
         {
           "id": "nav-l2-3",
           "type": "category",
           "label": "Jaquetas E Casacos",
-          "value": "Jaquetas E Casacos"
+          "value": "Jaquetas E Casacos",
+          "subOptions": []
         },
         {
           "id": "nav-l2-4",
           "type": "category",
           "label": "Shorts E Saias",
-          "value": "Shorts E Saias"
+          "value": "Shorts E Saias",
+          "subOptions": []
         },
         {
           "id": "nav-l2-5",
           "type": "category",
           "label": "Vestidos E Macacões",
-          "value": "Vestidos E Macacões"
+          "value": "Vestidos E Macacões",
+          "subOptions": []
         }
       ],
       "gaveta_mobile": [
@@ -448,43 +455,50 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           "id": "drw-5",
           "type": "category",
           "label": "Blusas",
-          "value": "Blusas"
+          "value": "Blusas",
+          "subOptions": []
         },
         {
           "id": "drw-6",
           "type": "category",
           "label": "Calças",
-          "value": "Calças"
+          "value": "Calças",
+          "subOptions": []
         },
         {
           "id": "drw-7",
           "type": "category",
           "label": "Alfaiataria",
-          "value": "Alfaiataria"
+          "value": "Alfaiataria",
+          "subOptions": []
         },
         {
           "id": "drw-8",
           "type": "category",
           "label": "Vestidos",
-          "value": "Vestidos"
+          "value": "Vestidos",
+          "subOptions": []
         },
         {
           "id": "drw-9",
           "type": "category",
           "label": "Jaquetas E Casacos",
-          "value": "Jaquetas E Casacos"
+          "value": "Jaquetas E Casacos",
+          "subOptions": []
         },
         {
           "id": "drw-10",
           "type": "category",
           "label": "Shorts E Saias",
-          "value": "Shorts E Saias"
+          "value": "Shorts E Saias",
+          "subOptions": []
         },
         {
           "id": "drw-11",
           "type": "category",
           "label": "Vestidos E Macacões",
-          "value": "Vestidos E Macacões"
+          "value": "Vestidos E Macacões",
+          "subOptions": []
         },
         {
           "id": "drw-12",
@@ -496,14 +510,16 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
           },
           "label": "BAZAR",
           "value": "OUTLET",
-          "isSpecial": true
+          "isSpecial": true,
+          "subOptions": []
         },
         {
           "id": "drw-13",
           "type": "status",
           "label": "Últimas Peças",
           "value": "Últimas Peças",
-          "isSpecial": true
+          "isSpecial": true,
+          "subOptions": []
         }
       ]
     },
@@ -645,6 +661,38 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         {
           "hex": "#5e3003",
           "nome": "Marrom"
+        },
+        {
+          "hex": "#8B5742",
+          "nome": "Caramelo"
+        },
+        {
+          "hex": "#3B2F2F",
+          "nome": "Chocolate"
+        },
+        {
+          "hex": "#1D4ED8",
+          "nome": "Azul Royal"
+        },
+        {
+          "hex": "#FFFFFF",
+          "nome": "Algodão"
+        },
+        {
+          "hex": "#F7CAC9",
+          "nome": "Crema"
+        },
+        {
+          "hex": "#6F4E37",
+          "nome": "Alfajor"
+        },
+        {
+          "hex": "#5A4A3D",
+          "nome": "Trufa"
+        },
+        {
+          "hex": "#D2B48C",
+          "nome": "Pasta"
         }
       ],
       "tecidos": [
@@ -661,7 +709,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "Poliester",
         "Viscose",
         "Viscose + Linho",
-        "Algodão + Poliamida"
+        "Algodão + Poliamida",
+        "Liocel"
       ],
       "subcategorias": [
         "Alfaiataria",
@@ -831,40 +880,8 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "display_order": 110
       },
       {
-        "id": "082213ff-0d34-4478-9efe-b67817496836",
-        "nome": "Verão",
-        "slug": "verao",
-        "ativo": true,
-        "icone": "☀️",
-        "nivel": 0,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "descricao": "Coleção e peças de Verão",
-        "parent_id": null,
-        "created_at": "2026-11-18T15:30:04.845Z",
-        "updated_at": "2026-11-18T15:30:04.869Z",
-        "caminho_slugs": "verao",
-        "display_order": 14,
-        "caminho_completo": "Verão"
-      },
-      {
-        "id": "2a117d47-8467-4277-8cdf-33f764974ecf",
-        "nome": "Inverno",
-        "slug": "inverno",
-        "ativo": true,
-        "icone": "❄️",
-        "nivel": 0,
-        "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "descricao": "Coleção e peças de Inverno",
-        "parent_id": null,
-        "created_at": "2026-11-18T15:30:04.999Z",
-        "updated_at": "2026-11-18T15:30:04.999Z",
-        "caminho_slugs": "inverno",
-        "display_order": 15,
-        "caminho_completo": "Inverno"
-      },
-      {
         "id": "c9ad6610-6473-4a27-8198-71dbe6a3b477",
-        "nome": "Outono",
+        "nome": "Outono/Inverno",
         "slug": "outono",
         "ativo": true,
         "icone": "🍂",
@@ -880,7 +897,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
       },
       {
         "id": "46328461-e020-4e11-9e1b-6e268bb1c5ee",
-        "nome": "Primavera",
+        "nome": "Primavera/Verão",
         "slug": "primavera",
         "ativo": true,
         "icone": "🌸",
@@ -901,7 +918,7 @@ export const DEFAULT_LEIDY_TENANT: Loja = {
         "ativo": true,
         "nivel": 1,
         "loja_id": "e8b7f890-4e3a-4a89-9c56-8e1234567890",
-        "parent_id": "082213ff-0d34-4478-9efe-b67817496836",
+        "parent_id": null,
         "display_order": 10,
         "caminho_completo": "Verão > Regatas"
       }

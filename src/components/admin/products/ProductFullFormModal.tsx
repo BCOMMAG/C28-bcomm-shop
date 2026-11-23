@@ -1078,17 +1078,17 @@ export function ProductFullFormModal({
         dimensoes_frete: dimensoesFrete
       };
 
-      const orderedFotos = [...validMediaList];
-      if (coverIndex > 0 && coverIndex < orderedFotos.length) {
-        const [coverItem] = orderedFotos.splice(coverIndex, 1);
-        orderedFotos.unshift(coverItem);
-      }
+      // A ordem visual da galeria já define soberanamente a Capa Principal na posição 0
+      const orderedFotos = validMediaList.map((f, idx) => ({
+        ...f,
+        display_order: idx
+      }));
 
       const totalEstoqueGrade = variacoes.reduce((acc, v) => acc + (Number(v.estoque) || 0), 0);
       const pairedSlugFinal = pairedSlugs.join(',') || null;
       const firstVideo = orderedFotos.find((f) => f.tipo === 'video' || isVideoUrl(f.url));
       const firstImage = orderedFotos.find((f) => f.tipo === 'image' && !isVideoUrl(f.url));
-      const safeFotoPrincipal = firstImage?.url || (product?.foto_principal && !isVideoUrl(product.foto_principal) ? product.foto_principal : null) || orderedFotos[0]?.url || '';
+      const safeFotoPrincipal = firstImage?.url || orderedFotos[0]?.url || '';
 
       if (isEdit && product) {
         // MODO EDIÇÃO
@@ -1197,6 +1197,20 @@ export function ProductFullFormModal({
             estoque_total: totalEstoqueGrade
           };
 
+          try {
+            if (typeof window !== 'undefined') {
+              Object.keys(localStorage).forEach((k) => {
+                if (k.startsWith('bcomm_products_')) localStorage.removeItem(k);
+              });
+              window.dispatchEvent(new CustomEvent('bcomm:products_updated', { detail: { produtoId: product.id } }));
+              if ('BroadcastChannel' in window) {
+                const bc = new BroadcastChannel('bcomm_stock_sync');
+                bc.postMessage({ type: 'products_refresh', timestamp: Date.now() });
+                setTimeout(() => bc.close(), 100);
+              }
+            }
+          } catch {}
+
           notifyStockChangeCrossTab();
           showToast(`Peça "${nome}" atualizada com sucesso!`);
           onSaved(updatedItem, false);
@@ -1301,6 +1315,20 @@ export function ProductFullFormModal({
               preco_promocional: precosDiferenciados[`${v.cor_nome}_${v.tamanho}`]?.preco_promocional || parsedPromo
             }))
           };
+
+          try {
+            if (typeof window !== 'undefined') {
+              Object.keys(localStorage).forEach((k) => {
+                if (k.startsWith('bcomm_products_')) localStorage.removeItem(k);
+              });
+              window.dispatchEvent(new CustomEvent('bcomm:products_updated', { detail: { produtoId: newItem.id } }));
+              if ('BroadcastChannel' in window) {
+                const bc = new BroadcastChannel('bcomm_stock_sync');
+                bc.postMessage({ type: 'products_refresh', timestamp: Date.now() });
+                setTimeout(() => bc.close(), 100);
+              }
+            }
+          } catch {}
 
           notifyStockChangeCrossTab();
           showToast(`Peça "${nome}" cadastrada com sucesso no catálogo!`);
