@@ -1060,8 +1060,9 @@ export async function getCategoriaTree(
       parentIds.forEach((pId) => {
         const parentExists = savedTree.some((n) => n.id === pId);
         if (!parentExists) return;
+        const descendantIds = getDescendantCategoryIds(pId, savedTree).filter((id) => id !== pId);
         const existingChild = savedTree.find(
-          (n) => n.parent_id === pId && normText(n.nome) === normText(subName)
+          (n) => descendantIds.includes(n.id) && normText(n.nome) === normText(subName)
         );
         if (!existingChild) {
           const siblings = savedTree.filter((n) => n.parent_id === pId);
@@ -1095,7 +1096,7 @@ export async function getCategoriaTree(
         .eq('id', lojaId);
     }
 
-    // Mapeamento de produtos únicos por nó (resolve subcategoria para o nó filho quando existir)
+    // Mapeamento de produtos únicos por nó (resolve subcategoria para o nó descendente quando existir)
     const directProductIdsByCatId: Record<string, Set<string>> = {};
     const addProductToNode = (nodeId: string, productId: string) => {
       if (!directProductIdsByCatId[nodeId]) directProductIdsByCatId[nodeId] = new Set<string>();
@@ -1104,8 +1105,9 @@ export async function getCategoriaTree(
 
     productBindingsList.forEach(({ productId, catId, subName }) => {
       if (subName) {
+        const descendantIds = getDescendantCategoryIds(catId, savedTree).filter((id) => id !== catId);
         const matchingChild = savedTree.find(
-          (n) => n.parent_id === catId && normText(n.nome) === normText(subName)
+          (n) => descendantIds.includes(n.id) && normText(n.nome) === normText(subName)
         );
         if (matchingChild) {
           addProductToNode(matchingChild.id, productId);
@@ -1370,8 +1372,11 @@ export async function ensureSubcategoryInCategoryTree(
     const parentNode = savedTree.find((n) => n.id === parentCategoryId);
     if (!parentNode) return null;
 
+    const descendantIds = getDescendantCategoryIds(parentCategoryId, savedTree).filter(
+      (id) => id !== parentCategoryId
+    );
     const existing = savedTree.find(
-      (n) => n.parent_id === parentCategoryId && normalize(n.nome) === normalize(cleanSub)
+      (n) => descendantIds.includes(n.id) && normalize(n.nome) === normalize(cleanSub)
     );
     if (existing) return existing;
 

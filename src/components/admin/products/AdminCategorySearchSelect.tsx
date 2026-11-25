@@ -85,19 +85,12 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
     }
   }, [isCreatingInline]);
 
-  // Encontra o nó ativo (com suporte a nó folha quando houver subcategoria)
+  // Encontra o nó ativo correspondente exatamente ao categoriaId selecionado
+  // (Nunca faz fallback por includes() de subcategoria para não confundir com outra categoria raiz de mesmo nome)
   const activeNode = useMemo(() => {
     if (!value) return null;
-    if (subcategoria) {
-      const child = tree.find(
-        (n) =>
-          (n.parent_id === value || n.caminho_completo?.toLowerCase().includes(subcategoria.toLowerCase())) &&
-          n.nome.toLowerCase() === subcategoria.toLowerCase()
-      );
-      if (child) return child;
-    }
     return tree.find((n) => n.id === value) || null;
-  }, [value, subcategoria, tree]);
+  }, [value, tree]);
 
   // Rótulo visível no botão do combobox
   const displayLabel = useMemo(() => {
@@ -354,7 +347,14 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
           <div className="max-h-64 overflow-y-auto py-1 divide-y divide-slate-100 scrollbar-thin">
             {filteredNodes.length > 0 ? (
               filteredNodes.map((node) => {
-                const isSelected = value === node.id;
+                const subClean = (subcategoria || '').trim().toLowerCase();
+                const isMatchingChild = Boolean(
+                  value &&
+                    subClean &&
+                    node.parent_id === value &&
+                    node.nome.trim().toLowerCase() === subClean
+                );
+                const isSelected = value === node.id || isMatchingChild;
                 const depth = node.nivel || 0;
                 const isRoot = depth === 0;
 

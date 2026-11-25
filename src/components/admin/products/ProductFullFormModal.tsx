@@ -47,6 +47,7 @@ import {
   bulkUpdateProdutosColecao,
   CategoriaNode,
   getCategoriaTree,
+  getDescendantCategoryIds,
   saveCategoriaNode,
   ensureSubcategoryInCategoryTree,
   ProductCategoryBinding,
@@ -1412,9 +1413,14 @@ export function ProductFullFormModal({
 
   if (!isOpen) return null;
 
-  // Subcategorias disponíveis da categoria selecionada (prioriza filhas diretas da Árvore de Categorias)
+  // Subcategorias disponíveis da categoria selecionada (prioriza descendentes da Árvore de Categorias)
   const treeDirectSubs = categoriaId
-    ? categoryTree.filter((n) => n.parent_id === categoriaId).map((n) => n.nome)
+    ? (() => {
+        const descIds = getDescendantCategoryIds(categoriaId, categoryTree).filter(
+          (id) => id !== categoriaId
+        );
+        return categoryTree.filter((n) => descIds.includes(n.id)).map((n) => n.nome);
+      })()
     : [];
   const selectedCat = categoriesList.find((c) => c.id === categoriaId);
   const catSubs = selectedCat?.subcategorias || [];
@@ -1700,11 +1706,17 @@ export function ProductFullFormModal({
                       (() => {
                         const activeNode = categoryTree.find((n) => n.id === categoriaId);
                         if (!activeNode) return null;
+                        const basePath = activeNode.caminho_completo || activeNode.nome;
+                        const subTrim = subcategoria.trim();
+                        const fullTrail =
+                          subTrim && !basePath.toLowerCase().endsWith(subTrim.toLowerCase())
+                            ? `${basePath} › ${subTrim}`
+                            : basePath;
                         return (
                           <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium truncate shadow-2xs">
                             <FolderTree className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                             <span className="truncate">
-                              <strong>Trilha:</strong> {activeNode.caminho_completo || activeNode.nome}
+                              <strong>Trilha:</strong> {fullTrail}
                             </span>
                           </div>
                         );
