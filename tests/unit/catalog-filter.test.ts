@@ -410,6 +410,16 @@ runTest(
     const treeComSubcategorias: CategoriaNode[] = [
       ...sampleTree,
       {
+        id: 'cat-tricots-nobre',
+        loja_id: 'loja-1',
+        nome: 'Tricots & Malharia Nobre',
+        slug: 'tricots-malharia-nobre',
+        parent_id: null,
+        nivel: 0,
+        display_order: 25,
+        ativo: true
+      },
+      {
         id: 'cat-casacos-tricots',
         loja_id: 'loja-1',
         nome: 'Tricots',
@@ -437,6 +447,14 @@ runTest(
       category: 'Primavera/Verão',
       categoryId: 'cat-primavera',
       fabric: 'Tricot Biamar'
+    });
+
+    // Peça 2B: Peça vinculada ao departamento raiz "Tricots & Malharia Nobre" (NÃO pode vazar para Outono/Inverno -> Tricots)
+    const pecaRaizTricotsNobre = makeProduct({
+      id: 'p-raiz-tricot-nobre',
+      name: 'Cardigan Malharia Nobre',
+      category: 'Tricots & Malharia Nobre',
+      categoryId: 'cat-tricots-nobre'
     });
 
     // Peça 3: Casacos & Jaquetas -> Tricots (subcategoria homônima sob outro pai)
@@ -473,6 +491,11 @@ runTest(
       'Peça de Primavera/Verão NÃO pode vazar por ter tecido Tricot'
     );
     assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaRaizTricotsNobre, cats, subs, treeComSubcategorias, false),
+      false,
+      'Peça do departamento raiz Tricots & Malharia Nobre NÃO pode vazar para Outono/Inverno -> Tricots'
+    );
+    assert.strictEqual(
       matchesCatalogCategoryAndSubcategory(pecaCasacosTricot, cats, subs, treeComSubcategorias, false),
       false,
       'Peça de Casacos & Jaquetas -> Tricots NÃO pode vazar para Outono/Inverno -> Tricots'
@@ -493,6 +516,11 @@ runTest(
       matchesCatalogCategoryAndSubcategory(pecaPrimaveraTecidoTricot, cats, subs, treeComSubcategorias, true),
       false,
       'Peça de Primavera/Verão NÃO pode vazar no modo estrito'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaRaizTricotsNobre, cats, subs, treeComSubcategorias, true),
+      false,
+      'Peça do departamento raiz Tricots & Malharia Nobre NÃO pode vazar no modo estrito'
     );
     assert.strictEqual(
       matchesCatalogCategoryAndSubcategory(pecaCasacosTricot, cats, subs, treeComSubcategorias, true),

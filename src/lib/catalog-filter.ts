@@ -525,10 +525,28 @@ export function matchesCatalogCategoryAndSubcategory(
   // Modo Flexível (Inativo no admin):
   // Permite que uma subopção que corresponda a um DEPARTAMENTO RAIZ autônomo na árvore (ex: Casacos & Jaquetas colocado como submenu de Outono/Inverno)
   // traga as peças daquele departamento raiz.
-  // NÃO permite vazamento de subcategorias filhas homônimas de departamentos não relacionados.
+  // Se a subcategoria for uma ramificação filha legítima dentro do departamento filtrado (ex: Outono/Inverno -> Tricots),
+  // o escopo é estritamente restrito a esse ramo, impedindo vazamentos de outros departamentos por homonímia.
   return subcategories.some((sub) => {
+    const isChildOfFilteredParent = categories.some((parentCat) => {
+      const parentNodes = findMatchingTreeNodes(parentCat, categoryTree);
+      return parentNodes.some((pNode) => {
+        const descendantIds = getDescendantCategoryIdsLocal(pNode.id, categoryTree).filter((id) => id !== pNode.id);
+        const childNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
+        return childNodes.some((cn) => {
+          const normCn = normalizeCatString(cn.nome);
+          const normSub = normalizeCatString(sub);
+          return normCn === normSub || normalizeCatString(cn.slug) === normSub;
+        });
+      });
+    });
+
+    if (isChildOfFilteredParent) {
+      return false;
+    }
+
     const isRootAutonomousCat = categoryTree.some(
-      (n) => !n.parent_id && isSemanticCategoryMatch(n.nome, sub)
+      (n) => !n.parent_id && (normalizeCatString(n.nome) === normalizeCatString(sub) || normalizeCatString(n.slug) === normalizeCatString(sub) || isSemanticCategoryMatch(n.nome, sub))
     );
     if (isRootAutonomousCat) {
       return matchesCategoryFilter(product, sub, categoryTree);
