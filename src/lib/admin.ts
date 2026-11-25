@@ -761,6 +761,21 @@ export interface StoreNavMenuConfig {
   linha_1: NavMenuItem[];
   linha_2: NavMenuItem[];
   gaveta_mobile: NavMenuItem[];
+  sincronizar_mobile_com_desktop?: boolean;
+}
+
+/**
+ * Gera os itens da Gaveta Mobile replicando fielmente Linha 1 + Linha 2 do Desktop.
+ */
+export function buildSyncedMobileMenuItems(
+  linha1: NavMenuItem[] = [],
+  linha2: NavMenuItem[] = []
+): NavMenuItem[] {
+  return [...(linha1 || []), ...(linha2 || [])].map((item, idx) => ({
+    ...item,
+    id: item.id || `drw-sync-${idx + 1}`,
+    subOptions: item.subOptions ? item.subOptions.map((sub) => ({ ...sub })) : undefined
+  }));
 }
 
 /**
@@ -1532,6 +1547,7 @@ export async function reorderAdminCategories(
  */
 export function getDefaultStoreNavMenuConfig(): StoreNavMenuConfig {
   return {
+    sincronizar_mobile_com_desktop: true,
     linha_1: [
       {
         id: 'nav-l1-1',
@@ -1679,10 +1695,17 @@ export async function getStoreNavMenuConfig(
 
     const vis = (loja as any)?.configuracoes_visuais || {};
     if (vis.menu_navegacao && Array.isArray(vis.menu_navegacao.linha_1)) {
+      const linha1 = vis.menu_navegacao.linha_1;
+      const linha2 = Array.isArray(vis.menu_navegacao.linha_2) ? vis.menu_navegacao.linha_2 : [];
+      const syncMobile = vis.menu_navegacao.sincronizar_mobile_com_desktop !== false;
+      const rawMobile = Array.isArray(vis.menu_navegacao.gaveta_mobile)
+        ? vis.menu_navegacao.gaveta_mobile
+        : [];
       return {
-        linha_1: vis.menu_navegacao.linha_1,
-        linha_2: Array.isArray(vis.menu_navegacao.linha_2) ? vis.menu_navegacao.linha_2 : [],
-        gaveta_mobile: Array.isArray(vis.menu_navegacao.gaveta_mobile) ? vis.menu_navegacao.gaveta_mobile : []
+        linha_1: linha1,
+        linha_2: linha2,
+        gaveta_mobile: syncMobile ? buildSyncedMobileMenuItems(linha1, linha2) : rawMobile,
+        sincronizar_mobile_com_desktop: syncMobile
       };
     }
 
@@ -1710,10 +1733,19 @@ export async function saveStoreNavMenuConfig(
 
     if (getErr) throw getErr;
 
+    const syncMobile = config.sincronizar_mobile_com_desktop !== false;
+    const normalizedConfig: StoreNavMenuConfig = {
+      ...config,
+      sincronizar_mobile_com_desktop: syncMobile,
+      gaveta_mobile: syncMobile
+        ? buildSyncedMobileMenuItems(config.linha_1, config.linha_2)
+        : config.gaveta_mobile || []
+    };
+
     const currentVis = (loja as any)?.configuracoes_visuais || {};
     const updatedVis = {
       ...currentVis,
-      menu_navegacao: config
+      menu_navegacao: normalizedConfig
     };
 
     const { error: upErr } = await supabase
@@ -1725,7 +1757,7 @@ export async function saveStoreNavMenuConfig(
 
     clearTenantCache();
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bcomm:menu_updated', { detail: config }));
+      window.dispatchEvent(new CustomEvent('bcomm:menu_updated', { detail: normalizedConfig }));
       window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
     }
 

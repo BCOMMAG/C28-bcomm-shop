@@ -51,7 +51,8 @@ import {
   getCategoriaTree,
   saveCategoriaNode,
   getStoreCatalogFilterSettings,
-  saveStoreCatalogFilterSettings
+  saveStoreCatalogFilterSettings,
+  buildSyncedMobileMenuItems
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -146,10 +147,31 @@ export default function AdminMenuPage() {
         };
       });
 
+    const sanitizedLinha1 = sanitizeList(cfg.linha_1);
+    const sanitizedLinha2 = sanitizeList(cfg.linha_2);
+    const syncMobile = cfg.sincronizar_mobile_com_desktop !== false;
+    const sanitizedMobile = syncMobile
+      ? buildSyncedMobileMenuItems(sanitizedLinha1, sanitizedLinha2)
+      : sanitizeList(cfg.gaveta_mobile);
+
     return {
-      linha_1: sanitizeList(cfg.linha_1),
-      linha_2: sanitizeList(cfg.linha_2),
-      gaveta_mobile: sanitizeList(cfg.gaveta_mobile)
+      linha_1: sanitizedLinha1,
+      linha_2: sanitizedLinha2,
+      gaveta_mobile: sanitizedMobile,
+      sincronizar_mobile_com_desktop: syncMobile
+    };
+  };
+
+  const syncMobileWithDesktop = menuConfig?.sincronizar_mobile_com_desktop !== false;
+
+  const applyDesktopSyncIfEnabled = (cfg: StoreNavMenuConfig): StoreNavMenuConfig => {
+    const syncMobile = cfg.sincronizar_mobile_com_desktop !== false;
+    return {
+      ...cfg,
+      sincronizar_mobile_com_desktop: syncMobile,
+      gaveta_mobile: syncMobile
+        ? buildSyncedMobileMenuItems(cfg.linha_1, cfg.linha_2)
+        : cfg.gaveta_mobile
     };
   };
 
@@ -502,15 +524,16 @@ export default function AdminMenuPage() {
   }, [products, productSearch]);
 
   // Salvar alterações gerais do menu no banco
-  const handleSaveMenu = async (customConfig?: StoreNavMenuConfig) => {
-    const configToSave = customConfig || menuConfig;
-    if (!configToSave) return;
+  const handleSaveMenu = async (customConfig?: StoreNavMenuConfig, customSuccessMsg?: string) => {
+    const rawConfig = customConfig || menuConfig;
+    if (!rawConfig) return;
+    const configToSave = applyDesktopSyncIfEnabled(rawConfig);
 
     setIsSaving(true);
     try {
       const res = await saveStoreNavMenuConfig(tenantId, configToSave);
       if (res.success) {
-        showToast('Estrutura de menus salva e sincronizada com a vitrine!');
+        showToast(customSuccessMsg || 'Estrutura de menus salva e sincronizada com a vitrine!');
       } else {
         showToast(res.error || 'Erro ao salvar menu.', 'error');
       }
@@ -519,6 +542,33 @@ export default function AdminMenuPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Alternar replicação automática do menu Desktop (Linha 1 + Linha 2) para o Mobile
+  const handleToggleSyncMobileWithDesktop = async (nextSync: boolean) => {
+    if (!menuConfig) return;
+    const updatedConfig: StoreNavMenuConfig = nextSync
+      ? {
+          ...menuConfig,
+          sincronizar_mobile_com_desktop: true,
+          gaveta_mobile: buildSyncedMobileMenuItems(menuConfig.linha_1, menuConfig.linha_2)
+        }
+      : {
+          ...menuConfig,
+          sincronizar_mobile_com_desktop: false,
+          gaveta_mobile:
+            menuConfig.gaveta_mobile && menuConfig.gaveta_mobile.length > 0
+              ? menuConfig.gaveta_mobile
+              : buildSyncedMobileMenuItems(menuConfig.linha_1, menuConfig.linha_2)
+        };
+
+    setMenuConfig(updatedConfig);
+    await handleSaveMenu(
+      updatedConfig,
+      nextSync
+        ? 'Menu Mobile sincronizado automaticamente com o Desktop (Linha 1 + Linha 2)!'
+        : 'Modo manual ativado para a Gaveta Mobile. Agora você pode personalizá-la separadamente.'
+    );
   };
 
   // Restaurar padrão de fábrica
@@ -619,10 +669,10 @@ export default function AdminMenuPage() {
       currentList.push(newItem);
     }
 
-    const updatedConfig: StoreNavMenuConfig = {
+    const updatedConfig = applyDesktopSyncIfEnabled({
       ...menuConfig,
       [activeTab]: currentList
-    };
+    });
 
     setMenuConfig(updatedConfig);
     setIsModalOpen(false);
@@ -634,10 +684,10 @@ export default function AdminMenuPage() {
     if (!menuConfig) return;
     const currentList = [...menuConfig[activeTab]];
     const removed = currentList.splice(index, 1);
-    const updatedConfig: StoreNavMenuConfig = {
+    const updatedConfig = applyDesktopSyncIfEnabled({
       ...menuConfig,
       [activeTab]: currentList
-    };
+    });
     setMenuConfig(updatedConfig);
     handleSaveMenu(updatedConfig);
     showToast(`Item "${removed[0]?.label}" removido do menu.`);
@@ -655,10 +705,10 @@ export default function AdminMenuPage() {
     currentList[index] = currentList[targetIndex];
     currentList[targetIndex] = temp;
 
-    const updatedConfig: StoreNavMenuConfig = {
+    const updatedConfig = applyDesktopSyncIfEnabled({
       ...menuConfig,
       [activeTab]: currentList
-    };
+    });
     setMenuConfig(updatedConfig);
     handleSaveMenu(updatedConfig);
   };
@@ -1033,6 +1083,86 @@ export default function AdminMenuPage() {
         </button>
       </div>
 
+      {/* ESPELHAMENTO AUTOMÁTICO DO MENU DESKTOP PARA O MOBILE */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 transition-colors',
+              syncMobileWithDesktop
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-slate-100 border-slate-200 text-slate-600'
+            )}
+          >
+            <Smartphone className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900">
+                Replicar Menu do Desktop para o Mobile (Gaveta Lateral)
+              </h3>
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border',
+                  syncMobileWithDesktop
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : 'bg-slate-100 text-slate-700 border-slate-300'
+                )}
+              >
+                {syncMobileWithDesktop ? 'Sincronizado (Ativo)' : 'Personalização Manual'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+              {syncMobileWithDesktop ? (
+                <>
+                  <strong>Replicação Ativa:</strong> Tudo o que você configurar na{' '}
+                  <strong>Linha 1</strong> e na <strong>Linha 2</strong> do computador será
+                  espelhado automaticamente na <strong>Gaveta Mobile</strong> (incluindo submenus).
+                  Desative este botão caso queira montar um menu diferente no celular.
+                </>
+              ) : (
+                <>
+                  <strong>Edição Manual Ativa:</strong> A aba <strong>Gaveta Mobile</strong> está
+                  independente do computador. Você pode adicionar, editar e reordenar itens
+                  exclusivos para o menu lateral/mobile manualmente.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={syncMobileWithDesktop}
+          disabled={isSaving || !menuConfig}
+          onClick={() => handleToggleSyncMobileWithDesktop(!syncMobileWithDesktop)}
+          className={cn(
+            'inline-flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-60',
+            syncMobileWithDesktop
+              ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-xs'
+              : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-9 h-5 rounded-full relative transition-colors inline-flex items-center p-0.5',
+              syncMobileWithDesktop ? 'bg-emerald-500' : 'bg-slate-300'
+            )}
+          >
+            <span
+              className={cn(
+                'w-4 h-4 rounded-full bg-white shadow-xs transition-transform',
+                syncMobileWithDesktop ? 'translate-x-4' : 'translate-x-0'
+              )}
+            />
+          </span>
+          <span>
+            {syncMobileWithDesktop ? 'Replicar Desktop → Mobile: ON' : 'Replicar Desktop → Mobile: OFF'}
+          </span>
+        </button>
+      </div>
+
       {/* ABAS DE SELEÇÃO: LINHA 1, LINHA 2, GAVETA MOBILE */}
       <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-xs flex items-center gap-1.5">
         <button
@@ -1084,11 +1214,47 @@ export default function AdminMenuPage() {
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
             {menuConfig?.gaveta_mobile.length || 0}
           </span>
+          {syncMobileWithDesktop && (
+            <span
+              className={cn(
+                'text-[9px] font-bold px-1.5 py-0.2 rounded uppercase hidden sm:inline',
+                activeTab === 'gaveta_mobile'
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-emerald-100 text-emerald-800'
+              )}
+            >
+              Espelhado
+            </span>
+          )}
         </button>
       </div>
 
       {/* LISTAGEM DOS ITENS DA ABA SELECIONADA */}
       <div className="space-y-4">
+        {activeTab === 'gaveta_mobile' && syncMobileWithDesktop && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-xs text-emerald-950">
+              <RefreshCw className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">
+                  Menu Mobile sincronizado automaticamente com o Desktop (Linha 1 + Linha 2)
+                </span>
+                <span className="text-emerald-800">
+                  Alterações nas abas Linha 1 ou Linha 2 atualizam esta lista em tempo real. Para
+                  personalizar o mobile separadamente, desative o espelhamento.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggleSyncMobileWithDesktop(false)}
+              className="px-3.5 py-2 text-xs font-bold bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              Desativar e Personalizar Manualmente
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
@@ -1105,8 +1271,14 @@ export default function AdminMenuPage() {
 
           <button
             type="button"
+            disabled={activeTab === 'gaveta_mobile' && syncMobileWithDesktop}
             onClick={handleOpenCreateItem}
-            className="admin-btn-primary px-3.5 py-2 text-xs"
+            title={
+              activeTab === 'gaveta_mobile' && syncMobileWithDesktop
+                ? 'Desative a replicação automática para adicionar itens manualmente no Mobile'
+                : undefined
+            }
+            className="admin-btn-primary px-3.5 py-2 text-xs disabled:opacity-45 disabled:cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t.storeMenu.newItemBtn}</span>
@@ -1131,6 +1303,7 @@ export default function AdminMenuPage() {
             {menuConfig[activeTab].map((item, index) => {
               const isFirst = index === 0;
               const isLast = index === menuConfig[activeTab].length - 1;
+              const isMobileLocked = activeTab === 'gaveta_mobile' && syncMobileWithDesktop;
 
               return (
                 <div
@@ -1142,7 +1315,7 @@ export default function AdminMenuPage() {
                     <div className="flex flex-col gap-1 shrink-0 pt-0.5 sm:pt-0">
                       <button
                         type="button"
-                        disabled={isFirst}
+                        disabled={isFirst || isMobileLocked}
                         onClick={() => handleMoveItemOrder(index, 'up')}
                         className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-20 cursor-pointer transition-colors"
                       >
@@ -1150,7 +1323,7 @@ export default function AdminMenuPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={isLast}
+                        disabled={isLast || isMobileLocked}
                         onClick={() => handleMoveItemOrder(index, 'down')}
                         className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-20 cursor-pointer transition-colors"
                       >
@@ -1217,22 +1390,30 @@ export default function AdminMenuPage() {
 
                   {/* Lado Direito: Ações */}
                   <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 justify-end shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditItem(item, index)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>{t.storeMenu.btnEdit}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteItem(index)}
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                      title={t.storeMenu.btnDelete}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isMobileLocked ? (
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
+                        Espelhado do Desktop
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditItem(item, index)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>{t.storeMenu.btnEdit}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(index)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                          title={t.storeMenu.btnDelete}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

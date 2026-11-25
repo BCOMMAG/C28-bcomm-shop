@@ -366,12 +366,17 @@ export const Header: React.FC<HeaderProps> = ({
     const vis = currentTenant?.configuracoes_visuais as any;
     const menuNav = vis?.menu_navegacao;
     if (menuNav && Array.isArray(menuNav.linha_1) && menuNav.linha_1.length > 0) {
+      const linha2 = Array.isArray(menuNav.linha_2) ? menuNav.linha_2 : MENU_ROW_2;
+      const syncMobile = menuNav.sincronizar_mobile_com_desktop !== false;
+      const syncedMobileItems = [...menuNav.linha_1, ...linha2];
       return {
         menuRow1: menuNav.linha_1 as NavItem[],
-        menuRow2: (Array.isArray(menuNav.linha_2) ? menuNav.linha_2 : MENU_ROW_2) as NavItem[],
-        sideDrawerItems: (Array.isArray(menuNav.gaveta_mobile) && menuNav.gaveta_mobile.length > 0
+        menuRow2: linha2 as NavItem[],
+        sideDrawerItems: (syncMobile
+          ? syncedMobileItems
+          : Array.isArray(menuNav.gaveta_mobile) && menuNav.gaveta_mobile.length > 0
           ? menuNav.gaveta_mobile
-          : [...menuNav.linha_1, ...(menuNav.linha_2 || [])]) as NavItem[]
+          : syncedMobileItems) as NavItem[]
       };
     }
     return {
