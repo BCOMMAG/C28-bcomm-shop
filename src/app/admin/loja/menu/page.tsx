@@ -28,7 +28,9 @@ import {
   Sliders,
   Layers,
   FolderTree,
-  Check
+  Check,
+  Search,
+  ShieldCheck
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -46,7 +48,10 @@ import {
   ColecaoLojaItem,
   getColecoesLoja,
   CategoriaNode,
-  getCategoriaTree
+  getCategoriaTree,
+  saveCategoriaNode,
+  getStoreCatalogFilterSettings,
+  saveStoreCatalogFilterSettings
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -62,6 +67,8 @@ export default function AdminMenuPage() {
   const [products, setProducts] = useState<AdminProductItem[]>([]);
   const [colecoes, setColecoes] = useState<ColecaoLojaItem[]>([]);
   const [categoryTree, setCategoryTree] = useState<CategoriaNode[]>([]);
+  const [strictSubcategoryMode, setStrictSubcategoryMode] = useState(false);
+  const [isSavingFilterRule, setIsSavingFilterRule] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'linha_1' | 'linha_2' | 'gaveta_mobile'>('linha_1');
@@ -90,12 +97,15 @@ export default function AdminMenuPage() {
   const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
   const [subLabel, setSubLabel] = useState('');
   
-  // Modo de Destino do Submenu: 'tree' (Hierárquico multinível), 'status' (Coleções), 'fabric' (Tecidos), 'link' (Livre)
+  // Modo de Destino do Submenu: 'tree' (Qualquer Categoria ou Subcategoria), 'status' (Coleções), 'fabric' (Tecidos), 'link' (Livre)
   const [subDestMode, setSubDestMode] = useState<'tree' | 'status' | 'fabric' | 'link'>('tree');
   const [selectedRootCat, setSelectedRootCat] = useState('');
   const [selectedSubCat, setSelectedSubCat] = useState('');
   const [selectedSubSubCat, setSelectedSubSubCat] = useState('');
   const [customNewSubCat, setCustomNewSubCat] = useState('');
+  const [subSearchTerm, setSubSearchTerm] = useState('');
+  const [linkInsideParentContext, setLinkInsideParentContext] = useState(true);
+  const [alsoCreateInCategoryTree, setAlsoCreateInCategoryTree] = useState(true);
 
   // Fallbacks legados para outros tipos
   const [subValue, setSubValue] = useState('');
@@ -118,13 +128,13 @@ export default function AdminMenuPage() {
         const itemCat = item.type === 'category' ? item.value : undefined;
         const sanitizedSubs = (item.subOptions || []).map((sub) => {
           if (sub.type === 'subcategory') {
-            const effectiveParent = sub.parentCategory || itemCat || 'Verão';
+            const effectiveParent = sub.parentCategory || itemCat;
             const isRegataGlitch =
               sub.label.toLowerCase() === 'regatas' &&
               (sub.value === 'Casacos & Jaquetas' || !sub.value);
             return {
               ...sub,
-              parentCategory: effectiveParent,
+              ...(effectiveParent ? { parentCategory: effectiveParent } : {}),
               value: isRegataGlitch ? 'Regatas' : (sub.value || sub.label)
             };
           }
@@ -146,12 +156,13 @@ export default function AdminMenuPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [menuRes, catsRes, prodsRes, colecoesRes, treeRes] = await Promise.all([
+      const [menuRes, catsRes, prodsRes, colecoesRes, treeRes, filterCfg] = await Promise.all([
         getStoreNavMenuConfig(tenantId),
         getAdminCategoriesFull(tenantId),
         getAdminProducts(tenantId).catch(() => []),
         getColecoesLoja(tenantId).catch(() => []),
-        getCategoriaTree(tenantId).catch(() => [])
+        getCategoriaTree(tenantId).catch(() => []),
+        getStoreCatalogFilterSettings(tenantId).catch(() => ({ filtragem_estrita_subcategoria: false }))
       ]);
 
       if (menuRes) {
@@ -163,6 +174,7 @@ export default function AdminMenuPage() {
       setProducts(prodsRes);
       setColecoes(colecoesRes);
       setCategoryTree(treeRes || []);
+      setStrictSubcategoryMode(Boolean(filterCfg?.filtragem_estrita_subcategoria));
     } catch {
       showToast(t.storeMenu.toastError, 'error');
     } finally {
@@ -173,6 +185,41 @@ export default function AdminMenuPage() {
   useEffect(() => {
     loadData();
   }, [tenantId]);
+
+  useEffect(() => {
+    const handleFilterSync = (e: any) => {
+      if (e?.detail && typeof e.detail.filtragem_estrita_subcategoria === 'boolean') {
+        setStrictSubcategoryMode(e.detail.filtragem_estrita_subcategoria);
+      }
+    };
+    window.addEventListener('bcomm:catalog_filter_settings_updated', handleFilterSync);
+    return () => window.removeEventListener('bcomm:catalog_filter_settings_updated', handleFilterSync);
+  }, []);
+
+  const handleToggleStrictSubcategoryMode = async (nextVal: boolean) => {
+    setStrictSubcategoryMode(nextVal);
+    setIsSavingFilterRule(true);
+    try {
+      const res = await saveStoreCatalogFilterSettings(tenantId, {
+        filtragem_estrita_subcategoria: nextVal
+      });
+      if (res.success) {
+        showToast(
+          nextVal
+            ? 'Vínculo estrito ativado: submenus exigem categoria principal + subcategoria.'
+            : 'Modo flexível ativado: submenus exibem qualquer item da categoria/subcategoria selecionada.'
+        );
+      } else {
+        setStrictSubcategoryMode(!nextVal);
+        showToast(res.error || 'Erro ao salvar regra de filtragem.', 'error');
+      }
+    } catch {
+      setStrictSubcategoryMode(!nextVal);
+      showToast('Erro ao salvar regra de filtragem.', 'error');
+    } finally {
+      setIsSavingFilterRule(false);
+    }
+  };
 
   // Lista de subcategorias agregadas
   const allSubcategories = useMemo(() => {
@@ -255,44 +302,157 @@ export default function AdminMenuPage() {
     return result;
   }, [selectedRootCat, categoryTree, categories, products]);
 
-  // Sub-subcategorias (Nível 3 se existirem nós netos)
+  // Sub-subcategorias (Nível 3 se existirem nós filhos da categoria selecionada)
   const grandChildNodes = useMemo(() => {
     if (!selectedSubCat || selectedSubCat === '__ALL__' || selectedSubCat === '__NEW__') return [];
-    const subNode = childSubcategoryNodes.find(
-      (n) => n.nome.toLowerCase() === selectedSubCat.toLowerCase()
-    );
+    const subNode =
+      childSubcategoryNodes.find((n) => n.nome.toLowerCase() === selectedSubCat.toLowerCase()) ||
+      categoryTree.find((n) => n.nome.toLowerCase() === selectedSubCat.toLowerCase());
     if (!subNode) return [];
     return categoryTree.filter((n) => n.parent_id === subNode.id);
   }, [selectedSubCat, childSubcategoryNodes, categoryTree]);
+
+  // Todas as categorias e subcategorias da loja (autonomia total para vincular em qualquer menu)
+  const allStoreCategoryOptions = useMemo(() => {
+    const items: Array<{
+      id: string;
+      nome: string;
+      nivel: number;
+      caminho?: string;
+      icone?: string;
+      count?: number;
+      source: 'tree' | 'category' | 'product_sub';
+    }> = [];
+    const seenNames = new Set<string>();
+
+    // Ordenação em profundidade (raiz -> filhos -> netos) para visualização clara
+    const addTreeBranch = (parentId: string | null) => {
+      const children = categoryTree
+        .filter((n) => (parentId ? n.parent_id === parentId : !n.parent_id))
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      children.forEach((node) => {
+        const key = node.nome.trim().toLowerCase();
+        items.push({
+          id: node.id,
+          nome: node.nome,
+          nivel: node.nivel || 0,
+          caminho: node.caminho_completo,
+          icone: node.icone,
+          count: node.total_produtos_arvore ?? node.total_produtos_diretos ?? 0,
+          source: 'tree'
+        });
+        seenNames.add(key);
+        addTreeBranch(node.id);
+      });
+    };
+
+    if (categoryTree.length > 0) {
+      addTreeBranch(null);
+      // Garante qualquer nó órfão caso exista
+      categoryTree.forEach((node) => {
+        if (!items.some((i) => i.id === node.id)) {
+          items.push({
+            id: node.id,
+            nome: node.nome,
+            nivel: node.nivel || 0,
+            caminho: node.caminho_completo,
+            icone: node.icone,
+            count: node.total_produtos_arvore ?? node.total_produtos_diretos ?? 0,
+            source: 'tree'
+          });
+          seenNames.add(node.nome.trim().toLowerCase());
+        }
+      });
+    }
+
+    categories.forEach((c) => {
+      const key = c.nome.trim().toLowerCase();
+      if (key && !seenNames.has(key)) {
+        items.push({
+          id: c.id,
+          nome: c.nome,
+          nivel: 0,
+          source: 'category'
+        });
+        seenNames.add(key);
+      }
+      (c.subcategorias || []).forEach((sub) => {
+        const sKey = sub.trim().toLowerCase();
+        if (sKey && !seenNames.has(sKey)) {
+          items.push({
+            id: `cat-sub-${c.id}-${sKey}`,
+            nome: sub.trim(),
+            nivel: 1,
+            caminho: `${c.nome} > ${sub.trim()}`,
+            source: 'category'
+          });
+          seenNames.add(sKey);
+        }
+      });
+    });
+
+    products.forEach((p) => {
+      if (p.subcategoria && p.subcategoria.trim()) {
+        const sTrim = p.subcategoria.trim();
+        const sKey = sTrim.toLowerCase();
+        if (!seenNames.has(sKey)) {
+          items.push({
+            id: `prod-sub-${sKey}`,
+            nome: sTrim,
+            nivel: 1,
+            caminho: p.categoria_nome ? `${p.categoria_nome} > ${sTrim}` : undefined,
+            source: 'product_sub'
+          });
+          seenNames.add(sKey);
+        }
+      }
+    });
+
+    return items;
+  }, [categoryTree, categories, products]);
+
+  // Lista filtrada pela busca dentro do modal de submenus
+  const filteredStoreCategoryOptions = useMemo(() => {
+    const q = subSearchTerm.trim().toLowerCase();
+    if (!q) return allStoreCategoryOptions;
+    return allStoreCategoryOptions.filter(
+      (opt) =>
+        opt.nome.toLowerCase().includes(q) ||
+        (opt.caminho && opt.caminho.toLowerCase().includes(q))
+    );
+  }, [allStoreCategoryOptions, subSearchTerm]);
 
   // Prévia da Trilha e Destino do Submenu em Tempo Real
   const previewData = useMemo(() => {
     if (subDestMode === 'tree') {
       const effectiveSub = selectedSubCat === '__NEW__' ? customNewSubCat.trim() : selectedSubCat;
       const isAllRoot = !effectiveSub || effectiveSub === '__ALL__';
+      const targetName = isAllRoot
+        ? selectedRootCat
+        : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
+        ? selectedSubSubCat
+        : effectiveSub;
+
+      const useParentContext = !isAllRoot && linkInsideParentContext && Boolean(selectedRootCat);
 
       const trail = isAllRoot
-        ? `Item 1 (Raiz): ${selectedRootCat}`
-        : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
-        ? `Item 1: ${selectedRootCat} ➔ Subitem: ${effectiveSub} ➔ Sub-subitem: ${selectedSubSubCat}`
-        : `Item 1: ${selectedRootCat} ➔ Subitem: ${effectiveSub}`;
+        ? `Toda a Categoria: ${selectedRootCat}`
+        : useParentContext
+        ? `${selectedRootCat} ➔ ${targetName}`
+        : `Categoria Direta: ${targetName}`;
 
       const link = isAllRoot
         ? `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}`
-        : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
-        ? `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}&subcategoria=${encodeURIComponent(selectedSubSubCat)}`
-        : `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}&subcategoria=${encodeURIComponent(effectiveSub)}`;
+        : useParentContext
+        ? `/catalogo?categoria=${encodeURIComponent(selectedRootCat)}&subcategoria=${encodeURIComponent(targetName)}`
+        : `/catalogo?categoria=${encodeURIComponent(targetName)}`;
 
       return {
         trail,
         link,
-        type: isAllRoot ? ('category' as const) : ('subcategory' as const),
-        value: isAllRoot
-          ? selectedRootCat
-          : selectedSubSubCat && selectedSubSubCat !== '__ALL_SUB__'
-          ? selectedSubSubCat
-          : effectiveSub,
-        parentCategory: isAllRoot ? undefined : selectedRootCat
+        type: useParentContext ? ('subcategory' as const) : ('category' as const),
+        value: targetName,
+        parentCategory: useParentContext ? selectedRootCat : undefined
       };
     }
 
@@ -330,7 +490,7 @@ export default function AdminMenuPage() {
       value: subCustomUrl || '/',
       parentCategory: undefined
     };
-  }, [subDestMode, selectedRootCat, selectedSubCat, selectedSubSubCat, customNewSubCat, subValue, subExtraCategory, subCustomUrl]);
+  }, [subDestMode, selectedRootCat, selectedSubCat, selectedSubSubCat, customNewSubCat, linkInsideParentContext, subValue, subExtraCategory, subCustomUrl]);
 
   // Lista de produtos filtrada para o Link Picker de Peça Única
   const filteredProducts = useMemo(() => {
@@ -407,13 +567,13 @@ export default function AdminMenuPage() {
     const itemCat = item.type === 'category' ? item.value : undefined;
     const sanitizedSubs = (item.subOptions || []).map((sub) => {
       if (sub.type === 'subcategory') {
-        const effectiveParent = sub.parentCategory || itemCat || 'Verão';
+        const effectiveParent = sub.parentCategory || itemCat;
         const isRegataGlitch =
           sub.label.toLowerCase() === 'regatas' &&
           (sub.value === 'Casacos & Jaquetas' || !sub.value);
         return {
           ...sub,
-          parentCategory: effectiveParent,
+          ...(effectiveParent ? { parentCategory: effectiveParent } : {}),
           value: isRegataGlitch ? 'Regatas' : (sub.value || sub.label)
         };
       }
@@ -504,11 +664,43 @@ export default function AdminMenuPage() {
   };
 
   // Subopções: Salvar modal de subopção
-  const handleSaveSubOption = (e: React.FormEvent) => {
+  const handleSaveSubOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subLabel.trim()) {
       showToast(t.storeMenu.subLabelRequired, 'error');
       return;
+    }
+
+    if (subDestMode === 'tree' && selectedSubCat === '__NEW__') {
+      const newSubName = customNewSubCat.trim();
+      if (!newSubName) {
+        showToast('Informe o nome da nova subcategoria.', 'error');
+        return;
+      }
+
+      if (alsoCreateInCategoryTree) {
+        const parentNode = categoryTree.find(
+          (n) =>
+            n.nome.toLowerCase() === selectedRootCat.toLowerCase() || n.id === selectedRootCat
+        );
+        const alreadyExists = categoryTree.some(
+          (n) =>
+            n.nome.trim().toLowerCase() === newSubName.toLowerCase() &&
+            (parentNode ? n.parent_id === parentNode.id : !n.parent_id)
+        );
+        if (!alreadyExists) {
+          try {
+            const res = await saveCategoriaNode(tenantId, {
+              nome: newSubName,
+              parent_id: parentNode ? parentNode.id : null
+            });
+            if (res.success) {
+              const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
+              setCategoryTree(freshTree);
+            }
+          } catch {}
+        }
+      }
     }
 
     const newSub: NavMenuSubOption = {
@@ -536,20 +728,20 @@ export default function AdminMenuPage() {
     setSubModalOpen(false);
   };
 
-  // Abrir modal para adicionar submenu com herança inteligente da raiz
+  // Abrir modal para adicionar submenu com autonomia total sobre todas as categorias
   const handleOpenAddSub = () => {
     setEditingSubIndex(null);
     setSubDestMode('tree');
+    setSubSearchTerm('');
 
-    // Se o item pai for uma categoria (ex: VERÃO), já pré-seleciona "Verão" como Raiz!
-    const defaultRoot =
-      itemType === 'category' && itemValue
-        ? itemValue
-        : (rootCategoryNodes[0]?.nome || categories[0]?.nome || 'Verão');
+    const fallbackRoot = rootCategoryNodes[0]?.nome || categories[0]?.nome || '';
+    const hasCategoryParent = itemType === 'category' && Boolean(itemValue);
+    const defaultRoot = hasCategoryParent ? itemValue : fallbackRoot;
 
     setSelectedRootCat(defaultRoot);
+    setLinkInsideParentContext(hasCategoryParent);
 
-    // Carrega filhos daquela raiz
+    // Se houver subcategorias vinculadas ao item pai, sugere a primeira; caso contrário, mantém toda a categoria ou deixa o lojista escolher qualquer outra
     const rootNode = categoryTree.find(
       (n) => n.nome.toLowerCase() === defaultRoot.toLowerCase() || n.id === defaultRoot
     );
@@ -565,6 +757,7 @@ export default function AdminMenuPage() {
 
     setSelectedSubSubCat('');
     setCustomNewSubCat('');
+    setAlsoCreateInCategoryTree(true);
     setSubValue('');
     setSubCustomUrl('');
     setSubExtraCategory('');
@@ -578,18 +771,33 @@ export default function AdminMenuPage() {
     if (!target) return;
     setEditingSubIndex(subIdx);
     setSubLabel(target.label || '');
+    setSubSearchTerm('');
+
+    const fallbackRoot = rootCategoryNodes[0]?.nome || categories[0]?.nome || '';
+    const itemParentCat = itemType === 'category' && itemValue ? itemValue : '';
 
     if (target.type === 'subcategory') {
       setSubDestMode('tree');
-      const parent = target.parentCategory || (itemType === 'category' ? itemValue : 'Verão');
+      const parent = target.parentCategory || itemParentCat || fallbackRoot;
       setSelectedRootCat(parent);
+      setLinkInsideParentContext(Boolean(parent));
       setSelectedSubCat(target.value || target.label);
       setSelectedSubSubCat('');
       setCustomNewSubCat('');
     } else if (target.type === 'category') {
       setSubDestMode('tree');
-      setSelectedRootCat(target.value || (itemType === 'category' ? itemValue : 'Verão'));
-      setSelectedSubCat('__ALL__');
+      const targetVal = target.value || itemParentCat || fallbackRoot;
+      const isSameAsMenuItem =
+        Boolean(itemParentCat) && targetVal.toLowerCase() === itemParentCat.toLowerCase();
+      if (isSameAsMenuItem) {
+        setSelectedRootCat(targetVal);
+        setSelectedSubCat('__ALL__');
+        setLinkInsideParentContext(true);
+      } else {
+        setSelectedRootCat(itemParentCat || targetVal);
+        setSelectedSubCat(targetVal);
+        setLinkInsideParentContext(false);
+      }
       setSelectedSubSubCat('');
       setCustomNewSubCat('');
     } else if (target.type === 'status') {
@@ -743,6 +951,86 @@ export default function AdminMenuPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* REGRA GLOBAL DE EXIBIÇÃO DE SUBMENUS & SUBCATEGORIAS NO CATÁLOGO */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 transition-colors',
+              strictSubcategoryMode
+                ? 'bg-amber-50 border-amber-300 text-amber-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            )}
+          >
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900">
+                Regra de Exibição de Submenus &amp; Subcategorias no Catálogo
+              </h3>
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border',
+                  strictSubcategoryMode
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                )}
+              >
+                {strictSubcategoryMode ? 'Vínculo Estrito Ativo' : 'Modo Flexível (Inativo)'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+              {strictSubcategoryMode ? (
+                <>
+                  <strong>Vínculo Estrito Ativado:</strong> Ao clicar em um submenu (ex:{' '}
+                  <em>Outono/Inverno ➔ Casacos &amp; Jaquetas</em>), o catálogo exibirá{' '}
+                  <strong>somente</strong> peças cadastradas na categoria principal{' '}
+                  <strong>Outono/Inverno</strong> que também tenham a subcategoria{' '}
+                  <strong>Casacos &amp; Jaquetas</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>Modo Flexível (Padrão):</strong> Ao clicar em um submenu (ex:{' '}
+                  <em>Outono/Inverno ➔ Casacos &amp; Jaquetas</em>), o catálogo exibirá todas as
+                  peças da categoria ou subcategoria <strong>Casacos &amp; Jaquetas</strong>, mesmo
+                  que o produto não tenha vínculo direto com <strong>Outono/Inverno</strong>.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={strictSubcategoryMode}
+          disabled={isSavingFilterRule}
+          onClick={() => handleToggleStrictSubcategoryMode(!strictSubcategoryMode)}
+          className={cn(
+            'inline-flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-60',
+            strictSubcategoryMode
+              ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-xs'
+              : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-9 h-5 rounded-full relative transition-colors inline-flex items-center p-0.5',
+              strictSubcategoryMode ? 'bg-amber-500' : 'bg-slate-300'
+            )}
+          >
+            <span
+              className={cn(
+                'w-4 h-4 rounded-full bg-white shadow-xs transition-transform',
+                strictSubcategoryMode ? 'translate-x-4' : 'translate-x-0'
+              )}
+            />
+          </span>
+          <span>{strictSubcategoryMode ? 'Exigir Vínculo Estrito: ON' : 'Exigir Vínculo Estrito: OFF'}</span>
+        </button>
       </div>
 
       {/* ABAS DE SELEÇÃO: LINHA 1, LINHA 2, GAVETA MOBILE */}
@@ -1076,11 +1364,19 @@ export default function AdminMenuPage() {
                       onChange={(e) => setItemValue(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800"
                     >
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.nome}>
-                          {cat.nome}
-                        </option>
-                      ))}
+                      {allStoreCategoryOptions.length > 0
+                        ? allStoreCategoryOptions.map((cat) => (
+                            <option key={cat.id} value={cat.nome}>
+                              {cat.nivel > 0 ? `${'  '.repeat(cat.nivel)}↳ ` : ''}
+                              {cat.nome}
+                              {cat.caminho && cat.nivel > 0 ? ` (${cat.caminho})` : ''}
+                            </option>
+                          ))
+                        : categories.map((cat) => (
+                            <option key={cat.id} value={cat.nome}>
+                              {cat.nome}
+                            </option>
+                          ))}
                     </select>
                   </div>
                 )}
@@ -1399,8 +1695,12 @@ export default function AdminMenuPage() {
                     onClick={() => {
                       setSubDestMode('tree');
                       if (!selectedRootCat) {
-                        const def = itemType === 'category' && itemValue ? itemValue : (rootCategoryNodes[0]?.nome || 'Verão');
+                        const def =
+                          itemType === 'category' && itemValue
+                            ? itemValue
+                            : rootCategoryNodes[0]?.nome || categories[0]?.nome || '';
                         setSelectedRootCat(def);
+                        setLinkInsideParentContext(itemType === 'category' && Boolean(itemValue));
                         setSelectedSubCat('__ALL__');
                       }
                     }}
@@ -1462,95 +1762,258 @@ export default function AdminMenuPage() {
                 </div>
               </div>
 
-              {/* SELEÇÃO HIERÁRQUICA: ITEM 1 -> SUBITEM -> SUBSUBITEM */}
+              {/* SELEÇÃO AUTÔNOMA DE QUALQUER CATEGORIA OU SUBCATEGORIA DA LOJA */}
               {subDestMode === 'tree' && (
                 <div className="space-y-3.5 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                  {/* NÍVEL 1: CATEGORIA RAIZ */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</span>
-                        <span>Item 1: Categoria Raiz da Loja</span>
-                      </label>
-                      <span className="text-[10px] text-slate-500 font-medium">Origem do submenu</span>
-                    </div>
-                    <select
-                      value={selectedRootCat}
-                      onChange={(e) => {
-                        const newRoot = e.target.value;
-                        setSelectedRootCat(newRoot);
-                        const rootNode = categoryTree.find(
-                          (n) => n.nome.toLowerCase() === newRoot.toLowerCase() || n.id === newRoot
-                        );
-                        const children = rootNode ? categoryTree.filter((n) => n.parent_id === rootNode.id) : [];
-                        if (children.length > 0) {
-                          setSelectedSubCat(children[0].nome);
-                          setSubLabel(children[0].nome);
-                        } else {
-                          setSelectedSubCat('__ALL__');
-                          setSubLabel(newRoot);
-                        }
-                        setSelectedSubSubCat('');
-                        setCustomNewSubCat('');
-                      }}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                    >
-                      {rootCategoryNodes.map((cat) => (
-                        <option key={cat.id} value={cat.nome}>
-                          {cat.nome} {cat.icone ? `${cat.icone} ` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Contexto do Menu Pai (ex: Outono/Inverno) */}
+                  {selectedRootCat && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                          Categoria Principal do Menu
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                          {selectedRootCat}
+                        </span>
+                      </div>
 
-                  {/* NÍVEL 2: SUBITEM / SUBCATEGORIA */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">2</span>
-                        <span>Subitem: Subcategoria em &quot;{selectedRootCat}&quot;</span>
+                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
+                        <div className="text-[11px] text-slate-600 leading-snug">
+                          <span className="font-semibold text-slate-800 block">
+                            Combinar com &quot;{selectedRootCat}&quot; na URL
+                          </span>
+                          <span>
+                            {linkInsideParentContext
+                              ? `Navega para ${selectedRootCat} ➔ Submenu (obedece a regra Estrito/Flexível).`
+                              : 'Abre diretamente a categoria selecionada abaixo, ignorando o menu pai.'}
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={linkInsideParentContext}
+                          onChange={(e) => setLinkInsideParentContext(e.target.checked)}
+                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer shrink-0"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BUSCA & SELEÇÃO COMPLETA DE TODAS AS CATEGORIAS / SUBCATEGORIAS */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                        Escolha qualquer Categoria ou Subcategoria ({allStoreCategoryOptions.length})
                       </label>
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md">
-                        {childSubcategoryNodes.length} vinculada{childSubcategoryNodes.length === 1 ? '' : 's'}
-                      </span>
+                      {selectedRootCat && childSubcategoryNodes.length > 0 && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md">
+                          {childSubcategoryNodes.length} direta{childSubcategoryNodes.length === 1 ? '' : 's'} em {selectedRootCat}
+                        </span>
+                      )}
                     </div>
 
-                    <select
-                      value={selectedSubCat}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedSubCat(val);
-                        setSelectedSubSubCat('');
-                        if (val === '__ALL__') {
-                          setSubLabel(selectedRootCat);
-                        } else if (val !== '__NEW__') {
-                          setSubLabel(val);
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-amber-300/80 bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                    >
-                      <option value="__ALL__">
-                        • Toda a Categoria &quot;{selectedRootCat}&quot; (Ver todas as peças da raiz)
-                      </option>
-                      {childSubcategoryNodes.map((s) => (
-                        <option key={s.id} value={s.nome}>
-                          ↳ {s.nome}
-                        </option>
-                      ))}
-                      <option value="__NEW__">
-                        + Criar Nova Subcategoria em &quot;{selectedRootCat}&quot;...
-                      </option>
-                    </select>
+                    {/* Campo de Busca Rápida */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={subSearchTerm}
+                        onChange={(e) => setSubSearchTerm(e.target.value)}
+                        placeholder="Buscar qualquer categoria (ex: Casacos, Primavera, Blusas...)"
+                        className="w-full pl-8 pr-8 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                      {subSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSubSearchTerm('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Lista Completa Rolável com Autonomia Total */}
+                    <div className="bg-white border border-slate-200 rounded-xl max-h-60 overflow-y-auto divide-y divide-slate-100 shadow-2xs">
+                      {/* Opção: Toda a categoria raiz do item */}
+                      {selectedRootCat && !subSearchTerm.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubCat('__ALL__');
+                            setSelectedSubSubCat('');
+                            setSubLabel(selectedRootCat);
+                          }}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer',
+                            selectedSubCat === '__ALL__'
+                              ? 'bg-amber-50 text-amber-950 font-bold'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          )}
+                        >
+                          <span className="truncate">
+                            • Toda a Categoria &quot;{selectedRootCat}&quot; (Ver todas as peças)
+                          </span>
+                          {selectedSubCat === '__ALL__' && (
+                            <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          )}
+                        </button>
+                      )}
+
+                      {/* Subcategorias vinculadas diretamente à categoria pai (se houver) */}
+                      {selectedRootCat && childSubcategoryNodes.length > 0 && !subSearchTerm.trim() && (
+                        <div className="bg-amber-50/40">
+                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800 border-b border-amber-100">
+                            Subcategorias já vinculadas em &quot;{selectedRootCat}&quot;
+                          </div>
+                          {childSubcategoryNodes.map((s) => {
+                            const isSelected =
+                              selectedSubCat.toLowerCase() === s.nome.toLowerCase() &&
+                              selectedSubCat !== '__ALL__' &&
+                              selectedSubCat !== '__NEW__';
+                            return (
+                              <button
+                                key={`direct-${s.id}`}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSubCat(s.nome);
+                                  setSelectedSubSubCat('');
+                                  setSubLabel(s.nome);
+                                }}
+                                className={cn(
+                                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer',
+                                  isSelected
+                                    ? 'bg-amber-100/80 text-amber-950 font-bold'
+                                    : 'hover:bg-amber-50/70 text-slate-800'
+                                )}
+                              >
+                                <span className="truncate">↳ {s.nome}</span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Todas as Categorias e Subcategorias da Loja */}
+                      <div>
+                        <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-100">
+                          Todas as Categorias &amp; Subcategorias da Loja ({filteredStoreCategoryOptions.length})
+                        </div>
+                        {filteredStoreCategoryOptions.length > 0 ? (
+                          filteredStoreCategoryOptions.map((opt) => {
+                            const isSelected =
+                              selectedSubCat.toLowerCase() === opt.nome.toLowerCase() &&
+                              selectedSubCat !== '__ALL__' &&
+                              selectedSubCat !== '__NEW__';
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSubCat(opt.nome);
+                                  setSelectedSubSubCat('');
+                                  setSubLabel(opt.nome);
+                                }}
+                                className={cn(
+                                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer',
+                                  isSelected
+                                    ? 'bg-slate-900 text-white font-bold'
+                                    : 'hover:bg-slate-50 text-slate-800'
+                                )}
+                              >
+                                <div className="min-w-0 flex items-center gap-1.5">
+                                  {opt.nivel > 0 && (
+                                    <span
+                                      className="text-slate-400 shrink-0"
+                                      style={{ paddingLeft: `${(opt.nivel - 1) * 10}px` }}
+                                    >
+                                      ↳
+                                    </span>
+                                  )}
+                                  {opt.icone && <span className="shrink-0">{opt.icone}</span>}
+                                  <span className="truncate">{opt.nome}</span>
+                                  <span
+                                    className={cn(
+                                      'text-[9px] font-mono px-1.5 py-0.2 rounded shrink-0',
+                                      isSelected
+                                        ? 'bg-white/20 text-amber-300'
+                                        : 'bg-slate-100 text-slate-500'
+                                    )}
+                                  >
+                                    {opt.source === 'product_sub'
+                                      ? 'SUB'
+                                      : `N${opt.nivel + 1}`}
+                                  </span>
+                                  {opt.caminho && opt.nivel > 0 && (
+                                    <span
+                                      className={cn(
+                                        'text-[10px] truncate hidden sm:inline',
+                                        isSelected ? 'text-slate-300' : 'text-slate-400'
+                                      )}
+                                    >
+                                      ({opt.caminho})
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {typeof opt.count === 'number' && (
+                                    <span
+                                      className={cn(
+                                        'text-[10px]',
+                                        isSelected ? 'text-slate-300' : 'text-slate-400'
+                                      )}
+                                    >
+                                      {opt.count}p
+                                    </span>
+                                  )}
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                                </div>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-3 py-4 text-center text-[11px] text-slate-400">
+                            Nenhuma categoria encontrada para &quot;{subSearchTerm}&quot;.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Opção: Criar nova subcategoria */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSubCat('__NEW__');
+                          setSelectedSubSubCat('');
+                          if (subSearchTerm.trim()) {
+                            setCustomNewSubCat(subSearchTerm.trim());
+                            setSubLabel(subSearchTerm.trim());
+                          }
+                        }}
+                        className={cn(
+                          'w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer',
+                          selectedSubCat === '__NEW__'
+                            ? 'bg-amber-100 text-amber-950'
+                            : 'text-amber-700 hover:bg-amber-50'
+                        )}
+                      >
+                        <Plus className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          + Criar Nova Subcategoria{selectedRootCat ? ` em "${selectedRootCat}"` : ''}...
+                        </span>
+                      </button>
+                    </div>
 
                     {/* Campo se escolher criar nova subcategoria */}
                     {selectedSubCat === '__NEW__' && (
-                      <div className="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 animate-in fade-in duration-150">
+                      <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2 animate-in fade-in duration-150">
                         <label className="text-[10px] uppercase font-bold text-amber-900 block">
-                          Nome da Nova Subcategoria em &quot;{selectedRootCat}&quot;:
+                          Nome da Nova Subcategoria{selectedRootCat ? ` em "${selectedRootCat}"` : ''}:
                         </label>
                         <input
                           type="text"
-                          placeholder="Ex: Regatas, Croppeds, etc."
+                          placeholder="Ex: Regatas, Croppeds, Casacos..."
                           value={customNewSubCat}
                           onChange={(e) => {
                             setCustomNewSubCat(e.target.value);
@@ -1558,6 +2021,15 @@ export default function AdminMenuPage() {
                           }}
                           className="w-full px-3 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-slate-800 focus:outline-none focus:border-amber-500"
                         />
+                        <label className="flex items-center gap-2 text-[11px] text-amber-900 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={alsoCreateInCategoryTree}
+                            onChange={(e) => setAlsoCreateInCategoryTree(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded text-amber-600"
+                          />
+                          <span>Cadastrar também na Árvore de Categorias de Produtos</span>
+                        </label>
                       </div>
                     )}
                   </div>
@@ -1594,9 +2066,21 @@ export default function AdminMenuPage() {
 
                   {/* CARD VISUAL DA TRILHA */}
                   <div className="p-3 bg-white border border-amber-200/90 rounded-xl space-y-2 shadow-2xs">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Trilha Hierárquica do Submenu:</span>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Trilha Hierárquica do Submenu:</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'text-[9px] font-bold px-2 py-0.5 rounded-full uppercase',
+                          strictSubcategoryMode
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-emerald-100 text-emerald-800'
+                        )}
+                      >
+                        {strictSubcategoryMode ? 'Filtro Estrito Ativo' : 'Filtro Flexível Ativo'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 flex-wrap">
                       <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900">

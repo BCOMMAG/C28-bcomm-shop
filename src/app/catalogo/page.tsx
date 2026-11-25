@@ -45,14 +45,10 @@ import {
   getDescendantCategoryIds,
   getCategoryBreadcrumb
 } from '@/lib/admin';
-
-// Função utilitária para comparação insensível a acentos e maiúsculas/minúsculas
-const normalizeCatString = (str?: string | null) =>
-  (str || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+import {
+  normalizeCatString,
+  matchesCatalogCategoryAndSubcategory
+} from '@/lib/catalog-filter';
 
 function CatalogoContent() {
   const router = useRouter();
@@ -131,6 +127,11 @@ function CatalogoContent() {
     }
     return DEFAULT_COLECOES_BASE;
   }, [currentTenant]);
+
+  // Regra configurada pelo lojista: exigir vínculo estrito entre categoria principal e subcategoria
+  const isStrictSubcategoryMode = Boolean(
+    (currentTenant?.configuracoes_visuais as any)?.filtragem_estrita_subcategoria
+  );
 
   // Parâmetros de URL iniciais
   const urlCategory = searchParams.get('categoria') || '';
@@ -540,155 +541,16 @@ function CatalogoContent() {
       );
     }
 
-    // 2. Categorias (Herança Recursiva em Árvore N-Níveis + Correspondência Inteligente com Normalização)
-    if (appliedFilters.categories.length > 0) {
+    // 2. Categorias & Subcategorias (Respeita Vínculo Estrito ON/OFF configurado pelo lojista)
+    if (appliedFilters.categories.length > 0 || (appliedFilters.subcategories?.length || 0) > 0) {
       result = result.filter((p) =>
-        appliedFilters.categories.some((cat) => {
-          const catLower = (cat || '').trim().toLowerCase();
-          const catNorm = normalizeCatString(cat);
-
-          // Resolução Recursiva via Árvore de Categorias
-          if (categoryTree.length > 0) {
-            const matchedNode = categoryTree.find(
-              (n) =>
-                n.id === cat ||
-                n.slug.toLowerCase() === catLower ||
-                n.nome.toLowerCase() === catLower ||
-                normalizeCatString(n.slug) === catNorm ||
-                normalizeCatString(n.nome) === catNorm
-            );
-
-            if (matchedNode) {
-              const allowedIds = getDescendantCategoryIds(matchedNode.id, categoryTree);
-              const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
-              const allowedNames = allowedNodes.map((n) => n.nome.toLowerCase());
-              const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
-              const allowedSlugsNorm = allowedNodes.map((n) => normalizeCatString(n.slug));
-
-              if (p.categoryId && allowedIds.includes(p.categoryId)) return true;
-              if (
-                p.category &&
-                (allowedNames.includes(p.category.toLowerCase()) ||
-                  allowedNamesNorm.includes(normalizeCatString(p.category)) ||
-                  allowedSlugsNorm.includes(normalizeCatString(p.category)))
-              ) {
-                return true;
-              }
-              if (
-                p.subcategory &&
-                (allowedNames.includes(p.subcategory.toLowerCase()) ||
-                  allowedNamesNorm.includes(normalizeCatString(p.subcategory)) ||
-                  allowedSlugsNorm.includes(normalizeCatString(p.subcategory)))
-              ) {
-                return true;
-              }
-            }
-          }
-
-          // Fallbacks de Compatibilidade com links antigos do menu / tags legadas
-          if (catLower === 'acessórios' || catLower === 'acessorios' || catNorm === 'acessorios') {
-            return (
-              normalizeCatString(p.category) === 'acessorios' ||
-              CATEGORIES_ACESSORIOS.some((ac) => normalizeCatString(ac) === normalizeCatString(p.category)) ||
-              Boolean(p.subcategory && CATEGORIES_ACESSORIOS.some((ac) => normalizeCatString(ac) === normalizeCatString(p.subcategory)))
-            );
-          }
-          if (catNorm === 'tricots' || catNorm === 'tricot') {
-            return (
-              normalizeCatString(p.category).includes('tricot') ||
-              (p.subcategory && normalizeCatString(p.subcategory).includes('tricot')) ||
-              (p.fabric && normalizeCatString(p.fabric).includes('tricot'))
-            );
-          }
-          if (catNorm === 'alfaiataria') {
-            return (
-              normalizeCatString(p.category).includes('alfaiataria') ||
-              (p.fit && normalizeCatString(p.fit).includes('alfaiataria')) ||
-              normalizeCatString(p.category).includes('blazer')
-            );
-          }
-          if (catNorm.includes('casaco') || catNorm.includes('jaqueta')) {
-            return (
-              normalizeCatString(p.category).includes('casaco') ||
-              normalizeCatString(p.category).includes('jaqueta')
-            );
-          }
-          if (catNorm.includes('saia') || catNorm.includes('short')) {
-            return (
-              normalizeCatString(p.category).includes('saia') ||
-              normalizeCatString(p.category).includes('short') ||
-              normalizeCatString(p.category).includes('bermuda')
-            );
-          }
-          if (catNorm.includes('vestido') || catNorm.includes('macacao')) {
-            return (
-              normalizeCatString(p.category).includes('vestido') ||
-              normalizeCatString(p.category).includes('macacao')
-            );
-          }
-          if (catNorm === 'vestidos' || catNorm === 'vestido') {
-            return normalizeCatString(p.category).includes('vestido');
-          }
-          if (catNorm === 'blusas' || catNorm === 'blusa') {
-            return (
-              normalizeCatString(p.category).includes('blusa') ||
-              normalizeCatString(p.category).includes('camisa') ||
-              normalizeCatString(p.category).includes('top')
-            );
-          }
-          if (catNorm === 'calcas' || catNorm === 'calca') {
-            return normalizeCatString(p.category).includes('calca');
-          }
-
-          const pCatNorm = normalizeCatString(p.category);
-          const pSubNorm = normalizeCatString(p.subcategory);
-
-          return (
-            p.category.toLowerCase() === catLower ||
-            pCatNorm === catNorm ||
-            (p.subcategory && (p.subcategory.toLowerCase() === catLower || pSubNorm === catNorm)) ||
-            (pCatNorm && catNorm && (pCatNorm.includes(catNorm) || catNorm.includes(pCatNorm)))
-          );
-        })
-      );
-    }
-
-    // 2.1. Subcategorias Específicas (Filtro Combinado ou Isolado)
-    if (appliedFilters.subcategories && appliedFilters.subcategories.length > 0) {
-      result = result.filter((p) =>
-        appliedFilters.subcategories.some((sub) => {
-          const subLower = (sub || '').trim().toLowerCase();
-          const subNorm = normalizeCatString(sub);
-
-          if (p.subcategory) {
-            const pSubLower = p.subcategory.trim().toLowerCase();
-            const pSubNorm = normalizeCatString(p.subcategory);
-            if (pSubLower === subLower || pSubNorm === subNorm || pSubNorm.includes(subNorm) || subNorm.includes(pSubNorm)) {
-              return true;
-            }
-          }
-
-          if (categoryTree.length > 0) {
-            const subNode = categoryTree.find(
-              (n) =>
-                n.id === sub ||
-                n.slug.toLowerCase() === subLower ||
-                n.nome.toLowerCase() === subLower ||
-                normalizeCatString(n.slug) === subNorm ||
-                normalizeCatString(n.nome) === subNorm
-            );
-            if (subNode) {
-              const allowedIds = getDescendantCategoryIds(subNode.id, categoryTree);
-              if (p.categoryId && allowedIds.includes(p.categoryId)) return true;
-              const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
-              const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
-              if (p.subcategory && allowedNamesNorm.includes(normalizeCatString(p.subcategory))) return true;
-              if (p.category && allowedNamesNorm.includes(normalizeCatString(p.category))) return true;
-            }
-          }
-
-          return false;
-        })
+        matchesCatalogCategoryAndSubcategory(
+          p,
+          appliedFilters.categories,
+          appliedFilters.subcategories || [],
+          categoryTree,
+          isStrictSubcategoryMode
+        )
       );
     }
 
@@ -818,7 +680,7 @@ function CatalogoContent() {
     }
 
     return result;
-  }, [appliedFilters, searchQuery, sortBy, products]);
+  }, [appliedFilters, searchQuery, sortBy, products, categoryTree, storeCollections, isStrictSubcategoryMode]);
 
   // Contagem de Peças que batiam no Rascunho Atual (para o botão "APLICAR FILTROS")
   const draftMatchesCount = useMemo(() => {
@@ -836,23 +698,14 @@ function CatalogoContent() {
       );
     }
 
-    if (draftFilters.categories.length > 0) {
+    if (draftFilters.categories.length > 0 || (draftFilters.subcategories?.length || 0) > 0) {
       result = result.filter((p) =>
-        draftFilters.categories.some(
-          (cat) =>
-            p.category.toLowerCase() === cat.toLowerCase() ||
-            (p.subcategory && p.subcategory.toLowerCase() === cat.toLowerCase())
-        )
-      );
-    }
-
-    if (draftFilters.subcategories && draftFilters.subcategories.length > 0) {
-      result = result.filter((p) =>
-        draftFilters.subcategories.some(
-          (sub) =>
-            p.subcategory &&
-            (p.subcategory.toLowerCase() === sub.toLowerCase() ||
-              normalizeCatString(p.subcategory) === normalizeCatString(sub))
+        matchesCatalogCategoryAndSubcategory(
+          p,
+          draftFilters.categories,
+          draftFilters.subcategories || [],
+          categoryTree,
+          isStrictSubcategoryMode
         )
       );
     }
@@ -918,7 +771,7 @@ function CatalogoContent() {
     }
 
     return result.length;
-  }, [draftFilters, searchQuery, products]);
+  }, [draftFilters, searchQuery, products, categoryTree, isStrictSubcategoryMode]);
 
   // Contagem de filtros ativos aplicados
   const activeFiltersCount = useMemo(() => {
@@ -943,6 +796,7 @@ function CatalogoContent() {
     return (
       (draftFilters.collections?.length || 0) +
       draftFilters.categories.length +
+      (draftFilters.subcategories?.length || 0) +
       draftFilters.statuses.length +
       draftFilters.priceRangeIndices.length +
       (draftFilters.customMinPrice || draftFilters.customMaxPrice ? 1 : 0) +
@@ -1085,19 +939,19 @@ function CatalogoContent() {
             <span className="text-xs uppercase tracking-widest font-bold text-[#C5A059] dark:text-[#DFBE76] group-hover:text-[#1A1918] dark:group-hover:text-white transition-colors">
               Categorias
             </span>
-            {draftFilters.categories.length > 0 && (
+            {(draftFilters.categories.length + (draftFilters.subcategories?.length || 0)) > 0 && (
               <span className="text-[10px] bg-[#C5A059] text-white px-1.5 py-0.2 rounded-none font-bold">
-                {draftFilters.categories.length}
+                {draftFilters.categories.length + (draftFilters.subcategories?.length || 0)}
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            {draftFilters.categories.length > 0 && (
+            {(draftFilters.categories.length + (draftFilters.subcategories?.length || 0)) > 0 && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDraftFilters((p) => ({ ...p, categories: [] }));
+                  setDraftFilters((p) => ({ ...p, categories: [], subcategories: [] }));
                 }}
                 className="text-[10px] text-[#78716C] dark:text-[#A8A29E] hover:underline cursor-pointer mr-1"
               >
@@ -1116,9 +970,9 @@ function CatalogoContent() {
           <div className="pt-2 max-h-56 overflow-y-auto pr-1 space-y-1 text-xs custom-scrollbar">
             <button
               type="button"
-              onClick={() => setDraftFilters((p) => ({ ...p, categories: [] }))}
+              onClick={() => setDraftFilters((p) => ({ ...p, categories: [], subcategories: [] }))}
               className={`w-full text-left py-1.5 px-2.5 rounded-none transition-colors flex items-center justify-between cursor-pointer ${
-                draftFilters.categories.length === 0
+                draftFilters.categories.length === 0 && (draftFilters.subcategories?.length || 0) === 0
                   ? 'bg-[#1A1918] text-white dark:bg-[#C5A059] font-semibold'
                   : 'hover:bg-[#FAF8F5] dark:hover:bg-[#252220] text-[#57534E] dark:text-[#D6D3D1]'
               }`}
@@ -1131,9 +985,10 @@ function CatalogoContent() {
               categoryTree.map((cat) => {
                 const depth = cat.nivel || 0;
                 const isSubNode = depth > 0;
+                const isInSubcategories = Boolean(draftFilters.subcategories?.includes(cat.nome));
                 const isSelected = isSubNode
-                  ? (draftFilters.subcategories?.includes(cat.nome) || draftFilters.categories.includes(cat.nome))
-                  : (draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id));
+                  ? (isInSubcategories || draftFilters.categories.includes(cat.nome))
+                  : (draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id) || isInSubcategories);
                 const descendantIds = getDescendantCategoryIds(cat.id, categoryTree);
                 const descendantNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
                 const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
@@ -1153,7 +1008,7 @@ function CatalogoContent() {
                     type="button"
                     key={cat.id}
                     onClick={() => {
-                      if (isSubNode) {
+                      if (isSubNode || isInSubcategories) {
                         toggleDraftSubcategory(cat.nome);
                       } else {
                         toggleDraftCategory(cat.nome);
@@ -1865,8 +1720,8 @@ function CatalogoContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    setAppliedFilters((prev) => ({ ...prev, categories: [] }));
-                    setDraftFilters((prev) => ({ ...prev, categories: [] }));
+                    setAppliedFilters((prev) => ({ ...prev, categories: [], subcategories: [] }));
+                    setDraftFilters((prev) => ({ ...prev, categories: [], subcategories: [] }));
                   }}
                   className="hover:text-[#DFBE76] transition-colors cursor-pointer"
                 >
@@ -1883,8 +1738,8 @@ function CatalogoContent() {
                         <button
                           type="button"
                           onClick={() => {
-                            setAppliedFilters((prev) => ({ ...prev, categories: [crumb.nome] }));
-                            setDraftFilters((prev) => ({ ...prev, categories: [crumb.nome] }));
+                            setAppliedFilters((prev) => ({ ...prev, categories: [crumb.nome], subcategories: [] }));
+                            setDraftFilters((prev) => ({ ...prev, categories: [crumb.nome], subcategories: [] }));
                           }}
                           className="hover:text-[#DFBE76] transition-colors cursor-pointer"
                         >
@@ -1919,9 +1774,12 @@ function CatalogoContent() {
           <div className="border-b border-[#C5A059]/30 pb-4 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
               <h1 className="font-serif-luxury text-2xl sm:text-4xl text-white font-medium drop-shadow-sm">
-                {appliedFilters.categories.length === 0
+                {appliedFilters.categories.length === 0 && (appliedFilters.subcategories?.length || 0) === 0
                   ? 'Catálogo Completo'
-                  : appliedFilters.categories.join(', ')}
+                  : [
+                      ...(appliedFilters.categories || []),
+                      ...(appliedFilters.subcategories || [])
+                    ].join(' • ')}
               </h1>
               <span className="text-xs text-white/80">
                 Mostrando <strong>{filteredProducts.length}</strong> de {products.length} modelos

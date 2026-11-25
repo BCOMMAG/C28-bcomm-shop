@@ -30,7 +30,8 @@ import {
   Eye,
   EyeOff,
   GitBranch,
-  Network
+  Network,
+  ShieldCheck
 } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { DEFAULT_TENANT_ID } from '@/lib/products';
@@ -42,7 +43,9 @@ import {
   reorderCategoriaNodes,
   validateAntiLoop,
   slugifyCategoria,
-  getDescendantCategoryIds
+  getDescendantCategoryIds,
+  getStoreCatalogFilterSettings,
+  saveStoreCatalogFilterSettings
 } from '@/lib/admin';
 import { cn } from '@/lib/chart-utils';
 import { useAdminI18n } from '@/context/AdminI18nContext';
@@ -55,6 +58,8 @@ export default function AdminCategoriasPage() {
 
   const [tree, setTree] = useState<CategoriaNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [strictSubcategoryMode, setStrictSubcategoryMode] = useState(false);
+  const [isSavingFilterRule, setIsSavingFilterRule] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -85,8 +90,12 @@ export default function AdminCategoriasPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await getCategoriaTree(tenantId);
+      const [data, filterCfg] = await Promise.all([
+        getCategoriaTree(tenantId),
+        getStoreCatalogFilterSettings(tenantId).catch(() => ({ filtragem_estrita_subcategoria: false }))
+      ]);
       setTree(data);
+      setStrictSubcategoryMode(Boolean(filterCfg?.filtragem_estrita_subcategoria));
       // Por padrão, expande os departamentos raiz
       const rootIds = data.filter((n) => !n.parent_id).map((n) => n.id);
       setExpandedIds(new Set(rootIds));
@@ -103,10 +112,44 @@ export default function AdminCategoriasPage() {
     const handleUpdate = () => {
       loadData();
     };
+    const handleFilterSync = (e: any) => {
+      if (e?.detail && typeof e.detail.filtragem_estrita_subcategoria === 'boolean') {
+        setStrictSubcategoryMode(e.detail.filtragem_estrita_subcategoria);
+      }
+    };
 
     window.addEventListener('bcomm:categories_updated', handleUpdate);
-    return () => window.removeEventListener('bcomm:categories_updated', handleUpdate);
+    window.addEventListener('bcomm:catalog_filter_settings_updated', handleFilterSync);
+    return () => {
+      window.removeEventListener('bcomm:categories_updated', handleUpdate);
+      window.removeEventListener('bcomm:catalog_filter_settings_updated', handleFilterSync);
+    };
   }, [tenantId]);
+
+  const handleToggleStrictSubcategoryMode = async (nextVal: boolean) => {
+    setStrictSubcategoryMode(nextVal);
+    setIsSavingFilterRule(true);
+    try {
+      const res = await saveStoreCatalogFilterSettings(tenantId, {
+        filtragem_estrita_subcategoria: nextVal
+      });
+      if (res.success) {
+        showToast(
+          nextVal
+            ? 'Vínculo estrito ativado: submenus exigem categoria principal + subcategoria.'
+            : 'Modo flexível ativado: submenus exibem qualquer item da categoria/subcategoria selecionada.'
+        );
+      } else {
+        setStrictSubcategoryMode(!nextVal);
+        showToast(res.error || 'Erro ao salvar regra de filtragem.', 'error');
+      }
+    } catch {
+      setStrictSubcategoryMode(!nextVal);
+      showToast('Erro ao salvar regra de filtragem.', 'error');
+    } finally {
+      setIsSavingFilterRule(false);
+    }
+  };
 
   // Cálculos de métricas da taxonomia
   const rootCount = useMemo(() => {
@@ -633,6 +676,87 @@ export default function AdminCategoriasPage() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* REGRA DE VÍNCULO ESTRITO ENTRE CATEGORIAS E SUBMENUS DA VITRINE */}
+      {/* ============================================================== */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 transition-colors',
+              strictSubcategoryMode
+                ? 'bg-amber-50 border-amber-300 text-amber-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            )}
+          >
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900">
+                Regra de Exibição de Submenus &amp; Subcategorias no Catálogo
+              </h3>
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border',
+                  strictSubcategoryMode
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                )}
+              >
+                {strictSubcategoryMode ? 'Vínculo Estrito Ativo' : 'Modo Flexível (Inativo)'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+              {strictSubcategoryMode ? (
+                <>
+                  <strong>Vínculo Estrito Ativado:</strong> Se o menu da loja tiver um submenu
+                  (ex: <em>Outono/Inverno ➔ Casacos &amp; Jaquetas</em>), o catálogo só exibirá
+                  peças que estejam explicitamente na categoria <strong>Outono/Inverno</strong>{' '}
+                  <strong>e</strong> na subcategoria <strong>Casacos &amp; Jaquetas</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>Modo Flexível (Inativo):</strong> Se o menu da loja tiver um submenu
+                  (ex: <em>Outono/Inverno ➔ Casacos &amp; Jaquetas</em>), qualquer produto com a
+                  categoria ou subcategoria <strong>Casacos &amp; Jaquetas</strong> aparecerá no
+                  catálogo, mesmo sem vínculo direto com <strong>Outono/Inverno</strong>.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={strictSubcategoryMode}
+          disabled={isSavingFilterRule}
+          onClick={() => handleToggleStrictSubcategoryMode(!strictSubcategoryMode)}
+          className={cn(
+            'inline-flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-60',
+            strictSubcategoryMode
+              ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-xs'
+              : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-9 h-5 rounded-full relative transition-colors inline-flex items-center p-0.5',
+              strictSubcategoryMode ? 'bg-amber-500' : 'bg-slate-300'
+            )}
+          >
+            <span
+              className={cn(
+                'w-4 h-4 rounded-full bg-white shadow-xs transition-transform',
+                strictSubcategoryMode ? 'translate-x-4' : 'translate-x-0'
+              )}
+            />
+          </span>
+          <span>{strictSubcategoryMode ? 'Exigir Vínculo Estrito: ON' : 'Exigir Vínculo Estrito: OFF'}</span>
+        </button>
       </div>
 
       {/* ============================================================== */}

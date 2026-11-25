@@ -138,6 +138,7 @@ export interface LojaConfiguracoesVisuais {
   colecoes_personalizadas?: ColecaoLojaItem[];
   arvore_categorias?: CategoriaNode[];
   guia_medidas?: LojaGuiaMedidas;
+  filtragem_estrita_subcategoria?: boolean;
   [key: string]: any;
 }
 

@@ -869,6 +869,10 @@ export async function syncCategoryNameInStoreMenus(
                 if (sub.label === oldName) sub.label = newName;
                 hasChanges = true;
               }
+              if (sub.parentCategory === oldName) {
+                sub.parentCategory = newName;
+                hasChanges = true;
+              }
             }
             if (sub.extraCategory === oldName) {
               sub.extraCategory = newName;
@@ -1729,6 +1733,80 @@ export async function saveStoreNavMenuConfig(
   } catch (err: any) {
     console.error('❌ [Admin] Falha ao salvar menu da loja:', err);
     return { success: false, error: err?.message || 'Falha ao salvar menu.' };
+  }
+}
+
+export interface StoreCatalogFilterSettings {
+  filtragem_estrita_subcategoria: boolean;
+}
+
+/**
+ * Consulta as regras de filtragem de categorias e submenus da vitrine no Supabase.
+ */
+export async function getStoreCatalogFilterSettings(
+  lojaId: string = DEFAULT_TENANT_ID
+): Promise<StoreCatalogFilterSettings> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja, error } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (error || !loja) {
+      return { filtragem_estrita_subcategoria: false };
+    }
+
+    const vis = (loja as any)?.configuracoes_visuais || {};
+    return {
+      filtragem_estrita_subcategoria: Boolean(vis.filtragem_estrita_subcategoria)
+    };
+  } catch {
+    return { filtragem_estrita_subcategoria: false };
+  }
+}
+
+/**
+ * Salva as regras de filtragem de categorias e submenus da vitrine no Supabase.
+ */
+export async function saveStoreCatalogFilterSettings(
+  lojaId: string = DEFAULT_TENANT_ID,
+  settings: StoreCatalogFilterSettings
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseBrowserClient();
+  try {
+    const { data: loja, error: getErr } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    if (getErr) throw getErr;
+
+    const currentVis = (loja as any)?.configuracoes_visuais || {};
+    const updatedVis = {
+      ...currentVis,
+      filtragem_estrita_subcategoria: Boolean(settings.filtragem_estrita_subcategoria)
+    };
+
+    const { error: upErr } = await supabase
+      .from('lojas')
+      .update({ configuracoes_visuais: updatedVis })
+      .eq('id', lojaId);
+
+    if (upErr) throw upErr;
+
+    clearTenantCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bcomm:catalog_filter_settings_updated', { detail: settings }));
+      window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('❌ [Admin] Falha ao salvar regra de filtragem do catálogo:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar configuração.' };
   }
 }
 
