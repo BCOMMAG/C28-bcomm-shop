@@ -47,7 +47,8 @@ import {
 } from '@/lib/admin';
 import {
   normalizeCatString,
-  matchesCatalogCategoryAndSubcategory
+  matchesCatalogCategoryAndSubcategory,
+  getProductCategoryBindings
 } from '@/lib/catalog-filter';
 
 function CatalogoContent() {
@@ -679,7 +680,13 @@ function CatalogoContent() {
       result.sort((a, b) => (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0));
     }
 
-    return result;
+    // Garantia absoluta anti-duplicidade na vitrine (um produto nunca aparece mais de uma vez)
+    const uniqueSeen = new Set<string>();
+    return result.filter((p) => {
+      if (uniqueSeen.has(p.id)) return false;
+      uniqueSeen.add(p.id);
+      return true;
+    });
   }, [appliedFilters, searchQuery, sortBy, products, categoryTree, storeCollections, isStrictSubcategoryMode]);
 
   // Contagem de Peças que batiam no Rascunho Atual (para o botão "APLICAR FILTROS")
@@ -994,10 +1001,13 @@ function CatalogoContent() {
                 const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
                 const descendantNamesNorm = descendantNodes.map((n) => normalizeCatString(n.nome));
                 const count = products.filter((p) => {
-                  if (p.categoryId && descendantIds.includes(p.categoryId)) return true;
-                  if (p.category && (descendantNames.includes(p.category.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(p.category)))) return true;
-                  if (p.subcategory && (descendantNames.includes(p.subcategory.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(p.subcategory)))) return true;
-                  return false;
+                  const bindings = getProductCategoryBindings(p);
+                  return bindings.some((b) => {
+                    if (b.categoryId && descendantIds.includes(b.categoryId)) return true;
+                    if (b.category && (descendantNames.includes(b.category.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.category)))) return true;
+                    if (b.subcategory && (descendantNames.includes(b.subcategory.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.subcategory)))) return true;
+                    return false;
+                  });
                 }).length;
 
                 // Não exibe categorias ou subcategorias com 0 produtos (a menos que esteja marcada no filtro pelo usuário)

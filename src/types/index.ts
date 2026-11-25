@@ -16,6 +16,12 @@ export interface ProductVariation {
   promoPrice?: number;
 }
 
+export interface ProductCategoryBinding {
+  categoria_id: string;
+  categoria_nome?: string;
+  subcategoria?: string | null;
+}
+
 export interface Product {
   id: string;
   slug?: string;
@@ -35,6 +41,7 @@ export interface Product {
   categoryPath?: string;
   categoryBreadcrumb?: Array<{ id: string; nome: string; slug: string }>;
   subcategory?: string;
+  categories?: ProductCategoryBinding[];
   fabric?: string; // Tecido
   fit?: string; // Modelagem
   line?: string; // Linha

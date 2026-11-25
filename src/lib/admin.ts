@@ -1,8 +1,9 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_TENANT_ID, isVideoUrl, detectMediaType, parseMediaColor } from '@/lib/products';
 import { CustomerOrder } from '@/lib/orders';
+import { ProductCategoryBinding } from '@/types';
 import { BarraAvisoEstilo, ProgramaVIPConfig, AdminHeroBanner, StorePreloaderConfig, ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida } from '@/types/database';
-export type { ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida };
+export type { ColecaoLojaItem, CategoriaNode, LojaGuiaMedidas, TabelaMedidasLinha, GradePredefinida, ProductCategoryBinding };
 import { clearTenantCache } from '@/lib/tenant';
 import { LogisticaAvancadaConfig } from '@/lib/shipping-engine';
 
@@ -42,6 +43,7 @@ export interface AdminProductItem {
   categoria_id?: string | null;
   categoria_nome?: string;
   subcategoria?: string | null;
+  categorias_vinculadas?: ProductCategoryBinding[];
   midias?: Array<{
     id: string;
     url: string;
@@ -79,6 +81,7 @@ export interface UpdateProductInput {
   slug?: string;
   categoria_id?: string | null;
   subcategoria?: string | null;
+  categorias_vinculadas?: ProductCategoryBinding[];
   descricao?: string | null;
   preco?: number;
   preco_promocional?: number | null;
@@ -125,6 +128,7 @@ export interface CreateProductInput {
   slug?: string;
   categoria_id?: string | null;
   subcategoria?: string | null;
+  categorias_vinculadas?: ProductCategoryBinding[];
   nova_categoria_nome?: string;
   descricao?: string;
   preco: number;
@@ -934,7 +938,7 @@ export async function getCategoriaTree(
         .order('display_order', { ascending: true }),
       supabase
         .from('produtos')
-        .select('id, categoria_id, subcategoria')
+        .select('id, categoria_id, subcategoria, detalhes')
         .eq('loja_id', lojaId),
       supabase
         .from('lojas')
@@ -950,20 +954,40 @@ export async function getCategoriaTree(
       ? [...visuais.arvore_categorias]
       : [];
 
-    // Mapeamento de contagem de produtos diretos por categoria_id
-    const directCountsByCatId: Record<string, number> = {};
-    const prodsBySubcatName: Record<string, string[]> = {};
+    const normText = (s?: string | null) =>
+      (s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    prods.forEach((p) => {
-      if (p.categoria_id) {
-        directCountsByCatId[p.categoria_id] = (directCountsByCatId[p.categoria_id] || 0) + 1;
-      }
-      if (p.subcategoria && p.categoria_id) {
-        const subTrim = p.subcategoria.trim();
-        if (!prodsBySubcatName[subTrim]) prodsBySubcatName[subTrim] = [];
-        if (!prodsBySubcatName[subTrim].includes(p.categoria_id)) {
-          prodsBySubcatName[subTrim].push(p.categoria_id);
+    // Coleta todos os vínculos de categoria/subcategoria (principal + multi-categorias em detalhes)
+    const prodsBySubcatName: Record<string, string[]> = {};
+    const productBindingsList: Array<{ productId: string; catId: string; subName: string }> = [];
+
+    prods.forEach((p: any) => {
+      const det = p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes) ? p.detalhes : {};
+      const seenBindings = new Set<string>();
+
+      const registerBinding = (catId?: string | null, sub?: string | null) => {
+        if (!catId) return;
+        const subTrim = (sub || '').trim();
+        const key = `${catId}::${normText(subTrim)}`;
+        if (seenBindings.has(key)) return;
+        seenBindings.add(key);
+
+        productBindingsList.push({ productId: p.id, catId, subName: subTrim });
+        if (subTrim) {
+          if (!prodsBySubcatName[subTrim]) prodsBySubcatName[subTrim] = [];
+          if (!prodsBySubcatName[subTrim].includes(catId)) {
+            prodsBySubcatName[subTrim].push(catId);
+          }
         }
+      };
+
+      registerBinding(p.categoria_id, p.subcategoria);
+      if (Array.isArray(det.categorias_vinculadas)) {
+        det.categorias_vinculadas.forEach((b: any) => {
+          if (b && b.categoria_id) {
+            registerBinding(b.categoria_id, b.subcategoria);
+          }
+        });
       }
     });
 
@@ -992,7 +1016,7 @@ export async function getCategoriaTree(
           subs.forEach((subName, sIdx) => {
             const subClean = subName.trim();
             if (!subClean) return;
-            const existing = savedTree.find((n) => n.parent_id === parentCatId && n.nome.toLowerCase() === subClean.toLowerCase());
+            const existing = savedTree.find((n) => n.parent_id === parentCatId && normText(n.nome) === normText(subClean));
             if (!existing) {
               const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
               savedTree.push({
@@ -1008,25 +1032,6 @@ export async function getCategoriaTree(
             }
           });
         }
-      });
-
-      Object.entries(prodsBySubcatName).forEach(([subName, parentIds]) => {
-        parentIds.forEach((pId) => {
-          const existing = savedTree.find((n) => n.parent_id === pId && n.nome.toLowerCase() === subName.toLowerCase());
-          if (!existing) {
-            const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-            savedTree.push({
-              id: subId,
-              loja_id: lojaId,
-              nome: subName,
-              slug: slugifyCategoria(subName),
-              parent_id: pId,
-              nivel: 1,
-              display_order: 100,
-              ativo: true
-            });
-          }
-        });
       });
 
       needsSaveTree = true;
@@ -1050,6 +1055,34 @@ export async function getCategoriaTree(
       });
     }
 
+    // Sincronização contínua: garante que subcategorias cadastradas em produtos existam na árvore sob sua categoria pai
+    Object.entries(prodsBySubcatName).forEach(([subName, parentIds]) => {
+      parentIds.forEach((pId) => {
+        const parentExists = savedTree.some((n) => n.id === pId);
+        if (!parentExists) return;
+        const existingChild = savedTree.find(
+          (n) => n.parent_id === pId && normText(n.nome) === normText(subName)
+        );
+        if (!existingChild) {
+          const siblings = savedTree.filter((n) => n.parent_id === pId);
+          const nextOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.display_order || 0)) + 10 : 10;
+          const parentNode = savedTree.find((n) => n.id === pId);
+          const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          savedTree.push({
+            id: subId,
+            loja_id: lojaId,
+            nome: subName,
+            slug: slugifyCategoria(subName),
+            parent_id: pId,
+            nivel: (parentNode?.nivel ?? 0) + 1,
+            display_order: nextOrder,
+            ativo: true
+          });
+          needsSaveTree = true;
+        }
+      });
+    });
+
     if (needsSaveTree) {
       await supabase
         .from('lojas')
@@ -1062,13 +1095,34 @@ export async function getCategoriaTree(
         .eq('id', lojaId);
     }
 
+    // Mapeamento de produtos únicos por nó (resolve subcategoria para o nó filho quando existir)
+    const directProductIdsByCatId: Record<string, Set<string>> = {};
+    const addProductToNode = (nodeId: string, productId: string) => {
+      if (!directProductIdsByCatId[nodeId]) directProductIdsByCatId[nodeId] = new Set<string>();
+      directProductIdsByCatId[nodeId].add(productId);
+    };
+
+    productBindingsList.forEach(({ productId, catId, subName }) => {
+      if (subName) {
+        const matchingChild = savedTree.find(
+          (n) => n.parent_id === catId && normText(n.nome) === normText(subName)
+        );
+        if (matchingChild) {
+          addProductToNode(matchingChild.id, productId);
+          return;
+        }
+      }
+      addProductToNode(catId, productId);
+    });
+
     // Monta a topologia da árvore em runtime
     const nodeMap = new Map<string, CategoriaNode>();
     savedTree.forEach((n) => {
+      const directCount = directProductIdsByCatId[n.id]?.size || 0;
       nodeMap.set(n.id, {
         ...n,
-        total_produtos_diretos: directCountsByCatId[n.id] || 0,
-        total_produtos_arvore: directCountsByCatId[n.id] || 0,
+        total_produtos_diretos: directCount,
+        total_produtos_arvore: directCount,
         filhos: []
       });
     });
@@ -1084,7 +1138,11 @@ export async function getCategoriaTree(
       node.nivel = Math.max(0, breadcrumb.length - 1);
 
       const allSubIds = getDescendantCategoryIds(node.id, savedTree);
-      node.total_produtos_arvore = allSubIds.reduce((sum, id) => sum + (directCountsByCatId[id] || 0), 0);
+      const uniqueSubtreeProdIds = new Set<string>();
+      allSubIds.forEach((id) => {
+        directProductIdsByCatId[id]?.forEach((pid) => uniqueSubtreeProdIds.add(pid));
+      });
+      node.total_produtos_arvore = uniqueSubtreeProdIds.size;
 
       flatWithCalculations.push(node);
     });
@@ -1282,6 +1340,54 @@ export async function saveCategoriaNode(
 }
 
 /**
+ * Garante que uma subcategoria digitada ou selecionada na edição de produto
+ * esteja registrada como nó filho da categoria pai na Árvore de Categorias da loja.
+ */
+export async function ensureSubcategoryInCategoryTree(
+  lojaId: string = DEFAULT_TENANT_ID,
+  parentCategoryId: string,
+  subcategoryName: string
+): Promise<CategoriaNode | null> {
+  const cleanSub = (subcategoryName || '').trim();
+  if (!parentCategoryId || !cleanSub) return null;
+
+  const normalize = (s: string) =>
+    s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: loja } = await supabase
+      .from('lojas')
+      .select('configuracoes_visuais')
+      .eq('id', lojaId)
+      .single();
+
+    const visuais = (loja as any)?.configuracoes_visuais || {};
+    const savedTree: CategoriaNode[] = Array.isArray(visuais.arvore_categorias)
+      ? visuais.arvore_categorias
+      : [];
+
+    const parentNode = savedTree.find((n) => n.id === parentCategoryId);
+    if (!parentNode) return null;
+
+    const existing = savedTree.find(
+      (n) => n.parent_id === parentCategoryId && normalize(n.nome) === normalize(cleanSub)
+    );
+    if (existing) return existing;
+
+    const res = await saveCategoriaNode(lojaId, {
+      nome: cleanSub,
+      parent_id: parentCategoryId,
+      ativo: true
+    });
+    return res.success && res.data ? res.data : null;
+  } catch (err) {
+    console.error('❌ [Admin] Falha ao vincular subcategoria na árvore:', err);
+    return null;
+  }
+}
+
+/**
  * Remove um nó da árvore de categorias com proteção contra órfãos e realocação.
  */
 export async function deleteCategoriaNode(
@@ -1334,6 +1440,15 @@ export async function deleteCategoriaNode(
         }
         return n;
       });
+    }
+
+    if (nodeToDelete.parent_id) {
+      await supabase
+        .from('produtos')
+        .update({ subcategoria: null })
+        .eq('loja_id', lojaId)
+        .eq('categoria_id', nodeToDelete.parent_id)
+        .ilike('subcategoria', nodeToDelete.nome);
     }
 
     savedTree = savedTree.filter((n) => n.id !== nodeId);
@@ -1893,6 +2008,30 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       if (p.outlet) colecoesSet.add('col_outlet');
       if (p.ultimas_pecas) colecoesSet.add('col_ultimas_pecas');
 
+      const categoriasVinculadasMap = new Map<string, ProductCategoryBinding>();
+      if (p.categoria_id) {
+        const pSub = (p.subcategoria || '').trim() || null;
+        categoriasVinculadasMap.set(`${p.categoria_id}::${(pSub || '').toLowerCase()}`, {
+          categoria_id: p.categoria_id,
+          categoria_nome: p.categorias?.nome || 'Geral',
+          subcategoria: pSub
+        });
+      }
+      if (Array.isArray(detalhesObj.categorias_vinculadas)) {
+        detalhesObj.categorias_vinculadas.forEach((b: any) => {
+          if (!b || !b.categoria_id) return;
+          const bSub = b.subcategoria ? String(b.subcategoria).trim() : null;
+          const key = `${b.categoria_id}::${(bSub || '').toLowerCase()}`;
+          if (!categoriasVinculadasMap.has(key)) {
+            categoriasVinculadasMap.set(key, {
+              categoria_id: String(b.categoria_id),
+              categoria_nome: b.categoria_nome || undefined,
+              subcategoria: bSub
+            });
+          }
+        });
+      }
+
       return {
         id: p.id,
         nome: p.nome,
@@ -1923,6 +2062,7 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
         categoria_id: p.categoria_id,
         categoria_nome: p.categorias?.nome || 'Geral',
         subcategoria: p.subcategoria || null,
+        categorias_vinculadas: Array.from(categoriasVinculadasMap.values()),
         paired_with_slug: p.paired_with_slug || null,
         detalhes: p.detalhes || null,
         midias: (p.midias_produto || [])
@@ -2008,6 +2148,9 @@ export async function createAdminProduct(
     }
     if (input.fotos_por_cor && Object.keys(input.fotos_por_cor).length > 0) {
       detalhesFinal.fotos_por_cor = input.fotos_por_cor;
+    }
+    if (Array.isArray(input.categorias_vinculadas) && input.categorias_vinculadas.length > 0) {
+      detalhesFinal.categorias_vinculadas = input.categorias_vinculadas;
     }
     const hasDetalhesData = Object.keys(detalhesFinal).length > 0;
 
@@ -2100,6 +2243,18 @@ export async function createAdminProduct(
 
     if (midiasData.length > 0) {
       await supabase.from('midias_produto').insert(midiasData);
+    }
+
+    // 4. Sincroniza subcategorias criadas/selecionadas na peça para a Árvore de Categorias
+    if (catId && input.subcategoria?.trim()) {
+      await ensureSubcategoryInCategoryTree(lojaId, catId, input.subcategoria.trim());
+    }
+    if (Array.isArray(input.categorias_vinculadas)) {
+      for (const b of input.categorias_vinculadas) {
+        if (b?.categoria_id && b?.subcategoria?.trim()) {
+          await ensureSubcategoryInCategoryTree(lojaId, b.categoria_id, b.subcategoria.trim());
+        }
+      }
     }
 
     return { success: true, product };
@@ -2366,8 +2521,13 @@ export async function updateAdminProductFull(
       updateFields.status_badges = synchedBadges;
     }
 
-    // Preservação e mesclagem de detalhes JSONB (precos_diferenciados, fotos_por_cor, especificações, badges)
-    if (input.detalhes !== undefined || input.precos_diferenciados !== undefined || input.fotos_por_cor !== undefined) {
+    // Preservação e mesclagem de detalhes JSONB (precos_diferenciados, fotos_por_cor, categorias_vinculadas, especificações, badges)
+    if (
+      input.detalhes !== undefined ||
+      input.precos_diferenciados !== undefined ||
+      input.fotos_por_cor !== undefined ||
+      input.categorias_vinculadas !== undefined
+    ) {
       const { data: curProdData } = await supabase.from('produtos').select('detalhes').eq('id', input.id).single();
       let mergedDetalhes: any = (curProdData?.detalhes && typeof curProdData.detalhes === 'object' && !Array.isArray(curProdData.detalhes))
         ? { ...curProdData.detalhes }
@@ -2387,6 +2547,12 @@ export async function updateAdminProductFull(
 
       if (input.precos_diferenciados !== undefined) {
         mergedDetalhes.precos_diferenciados = input.precos_diferenciados;
+      }
+      if (input.categorias_vinculadas !== undefined) {
+        mergedDetalhes.categorias_vinculadas =
+          Array.isArray(input.categorias_vinculadas) && input.categorias_vinculadas.length > 0
+            ? input.categorias_vinculadas
+            : null;
       }
       if (input.fotos_por_cor !== undefined) {
         // Sanitiza e mescla fotos por cor, removendo cores explicitamente excluídas ou ausentes da grade
@@ -2602,6 +2768,27 @@ export async function updateAdminProductFull(
             .from('produtos')
             .update({ foto_principal: effectiveCoverUrl })
             .eq('id', input.id);
+        }
+      }
+    }
+
+    const effectiveLojaId = input.loja_id || updatedProd.loja_id;
+    const effectivePrimaryCatId = input.categoria_id !== undefined ? input.categoria_id : updatedProd.categoria_id;
+    const effectivePrimarySubcat = input.subcategoria !== undefined ? input.subcategoria : updatedProd.subcategoria;
+
+    if (effectivePrimaryCatId && effectivePrimarySubcat?.trim()) {
+      await ensureSubcategoryInCategoryTree(effectiveLojaId, effectivePrimaryCatId, effectivePrimarySubcat.trim());
+    }
+    const savedBindings =
+      input.categorias_vinculadas !== undefined
+        ? input.categorias_vinculadas
+        : Array.isArray(updatedProd.detalhes?.categorias_vinculadas)
+        ? updatedProd.detalhes.categorias_vinculadas
+        : [];
+    if (Array.isArray(savedBindings)) {
+      for (const b of savedBindings) {
+        if (b?.categoria_id && b?.subcategoria?.trim()) {
+          await ensureSubcategoryInCategoryTree(effectiveLojaId, b.categoria_id, b.subcategoria.trim());
         }
       }
     }

@@ -48,6 +48,8 @@ import {
   CategoriaNode,
   getCategoriaTree,
   saveCategoriaNode,
+  ensureSubcategoryInCategoryTree,
+  ProductCategoryBinding,
   checkOrAcquireProductLock,
   heartbeatProductLock,
   releaseProductLock,
@@ -118,6 +120,7 @@ export function ProductFullFormModal({
   const [ativo, setAtivo] = useState<boolean>(product ? Boolean(product.ativo) : true);
   const [categoriaId, setCategoriaId] = useState(product?.categoria_id || '');
   const [subcategoria, setSubcategoria] = useState(product?.subcategoria || '');
+  const [additionalCategories, setAdditionalCategories] = useState<ProductCategoryBinding[]>([]);
   const [tecido, setTecido] = useState(product?.tecido || 'Crepe Alfaiataria');
   const [modelagem, setModelagem] = useState(product?.modelagem || 'Fluido');
   const [linha, setLinha] = useState(product?.linha || 'Alto Verão');
@@ -298,6 +301,20 @@ export function ProductFullFormModal({
       setAtivo(product.ativo !== undefined ? Boolean(product.ativo) : true);
       setCategoriaId(product.categoria_id || '');
       setSubcategoria(product.subcategoria || '');
+      const rawBindings: ProductCategoryBinding[] = Array.isArray(product.categorias_vinculadas)
+        ? product.categorias_vinculadas
+        : Array.isArray(product.detalhes?.categorias_vinculadas)
+        ? product.detalhes.categorias_vinculadas
+        : [];
+      const primCatId = product.categoria_id || '';
+      const primSub = (product.subcategoria || '').trim().toLowerCase();
+      setAdditionalCategories(
+        rawBindings.filter((b) => {
+          if (!b || !b.categoria_id) return false;
+          const bSub = (b.subcategoria || '').trim().toLowerCase();
+          return !(b.categoria_id === primCatId && bSub === primSub);
+        })
+      );
       setTecido(product.tecido || 'Crepe Alfaiataria');
       setModelagem(product.modelagem || 'Fluido');
       setLinha(product.linha || 'Alto Verão');
@@ -421,6 +438,7 @@ export function ProductFullFormModal({
       setAtivo(true);
       setCategoriaId('');
       setSubcategoria('');
+      setAdditionalCategories([]);
       setTecido('Crepe Alfaiataria');
       setModelagem('Fluido');
       setLinha('Alto Verão');
@@ -1070,12 +1088,43 @@ export function ProductFullFormModal({
         comprimento_cm: comprimentoCmNum
       } : undefined;
 
+      // Consolida todas as categorias vinculadas (principal + adicionais, sem duplicatas)
+      const primaryCatObj =
+        categoryTree.find((c) => c.id === categoriaId) ||
+        categoriesList.find((c) => c.id === categoriaId);
+      const categoriasVinculadasMap = new Map<string, ProductCategoryBinding>();
+      if (categoriaId) {
+        const primSub = subcategoria.trim() || null;
+        categoriasVinculadasMap.set(`${categoriaId}::${(primSub || '').toLowerCase()}`, {
+          categoria_id: categoriaId,
+          categoria_nome: primaryCatObj?.nome || '',
+          subcategoria: primSub
+        });
+      }
+      additionalCategories.forEach((extra) => {
+        if (!extra || !extra.categoria_id) return;
+        const eSub = (extra.subcategoria || '').trim() || null;
+        const key = `${extra.categoria_id}::${(eSub || '').toLowerCase()}`;
+        if (!categoriasVinculadasMap.has(key)) {
+          const eCatObj =
+            categoryTree.find((c) => c.id === extra.categoria_id) ||
+            categoriesList.find((c) => c.id === extra.categoria_id);
+          categoriasVinculadasMap.set(key, {
+            categoria_id: extra.categoria_id,
+            categoria_nome: extra.categoria_nome || eCatObj?.nome || '',
+            subcategoria: eSub
+          });
+        }
+      });
+      const categoriasVinculadasFinal = Array.from(categoriasVinculadasMap.values());
+
       const detalhesPayload = {
         especificacoes: baseSpecs,
         badges: badgesArray,
         precos_diferenciados: Object.keys(precosDiferenciados).length > 0 ? precosDiferenciados : undefined,
         fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : undefined,
-        dimensoes_frete: dimensoesFrete
+        dimensoes_frete: dimensoesFrete,
+        categorias_vinculadas: categoriasVinculadasFinal.length > 0 ? categoriasVinculadasFinal : undefined
       };
 
       // A ordem visual da galeria já define soberanamente a Capa Principal na posição 0
@@ -1110,6 +1159,7 @@ export function ProductFullFormModal({
           slug: finalSlug,
           categoria_id: categoriaId || null,
           subcategoria: subcategoria.trim() || null,
+          categorias_vinculadas: categoriasVinculadasFinal,
           descricao: descricao.trim() || null,
           preco: preco,
           preco_promocional: parsedPromo,
@@ -1163,6 +1213,7 @@ export function ProductFullFormModal({
             categoria_id: categoriaId || null,
             categoria_nome: catObj ? catObj.nome : product.categoria_nome,
             subcategoria: subcategoria.trim() || null,
+            categorias_vinculadas: categoriasVinculadasFinal,
             descricao: descricao.trim() || null,
             preco: preco,
             preco_promocional: parsedPromo,
@@ -1229,6 +1280,7 @@ export function ProductFullFormModal({
           preco_custo: parsedCost,
           categoria_id: categoriaId || undefined,
           subcategoria: subcategoria.trim() || undefined,
+          categorias_vinculadas: categoriasVinculadasFinal,
           tecido: tecido.trim(),
           modelagem: modelagem.trim(),
           linha: linha.trim(),
@@ -1295,6 +1347,7 @@ export function ProductFullFormModal({
             categoria_id: res.product.categoria_id,
             categoria_nome: catObj ? catObj.nome : 'Geral',
             subcategoria: res.product.subcategoria,
+            categorias_vinculadas: categoriasVinculadasFinal,
             paired_with_slug: pairedSlugFinal,
             detalhes: detalhesPayload,
             midias: orderedFotos.map((f, i) => ({
@@ -1355,15 +1408,18 @@ export function ProductFullFormModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nome, preco, variacoes, precosDiferenciados, mediaList, slug, categoriaId, subcategoria]);
+  }, [nome, preco, variacoes, precosDiferenciados, mediaList, slug, categoriaId, subcategoria, additionalCategories]);
 
   if (!isOpen) return null;
 
-  // Subcategorias disponíveis da categoria selecionada
+  // Subcategorias disponíveis da categoria selecionada (prioriza filhas diretas da Árvore de Categorias)
+  const treeDirectSubs = categoriaId
+    ? categoryTree.filter((n) => n.parent_id === categoriaId).map((n) => n.nome)
+    : [];
   const selectedCat = categoriesList.find((c) => c.id === categoriaId);
   const catSubs = selectedCat?.subcategorias || [];
   const globalSubs = storeAttributes?.subcategorias || [];
-  const availableSubcats = Array.from(new Set([...catSubs, ...globalSubs])).filter(Boolean);
+  const availableSubcats = Array.from(new Set([...treeDirectSubs, ...catSubs, ...globalSubs])).filter(Boolean);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -1673,7 +1729,16 @@ export function ProductFullFormModal({
                         value={subcategoria}
                         options={availableSubcats}
                         onChange={(val) => setSubcategoria(val)}
-                        onCreateOption={(val) => handleCreateStoreAttribute('subcategorias', val)}
+                        onCreateOption={async (val) => {
+                          await handleCreateStoreAttribute('subcategorias', val);
+                          if (categoriaId) {
+                            const createdNode = await ensureSubcategoryInCategoryTree(tenantId, categoriaId, val);
+                            if (createdNode) {
+                              const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
+                              setCategoryTree(freshTree);
+                            }
+                          }
+                        }}
                         placeholder={t.products.fullFormModal.subcategoryPlaceholder}
                       />
                     )}
@@ -1714,6 +1779,95 @@ export function ProductFullFormModal({
                       placeholder={t.products.fullFormModal.lineCollectionField}
                     />
                   </div>
+                </div>
+
+                {/* CATEGORIAS ADICIONAIS (MULTI-CATEGORIA SEM DUPLICAR NA VITRINE) */}
+                <div className="p-3.5 bg-amber-50/45 border border-amber-200/80 rounded-xl space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">
+                        Categorias Adicionais da Peça (Multi-categoria)
+                      </span>
+                      {additionalCategories.length > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                          +{additionalCategories.length}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-500">
+                      A peça aparecerá em todas as categorias escolhidas (sem duplicar na vitrine).
+                    </span>
+                  </div>
+
+                  {additionalCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {additionalCategories.map((extra, idx) => {
+                        const catNode =
+                          categoryTree.find((n) => n.id === extra.categoria_id) ||
+                          categoriesList.find((c) => c.id === extra.categoria_id);
+                        const catLabel = extra.categoria_nome || catNode?.nome || 'Categoria';
+                        const fullLabel = extra.subcategoria
+                          ? `${catLabel} > ${extra.subcategoria}`
+                          : catLabel;
+
+                        return (
+                          <span
+                            key={`${extra.categoria_id}-${extra.subcategoria || 'root'}-${idx}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-xs font-semibold text-slate-800 shadow-2xs"
+                          >
+                            <span>{fullLabel}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAdditionalCategories((prev) => prev.filter((_, i) => i !== idx))
+                              }
+                              className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                              title={`Remover ${fullLabel}`}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <AdminCategorySearchSelect
+                    value=""
+                    subcategoria=""
+                    tree={categoryTree}
+                    fallbackList={categoriesList}
+                    placeholder="+ Adicionar outra categoria ou subcategoria para esta peça (ex: Conjuntos, Blusas)..."
+                    onChange={(catId, catNome, subcatNome) => {
+                      if (!catId) return;
+                      const subClean = (subcatNome || '').trim() || null;
+                      const isSameAsPrimary =
+                        catId === categoriaId &&
+                        (subClean || '').toLowerCase() === subcategoria.trim().toLowerCase();
+                      if (isSameAsPrimary) {
+                        showToast('Esta categoria já está definida como a categoria principal da peça.', 'info');
+                        return;
+                      }
+                      const alreadyAdded = additionalCategories.some(
+                        (b) =>
+                          b.categoria_id === catId &&
+                          ((b.subcategoria || '').trim().toLowerCase() === (subClean || '').toLowerCase())
+                      );
+                      if (alreadyAdded) {
+                        showToast('Esta categoria já foi adicionada à peça.', 'info');
+                        return;
+                      }
+                      setAdditionalCategories((prev) => [
+                        ...prev,
+                        {
+                          categoria_id: catId,
+                          categoria_nome: catNome,
+                          subcategoria: subClean
+                        }
+                      ]);
+                    }}
+                  />
                 </div>
 
                 {/* Descrição e Especificações Técnicas */}

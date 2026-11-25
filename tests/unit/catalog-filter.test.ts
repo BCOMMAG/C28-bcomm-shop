@@ -236,4 +236,37 @@ runTest(
   }
 );
 
+runTest(
+  'Multi-categoria: peça vinculada a Outono/Inverno, Conjuntos Exclusivos e Blusas aparece em todas e no submenu Outono/Inverno -> Blusas (mesmo em modo estrito)',
+  () => {
+    const prodMultiCat = makeProduct({
+      id: 'p-multi-1',
+      name: 'Blusa Conjunto Outono',
+      category: 'Outono/Inverno',
+      categoryId: 'cat-outono',
+      subcategory: undefined,
+      categories: [
+        { categoria_id: 'cat-outono', categoria_nome: 'Outono/Inverno', subcategoria: null },
+        { categoria_id: 'cat-conjuntos', categoria_nome: 'Conjuntos Exclusivos', subcategoria: null },
+        { categoria_id: 'cat-blusas', categoria_nome: 'Blusas & Tops', subcategoria: null }
+      ]
+    });
+
+    assert.strictEqual(matchesCategoryFilter(prodMultiCat, 'Outono/Inverno', sampleTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodMultiCat, 'Conjuntos Exclusivos', sampleTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodMultiCat, 'Blusas', sampleTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodMultiCat, 'Primavera/Verão', sampleTree), false);
+
+    // No menu Outono/Inverno -> Blusas, deve aparecer tanto no modo flexível quanto no estrito
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodMultiCat, ['Outono/Inverno'], ['Blusas'], sampleTree, false),
+      true
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodMultiCat, ['Outono/Inverno'], ['Blusas'], sampleTree, true),
+      true
+    );
+  }
+);
+
 console.log('Todos os testes de catalog-filter passaram com sucesso!');

@@ -15,6 +15,7 @@ import { Footer } from '@/components/Footer';
 import { useStore } from '@/context/StoreContext';
 import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
 import { SecoesVitrineConfig, SecaoHomeItem, normalizarSecoesVitrine } from '@/lib/admin';
+import { matchesCategoryFilter } from '@/lib/catalog-filter';
 import { Product } from '@/types';
 
 export function BoutiqueStorefront() {
@@ -106,6 +107,9 @@ export function BoutiqueStorefront() {
     const colecoesPersonalizadas: any[] = Array.isArray(currentTenant?.configuracoes_visuais?.colecoes_personalizadas)
       ? currentTenant.configuracoes_visuais.colecoes_personalizadas
       : [];
+    const categoryTree = Array.isArray(currentTenant?.configuracoes_visuais?.arvore_categorias)
+      ? currentTenant.configuracoes_visuais.arvore_categorias
+      : [];
 
     const resolveSectionProducts = (sec: SecaoHomeItem): Product[] => {
       // Se tiver produtoIds explícitos (curadoria ou coleção), usa prioritariamente
@@ -121,11 +125,8 @@ export function BoutiqueStorefront() {
       if (sec.tipo === 'nativa_ultimas_pecas') return lastPiecesProducts;
       if (sec.tipo === 'nativa_todas_pecas') return products;
       if (sec.tipo === 'categoria' && sec.categoriaNome) {
-        const catNomeLower = sec.categoriaNome.toLowerCase();
-        return products.filter(
-          (p) =>
-            (p.category && p.category.toLowerCase() === catNomeLower) ||
-            (p.subcategory && p.subcategory.toLowerCase() === catNomeLower)
+        return products.filter((p) =>
+          matchesCategoryFilter(p, sec.categoriaNome!, categoryTree)
         );
       }
       if (sec.tipo === 'custom_curadoria' && sec.produtoIds && sec.produtoIds.length > 0) {

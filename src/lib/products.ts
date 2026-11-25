@@ -1,4 +1,4 @@
-import { Product, ProductMedia, ProductVariation } from '@/types';
+import { Product, ProductCategoryBinding, ProductMedia, ProductVariation } from '@/types';
 import { PRODUCTS } from '@/data/products';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEFAULT_LEIDY_TENANT } from '@/lib/tenant';
@@ -310,6 +310,48 @@ export function mapDbProductToProduct(dbProd: any): Product {
     resolvedBadge = customBadgesList[0];
   }
 
+  const resolvedPrimaryCategoryName =
+    dbProd.categorias?.nome ||
+    (dbProd.categoria_id
+      ? DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
+          (n: any) => n.id === dbProd.categoria_id
+        )?.nome
+      : null) ||
+    'Geral';
+
+  // Múltiplos vínculos de categoria armazenados em detalhes.categorias_vinculadas (retrocompatível)
+  const categoryBindingsMap = new Map<string, ProductCategoryBinding>();
+  if (dbProd.categoria_id || (resolvedPrimaryCategoryName && resolvedPrimaryCategoryName !== 'Geral')) {
+    const primId = dbProd.categoria_id || '';
+    const primSub = (dbProd.subcategoria || '').trim() || null;
+    categoryBindingsMap.set(`${primId}::${(primSub || '').toLowerCase()}`, {
+      categoria_id: primId,
+      categoria_nome: resolvedPrimaryCategoryName,
+      subcategoria: primSub
+    });
+  }
+  if (Array.isArray(detalhesObj.categorias_vinculadas)) {
+    detalhesObj.categorias_vinculadas.forEach((b: any) => {
+      if (!b || (!b.categoria_id && !b.categoria_nome)) return;
+      const bId = String(b.categoria_id || '');
+      const bSub = b.subcategoria ? String(b.subcategoria).trim() : null;
+      const bNome =
+        b.categoria_nome ||
+        DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
+          (n: any) => n.id === bId
+        )?.nome ||
+        '';
+      const key = `${bId}::${(bSub || '').toLowerCase()}`;
+      if (!categoryBindingsMap.has(key)) {
+        categoryBindingsMap.set(key, {
+          categoria_id: bId,
+          categoria_nome: bNome,
+          subcategoria: bSub
+        });
+      }
+    });
+  }
+
   return {
     id: dbProd.slug, // Mantém o slug como id para compatibilidade de rotas e carrinho
     slug: dbProd.slug || dbProd.id,
@@ -328,16 +370,10 @@ export function mapDbProductToProduct(dbProd: any): Product {
     remainingPieces,
     badge: resolvedBadge,
     customBadges: Array.from(new Set(customBadgesList)),
-    category:
-      dbProd.categorias?.nome ||
-      (dbProd.categoria_id
-        ? DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
-            (n: any) => n.id === dbProd.categoria_id
-          )?.nome
-        : null) ||
-      'Geral',
+    category: resolvedPrimaryCategoryName,
     categoryId: dbProd.categoria_id || undefined,
     subcategory: dbProd.subcategoria || undefined,
+    categories: Array.from(categoryBindingsMap.values()),
     fabric: dbProd.tecido || undefined,
     fit: dbProd.modelagem || undefined,
     line: dbProd.linha || undefined,

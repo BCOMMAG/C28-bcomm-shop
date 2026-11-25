@@ -1905,11 +1905,21 @@ export default function AdminProdutosPage() {
     [products]
   );
 
-  // Categorias para filtro (baseado em produtos que não estão na lixeira)
-  const categoriesFilter = useMemo(() => [
-    'todas',
-    ...Array.from(new Set(products.filter((p) => !p.lixeira).map((p) => p.categoria_nome || 'Geral')))
-  ], [products]);
+  // Categorias para filtro (baseado em produtos que não estão na lixeira, incluindo multi-categorias)
+  const categoriesFilter = useMemo(() => {
+    const set = new Set<string>();
+    products
+      .filter((p) => !p.lixeira)
+      .forEach((p) => {
+        set.add(p.categoria_nome || 'Geral');
+        if (Array.isArray(p.categorias_vinculadas)) {
+          p.categorias_vinculadas.forEach((b) => {
+            if (b?.categoria_nome) set.add(b.categoria_nome);
+          });
+        }
+      });
+    return ['todas', ...Array.from(set)];
+  }, [products]);
 
   // Filtro de Busca, Ciclo de Vida e Estoque
   const filteredProducts = useMemo(() => {
@@ -1928,9 +1938,15 @@ export default function AdminProdutosPage() {
         if (p.lixeira) return false;
       }
 
-      // 2. Filtro de Categoria
-      if (selectedCategory !== 'todas' && p.categoria_nome !== selectedCategory) {
-        return false;
+      // 2. Filtro de Categoria (principal ou multi-categoria)
+      if (selectedCategory !== 'todas') {
+        const matchesPrimary = p.categoria_nome === selectedCategory;
+        const matchesExtra =
+          Array.isArray(p.categorias_vinculadas) &&
+          p.categorias_vinculadas.some((b) => b?.categoria_nome === selectedCategory);
+        if (!matchesPrimary && !matchesExtra) {
+          return false;
+        }
       }
 
       // 3. Filtro de Estoque / Badges Promocionais
@@ -2823,7 +2839,20 @@ export default function AdminProdutosPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                           {product.categoria_nome}
+                          {product.subcategoria ? ` › ${product.subcategoria}` : ''}
                         </span>
+                        {Array.isArray(product.categorias_vinculadas) &&
+                          product.categorias_vinculadas
+                            .filter((b) => b.categoria_id !== product.categoria_id || (b.subcategoria || '') !== (product.subcategoria || ''))
+                            .map((b, bIdx) => (
+                              <span
+                                key={`${b.categoria_id}-${bIdx}`}
+                                className="text-[10px] font-semibold text-slate-700 px-2 py-0.5 rounded bg-slate-100 border border-slate-200"
+                              >
+                                +{b.categoria_nome || 'Categoria'}
+                                {b.subcategoria ? ` › ${b.subcategoria}` : ''}
+                              </span>
+                            ))}
 
                         {/* Badges de Ciclo de Vida */}
                         {isPausada && (
@@ -3413,8 +3442,29 @@ export default function AdminProdutosPage() {
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                          <span className="font-semibold text-amber-800">{product.categoria_nome || 'Geral'}</span>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 flex-wrap">
+                          <span className="font-semibold text-amber-800">
+                            {product.categoria_nome || 'Geral'}
+                            {product.subcategoria ? ` › ${product.subcategoria}` : ''}
+                          </span>
+                          {Array.isArray(product.categorias_vinculadas) &&
+                            product.categorias_vinculadas.filter(
+                              (b) =>
+                                b.categoria_id !== product.categoria_id ||
+                                (b.subcategoria || '') !== (product.subcategoria || '')
+                            ).length > 0 && (
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
+                                +
+                                {
+                                  product.categorias_vinculadas.filter(
+                                    (b) =>
+                                      b.categoria_id !== product.categoria_id ||
+                                      (b.subcategoria || '') !== (product.subcategoria || '')
+                                  ).length
+                                }{' '}
+                                cat.
+                              </span>
+                            )}
                           <span>•</span>
                           <span className="font-mono text-slate-400">/{product.slug}</span>
                         </div>
@@ -3704,6 +3754,20 @@ export default function AdminProdutosPage() {
                             <div className="flex-1 min-w-0">
                               <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block truncate">
                                 {product.categoria_nome || 'Geral'}
+                                {Array.isArray(product.categorias_vinculadas) &&
+                                product.categorias_vinculadas.filter(
+                                  (b) =>
+                                    b.categoria_id !== product.categoria_id ||
+                                    (b.subcategoria || '') !== (product.subcategoria || '')
+                                ).length > 0
+                                  ? ` (+${
+                                      product.categorias_vinculadas.filter(
+                                        (b) =>
+                                          b.categoria_id !== product.categoria_id ||
+                                          (b.subcategoria || '') !== (product.subcategoria || '')
+                                      ).length
+                                    })`
+                                  : ''}
                               </span>
                               <h4 className="text-xs font-bold text-slate-900 truncate" title={product.nome}>
                                 {product.nome}
