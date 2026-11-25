@@ -17,15 +17,17 @@ import { CategoriaNode } from '@/types/database';
 
 export interface AdminCategorySearchSelectProps {
   label?: string;
-  value: string; // categoria_id
+  value: string; // categoria_id (raiz N1)
   subcategoria?: string;
+  selectedNodeId?: string; // nó exato selecionado (N1, N2, N3, N4...)
   tree: CategoriaNode[];
   fallbackList?: Array<{ id: string; nome: string }>;
   onChange: (
     catId: string,
     catNome: string,
     subcatNome?: string,
-    caminhoCompleto?: string
+    caminhoCompleto?: string,
+    selectedNode?: CategoriaNode
   ) => void;
   onAddNewCategory?: (name: string, parentId?: string | null) => Promise<boolean | void>;
   placeholder?: string;
@@ -37,6 +39,7 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
   label,
   value,
   subcategoria,
+  selectedNodeId,
   tree,
   fallbackList = [],
   onChange,
@@ -107,18 +110,48 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
     return '';
   }, [activeNode, value, fallbackList]);
 
+  // Ordena a árvore em profundidade (N1 -> N2 -> N3 -> N4...) para visualização clara de ramificações
+  const hierarchicalTree = useMemo(() => {
+    const ordered: CategoriaNode[] = [];
+    const visited = new Set<string>();
+    const sortByOrder = (a: CategoriaNode, b: CategoriaNode) =>
+      (a.display_order ?? 0) - (b.display_order ?? 0);
+
+    const walk = (parentId: string | null) => {
+      const children = tree
+        .filter((n) => (parentId ? n.parent_id === parentId : !n.parent_id))
+        .sort(sortByOrder);
+      children.forEach((child) => {
+        if (visited.has(child.id)) return;
+        visited.add(child.id);
+        ordered.push(child);
+        walk(child.id);
+      });
+    };
+
+    walk(null);
+    // Inclui eventuais nós órfãos
+    tree.forEach((node) => {
+      if (!visited.has(node.id)) {
+        visited.add(node.id);
+        ordered.push(node);
+      }
+    });
+    return ordered;
+  }, [tree]);
+
   // Lista linear de nós filtrados pela digitação do lojista
   const filteredNodes = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return tree;
+    if (!term) return hierarchicalTree;
 
-    return tree.filter((node) => {
+    return hierarchicalTree.filter((node) => {
       const matchNome = (node.nome || '').toLowerCase().includes(term);
       const matchCaminho = (node.caminho_completo || '').toLowerCase().includes(term);
       const matchSlug = (node.slug || '').toLowerCase().includes(term);
       return matchNome || matchCaminho || matchSlug;
     });
-  }, [tree, searchTerm]);
+  }, [hierarchicalTree, searchTerm]);
 
   // Verifica se o termo pesquisado bate com alguma categoria existente
   const exactMatchExists = useMemo(() => {
@@ -128,21 +161,23 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
   }, [tree, searchTerm]);
 
   const handleSelectNode = (node: CategoriaNode) => {
-    if (node.nivel === 0) {
+    if (node.nivel === 0 || !node.parent_id) {
       // Nó Raiz (Departamento Principal)
-      onChange(node.id, node.nome, '', node.caminho_completo || node.nome);
+      onChange(node.id, node.nome, '', node.caminho_completo || node.nome, node);
     } else {
-      // Subcategoria / Ramificação Interna
+      // Subcategoria / Ramificação Interna (N2, N3, N4...)
       // Resolve a categoria raiz ancestral (que possui o ID oficial da tabela SQL categorias)
       let rootNode: CategoriaNode = node;
-      let currParentId = node.parent_id;
-      while (currParentId) {
+      let currParentId: string | null = node.parent_id;
+      const visited = new Set<string>([node.id]);
+      while (currParentId && !visited.has(currParentId)) {
+        visited.add(currParentId);
         const parent = tree.find((p) => p.id === currParentId);
         if (!parent) break;
         rootNode = parent;
         currParentId = parent.parent_id;
       }
-      onChange(rootNode.id, rootNode.nome, node.nome, node.caminho_completo || node.nome);
+      onChange(rootNode.id, rootNode.nome, node.nome, node.caminho_completo || node.nome, node);
     }
     setIsOpen(false);
     setSearchTerm('');
@@ -180,6 +215,7 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
                 setIsOpen(true);
                 setIsCreatingInline(true);
                 setNewCatName(searchTerm || '');
+                setNewCatParentId(selectedNodeId || value || null);
               }}
               className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 cursor-pointer"
             >
@@ -302,13 +338,15 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
                   className="flex-1 p-1.5 bg-white border border-slate-300 rounded-md text-[11px] text-slate-700"
                 >
                   <option value="">📁 Criar como Categoria Principal (N1)</option>
-                  {tree
-                    .filter((n) => n.nivel === 0)
-                    .map((root) => (
-                      <option key={root.id} value={root.id}>
-                        ↳ Subcategoria de: {root.nome}
+                  {hierarchicalTree.map((node) => {
+                    const depth = node.nivel || 0;
+                    const indent = depth > 0 ? `${'\u00A0\u00A0'.repeat(depth)}` : '';
+                    return (
+                      <option key={node.id} value={node.id}>
+                        {indent}↳ Dentro de: {node.caminho_completo || node.nome} [N{depth + 1}]
                       </option>
-                    ))}
+                    );
+                  })}
                 </select>
                 <button
                   type="button"
@@ -330,6 +368,7 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
                   onClick={() => {
                     setIsCreatingInline(true);
                     setNewCatName(searchTerm.trim());
+                    setNewCatParentId(selectedNodeId || value || null);
                   }}
                   className="w-full py-1.5 px-2 rounded-md bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-between cursor-pointer transition-colors"
                 >
@@ -349,12 +388,16 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
               filteredNodes.map((node) => {
                 const subClean = (subcategoria || '').trim().toLowerCase();
                 const isMatchingChild = Boolean(
-                  value &&
+                  !selectedNodeId &&
+                    value &&
                     subClean &&
                     node.parent_id === value &&
                     node.nome.trim().toLowerCase() === subClean
                 );
-                const isSelected = value === node.id || isMatchingChild;
+                const isSelected = Boolean(
+                  (selectedNodeId && node.id === selectedNodeId) ||
+                    (!selectedNodeId && (value === node.id || isMatchingChild))
+                );
                 const depth = node.nivel || 0;
                 const isRoot = depth === 0;
 
@@ -450,6 +493,7 @@ export const AdminCategorySearchSelect: React.FC<AdminCategorySearchSelectProps>
                 onClick={() => {
                   setIsCreatingInline(true);
                   setNewCatName('');
+                  setNewCatParentId(selectedNodeId || value || null);
                 }}
                 className="text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 cursor-pointer"
               >

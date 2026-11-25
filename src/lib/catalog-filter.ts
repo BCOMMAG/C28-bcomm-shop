@@ -53,36 +53,70 @@ interface NormalizedProductBinding {
   categoryId?: string;
   category: string;
   subcategory?: string;
+  nodeId?: string;
+  subcategoriaPath?: string[];
+  caminhoCompleto?: string;
 }
 
 /**
  * Extrai todos os vínculos de categoria/subcategoria de um produto
- * (categoria principal + categorias adicionais em `product.categories`).
+ * (categoria principal + categorias adicionais em `product.categories`, incluindo trilhas N-níveis).
  */
 export function getProductCategoryBindings(product: Product): NormalizedProductBinding[] {
   const bindings: NormalizedProductBinding[] = [];
   const seen = new Set<string>();
 
-  const pushBinding = (categoryId?: string, category?: string | null, subcategory?: string | null) => {
+  const pushBinding = (
+    categoryId?: string,
+    category?: string | null,
+    subcategory?: string | null,
+    nodeId?: string | null,
+    subcategoriaPath?: string[] | null,
+    caminhoCompleto?: string | null
+  ) => {
     const id = (categoryId || '').trim();
     const cat = (category || '').trim();
-    const sub = (subcategory || '').trim();
-    if (!id && !cat && !sub) return;
-    const key = `${id}::${cat.toLowerCase()}::${sub.toLowerCase()}`;
+    const cleanPath = Array.isArray(subcategoriaPath)
+      ? subcategoriaPath.map((s) => String(s || '').trim()).filter(Boolean)
+      : [];
+    const sub = (subcategory || '').trim() || (cleanPath.length > 0 ? cleanPath[cleanPath.length - 1] : '');
+    const nId = (nodeId || '').trim();
+    const pathFull = (caminhoCompleto || '').trim();
+
+    if (!id && !cat && !sub && !nId && cleanPath.length === 0) return;
+    const pathKey = cleanPath.length > 0 ? cleanPath.map((s) => s.toLowerCase()).join('>') : sub.toLowerCase();
+    const key = `${id}::${nId || pathKey}::${cat.toLowerCase()}::${sub.toLowerCase()}`;
     if (seen.has(key)) return;
     seen.add(key);
     bindings.push({
       categoryId: id || undefined,
       category: cat,
-      subcategory: sub || undefined
+      subcategory: sub || undefined,
+      nodeId: nId || undefined,
+      subcategoriaPath: cleanPath.length > 0 ? cleanPath : sub ? [sub] : undefined,
+      caminhoCompleto: pathFull || undefined
     });
   };
 
-  pushBinding(product.categoryId, product.category, product.subcategory);
+  pushBinding(
+    product.categoryId,
+    product.category,
+    product.subcategory,
+    product.subcategoryNodeId,
+    product.subcategoryPath,
+    product.categoryPath
+  );
   if (Array.isArray(product.categories)) {
     for (const extra of product.categories) {
       if (extra) {
-        pushBinding(extra.categoria_id, extra.categoria_nome, extra.subcategoria);
+        pushBinding(
+          extra.categoria_id,
+          extra.categoria_nome,
+          extra.subcategoria,
+          extra.node_id,
+          extra.subcategoria_path,
+          extra.caminho_completo
+        );
       }
     }
   }
@@ -101,17 +135,28 @@ function matchesSingleBindingCategory(
   const catNorm = normalizeCatString(categoryTerm);
   if (!catLower && !catNorm) return true;
 
-  // 1. Resolução Recursiva via Árvore de Categorias
+  const hasKnownNodeInTree = Boolean(
+    binding.nodeId && categoryTree.some((n) => n.id === binding.nodeId)
+  );
+
+  // 1. Resolução Recursiva via Árvore de Categorias (N1, N2, N3, N4...)
   if (categoryTree.length > 0) {
     const matchedNodes = findMatchingTreeNodes(categoryTerm, categoryTree);
     for (const matchedNode of matchedNodes) {
       const allowedIds = getDescendantCategoryIdsLocal(matchedNode.id, categoryTree);
+
+      // Quando o vínculo possui nodeId exato presente na árvore, ele resolve sem ambiguidade entre ramificações irmãs
+      if (hasKnownNodeInTree && binding.nodeId) {
+        if (allowedIds.includes(binding.nodeId)) return true;
+        continue;
+      }
+
+      if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
+
       const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
       const allowedNames = allowedNodes.map((n) => n.nome.toLowerCase());
       const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
       const allowedSlugsNorm = allowedNodes.map((n) => normalizeCatString(n.slug));
-
-      if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
 
       if (binding.category) {
         const pCatLower = binding.category.toLowerCase();
@@ -123,6 +168,19 @@ function matchesSingleBindingCategory(
         ) {
           return true;
         }
+      }
+
+      if (binding.subcategoriaPath && binding.subcategoriaPath.length > 0) {
+        const pathMatch = binding.subcategoriaPath.some((seg) => {
+          const sLower = seg.toLowerCase();
+          const sNorm = normalizeCatString(seg);
+          return (
+            allowedNames.includes(sLower) ||
+            allowedNamesNorm.includes(sNorm) ||
+            allowedSlugsNorm.includes(sNorm)
+          );
+        });
+        if (pathMatch) return true;
       }
 
       if (binding.subcategory) {
@@ -137,6 +195,16 @@ function matchesSingleBindingCategory(
         }
       }
     }
+  }
+
+  // Correspondência direta na trilha N-níveis quando a árvore não resolveu
+  if (
+    binding.subcategoriaPath &&
+    binding.subcategoriaPath.some(
+      (seg) => seg.toLowerCase() === catLower || normalizeCatString(seg) === catNorm
+    )
+  ) {
+    return true;
   }
 
   const pCatNorm = normalizeCatString(binding.category);
@@ -253,6 +321,61 @@ export function matchesSubcategoryFilter(
   const bindings = getProductCategoryBindings(product);
 
   for (const binding of bindings) {
+    const hasKnownNodeInTree = Boolean(
+      binding.nodeId && categoryTree.some((n) => n.id === binding.nodeId)
+    );
+
+    if (categoryTree.length > 0) {
+      const subNodes = findMatchingTreeNodes(subTerm, categoryTree);
+      if (subNodes.length > 0) {
+        let matchedByKnownNode = false;
+        for (const subNode of subNodes) {
+          const allowedIds = getDescendantCategoryIdsLocal(subNode.id, categoryTree);
+          if (hasKnownNodeInTree && binding.nodeId) {
+            if (allowedIds.includes(binding.nodeId)) return true;
+            if (includeCategoryMatch && binding.categoryId && allowedIds.includes(binding.categoryId)) {
+              return true;
+            }
+            matchedByKnownNode = true;
+            continue;
+          }
+
+          if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
+
+          const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
+          const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
+          if (
+            binding.subcategoriaPath &&
+            binding.subcategoriaPath.some((seg) => allowedNamesNorm.includes(normalizeCatString(seg)))
+          ) {
+            return true;
+          }
+          if (binding.subcategory && allowedNamesNorm.includes(normalizeCatString(binding.subcategory))) return true;
+          if (includeCategoryMatch && binding.category && allowedNamesNorm.includes(normalizeCatString(binding.category))) {
+            return true;
+          }
+        }
+        if (matchedByKnownNode) {
+          // O produto tem nodeId exato e NÃO pertence a esta ramificação específica; evita falso positivo por nome repetido
+          continue;
+        }
+      }
+    }
+
+    // Verifica todos os níveis gravados na trilha da subcategoria (N2, N3, N4...)
+    if (binding.subcategoriaPath && binding.subcategoriaPath.length > 0) {
+      const pathMatch = binding.subcategoriaPath.some((seg) => {
+        const sLower = seg.trim().toLowerCase();
+        const sNorm = normalizeCatString(seg);
+        return (
+          sLower === subLower ||
+          sNorm === subNorm ||
+          Boolean(sNorm && subNorm && (sNorm.includes(subNorm) || subNorm.includes(sNorm)))
+        );
+      });
+      if (pathMatch) return true;
+    }
+
     if (binding.subcategory) {
       const pSubLower = binding.subcategory.trim().toLowerCase();
       const pSubNorm = normalizeCatString(binding.subcategory);
@@ -262,21 +385,6 @@ export function matchesSubcategoryFilter(
         Boolean(pSubNorm && subNorm && (pSubNorm.includes(subNorm) || subNorm.includes(pSubNorm)))
       ) {
         return true;
-      }
-    }
-
-    if (categoryTree.length > 0) {
-      const subNodes = findMatchingTreeNodes(subTerm, categoryTree);
-      for (const subNode of subNodes) {
-        const allowedIds = getDescendantCategoryIdsLocal(subNode.id, categoryTree);
-        if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
-
-        const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
-        const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
-        if (binding.subcategory && allowedNamesNorm.includes(normalizeCatString(binding.subcategory))) return true;
-        if (includeCategoryMatch && binding.category && allowedNamesNorm.includes(normalizeCatString(binding.category))) {
-          return true;
-        }
       }
     }
   }

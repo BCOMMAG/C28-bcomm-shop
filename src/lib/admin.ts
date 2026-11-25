@@ -957,35 +957,69 @@ export async function getCategoriaTree(
     const normText = (s?: string | null) =>
       (s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // Coleta todos os vínculos de categoria/subcategoria (principal + multi-categorias em detalhes)
-    const prodsBySubcatName: Record<string, string[]> = {};
-    const productBindingsList: Array<{ productId: string; catId: string; subName: string }> = [];
+    // Coleta todos os vínculos de categoria/subcategoria (principal + multi-categorias em detalhes, suportando N-níveis)
+    const prodsByPathList: Array<{ catId: string; pathSegments: string[] }> = [];
+    const seenPathsToSync = new Set<string>();
+    const productBindingsList: Array<{
+      productId: string;
+      catId: string;
+      subName: string;
+      nodeId?: string | null;
+      subPath?: string[];
+    }> = [];
 
     prods.forEach((p: any) => {
       const det = p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes) ? p.detalhes : {};
       const seenBindings = new Set<string>();
 
-      const registerBinding = (catId?: string | null, sub?: string | null) => {
+      const registerBinding = (
+        catId?: string | null,
+        sub?: string | null,
+        nodeId?: string | null,
+        rawPath?: string[] | null
+      ) => {
         if (!catId) return;
-        const subTrim = (sub || '').trim();
-        const key = `${catId}::${normText(subTrim)}`;
+        const cleanPath = Array.isArray(rawPath)
+          ? rawPath.map((s) => String(s || '').trim()).filter(Boolean)
+          : [];
+        const subTrim = (sub || '').trim() || (cleanPath.length > 0 ? cleanPath[cleanPath.length - 1] : '');
+        const effectivePath = cleanPath.length > 0 ? cleanPath : subTrim ? [subTrim] : [];
+        const key = `${catId}::${nodeId || effectivePath.map(normText).join('>')}`;
         if (seenBindings.has(key)) return;
         seenBindings.add(key);
 
-        productBindingsList.push({ productId: p.id, catId, subName: subTrim });
-        if (subTrim) {
-          if (!prodsBySubcatName[subTrim]) prodsBySubcatName[subTrim] = [];
-          if (!prodsBySubcatName[subTrim].includes(catId)) {
-            prodsBySubcatName[subTrim].push(catId);
+        productBindingsList.push({
+          productId: p.id,
+          catId,
+          subName: subTrim,
+          nodeId: nodeId || null,
+          subPath: effectivePath
+        });
+
+        if (effectivePath.length > 0) {
+          const syncKey = `${catId}::${effectivePath.map(normText).join('>')}`;
+          if (!seenPathsToSync.has(syncKey)) {
+            seenPathsToSync.add(syncKey);
+            prodsByPathList.push({ catId, pathSegments: effectivePath });
           }
         }
       };
 
-      registerBinding(p.categoria_id, p.subcategoria);
+      registerBinding(
+        p.categoria_id,
+        p.subcategoria,
+        det.subcategoria_node_id ? String(det.subcategoria_node_id) : null,
+        Array.isArray(det.subcategoria_path) ? det.subcategoria_path : null
+      );
       if (Array.isArray(det.categorias_vinculadas)) {
         det.categorias_vinculadas.forEach((b: any) => {
           if (b && b.categoria_id) {
-            registerBinding(b.categoria_id, b.subcategoria);
+            registerBinding(
+              b.categoria_id,
+              b.subcategoria,
+              b.node_id ? String(b.node_id) : null,
+              Array.isArray(b.subcategoria_path) ? b.subcategoria_path : null
+            );
           }
         });
       }
@@ -1055,30 +1089,60 @@ export async function getCategoriaTree(
       });
     }
 
-    // Sincronização contínua: garante que subcategorias cadastradas em produtos existam na árvore sob sua categoria pai
-    Object.entries(prodsBySubcatName).forEach(([subName, parentIds]) => {
-      parentIds.forEach((pId) => {
-        const parentExists = savedTree.some((n) => n.id === pId);
-        if (!parentExists) return;
-        const descendantIds = getDescendantCategoryIds(pId, savedTree).filter((id) => id !== pId);
+    // Sincronização contínua: garante que subcategorias e cadeias N-níveis cadastradas em produtos existam na árvore sob sua categoria pai
+    prodsByPathList.forEach(({ catId, pathSegments }) => {
+      if (!savedTree.some((n) => n.id === catId) || pathSegments.length === 0) return;
+
+      if (pathSegments.length === 1) {
+        const subName = pathSegments[0];
+        const descendantIds = getDescendantCategoryIds(catId, savedTree).filter((id) => id !== catId);
         const existingChild = savedTree.find(
           (n) => descendantIds.includes(n.id) && normText(n.nome) === normText(subName)
         );
         if (!existingChild) {
-          const siblings = savedTree.filter((n) => n.parent_id === pId);
+          const siblings = savedTree.filter((n) => n.parent_id === catId);
           const nextOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.display_order || 0)) + 10 : 10;
-          const parentNode = savedTree.find((n) => n.id === pId);
+          const parentNode = savedTree.find((n) => n.id === catId);
           const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
           savedTree.push({
             id: subId,
             loja_id: lojaId,
             nome: subName,
             slug: slugifyCategoria(subName),
-            parent_id: pId,
+            parent_id: catId,
             nivel: (parentNode?.nivel ?? 0) + 1,
             display_order: nextOrder,
             ativo: true
           });
+          needsSaveTree = true;
+        }
+        return;
+      }
+
+      // Cadeia explícita N2 -> N3 -> N4...
+      let currParentId = catId;
+      pathSegments.forEach((segName) => {
+        const directChild = savedTree.find(
+          (n) => n.parent_id === currParentId && normText(n.nome) === normText(segName)
+        );
+        if (directChild) {
+          currParentId = directChild.id;
+        } else {
+          const siblings = savedTree.filter((n) => n.parent_id === currParentId);
+          const nextOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.display_order || 0)) + 10 : 10;
+          const parentNode = savedTree.find((n) => n.id === currParentId);
+          const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          savedTree.push({
+            id: subId,
+            loja_id: lojaId,
+            nome: segName,
+            slug: slugifyCategoria(segName),
+            parent_id: currParentId,
+            nivel: (parentNode?.nivel ?? 0) + 1,
+            display_order: nextOrder,
+            ativo: true
+          });
+          currParentId = subId;
           needsSaveTree = true;
         }
       });
@@ -1096,14 +1160,34 @@ export async function getCategoriaTree(
         .eq('id', lojaId);
     }
 
-    // Mapeamento de produtos únicos por nó (resolve subcategoria para o nó descendente quando existir)
+    // Mapeamento de produtos únicos por nó (prioriza nodeId exato e trilha subPath antes do fallback por nome)
     const directProductIdsByCatId: Record<string, Set<string>> = {};
     const addProductToNode = (nodeId: string, productId: string) => {
       if (!directProductIdsByCatId[nodeId]) directProductIdsByCatId[nodeId] = new Set<string>();
       directProductIdsByCatId[nodeId].add(productId);
     };
 
-    productBindingsList.forEach(({ productId, catId, subName }) => {
+    productBindingsList.forEach(({ productId, catId, subName, nodeId, subPath }) => {
+      if (nodeId && savedTree.some((n) => n.id === nodeId)) {
+        addProductToNode(nodeId, productId);
+        return;
+      }
+      if (subPath && subPath.length > 1) {
+        let currId = catId;
+        let resolvedAll = true;
+        for (const seg of subPath) {
+          const child = savedTree.find((n) => n.parent_id === currId && normText(n.nome) === normText(seg));
+          if (!child) {
+            resolvedAll = false;
+            break;
+          }
+          currId = child.id;
+        }
+        if (resolvedAll && currId !== catId) {
+          addProductToNode(currId, productId);
+          return;
+        }
+      }
       if (subName) {
         const descendantIds = getDescendantCategoryIds(catId, savedTree).filter((id) => id !== catId);
         const matchingChild = savedTree.find(
@@ -1293,13 +1377,25 @@ export async function saveCategoriaNode(
         targetId = insData.id;
       }
 
-      const newNode: CategoriaNode = {
+      const breadcrumb = getCategoryBreadcrumb(targetId!, [...savedTree, {
         id: targetId!,
         loja_id: lojaId,
         nome: nomeLimpo,
         slug,
         parent_id: parentId,
         nivel: parentId ? 1 : 0,
+        display_order: order,
+        ativo: true
+      }]);
+      const realNivel = Math.max(0, breadcrumb.length - 1);
+
+      const newNode: CategoriaNode = {
+        id: targetId!,
+        loja_id: lojaId,
+        nome: nomeLimpo,
+        slug,
+        parent_id: parentId,
+        nivel: realNivel,
         display_order: order,
         ativo: payload.ativo !== undefined ? payload.ativo : true,
         icone: payload.icone,
@@ -1330,7 +1426,18 @@ export async function saveCategoriaNode(
       window.dispatchEvent(new CustomEvent('bcomm:tenant_updated', { detail: { lojaId } }));
     }
 
-    const savedNode = savedTree.find((n) => n.id === targetId);
+    const rawSavedNode = savedTree.find((n) => n.id === targetId);
+    const savedNode = rawSavedNode
+      ? (() => {
+          const bc = getCategoryBreadcrumb(rawSavedNode.id, savedTree);
+          return {
+            ...rawSavedNode,
+            nivel: Math.max(0, bc.length - 1),
+            caminho_completo: bc.map((b) => b.nome).join(' > '),
+            slug_path: bc.map((b) => b.slug).join('/')
+          };
+        })()
+      : undefined;
     return {
       success: true,
       data: savedNode
@@ -1348,7 +1455,8 @@ export async function saveCategoriaNode(
 export async function ensureSubcategoryInCategoryTree(
   lojaId: string = DEFAULT_TENANT_ID,
   parentCategoryId: string,
-  subcategoryName: string
+  subcategoryName: string,
+  options: { directChildOnly?: boolean } = {}
 ): Promise<CategoriaNode | null> {
   const cleanSub = (subcategoryName || '').trim();
   if (!parentCategoryId || !cleanSub) return null;
@@ -1372,13 +1480,20 @@ export async function ensureSubcategoryInCategoryTree(
     const parentNode = savedTree.find((n) => n.id === parentCategoryId);
     if (!parentNode) return null;
 
-    const descendantIds = getDescendantCategoryIds(parentCategoryId, savedTree).filter(
-      (id) => id !== parentCategoryId
-    );
-    const existing = savedTree.find(
-      (n) => descendantIds.includes(n.id) && normalize(n.nome) === normalize(cleanSub)
-    );
-    if (existing) return existing;
+    if (options.directChildOnly) {
+      const directExisting = savedTree.find(
+        (n) => n.parent_id === parentCategoryId && normalize(n.nome) === normalize(cleanSub)
+      );
+      if (directExisting) return directExisting;
+    } else {
+      const descendantIds = getDescendantCategoryIds(parentCategoryId, savedTree).filter(
+        (id) => id !== parentCategoryId
+      );
+      const existing = savedTree.find(
+        (n) => descendantIds.includes(n.id) && normalize(n.nome) === normalize(cleanSub)
+      );
+      if (existing) return existing;
+    }
 
     const res = await saveCategoriaNode(lojaId, {
       nome: cleanSub,
@@ -1390,6 +1505,38 @@ export async function ensureSubcategoryInCategoryTree(
     console.error('❌ [Admin] Falha ao vincular subcategoria na árvore:', err);
     return null;
   }
+}
+
+/**
+ * Garante que uma trilha completa N1 -> N2 -> N3 -> ... exista conectada na Árvore de Categorias.
+ * Retorna o nó folha final e a lista de nós da trilha percorrida.
+ */
+export async function ensureCategoryPathInTree(
+  lojaId: string = DEFAULT_TENANT_ID,
+  rootCategoryId: string,
+  pathSegments: string[]
+): Promise<{ leafNode: CategoriaNode | null; pathNodes: CategoriaNode[] }> {
+  const cleanSegments = (pathSegments || []).map((s) => (s || '').trim()).filter(Boolean);
+  if (!rootCategoryId || cleanSegments.length === 0) {
+    return { leafNode: null, pathNodes: [] };
+  }
+
+  let currentParentId = rootCategoryId;
+  const pathNodes: CategoriaNode[] = [];
+
+  for (const seg of cleanSegments) {
+    const node = await ensureSubcategoryInCategoryTree(lojaId, currentParentId, seg, {
+      directChildOnly: true
+    });
+    if (!node) break;
+    pathNodes.push(node);
+    currentParentId = node.id;
+  }
+
+  return {
+    leafNode: pathNodes.length > 0 ? pathNodes[pathNodes.length - 1] : null,
+    pathNodes
+  };
 }
 
 /**
@@ -2013,25 +2160,52 @@ export async function getAdminProducts(lojaId: string = DEFAULT_TENANT_ID): Prom
       if (p.outlet) colecoesSet.add('col_outlet');
       if (p.ultimas_pecas) colecoesSet.add('col_ultimas_pecas');
 
+      const primSubPath: string[] | null = Array.isArray(detalhesObj.subcategoria_path)
+        ? detalhesObj.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
+        : p.subcategoria
+        ? [String(p.subcategoria).trim()]
+        : null;
+      const primNodeId: string | null = detalhesObj.subcategoria_node_id
+        ? String(detalhesObj.subcategoria_node_id)
+        : null;
+      const primCaminho: string | null = detalhesObj.subcategoria_caminho
+        ? String(detalhesObj.subcategoria_caminho)
+        : null;
+
       const categoriasVinculadasMap = new Map<string, ProductCategoryBinding>();
       if (p.categoria_id) {
         const pSub = (p.subcategoria || '').trim() || null;
-        categoriasVinculadasMap.set(`${p.categoria_id}::${(pSub || '').toLowerCase()}`, {
+        const pPathKey = primSubPath && primSubPath.length > 0 ? primSubPath.join('>').toLowerCase() : (pSub || '').toLowerCase();
+        categoriasVinculadasMap.set(`${p.categoria_id}::${primNodeId || pPathKey}`, {
           categoria_id: p.categoria_id,
           categoria_nome: p.categorias?.nome || 'Geral',
-          subcategoria: pSub
+          subcategoria: pSub,
+          node_id: primNodeId,
+          subcategoria_path: primSubPath,
+          caminho_completo: primCaminho
         });
       }
       if (Array.isArray(detalhesObj.categorias_vinculadas)) {
         detalhesObj.categorias_vinculadas.forEach((b: any) => {
           if (!b || !b.categoria_id) return;
           const bSub = b.subcategoria ? String(b.subcategoria).trim() : null;
-          const key = `${b.categoria_id}::${(bSub || '').toLowerCase()}`;
+          const bPath: string[] | null = Array.isArray(b.subcategoria_path)
+            ? b.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
+            : bSub
+            ? [bSub]
+            : null;
+          const bNodeId: string | null = b.node_id ? String(b.node_id) : null;
+          const bCaminho: string | null = b.caminho_completo ? String(b.caminho_completo) : null;
+          const pathKey = bPath && bPath.length > 0 ? bPath.join('>').toLowerCase() : (bSub || '').toLowerCase();
+          const key = `${b.categoria_id}::${bNodeId || pathKey}`;
           if (!categoriasVinculadasMap.has(key)) {
             categoriasVinculadasMap.set(key, {
               categoria_id: String(b.categoria_id),
               categoria_nome: b.categoria_nome || undefined,
-              subcategoria: bSub
+              subcategoria: bSub,
+              node_id: bNodeId,
+              subcategoria_path: bPath,
+              caminho_completo: bCaminho
             });
           }
         });
@@ -3091,23 +3265,90 @@ export async function bulkApplyDiscount(
 }
 
 /**
- * Ações em Massa: Mover múltiplos produtos para uma categoria.
+ * Ações em Massa: Mover múltiplos produtos para uma categoria (suporta nós N1, N2, N3, N4...).
  */
 export async function bulkUpdateCategory(
   productIds: string[],
-  categoryId: string
+  targetNodeId: string,
+  lojaId?: string
 ): Promise<{ success: boolean; count: number; error?: string }> {
+  if (!productIds || productIds.length === 0) return { success: true, count: 0 };
   try {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase
+
+    // Tenta resolver o nó na árvore de categorias para preservar raiz N1 + trilha N-níveis
+    let resolvedRootId = targetNodeId;
+    let resolvedRootName = '';
+    let resolvedSubLeaf: string | null = null;
+    let resolvedSubPath: string[] | null = null;
+    let resolvedCaminho: string | null = null;
+    let resolvedNodeId: string | null = targetNodeId;
+
+    const effectiveLojaId =
+      lojaId ||
+      (await supabase.from('produtos').select('loja_id').eq('id', productIds[0]).single()).data?.loja_id ||
+      DEFAULT_TENANT_ID;
+
+    const tree = await getCategoriaTree(effectiveLojaId).catch(() => []);
+    const targetNode = tree.find((n) => n.id === targetNodeId);
+
+    if (targetNode) {
+      const bc = getCategoryBreadcrumb(targetNode.id, tree);
+      if (bc.length > 0) {
+        resolvedRootId = bc[0].id;
+        resolvedRootName = bc[0].nome;
+        if (bc.length > 1) {
+          resolvedSubLeaf = bc[bc.length - 1].nome;
+          resolvedSubPath = bc.slice(1).map((b) => b.nome);
+        }
+        resolvedCaminho = bc.map((b) => b.nome).join(' › ');
+      }
+    }
+
+    const agora = new Date().toISOString();
+    const { data: curProds } = await supabase
       .from('produtos')
-      .update({
-        categoria_id: categoryId,
-        updated_at: new Date().toISOString()
-      })
+      .select('id, detalhes')
       .in('id', productIds);
 
-    if (error) throw error;
+    await Promise.all(
+      (curProds || []).map(async (prod: any) => {
+        const curDet =
+          prod.detalhes && typeof prod.detalhes === 'object' && !Array.isArray(prod.detalhes)
+            ? { ...prod.detalhes }
+            : {};
+        const primaryBinding: ProductCategoryBinding = {
+          categoria_id: resolvedRootId,
+          categoria_nome: resolvedRootName || undefined,
+          subcategoria: resolvedSubLeaf,
+          node_id: resolvedNodeId,
+          subcategoria_path: resolvedSubPath,
+          caminho_completo: resolvedCaminho
+        };
+        const existingExtras = Array.isArray(curDet.categorias_vinculadas)
+          ? curDet.categorias_vinculadas.slice(1)
+          : [];
+
+        const nextDetalhes = {
+          ...curDet,
+          subcategoria_node_id: resolvedNodeId,
+          subcategoria_path: resolvedSubPath,
+          subcategoria_caminho: resolvedCaminho,
+          categorias_vinculadas: [primaryBinding, ...existingExtras]
+        };
+
+        await supabase
+          .from('produtos')
+          .update({
+            categoria_id: resolvedRootId,
+            subcategoria: resolvedSubLeaf,
+            detalhes: nextDetalhes,
+            updated_at: agora
+          })
+          .eq('id', prod.id);
+      })
+    );
+
     return { success: true, count: productIds.length };
   } catch (err: any) {
     console.error('❌ [Supabase] Erro ao mover categoria em lote:', err);

@@ -104,6 +104,7 @@ export default function AdminMenuPage() {
   const [selectedSubCat, setSelectedSubCat] = useState('');
   const [selectedSubSubCat, setSelectedSubSubCat] = useState('');
   const [customNewSubCat, setCustomNewSubCat] = useState('');
+  const [newSubParentNodeId, setNewSubParentNodeId] = useState<string>('');
   const [subSearchTerm, setSubSearchTerm] = useState('');
   const [linkInsideParentContext, setLinkInsideParentContext] = useState(true);
   const [alsoCreateInCategoryTree, setAlsoCreateInCategoryTree] = useState(true);
@@ -269,20 +270,31 @@ export default function AdminMenuPage() {
     })) as CategoriaNode[];
   }, [categoryTree, categories]);
 
-  // Subcategorias filhas da Categoria Raiz selecionada (Nível 2)
+  // Subcategorias e ramificações descendentes da Categoria Raiz selecionada (N2, N3, N4...) em profundidade
   const childSubcategoryNodes = useMemo(() => {
     if (!selectedRootCat) return [];
     const rootNode = categoryTree.find(
       (n) => n.nome.toLowerCase() === selectedRootCat.toLowerCase() || n.id === selectedRootCat
     );
-    const result: Array<{ id: string; nome: string; parent_id: string | null; nivel: number }> = [];
+    const result: Array<{ id: string; nome: string; parent_id: string | null; nivel: number; caminho_completo?: string }> = [];
 
     if (rootNode) {
-      categoryTree
-        .filter((n) => n.parent_id === rootNode.id)
-        .forEach((child) => {
-          result.push(child);
+      const visited = new Set<string>([rootNode.id]);
+      const walkDescendants = (parentId: string, depth: number) => {
+        const children = categoryTree
+          .filter((n) => n.parent_id === parentId)
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        children.forEach((child) => {
+          if (visited.has(child.id)) return;
+          visited.add(child.id);
+          result.push({
+            ...child,
+            nivel: child.nivel ?? depth
+          });
+          walkDescendants(child.id, depth + 1);
         });
+      };
+      walkDescendants(rootNode.id, 1);
     }
 
     // Complementa com o cadastro tradicional se não duplicado
@@ -729,20 +741,21 @@ export default function AdminMenuPage() {
       }
 
       if (alsoCreateInCategoryTree) {
-        const parentNode = categoryTree.find(
+        const rootNode = categoryTree.find(
           (n) =>
             n.nome.toLowerCase() === selectedRootCat.toLowerCase() || n.id === selectedRootCat
         );
+        const targetParentId = newSubParentNodeId || rootNode?.id || null;
         const alreadyExists = categoryTree.some(
           (n) =>
             n.nome.trim().toLowerCase() === newSubName.toLowerCase() &&
-            (parentNode ? n.parent_id === parentNode.id : !n.parent_id)
+            (targetParentId ? n.parent_id === targetParentId : !n.parent_id)
         );
         if (!alreadyExists) {
           try {
             const res = await saveCategoriaNode(tenantId, {
               nome: newSubName,
-              parent_id: parentNode ? parentNode.id : null
+              parent_id: targetParentId
             });
             if (res.success) {
               const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
@@ -807,6 +820,7 @@ export default function AdminMenuPage() {
 
     setSelectedSubSubCat('');
     setCustomNewSubCat('');
+    setNewSubParentNodeId(rootNode?.id || '');
     setAlsoCreateInCategoryTree(true);
     setSubValue('');
     setSubCustomUrl('');
@@ -2051,6 +2065,7 @@ export default function AdminMenuPage() {
                               selectedSubCat.toLowerCase() === s.nome.toLowerCase() &&
                               selectedSubCat !== '__ALL__' &&
                               selectedSubCat !== '__NEW__';
+                            const depth = s.nivel || 1;
                             return (
                               <button
                                 key={`direct-${s.id}`}
@@ -2060,14 +2075,22 @@ export default function AdminMenuPage() {
                                   setSelectedSubSubCat('');
                                   setSubLabel(s.nome);
                                 }}
+                                style={{ paddingLeft: `${Math.max(12, depth * 12)}px` }}
                                 className={cn(
-                                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer',
+                                  'w-full text-left pr-3 py-2 text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer',
                                   isSelected
                                     ? 'bg-amber-100/80 text-amber-950 font-bold'
                                     : 'hover:bg-amber-50/70 text-slate-800'
                                 )}
                               >
-                                <span className="truncate">↳ {s.nome}</span>
+                                <span className="truncate flex items-center gap-1.5">
+                                  <span>↳ {s.nome}</span>
+                                  {depth > 1 && (
+                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-100 text-sky-900">
+                                      N{depth + 1}
+                                    </span>
+                                  )}
+                                </span>
                                 {isSelected && (
                                   <Check className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                                 )}
@@ -2194,7 +2217,7 @@ export default function AdminMenuPage() {
                         </label>
                         <input
                           type="text"
-                          placeholder="Ex: Regatas, Croppeds, Casacos..."
+                          placeholder="Ex: Regatas, Croppeds, Prata 925..."
                           value={customNewSubCat}
                           onChange={(e) => {
                             setCustomNewSubCat(e.target.value);
@@ -2202,6 +2225,28 @@ export default function AdminMenuPage() {
                           }}
                           className="w-full px-3 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-slate-800 focus:outline-none focus:border-amber-500"
                         />
+                        {alsoCreateInCategoryTree && (
+                          <div>
+                            <label className="text-[10px] uppercase font-bold text-amber-900 block mb-1">
+                              Vincular dentro de qual nó da Árvore de Categorias?
+                            </label>
+                            <select
+                              value={newSubParentNodeId}
+                              onChange={(e) => setNewSubParentNodeId(e.target.value)}
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-slate-800"
+                            >
+                              <option value="">📁 Criar como Categoria Principal (N1)</option>
+                              {allStoreCategoryOptions
+                                .filter((o) => o.source === 'tree')
+                                .map((opt) => (
+                                  <option key={`new-parent-${opt.id}`} value={opt.id}>
+                                    {opt.nivel > 0 ? `${'\u00A0\u00A0'.repeat(opt.nivel)}↳ ` : ''}
+                                    {opt.caminho || opt.nome} [N{opt.nivel + 1}]
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        )}
                         <label className="flex items-center gap-2 text-[11px] text-amber-900 cursor-pointer">
                           <input
                             type="checkbox"

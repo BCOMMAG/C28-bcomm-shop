@@ -1207,7 +1207,7 @@ export default function AdminProdutosPage() {
 
     setIsBulkActionRunning(true);
     try {
-      const res = await bulkUpdateCategory(ids, bulkCategoryTarget);
+      const res = await bulkUpdateCategory(ids, bulkCategoryTarget, tenantId);
       if (res.success) {
         await fetchProductsData();
         showToast(`${res.count} peças movidas para a nova categoria!`);
@@ -1905,7 +1905,50 @@ export default function AdminProdutosPage() {
     [products]
   );
 
-  // Categorias para filtro (baseado em produtos que não estão na lixeira, incluindo multi-categorias)
+  // Árvore ordenada em profundidade (N1 -> N2 -> N3 -> N4...)
+  const hierarchicalCategoryTree = useMemo(() => {
+    if (!categoryTree || categoryTree.length === 0) return [];
+    const ordered: CategoriaNode[] = [];
+    const visited = new Set<string>();
+    const sortByOrder = (a: CategoriaNode, b: CategoriaNode) =>
+      (a.display_order ?? 0) - (b.display_order ?? 0);
+    const walk = (parentId: string | null) => {
+      const children = categoryTree
+        .filter((n) => (parentId ? n.parent_id === parentId : !n.parent_id))
+        .sort(sortByOrder);
+      children.forEach((child) => {
+        if (visited.has(child.id)) return;
+        visited.add(child.id);
+        ordered.push(child);
+        walk(child.id);
+      });
+    };
+    walk(null);
+    categoryTree.forEach((node) => {
+      if (!visited.has(node.id)) {
+        visited.add(node.id);
+        ordered.push(node);
+      }
+    });
+    return ordered;
+  }, [categoryTree]);
+
+  // Helper para exibir a trilha completa N1 › N2 › N3... de um produto
+  const getProductTrailLabel = (product: AdminProductItem): string => {
+    const det = product.detalhes && typeof product.detalhes === 'object' && !Array.isArray(product.detalhes)
+      ? product.detalhes
+      : {};
+    if (det.subcategoria_caminho && typeof det.subcategoria_caminho === 'string') {
+      return det.subcategoria_caminho;
+    }
+    const baseName = product.categoria_nome || 'Geral';
+    if (Array.isArray(det.subcategoria_path) && det.subcategoria_path.length > 0) {
+      return [baseName, ...det.subcategoria_path].filter(Boolean).join(' › ');
+    }
+    return product.subcategoria ? `${baseName} › ${product.subcategoria}` : baseName;
+  };
+
+  // Categorias e sub-ramificações para filtro (baseado em produtos e na árvore N-níveis)
   const categoriesFilter = useMemo(() => {
     const set = new Set<string>();
     products
@@ -1918,11 +1961,31 @@ export default function AdminProdutosPage() {
           });
         }
       });
+    hierarchicalCategoryTree.forEach((node) => {
+      const pathLabel = (node.caminho_completo || node.nome).replace(/\s*>\s*/g, ' › ');
+      if (pathLabel) set.add(pathLabel);
+    });
     return ['todas', ...Array.from(set)];
-  }, [products]);
+  }, [products, hierarchicalCategoryTree]);
 
   // Filtro de Busca, Ciclo de Vida e Estoque
   const filteredProducts = useMemo(() => {
+    const selNorm = selectedCategory.replace(/\s*›\s*/g, ' > ').trim().toLowerCase();
+    const matchedTreeNode =
+      selectedCategory !== 'todas'
+        ? categoryTree.find(
+            (n) =>
+              (n.caminho_completo || '').toLowerCase() === selNorm ||
+              n.nome.toLowerCase() === selectedCategory.toLowerCase()
+          )
+        : undefined;
+    const allowedNodeIds = matchedTreeNode ? getDescendantCategoryIds(matchedTreeNode.id, categoryTree) : [];
+    const allowedNodeNames = new Set(
+      categoryTree
+        .filter((n) => allowedNodeIds.includes(n.id))
+        .map((n) => n.nome.trim().toLowerCase())
+    );
+
     return products.filter((p) => {
       // 1. Filtro estrito de Ciclo de Vida
       if (lifecycleTab === 'ativas') {
@@ -1938,13 +2001,28 @@ export default function AdminProdutosPage() {
         if (p.lixeira) return false;
       }
 
-      // 2. Filtro de Categoria (principal ou multi-categoria)
+      // 2. Filtro de Categoria (principal, multi-categoria e ramificações N-níveis)
       if (selectedCategory !== 'todas') {
+        const det = p.detalhes && typeof p.detalhes === 'object' && !Array.isArray(p.detalhes) ? p.detalhes : {};
         const matchesPrimary = p.categoria_nome === selectedCategory;
+        const matchesTree =
+          matchedTreeNode &&
+          ((det.subcategoria_node_id && allowedNodeIds.includes(det.subcategoria_node_id)) ||
+            (!det.subcategoria_node_id && p.categoria_id && allowedNodeIds.includes(p.categoria_id)) ||
+            (p.subcategoria && allowedNodeNames.has(p.subcategoria.trim().toLowerCase())) ||
+            (Array.isArray(det.subcategoria_path) &&
+              det.subcategoria_path.some((s: string) => allowedNodeNames.has(String(s || '').trim().toLowerCase()))));
         const matchesExtra =
           Array.isArray(p.categorias_vinculadas) &&
-          p.categorias_vinculadas.some((b) => b?.categoria_nome === selectedCategory);
-        if (!matchesPrimary && !matchesExtra) {
+          p.categorias_vinculadas.some(
+            (b) =>
+              b?.categoria_nome === selectedCategory ||
+              (matchedTreeNode &&
+                ((b?.node_id && allowedNodeIds.includes(b.node_id)) ||
+                  (!b?.node_id && b?.categoria_id && allowedNodeIds.includes(b.categoria_id)) ||
+                  (b?.subcategoria && allowedNodeNames.has(b.subcategoria.trim().toLowerCase()))))
+          );
+        if (!matchesPrimary && !matchesTree && !matchesExtra) {
           return false;
         }
       }
@@ -1975,7 +2053,7 @@ export default function AdminProdutosPage() {
       }
       return true;
     });
-  }, [products, lifecycleTab, selectedCategory, stockFilter, searchTerm]);
+  }, [products, lifecycleTab, selectedCategory, stockFilter, searchTerm, categoryTree]);
 
   // Produtos operacionais para métricas (exclui lixeira e arquivadas para não distorcer contabilidade)
   const produtosOperacionais = useMemo(() => {
@@ -2838,8 +2916,7 @@ export default function AdminProdutosPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
-                          {product.categoria_nome}
-                          {product.subcategoria ? ` › ${product.subcategoria}` : ''}
+                          {getProductTrailLabel(product)}
                         </span>
                         {Array.isArray(product.categorias_vinculadas) &&
                           product.categorias_vinculadas
@@ -2849,8 +2926,7 @@ export default function AdminProdutosPage() {
                                 key={`${b.categoria_id}-${bIdx}`}
                                 className="text-[10px] font-semibold text-slate-700 px-2 py-0.5 rounded bg-slate-100 border border-slate-200"
                               >
-                                +{b.categoria_nome || 'Categoria'}
-                                {b.subcategoria ? ` › ${b.subcategoria}` : ''}
+                                +{b.caminho_completo || `${b.categoria_nome || 'Categoria'}${b.subcategoria ? ` › ${b.subcategoria}` : ''}`}
                               </span>
                             ))}
 
@@ -3444,8 +3520,7 @@ export default function AdminProdutosPage() {
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 flex-wrap">
                           <span className="font-semibold text-amber-800">
-                            {product.categoria_nome || 'Geral'}
-                            {product.subcategoria ? ` › ${product.subcategoria}` : ''}
+                            {getProductTrailLabel(product)}
                           </span>
                           {Array.isArray(product.categorias_vinculadas) &&
                             product.categorias_vinculadas.filter(
@@ -4335,8 +4410,8 @@ export default function AdminProdutosPage() {
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-semibold text-xs cursor-pointer"
               >
                 <option value="">{t.products.bulkActions.selectCategoryLabel}</option>
-                {categoryTree.length > 0 ? (
-                  categoryTree.map((cat) => {
+                {hierarchicalCategoryTree.length > 0 ? (
+                  hierarchicalCategoryTree.map((cat) => {
                     const depth = cat.nivel || 0;
                     const prefix = depth > 0 ? `${'  '.repeat(depth)}↳ ` : '📁 ';
                     return (

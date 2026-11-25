@@ -20,6 +20,9 @@ export interface ProductCategoryBinding {
   categoria_id: string;
   categoria_nome?: string;
   subcategoria?: string | null;
+  node_id?: string | null;
+  subcategoria_path?: string[] | null;
+  caminho_completo?: string | null;
 }
 
 export interface Product {
@@ -41,6 +44,8 @@ export interface Product {
   categoryPath?: string;
   categoryBreadcrumb?: Array<{ id: string; nome: string; slug: string }>;
   subcategory?: string;
+  subcategoryNodeId?: string;
+  subcategoryPath?: string[];
   categories?: ProductCategoryBinding[];
   fabric?: string; // Tecido
   fit?: string; // Modelagem

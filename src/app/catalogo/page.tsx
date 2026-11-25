@@ -192,7 +192,37 @@ function CatalogoContent() {
     createDefaultFilters(urlCategory, urlStatus, urlColecao, urlMinPrice, urlMaxPrice, urlFabric, urlSubcategory)
   );
 
-  // Trilha Breadcrumb da Categoria Ativa e Subcategoria
+  // Árvore ordenada em profundidade (N1 -> N2 -> N3 -> N4...) para exibição hierárquica na barra lateral
+  const hierarchicalCategoryTree = useMemo(() => {
+    if (!categoryTree || categoryTree.length === 0) return [];
+    const ordered: CategoriaNode[] = [];
+    const visited = new Set<string>();
+    const sortByOrder = (a: CategoriaNode, b: CategoriaNode) =>
+      (a.display_order ?? 0) - (b.display_order ?? 0);
+
+    const walk = (parentId: string | null) => {
+      const children = categoryTree
+        .filter((n) => (parentId ? n.parent_id === parentId : !n.parent_id))
+        .sort(sortByOrder);
+      children.forEach((child) => {
+        if (visited.has(child.id)) return;
+        visited.add(child.id);
+        ordered.push(child);
+        walk(child.id);
+      });
+    };
+
+    walk(null);
+    categoryTree.forEach((node) => {
+      if (!visited.has(node.id)) {
+        visited.add(node.id);
+        ordered.push(node);
+      }
+    });
+    return ordered;
+  }, [categoryTree]);
+
+  // Trilha Breadcrumb da Categoria Ativa e Subcategoria (suporta N-níveis completos)
   const activeBreadcrumbs = useMemo(() => {
     const activeCat = appliedFilters.categories[0];
     const activeSub = appliedFilters.subcategories?.[0];
@@ -212,14 +242,65 @@ function CatalogoContent() {
           normalizeCatString(n.nome) === targetNorm
       );
       if (node) {
-        const baseCrumbs = getCategoryBreadcrumb(node.id, categoryTree);
         if (activeSub) {
+          const targetSub = activeSub.toLowerCase().trim();
+          const targetSubNorm = normalizeCatString(activeSub);
+          const descIds = getDescendantCategoryIds(node.id, categoryTree);
+          const subNodeInBranch = categoryTree.find(
+            (n) =>
+              descIds.includes(n.id) &&
+              (n.id === activeSub ||
+                n.slug.toLowerCase() === targetSub ||
+                n.nome.toLowerCase() === targetSub ||
+                normalizeCatString(n.slug) === targetSubNorm ||
+                normalizeCatString(n.nome) === targetSubNorm)
+          );
+          if (subNodeInBranch) {
+            return getCategoryBreadcrumb(subNodeInBranch.id, categoryTree);
+          }
+          const anySubNode = categoryTree.find(
+            (n) =>
+              n.id === activeSub ||
+              n.slug.toLowerCase() === targetSub ||
+              n.nome.toLowerCase() === targetSub ||
+              normalizeCatString(n.slug) === targetSubNorm ||
+              normalizeCatString(n.nome) === targetSubNorm
+          );
+          if (anySubNode) {
+            const subCrumbs = getCategoryBreadcrumb(anySubNode.id, categoryTree);
+            const baseCrumbs = getCategoryBreadcrumb(node.id, categoryTree);
+            if (!subCrumbs.some((c) => c.id === node.id)) {
+              return [...baseCrumbs, ...subCrumbs];
+            }
+            return subCrumbs;
+          }
+          const baseCrumbs = getCategoryBreadcrumb(node.id, categoryTree);
           return [
             ...baseCrumbs,
             { id: `sub-${activeSub}`, nome: activeSub, slug: activeSub.toLowerCase() } as any
           ];
         }
-        return baseCrumbs;
+        return getCategoryBreadcrumb(node.id, categoryTree);
+      }
+    }
+
+    if (activeSub && categoryTree.length > 0) {
+      const targetSub = activeSub.toLowerCase().trim();
+      const targetSubNorm = normalizeCatString(activeSub);
+      const subNode = categoryTree.find(
+        (n) =>
+          n.id === activeSub ||
+          n.slug.toLowerCase() === targetSub ||
+          n.nome.toLowerCase() === targetSub ||
+          normalizeCatString(n.slug) === targetSubNorm ||
+          normalizeCatString(n.nome) === targetSubNorm
+      );
+      if (subNode) {
+        const subCrumbs = getCategoryBreadcrumb(subNode.id, categoryTree);
+        if (activeCat) {
+          return [{ id: `cat-${activeCat}`, nome: activeCat, slug: activeCat.toLowerCase() } as any, ...subCrumbs];
+        }
+        return subCrumbs;
       }
     }
 
@@ -988,8 +1069,8 @@ function CatalogoContent() {
               <span className="text-[10px] opacity-70">({products.length})</span>
             </button>
             
-            {categoryTree.length > 0 ? (
-              categoryTree.map((cat) => {
+            {hierarchicalCategoryTree.length > 0 ? (
+              hierarchicalCategoryTree.map((cat) => {
                 const depth = cat.nivel || 0;
                 const isSubNode = depth > 0;
                 const isInSubcategories = Boolean(draftFilters.subcategories?.includes(cat.nome));
@@ -1003,8 +1084,19 @@ function CatalogoContent() {
                 const count = products.filter((p) => {
                   const bindings = getProductCategoryBindings(p);
                   return bindings.some((b) => {
+                    if (b.nodeId && categoryTree.some((n) => n.id === b.nodeId)) {
+                      return descendantIds.includes(b.nodeId);
+                    }
                     if (b.categoryId && descendantIds.includes(b.categoryId)) return true;
                     if (b.category && (descendantNames.includes(b.category.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.category)))) return true;
+                    if (
+                      b.subcategoriaPath &&
+                      b.subcategoriaPath.some(
+                        (seg) => descendantNames.includes(seg.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(seg))
+                      )
+                    ) {
+                      return true;
+                    }
                     if (b.subcategory && (descendantNames.includes(b.subcategory.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.subcategory)))) return true;
                     return false;
                   });

@@ -47,9 +47,11 @@ import {
   bulkUpdateProdutosColecao,
   CategoriaNode,
   getCategoriaTree,
+  getCategoryBreadcrumb,
   getDescendantCategoryIds,
   saveCategoriaNode,
   ensureSubcategoryInCategoryTree,
+  ensureCategoryPathInTree,
   ProductCategoryBinding,
   checkOrAcquireProductLock,
   heartbeatProductLock,
@@ -121,6 +123,15 @@ export function ProductFullFormModal({
   const [ativo, setAtivo] = useState<boolean>(product ? Boolean(product.ativo) : true);
   const [categoriaId, setCategoriaId] = useState(product?.categoria_id || '');
   const [subcategoria, setSubcategoria] = useState(product?.subcategoria || '');
+  const [subLevels, setSubLevels] = useState<string[]>(() => {
+    const det = product?.detalhes && typeof product.detalhes === 'object' && !Array.isArray(product.detalhes)
+      ? product.detalhes
+      : {};
+    if (Array.isArray(det.subcategoria_path) && det.subcategoria_path.length > 0) {
+      return det.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean);
+    }
+    return product?.subcategoria ? [product.subcategoria] : [];
+  });
   const [additionalCategories, setAdditionalCategories] = useState<ProductCategoryBinding[]>([]);
   const [tecido, setTecido] = useState(product?.tecido || 'Crepe Alfaiataria');
   const [modelagem, setModelagem] = useState(product?.modelagem || 'Fluido');
@@ -302,6 +313,16 @@ export function ProductFullFormModal({
       setAtivo(product.ativo !== undefined ? Boolean(product.ativo) : true);
       setCategoriaId(product.categoria_id || '');
       setSubcategoria(product.subcategoria || '');
+      const detObj = product.detalhes && typeof product.detalhes === 'object' && !Array.isArray(product.detalhes)
+        ? product.detalhes
+        : {};
+      const initialSubPath: string[] =
+        Array.isArray(detObj.subcategoria_path) && detObj.subcategoria_path.length > 0
+          ? detObj.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
+          : product.subcategoria
+          ? [product.subcategoria.trim()].filter(Boolean)
+          : [];
+      setSubLevels(initialSubPath);
       const rawBindings: ProductCategoryBinding[] = Array.isArray(product.categorias_vinculadas)
         ? product.categorias_vinculadas
         : Array.isArray(product.detalhes?.categorias_vinculadas)
@@ -309,11 +330,18 @@ export function ProductFullFormModal({
         : [];
       const primCatId = product.categoria_id || '';
       const primSub = (product.subcategoria || '').trim().toLowerCase();
+      const primPathKey = initialSubPath.map((s) => s.toLowerCase()).join('>');
       setAdditionalCategories(
         rawBindings.filter((b) => {
           if (!b || !b.categoria_id) return false;
           const bSub = (b.subcategoria || '').trim().toLowerCase();
-          return !(b.categoria_id === primCatId && bSub === primSub);
+          const bPathKey = Array.isArray(b.subcategoria_path)
+            ? b.subcategoria_path.map((s) => String(s || '').trim().toLowerCase()).join('>')
+            : bSub;
+          if (detObj.subcategoria_node_id && b.node_id) {
+            return b.node_id !== detObj.subcategoria_node_id;
+          }
+          return !(b.categoria_id === primCatId && (bPathKey || bSub) === (primPathKey || primSub));
         })
       );
       setTecido(product.tecido || 'Crepe Alfaiataria');
@@ -439,6 +467,7 @@ export function ProductFullFormModal({
       setAtivo(true);
       setCategoriaId('');
       setSubcategoria('');
+      setSubLevels([]);
       setAdditionalCategories([]);
       setTecido('Crepe Alfaiataria');
       setModelagem('Fluido');
@@ -506,6 +535,38 @@ export function ProductFullFormModal({
     getCategoriaTree(tenantId).then((nodes) => {
       if (!isMounted) return;
       setCategoryTree(nodes);
+      // Reconstroi a trilha completa N2 -> N3 -> N4... caso o produto tenha node_id ou subcategoria legada profunda
+      if (isEdit && product) {
+        const detObj = product.detalhes && typeof product.detalhes === 'object' && !Array.isArray(product.detalhes)
+          ? product.detalhes
+          : {};
+        if (detObj.subcategoria_node_id) {
+          const targetNode = nodes.find((n) => n.id === detObj.subcategoria_node_id);
+          if (targetNode) {
+            const bc = getCategoryBreadcrumb(targetNode.id, nodes);
+            if (bc.length > 0) {
+              setCategoriaId(bc[0].id);
+              const subChain = bc.slice(1).map((b) => b.nome);
+              setSubLevels(subChain);
+              setSubcategoria(subChain[subChain.length - 1] || '');
+              return;
+            }
+          }
+        }
+        if (product.categoria_id && product.subcategoria && (!Array.isArray(detObj.subcategoria_path) || detObj.subcategoria_path.length <= 1)) {
+          const descIds = getDescendantCategoryIds(product.categoria_id, nodes).filter((id) => id !== product.categoria_id);
+          const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const matchedLeaf = nodes.find((n) => descIds.includes(n.id) && norm(n.nome) === norm(product.subcategoria!));
+          if (matchedLeaf) {
+            const bc = getCategoryBreadcrumb(matchedLeaf.id, nodes);
+            if (bc.length > 1) {
+              const subChain = bc.slice(1).map((b) => b.nome);
+              setSubLevels(subChain);
+              setSubcategoria(subChain[subChain.length - 1] || '');
+            }
+          }
+        }
+      }
     }).catch((err) => {
       console.error('Erro ao carregar árvore de categorias no modal de produto:', err);
     });
@@ -1090,30 +1151,64 @@ export function ProductFullFormModal({
       } : undefined;
 
       // Consolida todas as categorias vinculadas (principal + adicionais, sem duplicatas)
+      const cleanSubPath = subLevels.map((s) => s.trim()).filter(Boolean);
+      const effectiveLeafSub = (cleanSubPath[cleanSubPath.length - 1] || subcategoria.trim()) || null;
+      let resolvedPrimaryNodeId: string | null = null;
+
+      if (categoriaId && cleanSubPath.length > 0) {
+        const pathRes = await ensureCategoryPathInTree(tenantId, categoriaId, cleanSubPath);
+        if (pathRes.leafNode) {
+          resolvedPrimaryNodeId = pathRes.leafNode.id;
+        }
+      }
+
       const primaryCatObj =
         categoryTree.find((c) => c.id === categoriaId) ||
         categoriesList.find((c) => c.id === categoriaId);
+      const primaryCaminho = categoriaId
+        ? [primaryCatObj?.nome || '', ...cleanSubPath].filter(Boolean).join(' › ') || null
+        : null;
+
       const categoriasVinculadasMap = new Map<string, ProductCategoryBinding>();
       if (categoriaId) {
-        const primSub = subcategoria.trim() || null;
-        categoriasVinculadasMap.set(`${categoriaId}::${(primSub || '').toLowerCase()}`, {
+        const primPathKey =
+          cleanSubPath.length > 0
+            ? cleanSubPath.map((s) => s.toLowerCase()).join('>')
+            : (effectiveLeafSub || '').toLowerCase();
+        categoriasVinculadasMap.set(`${categoriaId}::${resolvedPrimaryNodeId || primPathKey}`, {
           categoria_id: categoriaId,
           categoria_nome: primaryCatObj?.nome || '',
-          subcategoria: primSub
+          subcategoria: effectiveLeafSub,
+          node_id: resolvedPrimaryNodeId || (cleanSubPath.length === 0 ? categoriaId : null),
+          subcategoria_path: cleanSubPath.length > 0 ? cleanSubPath : null,
+          caminho_completo: primaryCaminho
         });
       }
       additionalCategories.forEach((extra) => {
         if (!extra || !extra.categoria_id) return;
         const eSub = (extra.subcategoria || '').trim() || null;
-        const key = `${extra.categoria_id}::${(eSub || '').toLowerCase()}`;
+        const ePath = Array.isArray(extra.subcategoria_path)
+          ? extra.subcategoria_path.map((s) => String(s || '').trim()).filter(Boolean)
+          : eSub
+          ? [eSub]
+          : [];
+        const ePathKey = ePath.length > 0 ? ePath.map((s) => s.toLowerCase()).join('>') : (eSub || '').toLowerCase();
+        const key = `${extra.categoria_id}::${extra.node_id || ePathKey}`;
         if (!categoriasVinculadasMap.has(key)) {
           const eCatObj =
             categoryTree.find((c) => c.id === extra.categoria_id) ||
             categoriesList.find((c) => c.id === extra.categoria_id);
+          const eCaminho =
+            extra.caminho_completo ||
+            [extra.categoria_nome || eCatObj?.nome || '', ...ePath].filter(Boolean).join(' › ') ||
+            null;
           categoriasVinculadasMap.set(key, {
             categoria_id: extra.categoria_id,
             categoria_nome: extra.categoria_nome || eCatObj?.nome || '',
-            subcategoria: eSub
+            subcategoria: eSub,
+            node_id: extra.node_id || null,
+            subcategoria_path: ePath.length > 0 ? ePath : null,
+            caminho_completo: eCaminho
           });
         }
       });
@@ -1125,6 +1220,9 @@ export function ProductFullFormModal({
         precos_diferenciados: Object.keys(precosDiferenciados).length > 0 ? precosDiferenciados : undefined,
         fotos_por_cor: Object.keys(fotosPorCorMap).length > 0 ? fotosPorCorMap : undefined,
         dimensoes_frete: dimensoesFrete,
+        subcategoria_node_id: resolvedPrimaryNodeId || undefined,
+        subcategoria_path: cleanSubPath.length > 0 ? cleanSubPath : undefined,
+        subcategoria_caminho: primaryCaminho || undefined,
         categorias_vinculadas: categoriasVinculadasFinal.length > 0 ? categoriasVinculadasFinal : undefined
       };
 
@@ -1159,7 +1257,7 @@ export function ProductFullFormModal({
           nome: nome.trim(),
           slug: finalSlug,
           categoria_id: categoriaId || null,
-          subcategoria: subcategoria.trim() || null,
+          subcategoria: effectiveLeafSub,
           categorias_vinculadas: categoriasVinculadasFinal,
           descricao: descricao.trim() || null,
           preco: preco,
@@ -1280,7 +1378,7 @@ export function ProductFullFormModal({
           preco_promocional: parsedPromo,
           preco_custo: parsedCost,
           categoria_id: categoriaId || undefined,
-          subcategoria: subcategoria.trim() || undefined,
+          subcategoria: effectiveLeafSub || undefined,
           categorias_vinculadas: categoriasVinculadasFinal,
           tecido: tecido.trim(),
           modelagem: modelagem.trim(),
@@ -1409,23 +1507,85 @@ export function ProductFullFormModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nome, preco, variacoes, precosDiferenciados, mediaList, slug, categoriaId, subcategoria, additionalCategories]);
+  }, [nome, preco, variacoes, precosDiferenciados, mediaList, slug, categoriaId, subcategoria, subLevels, additionalCategories]);
 
   if (!isOpen) return null;
 
-  // Subcategorias disponíveis da categoria selecionada (prioriza descendentes da Árvore de Categorias)
-  const treeDirectSubs = categoriaId
-    ? (() => {
-        const descIds = getDescendantCategoryIds(categoriaId, categoryTree).filter(
-          (id) => id !== categoriaId
-        );
-        return categoryTree.filter((n) => descIds.includes(n.id)).map((n) => n.nome);
-      })()
-    : [];
-  const selectedCat = categoriesList.find((c) => c.id === categoriaId);
-  const catSubs = selectedCat?.subcategorias || [];
-  const globalSubs = storeAttributes?.subcategorias || [];
-  const availableSubcats = Array.from(new Set([...treeDirectSubs, ...catSubs, ...globalSubs])).filter(Boolean);
+  const normCatName = (s?: string | null) =>
+    (s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const selectedCat =
+    categoriesList.find((c) => c.id === categoriaId) ||
+    categoryTree.find((c) => c.id === categoriaId);
+
+  // Resolve cada nível selecionado em subLevels (N2, N3, N4...) na árvore de categorias
+  const resolvedLevelNodes: Array<CategoriaNode | null> = (() => {
+    const resolved: Array<CategoriaNode | null> = [];
+    if (!categoriaId) return resolved;
+    let currentParentId: string | null = categoriaId;
+
+    subLevels.forEach((lvlName, idx) => {
+      const cleanName = (lvlName || '').trim();
+      if (!cleanName || !currentParentId) {
+        resolved.push(null);
+        currentParentId = null;
+        return;
+      }
+      let match = categoryTree.find(
+        (n) => n.parent_id === currentParentId && normCatName(n.nome) === normCatName(cleanName)
+      );
+      if (!match && idx === 0) {
+        const descIds = getDescendantCategoryIds(categoriaId, categoryTree).filter((id) => id !== categoriaId);
+        match = categoryTree.find((n) => descIds.includes(n.id) && normCatName(n.nome) === normCatName(cleanName));
+      }
+      resolved.push(match || null);
+      currentParentId = match ? match.id : null;
+    });
+    return resolved;
+  })();
+
+  const deepestResolvedNode =
+    [...resolvedLevelNodes].reverse().find((n) => Boolean(n)) || null;
+
+  // Quantos níveis de subcategoria devem ser renderizados em cascata (sempre começa no Nível 2 quando há categoria)
+  const cascadeLevelsToShow: number[] = (() => {
+    if (!categoriaId) return [];
+    const indices: number[] = [0];
+    let i = 0;
+    while (i < 10) {
+      const val = (subLevels[i] || '').trim();
+      if (!val) break;
+      const nodeAtLevel = resolvedLevelNodes[i];
+      const hasChildrenInTree = Boolean(
+        nodeAtLevel && categoryTree.some((n) => n.parent_id === nodeAtLevel.id)
+      );
+      if (hasChildrenInTree || subLevels.length > i + 1) {
+        indices.push(i + 1);
+        i++;
+      } else {
+        break;
+      }
+    }
+    return indices;
+  })();
+
+  const getSubcategoryOptionsForLevel = (levelIdx: number): string[] => {
+    if (!categoriaId) return [];
+    if (levelIdx === 0) {
+      const directChildren = categoryTree
+        .filter((n) => n.parent_id === categoriaId)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        .map((n) => n.nome);
+      const globalSubs = storeAttributes?.subcategorias || [];
+      return Array.from(new Set([...directChildren, ...(selectedCat && 'subcategorias' in selectedCat ? selectedCat.subcategorias || [] : []), ...globalSubs])).filter(Boolean);
+    }
+    const parentNode = resolvedLevelNodes[levelIdx - 1];
+    if (!parentNode) return [];
+    return categoryTree
+      .filter((n) => n.parent_id === parentNode.id)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      .map((n) => n.nome);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -1652,7 +1812,7 @@ export function ProductFullFormModal({
                   />
                 </div>
 
-                {/* Seletores Dinâmicos de Categoria, Subcategoria, Tecido, Modelagem e Coleção */}
+                {/* Seletores Dinâmicos de Categoria, Subcategoria (N-Níveis em Cascata), Tecido, Modelagem e Coleção */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Categoria com Busca em Tempo Real (Combobox Autocomplete) */}
                   <div className="space-y-1.5">
@@ -1660,14 +1820,25 @@ export function ProductFullFormModal({
                       label={t.products.fullFormModal.categoryField}
                       value={categoriaId}
                       subcategoria={subcategoria}
+                      selectedNodeId={deepestResolvedNode?.id || categoriaId}
                       tree={categoryTree}
                       fallbackList={categoriesList}
                       placeholder={t.products.fullFormModal.categoryField + '...'}
-                      onChange={(catId, catNome, subcatNome) => {
+                      onChange={(catId, _catNome, subcatNome, _caminho, selectedNode) => {
                         setCategoriaId(catId);
-                        if (subcatNome) {
-                          setSubcategoria(subcatNome);
-                        } else if (!catId) {
+                        if (!catId) {
+                          setSubLevels([]);
+                          setSubcategoria('');
+                          return;
+                        }
+                        if (selectedNode && selectedNode.nivel > 0) {
+                          const bc = getCategoryBreadcrumb(selectedNode.id, categoryTree);
+                          const chain = bc.slice(1).map((b) => b.nome);
+                          const finalChain = chain.length > 0 ? chain : subcatNome ? [subcatNome] : [];
+                          setSubLevels(finalChain);
+                          setSubcategoria(finalChain[finalChain.length - 1] || '');
+                        } else {
+                          setSubLevels([]);
                           setSubcategoria('');
                         }
                       }}
@@ -1680,20 +1851,13 @@ export function ProductFullFormModal({
                           if (res.success && res.data) {
                             const freshTree = await getCategoriaTree(tenantId);
                             setCategoryTree(freshTree);
-                            // Garante que categoria_id aponta para o nó raiz na tabela SQL
-                            let rootId = res.data.id;
-                            let currParent = res.data.parent_id;
-                            while (currParent) {
-                              const pNode = freshTree.find((n) => n.id === currParent);
-                              if (!pNode) break;
-                              rootId = pNode.id;
-                              currParent = pNode.parent_id;
-                            }
+                            const bc = getCategoryBreadcrumb(res.data.id, freshTree);
+                            const rootId = bc[0]?.id || res.data.id;
+                            const subChain = bc.slice(1).map((b) => b.nome);
                             setCategoriaId(rootId);
-                            if (res.data.nivel > 0) {
-                              setSubcategoria(res.data.nome);
-                            }
-                            showToast(`Categoria "${res.data.nome}" criada e selecionada!`);
+                            setSubLevels(subChain);
+                            setSubcategoria(subChain[subChain.length - 1] || '');
+                            showToast(`Categoria "${res.data.nome}" criada e vinculada na árvore!`);
                           }
                         } catch (err: any) {
                           showToast(err?.message || 'Erro ao criar categoria.', 'error');
@@ -1701,22 +1865,22 @@ export function ProductFullFormModal({
                       }}
                     />
 
-                    {/* Pílula do Caminho Breadcrumb Completo */}
+                    {/* Pílula do Caminho Breadcrumb Completo (N1 › N2 › N3 › N4...) */}
                     {categoriaId && (
                       (() => {
-                        const activeNode = categoryTree.find((n) => n.id === categoriaId);
-                        if (!activeNode) return null;
-                        const basePath = activeNode.caminho_completo || activeNode.nome;
-                        const subTrim = subcategoria.trim();
-                        const fullTrail =
-                          subTrim && !basePath.toLowerCase().endsWith(subTrim.toLowerCase())
-                            ? `${basePath} › ${subTrim}`
-                            : basePath;
+                        const activeRootNode = categoryTree.find((n) => n.id === categoriaId);
+                        const rootName =
+                          activeRootNode?.nome ||
+                          categoriesList.find((c) => c.id === categoriaId)?.nome ||
+                          '';
+                        if (!rootName) return null;
+                        const cleanSubs = subLevels.map((s) => s.trim()).filter(Boolean);
+                        const fullTrail = [rootName, ...cleanSubs].join(' › ');
                         return (
                           <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium truncate shadow-2xs">
                             <FolderTree className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <span className="truncate">
-                              <strong>Trilha:</strong> {fullTrail}
+                            <span className="truncate" title={fullTrail}>
+                              <strong>Trilha ({cleanSubs.length + 1} Níveis):</strong> {fullTrail}
                             </span>
                           </div>
                         );
@@ -1724,9 +1888,17 @@ export function ProductFullFormModal({
                     )}
                   </div>
 
-                  {/* Subcategoria com Trava de Cadeado quando sem categoria */}
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-bold">{t.products.fullFormModal.subcategoryField}</label>
+                  {/* Subcategorias em Cascata Infinita (N2, N3, N4...) com + Subcategoria e sincronização total */}
+                  <div className="space-y-2">
+                    <label className="block text-slate-700 mb-1 font-bold flex items-center justify-between gap-2">
+                      <span>{t.products.fullFormModal.subcategoryField}</span>
+                      {categoriaId && subLevels.filter((s) => s.trim()).length > 0 && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                          {subLevels.filter((s) => s.trim()).length}{' '}
+                          {subLevels.filter((s) => s.trim()).length === 1 ? 'nível' : 'níveis'}
+                        </span>
+                      )}
+                    </label>
                     {!categoriaId ? (
                       <div
                         className="w-full bg-slate-100 border border-dashed border-slate-300 rounded-lg p-2.5 text-slate-400 text-xs flex items-center gap-1.5 cursor-not-allowed"
@@ -1736,23 +1908,143 @@ export function ProductFullFormModal({
                         <span>🔒 {t.products.fullFormModal.subcategoryPlaceholder}</span>
                       </div>
                     ) : (
-                      <AdminCreatableSelect
-                        label=""
-                        value={subcategoria}
-                        options={availableSubcats}
-                        onChange={(val) => setSubcategoria(val)}
-                        onCreateOption={async (val) => {
-                          await handleCreateStoreAttribute('subcategorias', val);
-                          if (categoriaId) {
-                            const createdNode = await ensureSubcategoryInCategoryTree(tenantId, categoriaId, val);
-                            if (createdNode) {
-                              const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
-                              setCategoryTree(freshTree);
-                            }
-                          }
-                        }}
-                        placeholder={t.products.fullFormModal.subcategoryPlaceholder}
-                      />
+                      <div className="space-y-2">
+                        {cascadeLevelsToShow.map((lvlIdx) => {
+                          const currentVal = subLevels[lvlIdx] || '';
+                          const parentLabel =
+                            lvlIdx === 0
+                              ? categoryTree.find((n) => n.id === categoriaId)?.nome ||
+                                categoriesList.find((c) => c.id === categoriaId)?.nome ||
+                                'Categoria'
+                              : subLevels[lvlIdx - 1] || `Nível ${lvlIdx + 1}`;
+                          const optionsForLevel = getSubcategoryOptionsForLevel(lvlIdx);
+                          const isLastRendered = lvlIdx === cascadeLevelsToShow[cascadeLevelsToShow.length - 1];
+
+                          return (
+                            <div
+                              key={`sub-level-${lvlIdx}`}
+                              className={
+                                lvlIdx > 0
+                                  ? 'pl-2.5 border-l-2 border-amber-300/80 space-y-1.5'
+                                  : 'space-y-1.5'
+                              }
+                            >
+                              {lvlIdx > 0 && (
+                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                  <span className="flex items-center gap-1 truncate">
+                                    <span className="px-1 py-0.2 rounded bg-sky-100 text-sky-900 font-mono">
+                                      N{lvlIdx + 2}
+                                    </span>
+                                    <span className="truncate">↳ Dentro de &quot;{parentLabel}&quot;</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = subLevels.slice(0, lvlIdx);
+                                      setSubLevels(next);
+                                      setSubcategoria(next[next.length - 1] || '');
+                                    }}
+                                    className="text-slate-400 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer shrink-0"
+                                    title="Remover este subnível"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    <span>Remover</span>
+                                  </button>
+                                </div>
+                              )}
+
+                              <AdminCreatableSelect
+                                label=""
+                                value={currentVal}
+                                options={optionsForLevel}
+                                emptyLabel={
+                                  lvlIdx === 0
+                                    ? undefined
+                                    : `Manter apenas em "${parentLabel}"`
+                                }
+                                onChange={(val) => {
+                                  const clean = (val || '').trim();
+                                  const next = [...subLevels.slice(0, lvlIdx)];
+                                  if (clean) {
+                                    next.push(clean);
+                                  }
+                                  setSubLevels(next);
+                                  setSubcategoria(next[next.length - 1] || '');
+                                }}
+                                onCreateOption={async (val) => {
+                                  const cleanNew = val.trim();
+                                  if (!cleanNew || !categoriaId) return;
+
+                                  if (lvlIdx === 0) {
+                                    await handleCreateStoreAttribute('subcategorias', cleanNew);
+                                    const createdNode = await ensureSubcategoryInCategoryTree(
+                                      tenantId,
+                                      categoriaId,
+                                      cleanNew,
+                                      { directChildOnly: true }
+                                    );
+                                    if (createdNode) {
+                                      const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
+                                      setCategoryTree(freshTree);
+                                    }
+                                    setSubLevels([cleanNew]);
+                                    setSubcategoria(cleanNew);
+                                  } else {
+                                    const ancestorChain = subLevels
+                                      .slice(0, lvlIdx)
+                                      .map((s) => s.trim())
+                                      .filter(Boolean);
+                                    const ensured = await ensureCategoryPathInTree(
+                                      tenantId,
+                                      categoriaId,
+                                      ancestorChain
+                                    );
+                                    const parentNodeId = ensured.leafNode?.id;
+                                    if (parentNodeId) {
+                                      const created = await saveCategoriaNode(tenantId, {
+                                        nome: cleanNew,
+                                        parent_id: parentNodeId,
+                                        ativo: true
+                                      });
+                                      if (created.success) {
+                                        const freshTree = await getCategoriaTree(tenantId).catch(() => categoryTree);
+                                        setCategoryTree(freshTree);
+                                        showToast(
+                                          `Subcategoria "${cleanNew}" vinculada dentro de "${parentLabel}" na árvore de categorias!`
+                                        );
+                                      }
+                                    }
+                                    const next = [...ancestorChain, cleanNew];
+                                    setSubLevels(next);
+                                    setSubcategoria(cleanNew);
+                                  }
+                                }}
+                                placeholder={
+                                  lvlIdx === 0
+                                    ? t.products.fullFormModal.subcategoryPlaceholder
+                                    : `Escolher ou criar subcategoria em "${parentLabel}"...`
+                                }
+                              />
+
+                              {/* Botão para abrir ramificação mais profunda quando este nível já tem valor */}
+                              {isLastRendered && currentVal.trim() !== '' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSubLevels((prev) => [...prev.slice(0, lvlIdx + 1), '']);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300/90 text-[11px] font-bold transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  <Plus className="w-3 h-3 text-amber-700 shrink-0" />
+                                  <span>
+                                    + Subcategoria em &quot;{currentVal.trim()}&quot; (N{lvlIdx + 3})
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
 
@@ -1819,13 +2111,18 @@ export function ProductFullFormModal({
                           categoryTree.find((n) => n.id === extra.categoria_id) ||
                           categoriesList.find((c) => c.id === extra.categoria_id);
                         const catLabel = extra.categoria_nome || catNode?.nome || 'Categoria';
-                        const fullLabel = extra.subcategoria
-                          ? `${catLabel} > ${extra.subcategoria}`
-                          : catLabel;
+                        const pathParts = Array.isArray(extra.subcategoria_path) && extra.subcategoria_path.length > 0
+                          ? extra.subcategoria_path
+                          : extra.subcategoria
+                          ? [extra.subcategoria]
+                          : [];
+                        const fullLabel =
+                          extra.caminho_completo ||
+                          (pathParts.length > 0 ? `${catLabel} › ${pathParts.join(' › ')}` : catLabel);
 
                         return (
                           <span
-                            key={`${extra.categoria_id}-${extra.subcategoria || 'root'}-${idx}`}
+                            key={`${extra.categoria_id}-${extra.node_id || extra.subcategoria || 'root'}-${idx}`}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-xs font-semibold text-slate-800 shadow-2xs"
                           >
                             <span>{fullLabel}</span>
@@ -1850,21 +2147,37 @@ export function ProductFullFormModal({
                     subcategoria=""
                     tree={categoryTree}
                     fallbackList={categoriesList}
-                    placeholder="+ Adicionar outra categoria ou subcategoria para esta peça (ex: Conjuntos, Blusas)..."
-                    onChange={(catId, catNome, subcatNome) => {
+                    placeholder="+ Adicionar outra categoria ou subcategoria (N1, N2, N3...) para esta peça..."
+                    onChange={(catId, catNome, subcatNome, _caminho, selectedNode) => {
                       if (!catId) return;
                       const subClean = (subcatNome || '').trim() || null;
+                      const bc = selectedNode ? getCategoryBreadcrumb(selectedNode.id, categoryTree) : [];
+                      const subPath = bc.length > 1 ? bc.slice(1).map((b) => b.nome) : subClean ? [subClean] : null;
+                      const fullTrail =
+                        bc.length > 0
+                          ? bc.map((b) => b.nome).join(' › ')
+                          : subPath && subPath.length > 0
+                          ? `${catNome} › ${subPath.join(' › ')}`
+                          : catNome;
+                      const targetNodeId = selectedNode?.id || catId;
+
+                      const primPathKey = subLevels.map((s) => s.trim().toLowerCase()).filter(Boolean).join('>');
+                      const newPathKey = (subPath || []).map((s) => s.toLowerCase()).join('>');
+
                       const isSameAsPrimary =
-                        catId === categoriaId &&
-                        (subClean || '').toLowerCase() === subcategoria.trim().toLowerCase();
+                        (deepestResolvedNode?.id && targetNodeId === deepestResolvedNode.id) ||
+                        (catId === categoriaId && newPathKey === primPathKey);
                       if (isSameAsPrimary) {
                         showToast('Esta categoria já está definida como a categoria principal da peça.', 'info');
                         return;
                       }
                       const alreadyAdded = additionalCategories.some(
                         (b) =>
-                          b.categoria_id === catId &&
-                          ((b.subcategoria || '').trim().toLowerCase() === (subClean || '').toLowerCase())
+                          (b.node_id && b.node_id === targetNodeId) ||
+                          (b.categoria_id === catId &&
+                            ((Array.isArray(b.subcategoria_path)
+                              ? b.subcategoria_path.map((s) => String(s || '').trim().toLowerCase()).join('>')
+                              : (b.subcategoria || '').trim().toLowerCase()) === newPathKey))
                       );
                       if (alreadyAdded) {
                         showToast('Esta categoria já foi adicionada à peça.', 'info');
@@ -1875,9 +2188,45 @@ export function ProductFullFormModal({
                         {
                           categoria_id: catId,
                           categoria_nome: catNome,
-                          subcategoria: subClean
+                          subcategoria: subClean,
+                          node_id: targetNodeId,
+                          subcategoria_path: subPath,
+                          caminho_completo: fullTrail
                         }
                       ]);
+                    }}
+                    onAddNewCategory={async (name, parentId) => {
+                      try {
+                        const res = await saveCategoriaNode(tenantId, {
+                          nome: name,
+                          parent_id: parentId || null
+                        });
+                        if (res.success && res.data) {
+                          const freshTree = await getCategoriaTree(tenantId);
+                          setCategoryTree(freshTree);
+                          const bc = getCategoryBreadcrumb(res.data.id, freshTree);
+                          const rootNode = bc[0];
+                          const subPath = bc.length > 1 ? bc.slice(1).map((b) => b.nome) : null;
+                          const rootId = rootNode?.id || res.data.id;
+                          const rootNome = rootNode?.nome || res.data.nome;
+                          const subLeaf = res.data.nivel > 0 ? res.data.nome : null;
+                          const fullTrail = bc.map((b) => b.nome).join(' › ');
+                          setAdditionalCategories((prev) => [
+                            ...prev,
+                            {
+                              categoria_id: rootId,
+                              categoria_nome: rootNome,
+                              subcategoria: subLeaf,
+                              node_id: res.data!.id,
+                              subcategoria_path: subPath,
+                              caminho_completo: fullTrail
+                            }
+                          ]);
+                          showToast(`"${fullTrail}" criada na árvore e adicionada à peça!`);
+                        }
+                      } catch (err: any) {
+                        showToast(err?.message || 'Erro ao criar categoria adicional.', 'error');
+                      }
                     }}
                   />
                 </div>

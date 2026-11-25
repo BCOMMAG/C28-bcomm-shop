@@ -319,15 +319,31 @@ export function mapDbProductToProduct(dbProd: any): Product {
       : null) ||
     'Geral';
 
-  // Múltiplos vínculos de categoria armazenados em detalhes.categorias_vinculadas (retrocompatível)
+  // Múltiplos vínculos de categoria armazenados em detalhes.categorias_vinculadas (retrocompatível + N-níveis)
+  const primarySubPath: string[] | null = Array.isArray(detalhesObj.subcategoria_path)
+    ? detalhesObj.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
+    : dbProd.subcategoria
+    ? [String(dbProd.subcategoria).trim()]
+    : null;
+  const primaryNodeId: string | null = detalhesObj.subcategoria_node_id
+    ? String(detalhesObj.subcategoria_node_id)
+    : null;
+  const primaryCaminho: string | null = detalhesObj.subcategoria_caminho
+    ? String(detalhesObj.subcategoria_caminho)
+    : null;
+
   const categoryBindingsMap = new Map<string, ProductCategoryBinding>();
   if (dbProd.categoria_id || (resolvedPrimaryCategoryName && resolvedPrimaryCategoryName !== 'Geral')) {
     const primId = dbProd.categoria_id || '';
     const primSub = (dbProd.subcategoria || '').trim() || null;
-    categoryBindingsMap.set(`${primId}::${(primSub || '').toLowerCase()}`, {
+    const primPathKey = primarySubPath && primarySubPath.length > 0 ? primarySubPath.join('>').toLowerCase() : (primSub || '').toLowerCase();
+    categoryBindingsMap.set(`${primId}::${primaryNodeId || primPathKey}`, {
       categoria_id: primId,
       categoria_nome: resolvedPrimaryCategoryName,
-      subcategoria: primSub
+      subcategoria: primSub,
+      node_id: primaryNodeId,
+      subcategoria_path: primarySubPath,
+      caminho_completo: primaryCaminho
     });
   }
   if (Array.isArray(detalhesObj.categorias_vinculadas)) {
@@ -335,18 +351,29 @@ export function mapDbProductToProduct(dbProd: any): Product {
       if (!b || (!b.categoria_id && !b.categoria_nome)) return;
       const bId = String(b.categoria_id || '');
       const bSub = b.subcategoria ? String(b.subcategoria).trim() : null;
+      const bPath: string[] | null = Array.isArray(b.subcategoria_path)
+        ? b.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
+        : bSub
+        ? [bSub]
+        : null;
+      const bNodeId: string | null = b.node_id ? String(b.node_id) : null;
+      const bCaminho: string | null = b.caminho_completo ? String(b.caminho_completo) : null;
       const bNome =
         b.categoria_nome ||
         DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
           (n: any) => n.id === bId
         )?.nome ||
         '';
-      const key = `${bId}::${(bSub || '').toLowerCase()}`;
+      const pathKey = bPath && bPath.length > 0 ? bPath.join('>').toLowerCase() : (bSub || '').toLowerCase();
+      const key = `${bId}::${bNodeId || pathKey}`;
       if (!categoryBindingsMap.has(key)) {
         categoryBindingsMap.set(key, {
           categoria_id: bId,
           categoria_nome: bNome,
-          subcategoria: bSub
+          subcategoria: bSub,
+          node_id: bNodeId,
+          subcategoria_path: bPath,
+          caminho_completo: bCaminho
         });
       }
     });
@@ -372,7 +399,10 @@ export function mapDbProductToProduct(dbProd: any): Product {
     customBadges: Array.from(new Set(customBadgesList)),
     category: resolvedPrimaryCategoryName,
     categoryId: dbProd.categoria_id || undefined,
+    categoryPath: primaryCaminho || undefined,
     subcategory: dbProd.subcategoria || undefined,
+    subcategoryNodeId: primaryNodeId || undefined,
+    subcategoryPath: primarySubPath || undefined,
     categories: Array.from(categoryBindingsMap.values()),
     fabric: dbProd.tecido || undefined,
     fit: dbProd.modelagem || undefined,

@@ -269,4 +269,139 @@ runTest(
   }
 );
 
+const deepTree: CategoriaNode[] = [
+  ...sampleTree,
+  {
+    id: 'cat-acessorios',
+    loja_id: 'loja-1',
+    nome: 'Acessórios',
+    slug: 'acessorios',
+    parent_id: null,
+    nivel: 0,
+    display_order: 50,
+    ativo: true
+  },
+  {
+    id: 'cat-colares',
+    loja_id: 'loja-1',
+    nome: 'Colares e Joias',
+    slug: 'colares-e-joias',
+    parent_id: 'cat-acessorios',
+    nivel: 1,
+    display_order: 10,
+    ativo: true
+  },
+  {
+    id: 'cat-aneis',
+    loja_id: 'loja-1',
+    nome: 'Anéis',
+    slug: 'aneis',
+    parent_id: 'cat-acessorios',
+    nivel: 1,
+    display_order: 20,
+    ativo: true
+  },
+  {
+    id: 'cat-colares-prata',
+    loja_id: 'loja-1',
+    nome: 'Prata 925',
+    slug: 'prata-925',
+    parent_id: 'cat-colares',
+    nivel: 2,
+    display_order: 10,
+    ativo: true
+  },
+  {
+    id: 'cat-colares-ouro',
+    loja_id: 'loja-1',
+    nome: 'Ouro',
+    slug: 'colares-ouro',
+    parent_id: 'cat-colares',
+    nivel: 2,
+    display_order: 20,
+    ativo: true
+  },
+  {
+    id: 'cat-aneis-ouro',
+    loja_id: 'loja-1',
+    nome: 'Ouro',
+    slug: 'aneis-ouro',
+    parent_id: 'cat-aneis',
+    nivel: 2,
+    display_order: 10,
+    ativo: true
+  },
+  {
+    id: 'cat-chokers',
+    loja_id: 'loja-1',
+    nome: 'Chokers',
+    slug: 'chokers',
+    parent_id: 'cat-colares-prata',
+    nivel: 3,
+    display_order: 10,
+    ativo: true
+  }
+];
+
+runTest(
+  'Árvore N-níveis (N1 -> N2 -> N3 -> N4): Acessórios > Colares e Joias > Prata 925 > Chokers responde em todos os níveis ancestrais',
+  () => {
+    const prodChoker = makeProduct({
+      id: 'p-choker-1',
+      name: 'Choker Prata Minimalista',
+      category: 'Acessórios',
+      categoryId: 'cat-acessorios',
+      subcategory: 'Chokers',
+      subcategoryNodeId: 'cat-chokers',
+      subcategoryPath: ['Colares e Joias', 'Prata 925', 'Chokers'],
+      categoryPath: 'Acessórios › Colares e Joias › Prata 925 › Chokers'
+    });
+
+    assert.strictEqual(matchesCategoryFilter(prodChoker, 'Acessórios', deepTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodChoker, 'Colares e Joias', deepTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodChoker, 'Prata 925', deepTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodChoker, 'Chokers', deepTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodChoker, 'Anéis', deepTree), false);
+
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodChoker, ['Acessórios'], ['Colares e Joias'], deepTree, true),
+      true
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodChoker, ['Acessórios'], ['Prata 925'], deepTree, true),
+      true
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodChoker, ['Acessórios'], ['Chokers'], deepTree, true),
+      true
+    );
+  }
+);
+
+runTest(
+  'Desambiguação de ramificações irmãs com mesmo nome (Colares > Ouro vs Anéis > Ouro) usando nodeId',
+  () => {
+    const prodColarOuro = makeProduct({
+      id: 'p-colar-ouro',
+      name: 'Colar Ponto de Luz Ouro',
+      category: 'Acessórios',
+      categoryId: 'cat-acessorios',
+      subcategory: 'Ouro',
+      subcategoryNodeId: 'cat-colares-ouro',
+      subcategoryPath: ['Colares e Joias', 'Ouro']
+    });
+
+    assert.strictEqual(matchesCategoryFilter(prodColarOuro, 'Colares e Joias', deepTree), true);
+    assert.strictEqual(matchesCategoryFilter(prodColarOuro, 'Anéis', deepTree), false);
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodColarOuro, ['Acessórios'], ['Anéis'], deepTree, true),
+      false
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(prodColarOuro, ['Acessórios'], ['Anéis'], deepTree, false),
+      false
+    );
+  }
+);
+
 console.log('Todos os testes de catalog-filter passaram com sucesso!');
