@@ -320,16 +320,36 @@ export function mapDbProductToProduct(dbProd: any): Product {
     'Geral';
 
   // Múltiplos vínculos de categoria armazenados em detalhes.categorias_vinculadas (retrocompatível + N-níveis)
+  const defaultTree = (DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias as any[]) || [];
+  const normTxt = (s?: string | null) =>
+    (s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  let primaryNodeId: string | null = detalhesObj.subcategoria_node_id
+    ? String(detalhesObj.subcategoria_node_id)
+    : null;
+  let primaryCaminho: string | null = detalhesObj.subcategoria_caminho
+    ? String(detalhesObj.subcategoria_caminho)
+    : null;
+
+  // Auto-hidratação de nodeId para produtos legados com categoria_id e subcategoria sem node_id explícito
+  if (!primaryNodeId && dbProd.categoria_id && dbProd.subcategoria && defaultTree.length > 0) {
+    const matchedNode = defaultTree.find(
+      (n: any) =>
+        n.parent_id === dbProd.categoria_id &&
+        (normTxt(n.nome) === normTxt(dbProd.subcategoria) || normTxt(n.slug) === normTxt(dbProd.subcategoria))
+    );
+    if (matchedNode) {
+      primaryNodeId = matchedNode.id;
+      if (!primaryCaminho) {
+        primaryCaminho = `${resolvedPrimaryCategoryName} › ${matchedNode.nome}`;
+      }
+    }
+  }
+
   const primarySubPath: string[] | null = Array.isArray(detalhesObj.subcategoria_path)
     ? detalhesObj.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
     : dbProd.subcategoria
     ? [String(dbProd.subcategoria).trim()]
-    : null;
-  const primaryNodeId: string | null = detalhesObj.subcategoria_node_id
-    ? String(detalhesObj.subcategoria_node_id)
-    : null;
-  const primaryCaminho: string | null = detalhesObj.subcategoria_caminho
-    ? String(detalhesObj.subcategoria_caminho)
     : null;
 
   const categoryBindingsMap = new Map<string, ProductCategoryBinding>();
@@ -351,18 +371,31 @@ export function mapDbProductToProduct(dbProd: any): Product {
       if (!b || (!b.categoria_id && !b.categoria_nome)) return;
       const bId = String(b.categoria_id || '');
       const bSub = b.subcategoria ? String(b.subcategoria).trim() : null;
+      let bNodeId: string | null = b.node_id ? String(b.node_id) : null;
+      let bCaminho: string | null = b.caminho_completo ? String(b.caminho_completo) : null;
+
+      if (!bNodeId && bId && bSub && defaultTree.length > 0) {
+        const matchedExtraNode = defaultTree.find(
+          (n: any) =>
+            n.parent_id === bId &&
+            (normTxt(n.nome) === normTxt(bSub) || normTxt(n.slug) === normTxt(bSub))
+        );
+        if (matchedExtraNode) {
+          bNodeId = matchedExtraNode.id;
+          if (!bCaminho) {
+            bCaminho = `${b.categoria_nome || ''} › ${matchedExtraNode.nome}`;
+          }
+        }
+      }
+
       const bPath: string[] | null = Array.isArray(b.subcategoria_path)
         ? b.subcategoria_path.map((s: any) => String(s || '').trim()).filter(Boolean)
         : bSub
         ? [bSub]
         : null;
-      const bNodeId: string | null = b.node_id ? String(b.node_id) : null;
-      const bCaminho: string | null = b.caminho_completo ? String(b.caminho_completo) : null;
       const bNome =
         b.categoria_nome ||
-        DEFAULT_LEIDY_TENANT.configuracoes_visuais?.arvore_categorias?.find(
-          (n: any) => n.id === bId
-        )?.nome ||
+        defaultTree.find((n: any) => n.id === bId)?.nome ||
         '';
       const pathKey = bPath && bPath.length > 0 ? bPath.join('>').toLowerCase() : (bSub || '').toLowerCase();
       const key = `${bId}::${bNodeId || pathKey}`;

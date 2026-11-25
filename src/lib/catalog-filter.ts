@@ -14,6 +14,23 @@ export function normalizeCatString(str?: string | null): string {
 }
 
 /**
+ * Avalia correspondência semântica entre nomes de categorias e termos (suporta compostos como "Blusas & Tops" com "Blusas").
+ */
+export function isSemanticCategoryMatch(nameA?: string | null, nameB?: string | null): boolean {
+  if (!nameA || !nameB) return false;
+  const normA = normalizeCatString(nameA);
+  const normB = normalizeCatString(nameB);
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+
+  const tokensA = normA.split(/[\s&/]+/).filter((t) => t.length > 2);
+  const tokensB = normB.split(/[\s&/]+/).filter((t) => t.length > 2);
+
+  if (tokensA.includes(normB) || tokensB.includes(normA)) return true;
+  return tokensA.some((ta) => tokensB.includes(ta));
+}
+
+/**
  * Retorna todos os IDs descendentes de um nó na árvore de categorias (com proteção anti-ciclo).
  */
 export function getDescendantCategoryIdsLocal(nodeId: string, tree: CategoriaNode[]): string[] {
@@ -45,11 +62,13 @@ function findMatchingTreeNodes(term: string, categoryTree: CategoriaNode[]): Cat
       (n.slug || '').toLowerCase() === termLower ||
       (n.nome || '').toLowerCase() === termLower ||
       (termNorm !== '' && normalizeCatString(n.slug) === termNorm) ||
-      (termNorm !== '' && normalizeCatString(n.nome) === termNorm)
+      (termNorm !== '' && normalizeCatString(n.nome) === termNorm) ||
+      (termNorm !== '' && isSemanticCategoryMatch(n.nome, term)) ||
+      (termNorm !== '' && isSemanticCategoryMatch(n.slug, term))
   );
 }
 
-interface NormalizedProductBinding {
+export interface NormalizedProductBinding {
   categoryId?: string;
   category: string;
   subcategory?: string;
@@ -124,10 +143,135 @@ export function getProductCategoryBindings(product: Product): NormalizedProductB
   return bindings;
 }
 
+/**
+ * Encontra a categoria raiz ancestral de um nó na árvore.
+ */
+export function getRootCategoryNodeLocal(nodeId: string, tree: CategoriaNode[]): CategoriaNode | null {
+  let curr = tree.find((n) => n.id === nodeId);
+  if (!curr) return null;
+  const visited = new Set<string>();
+  while (curr.parent_id && !visited.has(curr.id)) {
+    visited.add(curr.id);
+    const parent = tree.find((n) => n.id === curr!.parent_id);
+    if (!parent) break;
+    curr = parent;
+  }
+  return curr;
+}
+
+/**
+ * Avalia se um vínculo específico do produto pertence estritamente a um nó da árvore (raiz ou ramificação filha).
+ * Elimina vazamento por homonímia entre ramificações irmãs e isola produtos legados sem nodeId.
+ */
+export function doesBindingBelongToCategoryNode(
+  binding: NormalizedProductBinding,
+  targetNode: CategoriaNode,
+  categoryTree: CategoriaNode[]
+): boolean {
+  // 1. Resolução exata quando o vínculo possui nodeId cadastrado na árvore
+  if (binding.nodeId && categoryTree.some((n) => n.id === binding.nodeId)) {
+    const allowedIds = getDescendantCategoryIdsLocal(targetNode.id, categoryTree);
+    return allowedIds.includes(binding.nodeId);
+  }
+
+  // 2. Localiza a raiz do nó alvo
+  const targetRoot = getRootCategoryNodeLocal(targetNode.id, categoryTree) || targetNode;
+  const targetRootNorm = normalizeCatString(targetRoot.nome);
+  const targetRootSlug = normalizeCatString(targetRoot.slug);
+
+  // 3. Localiza a raiz do produto na árvore
+  let productRoot: CategoriaNode | null = null;
+  if (binding.categoryId) {
+    const nodeById = categoryTree.find((n) => n.id === binding.categoryId);
+    if (nodeById) {
+      productRoot = getRootCategoryNodeLocal(nodeById.id, categoryTree);
+    }
+  }
+  if (!productRoot && binding.category) {
+    const bCatNorm = normalizeCatString(binding.category);
+    const nodeByName = categoryTree.find(
+      (n) =>
+        !n.parent_id &&
+        (normalizeCatString(n.nome) === bCatNorm || normalizeCatString(n.slug) === bCatNorm)
+    );
+    if (nodeByName) {
+      productRoot = nodeByName;
+    }
+  }
+
+  // Se a raiz do produto é conhecida na árvore e NÃO coincide com a raiz do nó alvo, o vínculo é rejeitado
+  if (productRoot && productRoot.id !== targetRoot.id) {
+    return false;
+  }
+
+  // Se a raiz não pôde ser resolvida por nó, mas o nome da categoria do produto existe e difere da raiz do alvo
+  if (!productRoot && binding.category) {
+    const bCatNorm = normalizeCatString(binding.category);
+    if (targetRootNorm && bCatNorm && bCatNorm !== targetRootNorm && bCatNorm !== targetRootSlug) {
+      // Se bCatNorm é reconhecida como outra categoria raiz existente na árvore, não pertence a este alvo
+      const otherRootExists = categoryTree.some(
+        (n) =>
+          !n.parent_id &&
+          n.id !== targetRoot.id &&
+          (normalizeCatString(n.nome) === bCatNorm || normalizeCatString(n.slug) === bCatNorm)
+      );
+      if (otherRootExists) {
+        return false;
+      }
+    }
+  }
+
+  // Caso A: O nó alvo é a própria raiz (N1)
+  const isTargetRoot = !targetNode.parent_id;
+  if (isTargetRoot) {
+    if (productRoot && productRoot.id === targetRoot.id) return true;
+    if (binding.categoryId && binding.categoryId === targetRoot.id) return true;
+    const bCatNorm = normalizeCatString(binding.category);
+    return bCatNorm === targetRootNorm || bCatNorm === targetRootSlug;
+  }
+
+  // Caso B: O nó alvo é um nó filho (subcategoria N2, N3...)
+  const targetNodeNorm = normalizeCatString(targetNode.nome);
+  const targetNodeSlug = normalizeCatString(targetNode.slug);
+  const allowedDescendantIds = getDescendantCategoryIdsLocal(targetNode.id, categoryTree);
+
+  // Se o próprio nodeId ou categoryId do produto for o nó alvo ou descendente dele
+  if (binding.nodeId && allowedDescendantIds.includes(binding.nodeId)) {
+    return true;
+  }
+  if (binding.categoryId && allowedDescendantIds.includes(binding.categoryId)) {
+    return true;
+  }
+
+  const allowedDescendants = categoryTree.filter((n) => allowedDescendantIds.includes(n.id));
+  const allowedNorms = new Set(
+    allowedDescendants.flatMap((n) => [normalizeCatString(n.nome), normalizeCatString(n.slug)])
+  );
+
+  // Se o produto foi classificado com a categoria tendo o nome deste nó filho
+  if (binding.category && allowedNorms.has(normalizeCatString(binding.category))) {
+    return true;
+  }
+
+  // Verifica na trilha N-níveis gravada
+  if (binding.subcategoriaPath && binding.subcategoriaPath.length > 0) {
+    const hasPathMatch = binding.subcategoriaPath.some((seg) => allowedNorms.has(normalizeCatString(seg)));
+    if (hasPathMatch) return true;
+  }
+
+  // Verifica subcategoria simples
+  if (binding.subcategory) {
+    const pSubNorm = normalizeCatString(binding.subcategory);
+    if (allowedNorms.has(pSubNorm)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function matchesSingleBindingCategory(
   binding: NormalizedProductBinding,
-  productFabric: string | undefined,
-  productFit: string | undefined,
   categoryTerm: string,
   categoryTree: CategoriaNode[]
 ): boolean {
@@ -135,69 +279,20 @@ function matchesSingleBindingCategory(
   const catNorm = normalizeCatString(categoryTerm);
   if (!catLower && !catNorm) return true;
 
-  const hasKnownNodeInTree = Boolean(
-    binding.nodeId && categoryTree.some((n) => n.id === binding.nodeId)
-  );
-
-  // 1. Resolução Recursiva via Árvore de Categorias (N1, N2, N3, N4...)
+  // 1. Resolução via Árvore de Categorias (N1, N2, N3, N4...) com proteção de pertinência
   if (categoryTree.length > 0) {
     const matchedNodes = findMatchingTreeNodes(categoryTerm, categoryTree);
-    for (const matchedNode of matchedNodes) {
-      const allowedIds = getDescendantCategoryIdsLocal(matchedNode.id, categoryTree);
-
-      // Quando o vínculo possui nodeId exato presente na árvore, ele resolve sem ambiguidade entre ramificações irmãs
-      if (hasKnownNodeInTree && binding.nodeId) {
-        if (allowedIds.includes(binding.nodeId)) return true;
-        continue;
-      }
-
-      if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
-
-      const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
-      const allowedNames = allowedNodes.map((n) => n.nome.toLowerCase());
-      const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
-      const allowedSlugsNorm = allowedNodes.map((n) => normalizeCatString(n.slug));
-
-      if (binding.category) {
-        const pCatLower = binding.category.toLowerCase();
-        const pCatNorm = normalizeCatString(binding.category);
-        if (
-          allowedNames.includes(pCatLower) ||
-          allowedNamesNorm.includes(pCatNorm) ||
-          allowedSlugsNorm.includes(pCatNorm)
-        ) {
+    if (matchedNodes.length > 0) {
+      for (const matchedNode of matchedNodes) {
+        if (doesBindingBelongToCategoryNode(binding, matchedNode, categoryTree)) {
           return true;
         }
       }
-
-      if (binding.subcategoriaPath && binding.subcategoriaPath.length > 0) {
-        const pathMatch = binding.subcategoriaPath.some((seg) => {
-          const sLower = seg.toLowerCase();
-          const sNorm = normalizeCatString(seg);
-          return (
-            allowedNames.includes(sLower) ||
-            allowedNamesNorm.includes(sNorm) ||
-            allowedSlugsNorm.includes(sNorm)
-          );
-        });
-        if (pathMatch) return true;
-      }
-
-      if (binding.subcategory) {
-        const pSubLower = binding.subcategory.toLowerCase();
-        const pSubNorm = normalizeCatString(binding.subcategory);
-        if (
-          allowedNames.includes(pSubLower) ||
-          allowedNamesNorm.includes(pSubNorm) ||
-          allowedSlugsNorm.includes(pSubNorm)
-        ) {
-          return true;
-        }
-      }
+      return false;
     }
   }
 
-  // Correspondência direta na trilha N-níveis quando a árvore não resolveu
+  // 2. Correspondência direta na trilha N-níveis quando a árvore não resolveu
   if (
     binding.subcategoriaPath &&
     binding.subcategoriaPath.some(
@@ -210,7 +305,7 @@ function matchesSingleBindingCategory(
   const pCatNorm = normalizeCatString(binding.category);
   const pSubNorm = normalizeCatString(binding.subcategory);
 
-  // 2. Fallbacks de Compatibilidade com links antigos do menu / tags legadas
+  // 3. Fallbacks controlados de taxonomia sem árvore (apenas categorias/subcategorias explícitas, NUNCA por tecido ou modelagem)
   if (catLower === 'acessórios' || catLower === 'acessorios' || catNorm === 'acessorios') {
     return (
       pCatNorm === 'acessorios' ||
@@ -219,17 +314,12 @@ function matchesSingleBindingCategory(
     );
   }
   if (catNorm === 'tricots' || catNorm === 'tricot') {
-    return (
-      pCatNorm.includes('tricot') ||
-      pSubNorm.includes('tricot') ||
-      Boolean(productFabric && normalizeCatString(productFabric).includes('tricot'))
-    );
+    return pCatNorm.includes('tricot') || pSubNorm.includes('tricot');
   }
   if (catNorm === 'alfaiataria') {
     return (
       pCatNorm.includes('alfaiataria') ||
       pSubNorm.includes('alfaiataria') ||
-      Boolean(productFit && normalizeCatString(productFit).includes('alfaiataria')) ||
       pCatNorm.includes('blazer') ||
       pSubNorm.includes('blazer')
     );
@@ -280,9 +370,7 @@ function matchesSingleBindingCategory(
   return (
     binding.category.toLowerCase() === catLower ||
     pCatNorm === catNorm ||
-    Boolean(binding.subcategory && (binding.subcategory.toLowerCase() === catLower || pSubNorm === catNorm)) ||
-    Boolean(pCatNorm && catNorm && (pCatNorm.includes(catNorm) || catNorm.includes(pCatNorm))) ||
-    Boolean(pSubNorm && catNorm && (pSubNorm.includes(catNorm) || catNorm.includes(pSubNorm)))
+    Boolean(binding.subcategory && (binding.subcategory.toLowerCase() === catLower || pSubNorm === catNorm))
   );
 }
 
@@ -299,9 +387,7 @@ export function matchesCategoryFilter(
   if (!catLower && !catNorm) return true;
 
   const bindings = getProductCategoryBindings(product);
-  return bindings.some((b) =>
-    matchesSingleBindingCategory(b, product.fabric, product.fit, categoryTerm, categoryTree)
-  );
+  return bindings.some((b) => matchesSingleBindingCategory(b, categoryTerm, categoryTree));
 }
 
 /**
@@ -311,9 +397,9 @@ export function matchesSubcategoryFilter(
   product: Product,
   subTerm: string,
   categoryTree: CategoriaNode[] = [],
-  options: { includeCategoryMatch?: boolean } = {}
+  options: { includeCategoryMatch?: boolean; parentCategoryTerm?: string } = {}
 ): boolean {
-  const { includeCategoryMatch = false } = options;
+  const { includeCategoryMatch = false, parentCategoryTerm } = options;
   const subLower = (subTerm || '').trim().toLowerCase();
   const subNorm = normalizeCatString(subTerm);
   if (!subLower && !subNorm) return true;
@@ -321,43 +407,34 @@ export function matchesSubcategoryFilter(
   const bindings = getProductCategoryBindings(product);
 
   for (const binding of bindings) {
-    const hasKnownNodeInTree = Boolean(
-      binding.nodeId && categoryTree.some((n) => n.id === binding.nodeId)
-    );
-
     if (categoryTree.length > 0) {
-      const subNodes = findMatchingTreeNodes(subTerm, categoryTree);
-      if (subNodes.length > 0) {
-        let matchedByKnownNode = false;
-        for (const subNode of subNodes) {
-          const allowedIds = getDescendantCategoryIdsLocal(subNode.id, categoryTree);
-          if (hasKnownNodeInTree && binding.nodeId) {
-            if (allowedIds.includes(binding.nodeId)) return true;
-            if (includeCategoryMatch && binding.categoryId && allowedIds.includes(binding.categoryId)) {
-              return true;
-            }
-            matchedByKnownNode = true;
-            continue;
-          }
-
-          if (binding.categoryId && allowedIds.includes(binding.categoryId)) return true;
-
-          const allowedNodes = categoryTree.filter((n) => allowedIds.includes(n.id));
-          const allowedNamesNorm = allowedNodes.map((n) => normalizeCatString(n.nome));
-          if (
-            binding.subcategoriaPath &&
-            binding.subcategoriaPath.some((seg) => allowedNamesNorm.includes(normalizeCatString(seg)))
-          ) {
-            return true;
-          }
-          if (binding.subcategory && allowedNamesNorm.includes(normalizeCatString(binding.subcategory))) return true;
-          if (includeCategoryMatch && binding.category && allowedNamesNorm.includes(normalizeCatString(binding.category))) {
-            return true;
+      let subNodes = findMatchingTreeNodes(subTerm, categoryTree);
+      if (parentCategoryTerm) {
+        const parentRoots = findMatchingTreeNodes(parentCategoryTerm, categoryTree);
+        if (parentRoots.length > 0) {
+          const parentDescendantIds = new Set(
+            parentRoots.flatMap((pr) => getDescendantCategoryIdsLocal(pr.id, categoryTree))
+          );
+          const scopedSubNodes = subNodes.filter((sn) => parentDescendantIds.has(sn.id));
+          if (scopedSubNodes.length > 0) {
+            subNodes = scopedSubNodes;
           }
         }
-        if (matchedByKnownNode) {
-          // O produto tem nodeId exato e NÃO pertence a esta ramificação específica; evita falso positivo por nome repetido
-          continue;
+      }
+
+      if (subNodes.length > 0) {
+        const childSubNodes = subNodes.filter((sn) => Boolean(sn.parent_id));
+        if (childSubNodes.length > 0) {
+          let matched = false;
+          for (const subNode of childSubNodes) {
+            if (doesBindingBelongToCategoryNode(binding, subNode, categoryTree)) {
+              matched = true;
+              return true;
+            }
+          }
+          if (!matched) {
+            continue;
+          }
         }
       }
     }
@@ -398,9 +475,10 @@ export function matchesSubcategoryFilter(
 
 /**
  * Aplica a regra combinada de Categorias + Subcategorias respeitando multi-categorias e o modo escolhido pelo lojista:
- * - `isStrictMode = true` (Vínculo Estrito Ativo): o produto só aparece se pertencer à categoria pai E à subcategoria/categoria alvo.
- * - `isStrictMode = false` (Modo Flexível / Abrangente): ao navegar por um submenu (ex: Outono/Inverno -> Casacos & Jaquetas),
- *   produtos cuja categoria ou subcategoria corresponda a "Casacos & Jaquetas" aparecem mesmo sem vínculo direto com "Outono/Inverno".
+ * - `isStrictMode = true` (Vínculo Estrito Ativo): o produto só aparece se pertencer à categoria pai E à subcategoria alvo.
+ * - `isStrictMode = false` (Modo Flexível / Abrangente): ao navegar por um submenu que aponte para uma categoria raiz autônoma
+ *   (ex: Outono/Inverno -> Casacos & Jaquetas), produtos daquela categoria autônoma aparecem mesmo sem vínculo direto com Outono/Inverno.
+ *   Subcategorias homônimas de outros departamentos não relacionados (ex: Tricots de Primavera/Verão) são devidamente bloqueadas.
  */
 export function matchesCatalogCategoryAndSubcategory(
   product: Product,
@@ -425,26 +503,36 @@ export function matchesCatalogCategoryAndSubcategory(
   }
 
   // Caso combinado: Categoria + Subcategoria
-  if (isStrictMode) {
-    const matchesParent = categories.some((cat) => matchesCategoryFilter(product, cat, categoryTree));
-    if (!matchesParent) return false;
-    return subcategories.some((sub) =>
-      matchesSubcategoryFilter(product, sub, categoryTree, { includeCategoryMatch: true })
-    );
+  const matchesParent = categories.some((cat) => matchesCategoryFilter(product, cat, categoryTree));
+  const matchesSubInParent = subcategories.some((sub) =>
+    categories.some((parentCat) =>
+      matchesSubcategoryFilter(product, sub, categoryTree, {
+        includeCategoryMatch: true,
+        parentCategoryTerm: parentCat
+      })
+    )
+  );
+
+  // Se atende à categoria pai E à subcategoria naquele contexto, aprovado em ambos os modos
+  if (matchesParent && matchesSubInParent) {
+    return true;
   }
 
-  // Modo Flexível (Inativo): exibe itens que atendem (Categoria + Sub) OU que pertencem diretamente à Sub/Categoria alvo
-  const matchesParentAndSub =
-    categories.some((cat) => matchesCategoryFilter(product, cat, categoryTree)) &&
-    subcategories.some((sub) =>
-      matchesSubcategoryFilter(product, sub, categoryTree, { includeCategoryMatch: true })
+  if (isStrictMode) {
+    return false;
+  }
+
+  // Modo Flexível (Inativo no admin):
+  // Permite que uma subopção que corresponda a um DEPARTAMENTO RAIZ autônomo na árvore (ex: Casacos & Jaquetas colocado como submenu de Outono/Inverno)
+  // traga as peças daquele departamento raiz.
+  // NÃO permite vazamento de subcategorias filhas homônimas de departamentos não relacionados.
+  return subcategories.some((sub) => {
+    const isRootAutonomousCat = categoryTree.some(
+      (n) => !n.parent_id && isSemanticCategoryMatch(n.nome, sub)
     );
-
-  if (matchesParentAndSub) return true;
-
-  return subcategories.some(
-    (sub) =>
-      matchesCategoryFilter(product, sub, categoryTree) ||
-      matchesSubcategoryFilter(product, sub, categoryTree, { includeCategoryMatch: true })
-  );
+    if (isRootAutonomousCat) {
+      return matchesCategoryFilter(product, sub, categoryTree);
+    }
+    return false;
+  });
 }

@@ -48,7 +48,9 @@ import {
 import {
   normalizeCatString,
   matchesCatalogCategoryAndSubcategory,
-  getProductCategoryBindings
+  getProductCategoryBindings,
+  doesBindingBelongToCategoryNode,
+  getRootCategoryNodeLocal
 } from '@/lib/catalog-filter';
 
 function CatalogoContent() {
@@ -1073,33 +1075,20 @@ function CatalogoContent() {
               hierarchicalCategoryTree.map((cat) => {
                 const depth = cat.nivel || 0;
                 const isSubNode = depth > 0;
+                const rootCat = getRootCategoryNodeLocal(cat.id, categoryTree) || cat;
+                const isRootSelected =
+                  draftFilters.categories.includes(rootCat.nome) ||
+                  draftFilters.categories.includes(rootCat.slug) ||
+                  draftFilters.categories.includes(rootCat.id);
+
                 const isInSubcategories = Boolean(draftFilters.subcategories?.includes(cat.nome));
                 const isSelected = isSubNode
-                  ? (isInSubcategories || draftFilters.categories.includes(cat.nome))
-                  : (draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id) || isInSubcategories);
-                const descendantIds = getDescendantCategoryIds(cat.id, categoryTree);
-                const descendantNodes = categoryTree.filter((n) => descendantIds.includes(n.id));
-                const descendantNames = descendantNodes.map((n) => n.nome.toLowerCase());
-                const descendantNamesNorm = descendantNodes.map((n) => normalizeCatString(n.nome));
+                  ? (draftFilters.categories.length > 0 ? (isRootSelected && isInSubcategories) : isInSubcategories) || draftFilters.categories.includes(cat.nome)
+                  : (draftFilters.categories.includes(cat.nome) || draftFilters.categories.includes(cat.slug) || draftFilters.categories.includes(cat.id));
+
                 const count = products.filter((p) => {
                   const bindings = getProductCategoryBindings(p);
-                  return bindings.some((b) => {
-                    if (b.nodeId && categoryTree.some((n) => n.id === b.nodeId)) {
-                      return descendantIds.includes(b.nodeId);
-                    }
-                    if (b.categoryId && descendantIds.includes(b.categoryId)) return true;
-                    if (b.category && (descendantNames.includes(b.category.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.category)))) return true;
-                    if (
-                      b.subcategoriaPath &&
-                      b.subcategoriaPath.some(
-                        (seg) => descendantNames.includes(seg.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(seg))
-                      )
-                    ) {
-                      return true;
-                    }
-                    if (b.subcategory && (descendantNames.includes(b.subcategory.toLowerCase()) || descendantNamesNorm.includes(normalizeCatString(b.subcategory)))) return true;
-                    return false;
-                  });
+                  return bindings.some((b) => doesBindingBelongToCategoryNode(b, cat, categoryTree));
                 }).length;
 
                 // Não exibe categorias ou subcategorias com 0 produtos (a menos que esteja marcada no filtro pelo usuário)
@@ -1110,8 +1099,16 @@ function CatalogoContent() {
                     type="button"
                     key={cat.id}
                     onClick={() => {
-                      if (isSubNode || isInSubcategories) {
-                        toggleDraftSubcategory(cat.nome);
+                      if (isSubNode) {
+                        if (!isSelected && rootCat && !isRootSelected) {
+                          setDraftFilters((p) => ({
+                            ...p,
+                            categories: Array.from(new Set([...p.categories, rootCat.nome])),
+                            subcategories: Array.from(new Set([...(p.subcategories || []), cat.nome]))
+                          }));
+                        } else {
+                          toggleDraftSubcategory(cat.nome);
+                        }
                       } else {
                         toggleDraftCategory(cat.nome);
                       }

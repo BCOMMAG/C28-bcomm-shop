@@ -404,4 +404,107 @@ runTest(
   }
 );
 
+runTest(
+  'Isolamento de subcategorias homônimas e bloqueio de vazamento por tecido (Outono/Inverno -> Tricots)',
+  () => {
+    const treeComSubcategorias: CategoriaNode[] = [
+      ...sampleTree,
+      {
+        id: 'cat-casacos-tricots',
+        loja_id: 'loja-1',
+        nome: 'Tricots',
+        slug: 'tricots-casacos',
+        parent_id: 'cat-casacos',
+        nivel: 1,
+        display_order: 10,
+        ativo: true
+      }
+    ];
+
+    // Peça 1: Outono/Inverno -> Tricots (única peça válida no filtro)
+    const pecaOutonoTricot = makeProduct({
+      id: 'p-outono-tricot-correta',
+      name: 'Blusa Maxi Ambicione',
+      category: 'Outono/Inverno',
+      categoryId: 'cat-outono',
+      subcategory: 'Tricots'
+    });
+
+    // Peça 2: Primavera/Verão com tecido "Tricot Biamar" (NÃO pode aparecer)
+    const pecaPrimaveraTecidoTricot = makeProduct({
+      id: 'p-primavera-tecido',
+      name: 'Blusa Biamar em Tricô Ponto Leque',
+      category: 'Primavera/Verão',
+      categoryId: 'cat-primavera',
+      fabric: 'Tricot Biamar'
+    });
+
+    // Peça 3: Casacos & Jaquetas -> Tricots (subcategoria homônima sob outro pai)
+    const pecaCasacosTricot = makeProduct({
+      id: 'p-casacos-tricot',
+      name: 'Casaco Tricot Inverno',
+      category: 'Casacos & Jaquetas',
+      categoryId: 'cat-casacos',
+      subcategory: 'Tricots',
+      subcategoryNodeId: 'cat-casacos-tricots'
+    });
+
+    // Peça 4: Produto legado em Primavera/Verão com subcategoria "Tricots"
+    const pecaPrimaveraSubTricot = makeProduct({
+      id: 'p-primavera-sub-tricot',
+      name: 'Regata Tricot Verão',
+      category: 'Primavera/Verão',
+      categoryId: 'cat-primavera',
+      subcategory: 'Tricots'
+    });
+
+    const cats = ['Outono/Inverno'];
+    const subs = ['Tricots'];
+
+    // Modo Flexível (Inativo no admin / padrão da loja)
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaOutonoTricot, cats, subs, treeComSubcategorias, false),
+      true,
+      'Peça correta de Outono/Inverno -> Tricots deve aparecer no modo flexível'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaPrimaveraTecidoTricot, cats, subs, treeComSubcategorias, false),
+      false,
+      'Peça de Primavera/Verão NÃO pode vazar por ter tecido Tricot'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaCasacosTricot, cats, subs, treeComSubcategorias, false),
+      false,
+      'Peça de Casacos & Jaquetas -> Tricots NÃO pode vazar para Outono/Inverno -> Tricots'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaPrimaveraSubTricot, cats, subs, treeComSubcategorias, false),
+      false,
+      'Peça de Primavera/Verão com subcategoria Tricots NÃO pode vazar para Outono/Inverno -> Tricots'
+    );
+
+    // Modo Estrito (quando ativado no admin)
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaOutonoTricot, cats, subs, treeComSubcategorias, true),
+      true,
+      'Peça correta de Outono/Inverno -> Tricots deve aparecer no modo estrito'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaPrimaveraTecidoTricot, cats, subs, treeComSubcategorias, true),
+      false,
+      'Peça de Primavera/Verão NÃO pode vazar no modo estrito'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaCasacosTricot, cats, subs, treeComSubcategorias, true),
+      false,
+      'Peça de Casacos & Jaquetas -> Tricots NÃO pode vazar no modo estrito'
+    );
+    assert.strictEqual(
+      matchesCatalogCategoryAndSubcategory(pecaPrimaveraSubTricot, cats, subs, treeComSubcategorias, true),
+      false,
+      'Peça de Primavera/Verão com subcategoria Tricots NÃO pode vazar no modo estrito'
+    );
+  }
+);
+
 console.log('Todos os testes de catalog-filter passaram com sucesso!');
